@@ -108,15 +108,21 @@ open class MainActivity : Activity() {
     } }
     @Volatile private var playbackGeneration = 0
     private val controllers=ControllerRouter()
+    private val controllerPath=ControllerPathTrace()
     private var gamepadState: GamepadState
         get()=controllers.physical(0)
         set(value) { controllers.update(0,value) }
     private val usbNavigation by lazy { com.xcloud.tclnative.ui.dashboard.UsbMenuNavigation(this) }
     private var usbBlockedButtons=0
     private var usbShortcutHeld=0
-    private val usbDirect by lazy { UsbDirectController(this,
+    private val usbDirect: UsbDirectController by lazy { UsbDirectController(this,
         connected={ source,androidId ->
-            controllers.attachUsb(source,androidId)?.let { if(gameplayInputEnabled()) publishGamepad(it) }
+            val aliases=usbDirect.androidAliases()
+            val retired=(aliases+listOfNotNull(androidId)).mapNotNull { controllers.existingSlot(ControllerSource.Android(it)) }.toSet()
+            controllers.attachUsb(source,androidId,aliases)?.let { slot ->
+                retired.filter { it!=slot }.forEach { webrtcClient?.removeGamepad(it) }
+                if(gameplayInputEnabled()) publishGamepad(slot)
+            }
         },input=::handleUsbInput,disconnected=::removeUsbController).also {
             com.xcloud.tclnative.ui.dashboard.AppControllerWindows.usb(this,it)
         }
@@ -836,6 +842,19 @@ open class MainActivity : Activity() {
         surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
         webrtcClient?.setOutputGain(settings.audioGain)
     }
+    protected open fun prepareSessionRenderer(settings: PlaybackSettings): org.webrtc.EglBase {
+        surfaceRenderer.compatibility=settings.videoMode==VideoMode.COMPATIBILITY
+        surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
+        surfaceRenderer.setImageTreatment(settings.imageTreatment)
+        surfaceRenderer.setReconstruction(settings.reconstruction)
+        surfaceRenderer.setPresentationPacing(settings.presentationPacing)
+        surfaceRenderer.nativeUpscaling=settings.nativeUpscaling
+        surfaceRenderer.aspect=settings.aspect
+        surfaceRenderer.setImageAdjustments(settings.sharpness,settings.saturation,settings.brightness,settings.contrast)
+        surfaceRenderer.minimalPostProcessingRequested=settings.videoMode.lowLatency && Build.VERSION.SDK_INT>=30
+        surfaceRenderer.prepareForSession(settings.resolution.width,settings.resolution.height)
+        return surfaceRenderer.eglBase
+    }
     private fun showRumbleDiagnostics(back: () -> Unit) {
         val active=usbDirect.snapshot().status==UsbControllerStatus.READY
         val actions=mutableListOf(ConsoleAction(UiText.text("USB direto e teste de comandos")) {
@@ -1072,45 +1091,41 @@ open class MainActivity : Activity() {
             val recoveryState=TransmissionRecoveryState()
             transmissionRecovery=recoveryState
             val playbackScope=this
-            resetController()
-            controllers.beginSession(settings.localCoOp,touchMode!=TouchMode.OFF || sessionDesktopMode!=DesktopInputMode.OFF)
-            usbDirect.source?.let { controllers.slot(it) }
-            InputDevice.getDeviceIds().map { InputDevice.getDevice(it) }.filterNotNull().filter { !usbDirect.ownsAndroid(it.id) }.filter {
-                it.sources and InputDevice.SOURCE_GAMEPAD==InputDevice.SOURCE_GAMEPAD || it.sources and InputDevice.SOURCE_JOYSTICK==InputDevice.SOURCE_JOYSTICK
-            }.sortedWith(compareBy<InputDevice> { it.id!=preferredControllerId }.thenBy { it.id }).forEach { controllers.slot(it.id) }
-            rumble.enabled=settings.rumble
-            rumble.touchRumble=settings.touchRumble
-            surfaceRenderer.compatibility=compatible
-            surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
-            surfaceRenderer.setImageTreatment(settings.imageTreatment)
-            surfaceRenderer.setReconstruction(settings.reconstruction)
-            surfaceRenderer.setPresentationPacing(settings.forSession().presentationPacing)
-            surfaceRenderer.nativeUpscaling = settings.nativeUpscaling
-            surfaceRenderer.aspect = settings.aspect
-            surfaceRenderer.setImageAdjustments(settings.sharpness,settings.saturation,settings.brightness,settings.contrast)
-            surfaceRenderer.minimalPostProcessingRequested = settings.videoMode.lowLatency && Build.VERSION.SDK_INT >= 30
-            surfaceRenderer.prepareForSession(settings.resolution.width,settings.resolution.height)
-            surfaceRenderer.onFirstFrameRendered = {
-                if (generation == playbackGeneration && recoveryState.current(0) && !firstFrame.isCompleted) {
-                    tracker.begin(android.os.SystemClock.elapsedRealtime(),NetworkSnapshot.read(this@MainActivity))
-                    firstFrame.complete(Unit)
-                    finishLoading()
-                    updateJoystickDispatch()
-                    currentTouchMode=touchMode
-                    touchView.configure(touchMode,game,hudStore.read(titleId))
-                    resumeAuxiliaryInput()
-                    hudTextView.visibility = View.GONE
-                    gameLibrary?.recordPlayed(titleId)
-                    hudTextView.text = UiText.text("Vídeo nativo ativo [{0}]",UiText.nested(gameName))
-                    hudTextView.setTextColor(Color.GREEN)
-                    transmissionReady=true;renderStatistics();resynchronizeUsbInput()
-                }
-            }
-            surfaceRenderer.onRenderError = { error -> transportFailure.complete(RenderFailureException(error)) }
             var allocatedRtc: XCloudWebRtcClient?=null
             var failed=false
-            val playbackEgl=surfaceRenderer.eglBase
+            controllerPath.clear()
+            signaling.resetStartupDiagnostics()
+            tracker.inputDetails={ "Upscaling=${settings.fsr}; output=${settings.fsrOutput}\n"+controllerPath.diagnostics()+"\n"+signaling.startupDiagnostics()+"\n"+surfaceRenderer.diagnostics() }
             try {
+                resetController()
+                controllers.beginSession(settings.localCoOp,touchMode!=TouchMode.OFF || sessionDesktopMode!=DesktopInputMode.OFF)
+                usbDirect.source?.let { controllers.slot(it) }
+                InputDevice.getDeviceIds().map { InputDevice.getDevice(it) }.filterNotNull().filter { !usbDirect.ownsAndroid(it.id) }.filter {
+                    it.sources and InputDevice.SOURCE_GAMEPAD==InputDevice.SOURCE_GAMEPAD || it.sources and InputDevice.SOURCE_JOYSTICK==InputDevice.SOURCE_JOYSTICK
+                }.sortedWith(compareBy<InputDevice> { it.id!=preferredControllerId }.thenBy { it.id }).forEach { controllers.slot(it.id) }
+                rumble.enabled=settings.rumble
+                rumble.touchRumble=settings.touchRumble
+                val playbackEgl=try { prepareSessionRenderer(settings) } catch(error: Exception) {
+                    if(error is CancellationException) throw error
+                    throw RenderFailureException(error)
+                }
+                surfaceRenderer.onFirstFrameRendered = {
+                    if (generation == playbackGeneration && recoveryState.current(0) && !firstFrame.isCompleted) {
+                        tracker.begin(android.os.SystemClock.elapsedRealtime(),NetworkSnapshot.read(this@MainActivity))
+                        firstFrame.complete(Unit)
+                        finishLoading()
+                        updateJoystickDispatch()
+                        currentTouchMode=touchMode
+                        touchView.configure(touchMode,game,hudStore.read(titleId))
+                        resumeAuxiliaryInput()
+                        hudTextView.visibility = View.GONE
+                        gameLibrary?.recordPlayed(titleId)
+                        hudTextView.text = UiText.text("Vídeo nativo ativo [{0}]",UiText.nested(gameName))
+                        hudTextView.setTextColor(Color.GREEN)
+                        transmissionReady=true;renderStatistics();resynchronizeUsbInput()
+                    }
+                }
+                surfaceRenderer.onRenderError = { error -> transportFailure.complete(RenderFailureException(error)) }
                 // Capability discovery and native factory initialization must not block the menu/UI.
                 suspend fun buildRtc(): XCloudWebRtcClient {
                     val token=recoveryState.epoch
@@ -1148,7 +1163,7 @@ open class MainActivity : Activity() {
                 var rtc=buildRtc()
                 webrtcClient = rtc
                 val appVersion=packageManager.getPackageInfo(packageName,0).versionName ?: "n/d"
-                tracker.inputDetails = { UiText.join(UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())),"\nUSB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}","\n${inputDevice.diagnostics()}",(when(touchMode) { TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}";TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}";else -> "" }),UiText.text("\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10} | Mouse/teclado: {11} | Entrada MKB ativa: {12} | Captura Android: {13}",UiText.nested(joystickDispatch.diagnostics()),UiText.nested(signaling.profileDiagnostics()),UiText.nested(signaling.keepAliveDiagnostics()),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(playbackDisplay.diagnostics(window.decorView.display)),UiText.nested(rtc.audioDiagnostics()),UiText.nested(rtc.latencyDiagnostics()),UiText.nested(rtc.iceDiagnostics()),UiText.nested(rtc.codecDiagnostics()),UiText.nested(rumble.diagnostics()),UiText.nested(gyro.status),UiText.nested(sessionDesktopMode.label),UiText.nested(desktopCaptured),UiText.nested(if(Build.VERSION.SDK_INT>=26) window.decorView.hasPointerCapture() else false)))+"\n"+recoveryState.diagnostics() }
+                tracker.inputDetails = { UiText.join(UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())),"\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}","\nUSB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}","\n${inputDevice.diagnostics()}",(when(touchMode) { TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}";TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}";else -> "" }),UiText.text("\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10} | Mouse/teclado: {11} | Entrada MKB ativa: {12} | Captura Android: {13}",UiText.nested(joystickDispatch.diagnostics()),UiText.nested(signaling.profileDiagnostics()),UiText.nested(signaling.keepAliveDiagnostics()),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(playbackDisplay.diagnostics(window.decorView.display)),UiText.nested(rtc.audioDiagnostics()),UiText.nested(rtc.latencyDiagnostics()),UiText.nested(rtc.iceDiagnostics()),UiText.nested(rtc.codecDiagnostics()),UiText.nested(rumble.diagnostics()),UiText.nested(gyro.status),UiText.nested(sessionDesktopMode.label),UiText.nested(desktopCaptured),UiText.nested(if(Build.VERSION.SDK_INT>=26) window.decorView.hasPointerCapture() else false)))+"\n"+recoveryState.diagnostics() }
                 surfaceRenderer.displayDimensions()?.let(rtc::updateDisplayDimensions)
                 if(touchMode!=TouchMode.NATIVE) (0..3).filter { controllers.sourceFor(it)!=null }.forEach { publishGamepad(it) }
                 signaling.startAndConnectWebRtcSession(titleId, rtc, resolution = settings.resolution, nativeTouch=touchMode==TouchMode.NATIVE,options=sessionOptions,microphone=settings.microphone, onQueueStatus = { status -> runOnUiThread {
@@ -1316,7 +1331,8 @@ open class MainActivity : Activity() {
                 failed=true
                 tracker.recordFailure(error)
                 if (generation == playbackGeneration && (!firstFrame.isCompleted || !settingsStore.read().sessionReport)) {
-                    val details = error.message ?: UiText.text("Falha na sessão")
+                    val details = (error.message ?: UiText.text("Falha na sessão"))+
+                        if(!firstFrame.isCompleted) "\nUpscaling=${settings.fsr}; output=${settings.fsrOutput}\n${signaling.startupDiagnostics()}\n${controllerPath.diagnostics()}" else ""
                     hudTextView.text = details
                     hudTextView.setTextColor(Color.RED)
                     showCopyableErrorDialog(gameName, details)
@@ -1487,6 +1503,7 @@ open class MainActivity : Activity() {
             else -> null
         }
         val physical=profile?.apply(raw) ?: raw
+        controllerPath.record(slot,source,raw,physical,profile)
         val base=controllers.combined(slot,physical)
         return if(slot==0) gyro.apply(if(sessionDesktopMode==DesktopInputMode.EMULATED) ControllerRouter.merge(base,desktopGamepad.state()) else base) else base
     }

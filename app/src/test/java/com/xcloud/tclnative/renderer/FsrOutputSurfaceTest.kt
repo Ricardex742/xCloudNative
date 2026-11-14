@@ -24,6 +24,26 @@ import org.robolectric.annotation.Implementation
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28],shadows=[RecordingSurfaceShadow::class])
 class FsrOutputSurfaceTest {
+    @Test fun endingANativeSessionRetiresItsSurfaceBeforeChoosingAnotherUpscaler() {
+        val controller=Robolectric.buildActivity(Activity::class.java).setup()
+        val owner=AiPqSurfaceRenderer(controller.get());controller.get().setContentView(owner)
+        val surface=object: OutputSurfaceViewRenderer(controller.get()) {
+            var releases=0
+            override fun release() { releases++ }
+        }
+        owner.addView(surface)
+        ReflectionHelpers.setField(owner,"renderer",surface)
+        assertEquals(false,ReflectionHelpers.getField<Boolean>(owner,"fsrRequested"))
+        try {
+            owner.clearSession()
+            assertEquals(1,surface.releases);assertNull(surface.parent)
+            assertNull(ReflectionHelpers.getField<OutputSurfaceViewRenderer?>(owner,"renderer"))
+            for(mode in FsrMode.entries) for(output in FsrOutput.entries) owner.setFsr(mode,50,output)
+            assertEquals(1,surface.releases)
+            assertNull(ReflectionHelpers.getField<OutputSurfaceViewRenderer?>(owner,"renderer"))
+            owner.clearSession();assertEquals(1,surface.releases)
+        } finally { owner.release();controller.pause().stop().destroy() }
+    }
     @Test fun actualWebRtcLayoutAndFrameCallbacksRetain4kBufferInside1080UiAndRestoreNativeScaling() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val view=OutputSurfaceViewRenderer(controller.get())

@@ -35,7 +35,7 @@ internal class UsbDirectController(context: Context,
     @Volatile private var status=UsbControllerStatus.OFF
     @Volatile private var detail=""
     @Volatile var source: ControllerSource.Usb?=null;private set
-    private var ownedAndroidId: Int?=null
+    private val ownedAndroidAliases=mutableSetOf<Int>()
     private var selected: UsbControllerDescriptor?=null
     private var selectedExclusive=false
     private var pending: Triple<UsbControllerDescriptor,Boolean,String>?=null
@@ -69,7 +69,20 @@ internal class UsbDirectController(context: Context,
                     android.map { Triple(it.id,it.vendorId,it.productId) }))
         }
     }
-    fun ownsAndroid(id: Int)=source!=null && ownedAndroidId==id
+    fun androidAliases(): Set<Int> = ownedAndroidAliases.toSet()
+    fun ownsAndroid(id: Int): Boolean {
+        val usb=source ?: return false
+        val device=InputDevice.getDevice(id)
+        if(id in ownedAndroidAliases && (device==null || device.vendorId==usb.vendor && device.productId==usb.product)) return true
+        // Exclusive claiming or a driver refresh can replace the Android InputDevice ID.
+        if(device!=null && device.vendorId==usb.vendor && device.productId==usb.product && currentAndroidPeer(usb)==id) {
+            ownedAndroidAliases+=id;return true
+        }
+        return false
+    }
+    private fun currentAndroidPeer(usb: ControllerSource.Usb): Int? = UsbXInputProtocol.inputDeviceId(usb.vendor,usb.product,
+        devices().map { it.vendorId to it.productId },InputDevice.getDeviceIds().map(InputDevice::getDevice).filterNotNull()
+            .filter(UsbControllerRumble::isGamepad).map { Triple(it.id,it.vendorId,it.productId) })
     fun currentInput()=effectiveState
     override fun descriptors(): String = devices().joinToString("\n") { device ->
         "%04x:%04x".format(device.vendorId,device.productId)+"\n"+(0 until device.interfaceCount).joinToString("\n") { index ->
@@ -209,8 +222,12 @@ internal class UsbDirectController(context: Context,
                             initialButtons=parsed.buttons
                             main.post {
                                 if(!closed && foreground && generation.get()==token) {
-                                    source=runtime;ownedAndroidId=candidate.androidId;detail=""
-                                    connected(runtime,candidate.androidId)
+                                    source=runtime;detail=""
+                                    ownedAndroidAliases.clear()
+                                    candidate.androidId?.let { ownedAndroidAliases+=it }
+                                    val currentAndroidId=currentAndroidPeer(runtime)
+                                    currentAndroidId?.let { ownedAndroidAliases+=it }
+                                    connected(runtime,currentAndroidId ?: candidate.androidId)
                                 }
                             }
                         }
@@ -239,7 +256,7 @@ internal class UsbDirectController(context: Context,
             } finally {
                 if(session===current) session=null
                 main.post {
-                    if(source==runtime) { source=null;ownedAndroidId=null;state=GamepadState() }
+                    if(source==runtime) { source=null;ownedAndroidAliases.clear();state=GamepadState() }
                     if(transport==runtime) { transport=null;effectiveState=GamepadState() }
                     disconnected(runtime)
                 }
@@ -271,7 +288,7 @@ internal class UsbDirectController(context: Context,
     private fun deactivate(clearSelection: Boolean) {
         generation.incrementAndGet();pending=null;session?.stop();pendingFrames.clear()
         if(clearSelection) selected=null
-        val previous=source;source=null;transport=null;ownedAndroidId=null;state=GamepadState();effectiveState=GamepadState()
+        val previous=source;source=null;transport=null;ownedAndroidAliases.clear();state=GamepadState();effectiveState=GamepadState()
         previous?.let(disconnected)
     }
     override fun disable(done: () -> Unit) {

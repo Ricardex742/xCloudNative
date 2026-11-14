@@ -15,12 +15,15 @@ class ControllerRouter {
     fun slot(source: ControllerSource): Int? = devices[source] ?: ((if(reserveTouch) 1 else 0) until (if(coOp) 4 else 1))
         .firstOrNull { it !in devices.values }?.also { devices[source]=it }
     fun sourceFor(slot: Int): ControllerSource? = devices.entries.firstOrNull { it.value==slot }?.key
+    fun existingSlot(source: ControllerSource): Int? = devices[source]
     fun deviceFor(slot: Int): Int? = (sourceFor(slot) as? ControllerSource.Android)?.deviceId
     fun remove(deviceId: Int): Int? = remove(ControllerSource.Android(deviceId))
     fun remove(source: ControllerSource): Int? = devices.remove(source)?.also { states[it]=GamepadState() }
-    fun attachUsb(source: ControllerSource.Usb,androidId: Int?): Int? {
-        val previous=androidId?.let { remove(it) }
-        if(previous!=null) { devices[source]=previous;return previous }
+    fun attachUsb(source: ControllerSource.Usb,androidId: Int?,aliases: Set<Int> = emptySet()): Int? {
+        val existing=devices[source]
+        val previous=(aliases+listOfNotNull(androidId)).mapNotNull { remove(it) }
+        val target=existing ?: previous.minOrNull()
+        if(target!=null) { devices[source]=target;return target }
         return slot(source)
     }
     fun physical(slot: Int) = states[slot]

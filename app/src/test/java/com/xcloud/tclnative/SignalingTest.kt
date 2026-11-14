@@ -525,6 +525,8 @@ class SignalingTest {
         assertTrue(client.startAndConnectWebRtcSession("real-id",peer,onQueueStatus={ snapshots+=it }) {}.isSuccess)
         val queued=snapshots.filterNotNull()
         assertTrue(queued.any { it.confirmedAtMs-it.enteredAtMs>=180_000 && it.estimate?.seconds==30L })
+        assertTrue(client.startupDiagnostics(),client.startupDiagnostics().contains("Provisioned; replies="))
+        assertTrue(client.startupDiagnostics(),client.startupDiagnostics().contains("queue=195000ms"))
         assertNull(snapshots.last());assertTrue(events.contains("ready"));assertTrue(events.contains("offer"))
         assertEquals(1,requests.count { it.path=="/v5/sessions/cloud/play" })
         client.stop()

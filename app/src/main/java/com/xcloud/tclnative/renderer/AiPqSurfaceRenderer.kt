@@ -201,7 +201,9 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         fsrDraws.set(0);allDraws.set(0);fsrPerformance.reset()
         probePending.set(false)
         frameRateHintRequested = false
-        renderer?.let { removeView(it); it.release() }
+        val previous=renderer
+        renderer=null;aspectDrawer=null
+        previous?.let { removeView(it);it.release() }
         val id = generation
         val drawer=AspectVideoDrawer(aspect.stretch,{ org.webrtc.Fsr1Drawer(context) },onFsrFailure={ reason ->
             post { if(!released && generation==id) fallbackFsr(reason) }
@@ -216,13 +218,16 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             it.sharpness=sharpness;it.saturation=saturation;it.brightness=brightness;it.contrast=contrast;it.fsrSharpness=fsrSharpness;aspectDrawer=it
             applyTreatmentBudget()
         }
-        renderer = object : OutputSurfaceViewRenderer(context) {
+        val newView = object : OutputSurfaceViewRenderer(context) {
             override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
                 drawer.layoutAspect=(right-left).toFloat()/(bottom-top).coerceAtLeast(1)
                 super.onLayout(changed,left,top,right,bottom)
                 updateOutputBuffer()
             }
-        }.also { view ->
+        }
+        renderer=newView
+        try {
+            val view=newView
             view.onBufferFailure={ post { if(!released && generation==id) fallbackFsr("Surface recusou o tamanho solicitado") } }
             view.init(eglBase.eglBaseContext, object : RendererCommon.RendererEvents {
                 override fun onFirstFrameRendered() {
@@ -255,6 +260,10 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
                 override fun surfaceDestroyed(holder: android.view.SurfaceHolder) { if (generation == id) { frameRateHintRequested = false;cancelBufferVerification() } }
             })
             addView(view, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+        } catch(error: Exception) {
+            renderer=null;aspectDrawer=null;requestedBuffer=null
+            runCatching { removeView(newView);newView.release() }
+            throw error
         }
         updateVideoLayout()
     }
@@ -390,15 +399,16 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         if (released) return
         generation++
         cancelBufferVerification();fsrPerformance.reset()
-        detachTrack()
-        renderer?.clearImage()
-        if(fsrRequested || requestedTreatment.active) {
-            renderer?.let { removeView(it);it.release() }
-            renderer=null;aspectDrawer=null;requestedBuffer=null
-        }
         fsrRequested=false
         onFirstFrameRendered = null
         onRenderError = null
+        // An idle renderer must not receive output-buffer changes for the next session's settings.
+        // Always retire it, including the native path, before another upscaler is selected.
+        try { detachTrack() } finally {
+            val previous=renderer
+            renderer=null;aspectDrawer=null;requestedBuffer=null
+            previous?.let { removeView(it);it.release() }
+        }
     }
     private fun imageDiagnostics(): String {
         val active=if(compatibility || treatmentFailure!=null) ImageTreatmentSettings() else treatmentBudget.image.copy(

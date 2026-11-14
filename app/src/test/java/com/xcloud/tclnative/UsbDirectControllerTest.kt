@@ -3,6 +3,9 @@ package com.xcloud.tclnative
 import android.content.Context
 import android.content.Intent
 import android.hardware.usb.*
+import android.hardware.input.InputManager
+import android.util.SparseArray
+import android.view.InputDevice
 import android.os.Looper
 import com.xcloud.tclnative.webrtc.*
 import org.junit.Assert.*
@@ -13,7 +16,11 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.LooperMode
+import org.robolectric.annotation.Implements
+import org.robolectric.annotation.Implementation
+import org.robolectric.annotation.RealObject
 import org.robolectric.util.ReflectionHelpers
+import org.robolectric.shadows.ShadowInputDevice
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
@@ -233,6 +240,36 @@ class UsbDirectControllerTest {
             assertEquals("USB_RECONNECT_AMBIGUOUS",driver.snapshot().detail)
         } finally { driver.close();listOf(firstDevice,hid,replacement,duplicate).forEach(shadowOf(usb)::removeUsbDevice) }
     }
+    @Test @Config(sdk=[28],shadows=[SparseInputManagerShadow::class]) fun ownershipTracksTheAndroidIdBeforeAndAfterTheUsbInterfaceIsClaimed() {
+        val usb=app.getSystemService(Context.USB_SERVICE) as UsbManager;val receiver=device()
+        val manager=ReflectionHelpers.callStaticMethod<InputManager>(InputManager::class.java,"getInstance")
+        fun install(vararg ids: Int) {
+            val devices=SparseArray<InputDevice>()
+            ids.forEach { id ->
+                val input=ShadowInputDevice.makeInputDeviceNamed("Demo input").apply {
+                    ReflectionHelpers.setField(this,"mId",id);ReflectionHelpers.setField(this,"mVendorId",0x2dc8)
+                    ReflectionHelpers.setField(this,"mProductId",0x100)
+                    ReflectionHelpers.setField(this,"mSources",InputDevice.SOURCE_JOYSTICK or InputDevice.SOURCE_GAMEPAD)
+                }
+                devices.put(id,input)
+            }
+            ReflectionHelpers.setField(manager,"mInputDevices",devices)
+        }
+        shadowOf(usb).addOrUpdateUsbDevice(receiver,true);install(7)
+        val io=Io(false);var attached: Int?=null
+        val driver=UsbDirectController(app,connected={ _,id -> attached=id },connectionFactory={ _,_,_,_ -> io })
+        try {
+            val candidate=driver.candidates().single();assertEquals(7,candidate.androidId)
+            driver.enable(candidate);await { driver.snapshot().status==UsbControllerStatus.READY }
+            install(8)
+            io.incoming.offer(UsbGamepadSession.Completion.Input(ByteArray(20).apply { this[1]=20 },20))
+            await { driver.source!=null };assertEquals(8,attached)
+            assertEquals(setOf(7,8),driver.androidAliases());assertTrue(driver.ownsAndroid(7));assertTrue(driver.ownsAndroid(8))
+            install(9);assertTrue(driver.ownsAndroid(9));assertEquals(setOf(7,8,9),driver.androidAliases())
+            install(9,10);assertFalse(driver.ownsAndroid(10))
+            driver.disable();await { io.closed };assertTrue(driver.androidAliases().isEmpty());assertFalse(driver.ownsAndroid(9))
+        } finally { driver.close();shadowOf(usb).removeUsbDevice(receiver);install() }
+    }
     @Test @Config(sdk=[24]) fun oldAndroidKeepsTheDefaultPathWithoutStartingAUsbWorker() {
         val before=Thread.getAllStackTraces().keys.count { it.name=="xcloud-usb-input" }
         val driver=UsbDirectController(app)
@@ -241,5 +278,15 @@ class UsbDirectControllerTest {
         assertEquals(UsbControllerStatus.ANDROID_REQUIRED,driver.snapshot().status)
         driver.setForeground(false);driver.close()
         assertEquals(before,Thread.getAllStackTraces().keys.count { it.name=="xcloud-usb-input" })
+    }
+}
+
+/** Preserve real Android sparse IDs; Robolectric's stock API-28 shadow assumes 0..size-1 IDs. */
+@Implements(InputManager::class)
+class SparseInputManagerShadow: org.robolectric.shadows.ShadowInputManager() {
+    @RealObject private lateinit var manager: InputManager
+    @Implementation override fun getInputDeviceIds(): IntArray {
+        val devices=ReflectionHelpers.getField<SparseArray<InputDevice>>(manager,"mInputDevices")
+        return IntArray(devices.size()) { devices.keyAt(it) }
     }
 }

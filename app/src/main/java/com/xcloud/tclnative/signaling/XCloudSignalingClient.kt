@@ -65,6 +65,9 @@ class XCloudSignalingClient(
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     private var activeResolution = StreamResolution.HD_1080_HQ
     private var mobileTouchSession=false
+    private val startupTrace=SessionStartupTrace(clockMs)
+    fun resetStartupDiagnostics()=startupTrace.reset()
+    fun startupDiagnostics()=startupTrace.diagnostics()
     // Quality and input are independent: NativeTouch must not replace a selected HD profile with Android/720p.
     private val activeOsName: String get()=activeResolution.osName
     fun profileDiagnostics()=UiText.text("Perfil de vídeo solicitado: {0}×{1} • {2}\nRegião solicitada: {3} | Idioma solicitado: {4}",UiText.nested(activeResolution.width),UiText.nested(activeResolution.height),UiText.nested(activeOsName),UiText.nested(activeRegion),UiText.nested(activeLocale))+"\n"+
@@ -168,6 +171,7 @@ class XCloudSignalingClient(
             while (true) {
                 val state = JSONObject(request("$path/state", "SESSION_STATE"))
                 val name = state.optString("state")
+                startupTrace.observe(name)
                 val elapsed = (clockMs() - started) / 1000
                 if (name != "WaitingForResources") onQueueStatus(null)
                 when (name) {
@@ -241,6 +245,7 @@ class XCloudSignalingClient(
         options: SessionOptions=SessionOptions(),microphone: Boolean=false,onProgress: (String) -> Unit
     ): Result<String> = withContext(Dispatchers.IO) {
         stop()
+        startupTrace.reset()
         val selected=session.regions.firstOrNull { it.name==options.region && options.region.isNotEmpty() }
         activeBaseUri=selected?.baseUri ?: session.baseUri
         activeRegion=selected?.name ?: if(options.region.isBlank()) UiText.text("Automático") else UiText.text("Automático — região salva não oferecida à conta")
