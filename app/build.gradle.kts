@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 72
-        versionName = "0.36.0"
+        versionCode = 73
+        versionName = "0.36.1-usb-reconnect"
     }
 
     signingConfigs {

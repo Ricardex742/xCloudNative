@@ -841,7 +841,7 @@ open class MainActivity : Activity() {
         val actions=mutableListOf(ConsoleAction(UiText.text("USB direto e teste de comandos")) {
             com.xcloud.tclnative.ui.dashboard.UsbControllerPanel(this,usbDirect,activate={ candidate,exclusive ->
                 usbRumble.disable { if(!isFinishing && !isDestroyed) usbDirect.enable(candidate,exclusive) }
-            }).show { showRumbleDiagnostics(back) }
+            },profiles=::showControllerProfiles).show { showRumbleDiagnostics(back) }
         })
         if(active) {
             actions+=ConsoleAction(UiText.text("Testar vibração")) { usbDirect.test();showRumbleDiagnostics(back) }

@@ -518,6 +518,17 @@ class SignalingTest {
         assertTrue(events.contains("ready"))
         client.stop()
     }
+    @Test fun shortTitleForecastDoesNotBlockALongerQueueFromProvisioningOnTheSameSession() = runBlocking {
+        queuedStates=130;estimateBody="""{"estimatedTotalWaitTimeInSeconds":30}"""
+        val snapshots=mutableListOf<com.xcloud.tclnative.signaling.QueueStatus?>()
+        val client=signaling()
+        assertTrue(client.startAndConnectWebRtcSession("real-id",peer,onQueueStatus={ snapshots+=it }) {}.isSuccess)
+        val queued=snapshots.filterNotNull()
+        assertTrue(queued.any { it.confirmedAtMs-it.enteredAtMs>=180_000 && it.estimate?.seconds==30L })
+        assertNull(snapshots.last());assertTrue(events.contains("ready"));assertTrue(events.contains("offer"))
+        assertEquals(1,requests.count { it.path=="/v5/sessions/cloud/play" })
+        client.stop()
+    }
     @Test fun missingEstimateDoesNotTurnIntoAFakeZeroMinuteWait() = runBlocking {
         queuedStates = 2; estimateBody = "{}"
         val snapshots = mutableListOf<com.xcloud.tclnative.signaling.QueueStatus?>()

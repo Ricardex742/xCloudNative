@@ -92,9 +92,17 @@ class UsbControllerUiTest {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get();a.setContentView(FrameLayout(a))
         val port=Port();val store=ControllerProfileStore(a)
         try {
-            ControllerProfilePanel(a,store,usbSources={ listOf(port.source) }).show {}
+            UsbControllerPanel(a,port,profiles={ back ->
+                ControllerProfilePanel(a,store,usbSources={ listOf(port.source) }).show(back)
+            }).show {}
+            click(latest(),"Perfis de controle")
             click(latest(),"Demo XInput");click(latest(),"Sensibilidade direita:");click(latest(),"125%")
             assertEquals(125,store.read(port.source.profileKey).rightSensitivity)
+            click(latest(),"Inverter Y esquerdo:")
+            assertTrue(store.read(port.source.profileKey).invertLeftY)
+            val replug=port.source.copy(connection="new-usb-address@5")
+            assertEquals(store.read(port.source.profileKey),store.read(replug.profileKey))
+            assertEquals(-1f,store.read(replug.profileKey).apply(GamepadState(leftY=1f)).leftY,0f)
             assertEquals(ControllerProfile(),store.read("an-unrelated-android-controller"))
             latest().dismiss()
         } finally { AppControllerWindows.clear(a);controller.pause().stop().destroy() }

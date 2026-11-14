@@ -116,8 +116,13 @@ internal class UsbDirectController(context: Context,
             if(intent.action==UsbManager.ACTION_USB_DEVICE_DETACHED) {
                 val selection=selected ?: return
                 if(selection.source.connection !in candidates().map { it.source.connection }) {
-                    deactivate(true);status=UsbControllerStatus.DISCONNECTED
+                    // Keep the user's opt-in policy. USB bus addresses and Android IDs change on replug.
+                    deactivate(false);status=UsbControllerStatus.DISCONNECTED
                 }
+            } else if(intent.action==UsbManager.ACTION_USB_DEVICE_ATTACHED) {
+                val device=if(Build.VERSION.SDK_INT>=33) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE,UsbDevice::class.java)
+                    else @Suppress("DEPRECATION") intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+                if(device!=null) reconnectSelection(true,device)
             } else if(intent.action==action) {
                 val request=pending ?: return
                 if(intent.getStringExtra("usb_request")!=request.third) return
@@ -130,12 +135,32 @@ internal class UsbDirectController(context: Context,
     }
     private fun register() {
         if(registered) return
-        val filter=IntentFilter(action).apply { addAction(UsbManager.ACTION_USB_DEVICE_DETACHED) }
+        val filter=IntentFilter(action).apply {
+            addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
+        }
         try {
             if(Build.VERSION.SDK_INT>=33) app.registerReceiver(receiver,filter,Context.RECEIVER_NOT_EXPORTED)
             else app.registerReceiver(receiver,filter)
             registered=true
         } catch(_: RuntimeException) { status=UsbControllerStatus.FAILED;detail="USB_RECEIVER" }
+    }
+    private fun reconnectSelection(requestPermission: Boolean,attachedDevice: UsbDevice?=null) {
+        val previous=selected ?: return
+        if(closed || !foreground || pending!=null || transport!=null || source!=null || status==UsbControllerStatus.OPENING) return
+        fun sameReceiver(candidate: UsbControllerDescriptor)=candidate.source.vendor==previous.source.vendor &&
+            candidate.source.product==previous.source.product && candidate.source.intf==previous.source.intf &&
+            candidate.input==previous.input && candidate.output==previous.output && candidate.packetSize==previous.packetSize
+        val matches=candidates().filter(::sameReceiver)
+        if(matches.size!=1) {
+            status=if(matches.isEmpty()) UsbControllerStatus.DISCONNECTED else UsbControllerStatus.BUSY
+            detail=if(matches.size>1) "USB_RECONNECT_AMBIGUOUS" else ""
+            return
+        }
+        val candidate=matches.single()
+        val value=native().firstOrNull { "${it.device.deviceName}:${it.intf.id}"==candidate.source.connection } ?: return
+        if(attachedDevice!=null && value.device.deviceName!=attachedDevice.deviceName) return
+        if(manager?.hasPermission(value.device)==true || requestPermission) enable(candidate,selectedExclusive)
+        else status=UsbControllerStatus.DISCONNECTED
     }
     private fun start(candidate: UsbControllerDescriptor,exclusive: Boolean) {
         val token=generation.incrementAndGet();session?.stop();pendingFrames.clear()
@@ -257,11 +282,8 @@ internal class UsbDirectController(context: Context,
     fun setForeground(value: Boolean) {
         foreground=value
         if(!value) { deactivate(false);status=UsbControllerStatus.OFF }
-        else if(transport==null) selected?.let { candidate ->
-            // A background return never opens a permission dialog; reuse only the explicitly chosen policy.
-            val native=native().firstOrNull { "${it.device.deviceName}:${it.intf.id}"==candidate.source.connection }
-            if(native!=null && manager?.hasPermission(native.device)==true) enable(candidate,selectedExclusive)
-        }
+        // A background return never opens a permission dialog. Replug can have assigned a new bus path.
+        else reconnectSelection(false)
     }
     override fun close() {
         if(closed) return

@@ -157,6 +157,82 @@ class UsbDirectControllerTest {
             assertEquals(1,connected)
         } finally { driver.close();shadowOf(usb).removeUsbDevice(device) }
     }
+    private fun broadcastUsb(action: String,device: UsbDevice) {
+        app.sendBroadcast(Intent(action).setPackage(app.packageName).putExtra(UsbManager.EXTRA_DEVICE,device))
+        shadowOf(Looper.getMainLooper()).idle()
+    }
+    @Test fun physicalReplugReauthorizesTheChosenReceiverAtItsNewAddressAndKeepsItsPlayerAndProfile() {
+        val usb=app.getSystemService(Context.USB_SERVICE) as UsbManager
+        val firstDevice=device();val replacement=device("/dev/bus/usb/001/019")
+        shadowOf(usb).addOrUpdateUsbDevice(firstDevice,true)
+        val first=Io();val second=Io();var opens=0
+        val router=ControllerRouter();router.beginSession(false)
+        val driver=UsbDirectController(app,connected={ source,id -> router.attachUsb(source,id) },
+            input={ source,state -> router.slot(source)?.let { router.update(it,state) } },disconnected={ router.remove(it) },
+            connectionFactory={ _,_,_,_ -> if(opens++==0) first else second })
+        try {
+            driver.enable(driver.candidates().single(),true);await { driver.source!=null }
+            val original=driver.source!!
+            shadowOf(usb).removeUsbDevice(firstDevice);broadcastUsb(UsbManager.ACTION_USB_DEVICE_DETACHED,firstDevice)
+            await { first.closed && driver.source==null };assertNull(router.sourceFor(0))
+            assertEquals(UsbControllerStatus.DISCONNECTED,driver.snapshot().status)
+            shadowOf(usb).addOrUpdateUsbDevice(replacement,false)
+            broadcastUsb(UsbManager.ACTION_USB_DEVICE_ATTACHED,replacement)
+            assertEquals(1,opens);assertNull(driver.source)
+            val pending: Triple<UsbControllerDescriptor,Boolean,String> = ReflectionHelpers.getField(driver,"pending")
+            assertEquals(driver.candidates().single().source.connection,pending.first.source.connection)
+            assertTrue(pending.second)
+            shadowOf(usb).addOrUpdateUsbDevice(replacement,true)
+            app.sendBroadcast(Intent(app.packageName+".USB_INPUT_PERMISSION").setPackage(app.packageName).putExtra("usb_request",pending.third))
+            await { driver.source!=null && driver.source!=original }
+            val current=driver.source!!
+            assertTrue(current.connection.startsWith(replacement.deviceName));assertEquals(original.profileKey,current.profileKey)
+            second.incoming.offer(UsbGamepadSession.Completion.Input(ByteArray(20).apply { this[1]=20;this[3]=32 },20))
+            await { router.physical(0).buttons==32 }
+            assertEquals(current,router.sourceFor(0));assertEquals(2,opens)
+            assertTrue(driver.play(RumbleCommand(0,80,20,0,0,100,0,0),current))
+            await { second.packets.any { (it[3].toInt() and 255)==204 && (it[4].toInt() and 255)==51 } }
+        } finally { driver.close();listOf(firstDevice,replacement).forEach(shadowOf(usb)::removeUsbDevice) }
+    }
+    @Test fun backgroundReplugWaitsForTheForegroundAndDisableCancelsAutomaticReconnection() {
+        val usb=app.getSystemService(Context.USB_SERVICE) as UsbManager
+        val firstDevice=device();val replacement=device("/dev/bus/usb/001/021")
+        shadowOf(usb).addOrUpdateUsbDevice(firstDevice,true)
+        val connections=CopyOnWriteArrayList<Io>()
+        val driver=UsbDirectController(app,connectionFactory={ _,_,_,_ -> Io().also { connections+=it } })
+        try {
+            driver.enable(driver.candidates().single());await { driver.source!=null }
+            driver.setForeground(false);await { connections.single().closed }
+            shadowOf(usb).removeUsbDevice(firstDevice);broadcastUsb(UsbManager.ACTION_USB_DEVICE_DETACHED,firstDevice)
+            shadowOf(usb).addOrUpdateUsbDevice(replacement,true);broadcastUsb(UsbManager.ACTION_USB_DEVICE_ATTACHED,replacement)
+            assertEquals(1,connections.size);assertNull(driver.source)
+            driver.setForeground(true);await { driver.source!=null }
+            assertEquals(2,connections.size)
+            driver.disable();await { connections.last().closed }
+            shadowOf(usb).removeUsbDevice(replacement);broadcastUsb(UsbManager.ACTION_USB_DEVICE_DETACHED,replacement)
+            shadowOf(usb).addOrUpdateUsbDevice(replacement,true);broadcastUsb(UsbManager.ACTION_USB_DEVICE_ATTACHED,replacement)
+            driver.setForeground(true);assertNull(driver.source);assertEquals(2,connections.size)
+            assertEquals(UsbControllerStatus.OFF,driver.snapshot().status)
+        } finally { driver.close();listOf(firstDevice,replacement).forEach(shadowOf(usb)::removeUsbDevice) }
+    }
+    @Test fun replugDoesNotPickAnUnknownInterfaceOrGuessBetweenIdenticalReceivers() {
+        val usb=app.getSystemService(Context.USB_SERVICE) as UsbManager
+        val firstDevice=device();val hid=device("/dev/bus/usb/001/022",klass=3)
+        val replacement=device("/dev/bus/usb/001/023");val duplicate=device("/dev/bus/usb/001/024")
+        shadowOf(usb).addOrUpdateUsbDevice(firstDevice,true)
+        val io=Io();var opens=0
+        val driver=UsbDirectController(app,connectionFactory={ _,_,_,_ -> opens++;io })
+        try {
+            driver.enable(driver.candidates().single());await { driver.source!=null }
+            shadowOf(usb).removeUsbDevice(firstDevice);broadcastUsb(UsbManager.ACTION_USB_DEVICE_DETACHED,firstDevice)
+            await { io.closed };shadowOf(usb).addOrUpdateUsbDevice(hid,true)
+            broadcastUsb(UsbManager.ACTION_USB_DEVICE_ATTACHED,hid);assertEquals(1,opens)
+            shadowOf(usb).addOrUpdateUsbDevice(replacement,true);shadowOf(usb).addOrUpdateUsbDevice(duplicate,true)
+            broadcastUsb(UsbManager.ACTION_USB_DEVICE_ATTACHED,replacement)
+            assertEquals(1,opens);assertNull(driver.source);assertEquals(UsbControllerStatus.BUSY,driver.snapshot().status)
+            assertEquals("USB_RECONNECT_AMBIGUOUS",driver.snapshot().detail)
+        } finally { driver.close();listOf(firstDevice,hid,replacement,duplicate).forEach(shadowOf(usb)::removeUsbDevice) }
+    }
     @Test @Config(sdk=[24]) fun oldAndroidKeepsTheDefaultPathWithoutStartingAUsbWorker() {
         val before=Thread.getAllStackTraces().keys.count { it.name=="xcloud-usb-input" }
         val driver=UsbDirectController(app)

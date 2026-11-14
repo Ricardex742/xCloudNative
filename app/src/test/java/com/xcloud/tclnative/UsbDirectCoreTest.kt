@@ -43,6 +43,23 @@ class UsbDirectCoreTest {
         val refreshed=first.copy(connection="bus-a@2")
         assertEquals(0,router.slot(refreshed));assertNull(router.remove(first));assertEquals(refreshed,router.sourceFor(0))
     }
+    @Test fun verticalReceiverCorrectionIsPerProfileAndDoesNotChangeHorizontalAxesOrStandardXInput() {
+        fun state(y: Short)=UsbXInputParser.parse(report().apply {
+            ByteBuffer.wrap(this).order(ByteOrder.LITTLE_ENDIAN).putShort(6,Short.MAX_VALUE)
+                .putShort(8,y).putShort(10,Short.MIN_VALUE).putShort(12,y)
+        })!!
+        fun wireY(state: GamepadState)=ByteBuffer.wrap(GamepadPacket.encode(state,1,0.0)).order(ByteOrder.LITTLE_ENDIAN).getShort(20)
+        val standardUp=state(Short.MAX_VALUE)
+        assertEquals(-1f,standardUp.leftY,0f);assertEquals(Short.MAX_VALUE,wireY(standardUp))
+        val receiverUp=state(Short.MIN_VALUE)
+        assertEquals(1f,receiverUp.leftY,0f)
+        val corrected=com.xcloud.tclnative.settings.ControllerProfile(invertLeftY=true,invertRightY=true).apply(receiverUp)
+        assertEquals(standardUp,corrected);assertEquals(Short.MAX_VALUE,wireY(corrected))
+        assertEquals(1f,corrected.leftX,0f);assertEquals(-1f,corrected.rightX,0f)
+        val receiverDown=state(Short.MAX_VALUE)
+        assertEquals(-32767,wireY(com.xcloud.tclnative.settings.ControllerProfile(invertLeftY=true).apply(receiverDown)).toInt())
+        assertEquals(receiverUp,com.xcloud.tclnative.settings.ControllerProfile().apply(receiverUp))
+    }
     @Test fun usbRespectsTouchReservationAndSinglePlayerLimits() {
         val source=ControllerSource.Usb("bus",1,2,0,"Demo")
         val router=ControllerRouter();router.beginSession(true,true)

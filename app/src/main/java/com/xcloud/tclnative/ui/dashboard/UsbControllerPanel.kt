@@ -13,7 +13,8 @@ import java.util.Locale
 /** Live and remote-friendly: commands can be diagnosed before starting a cloud game. */
 class UsbControllerPanel(private val context: Context,private val port: UsbControllerPort,
     private val activate: (UsbControllerDescriptor,Boolean) -> Unit={ candidate,exclusive -> port.enable(candidate,exclusive) },
-    private val androidSnapshot: () -> AndroidControllerMonitor.Snapshot=AndroidControllerMonitor::snapshot) {
+    private val androidSnapshot: () -> AndroidControllerMonitor.Snapshot=AndroidControllerMonitor::snapshot,
+    private val profiles: ((() -> Unit) -> Unit)?=null) {
     fun show(back: () -> Unit): ConsoleDialog {
         val dialog=ConsoleDialog(context,UiText.text("USB direto e teste de comandos"))
         dialog.body.addView(dialog.text(UiText.text("Modo opcional e experimental para Xbox 360/XInput. Começa desativado ao abrir o app. Autorize o receptor usando o controle remoto ou o toque."),18))
@@ -26,6 +27,7 @@ class UsbControllerPanel(private val context: Context,private val port: UsbContr
         action(UiText.text("Ativar USB direto")) { choose(false) }
         action(UiText.text("Desativar")) { port.disable() }
         action(UiText.text("Testar vibração")) { port.test() }
+        profiles?.let { open -> dialog.addMenuItem(UiText.text("Perfis de controle")) { open { show(back) } } }
         dialog.addMenuItem(UiText.text("Captura exclusiva — experimental")) { confirmExclusive { show(back) } }
         dialog.addMenuItem(UiText.text("Capturar pacotes por 10 segundos")) {
             port.capture();show(back);Toast.makeText(context,UiText.text("Captura limitada iniciada. Pressione os botões e mova os analógicos."),Toast.LENGTH_LONG).show()
