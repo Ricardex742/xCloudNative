@@ -1103,4 +1103,6 @@
     <string name="ui_45e9029175e26c89">"Controle: {0}\nAndroid: {1} pressionados / {2} soltos / {3} movimentos\nUSB: {4} recebidos / {5} válidos / {6} ignorados / {7} saídas\nBotões: {8}\nLX/LY: {9} | RX/RY: {10} | LT/RT: {11}\nEntrega USB → app: {12} ms média / {13} ms pico\nMovimentos consolidados: {14} | Excesso de fila: {15}"</string>
     <string name="ui_f53807aa6cf5d027">"Espaço"</string>
     <string name="ui_7d2434081ba52265">"Apagar"</string>
+    <string name="ui_3c94e3db7ef588ce" formatted="false">"Somente vibração USB — {0}"</string>
+    <string name="ui_d8a34d8a2266a7c0" formatted="false">"Para usar os botões e analógicos, ative USB direto e teste de comandos. O teste de vibração USB envia apenas vibração."</string>
 </resources>

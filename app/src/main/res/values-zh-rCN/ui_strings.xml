@@ -1103,4 +1103,6 @@
     <string name="ui_45e9029175e26c89">"控制器：{0}\nAndroid：按下 {1} / 松开 {2} / 移动 {3}\nUSB：接收 {4} / 有效 {5} / 忽略 {6} / 输出 {7}\n按钮：{8}\nLX/LY：{9} | RX/RY：{10} | LT/RT：{11}\nUSB → 应用传递：平均 {12} ms / 峰值 {13} ms\n合并移动：{14} | 队列溢出：{15}"</string>
     <string name="ui_f53807aa6cf5d027">"空格"</string>
     <string name="ui_7d2434081ba52265">"删除"</string>
+    <string name="ui_3c94e3db7ef588ce" formatted="false">"仅 USB 振动 — {0}"</string>
+    <string name="ui_d8a34d8a2266a7c0" formatted="false">"要使用按钮和摇杆，请启用“USB 直连和输入测试”。USB 振动测试只发送振动指令。"</string>
 </resources>

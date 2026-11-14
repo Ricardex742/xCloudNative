@@ -56,8 +56,8 @@ internal class MotionArtworkView(context: Context): ImageView(context) {
         val animations=if(Build.VERSION.SDK_INT>=26) ValueAnimator.areAnimatorsEnabled()
             else Settings.Global.getFloat(context.contentResolver,Settings.Global.ANIMATOR_DURATION_SCALE,1f)>0
         val motion=AppearanceSettingsStore(context).motion()
-        art.animationEnabled=BackgroundMotionPolicy.interval(motion,ConsoleScene.XBOX_SERIES,low,false,power,animations,true,art is RecreatedWallpaperArt,television)!=null
-        step=BackgroundMotionPolicy.interval(motion,ConsoleScene.XBOX_SERIES,low,false,power,animations,visibleForMotion(),art is RecreatedWallpaperArt,television)
+        art.animationEnabled=BackgroundMotionPolicy.interval(motion,ConsoleScene.XBOX_SERIES,low,false,power,animations,true,art is RecreatedWallpaperArt)!=null
+        step=BackgroundMotionPolicy.interval(motion,ConsoleScene.XBOX_SERIES,low,false,power,animations,visibleForMotion(),art is RecreatedWallpaperArt)
         if(motion==BackgroundMotion.OFF) { phase=0f;art.phase=0f;invalidate() }
         step?.let { last=SystemClock.uptimeMillis();framePending=postDelayed(tick,it) }
     }

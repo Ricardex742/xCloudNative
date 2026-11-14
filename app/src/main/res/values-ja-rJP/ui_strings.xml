@@ -1103,4 +1103,6 @@
     <string name="ui_45e9029175e26c89">"コントローラー: {0}\nAndroid: 押下 {1} / 解放 {2} / 移動 {3}\nUSB: 受信 {4} / 有効 {5} / 無視 {6} / 出力 {7}\nボタン: {8}\nLX/LY: {9} | RX/RY: {10} | LT/RT: {11}\nUSB → アプリ: 平均 {12} ms / 最大 {13} ms\n統合した移動: {14} | キュー超過: {15}"</string>
     <string name="ui_f53807aa6cf5d027">"スペース"</string>
     <string name="ui_7d2434081ba52265">"削除"</string>
+    <string name="ui_3c94e3db7ef588ce" formatted="false">"USB振動のみ — {0}"</string>
+    <string name="ui_d8a34d8a2266a7c0" formatted="false">"ボタンとスティックを使うには「USB直接接続と入力テスト」を有効にしてください。USB振動テストでは振動のみ送信します。"</string>
 </resources>

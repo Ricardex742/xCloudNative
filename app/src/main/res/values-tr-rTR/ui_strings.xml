@@ -1103,4 +1103,6 @@
     <string name="ui_45e9029175e26c89">"Kumanda: {0}\nAndroid: {1} basma / {2} bırakma / {3} hareket\nUSB: {4} alınan / {5} geçerli / {6} yok sayılan / {7} çıkış\nDüğmeler: {8}\nLX/LY: {9} | RX/RY: {10} | LT/RT: {11}\nUSB → uygulama: ortalama {12} ms / tepe {13} ms\nBirleştirilen hareketler: {14} | Kuyruk taşmaları: {15}"</string>
     <string name="ui_f53807aa6cf5d027">"Boşluk"</string>
     <string name="ui_7d2434081ba52265">"Sil"</string>
+    <string name="ui_3c94e3db7ef588ce" formatted="false">"Yalnızca USB titreşimi — {0}"</string>
+    <string name="ui_d8a34d8a2266a7c0" formatted="false">"Düğmeleri ve çubukları kullanmak için doğrudan USB ve giriş testini etkinleştirin. USB titreşim testi yalnızca titreşim gönderir."</string>
 </resources>

@@ -1103,4 +1103,6 @@
     <string name="ui_45e9029175e26c89">"컨트롤러: {0}\nAndroid: 누름 {1} / 뗌 {2} / 이동 {3}\nUSB: 수신 {4} / 유효 {5} / 무시 {6} / 출력 {7}\n버튼: {8}\nLX/LY: {9} | RX/RY: {10} | LT/RT: {11}\nUSB → 앱 전달: 평균 {12} ms / 최대 {13} ms\n통합된 이동: {14} | 큐 초과: {15}"</string>
     <string name="ui_f53807aa6cf5d027">"공백"</string>
     <string name="ui_7d2434081ba52265">"지우기"</string>
+    <string name="ui_3c94e3db7ef588ce" formatted="false">"USB 진동만 — {0}"</string>
+    <string name="ui_d8a34d8a2266a7c0" formatted="false">"버튼과 스틱을 사용하려면 USB 직접 연결 및 입력 테스트를 활성화하세요. USB 진동 테스트는 진동만 전송합니다."</string>
 </resources>

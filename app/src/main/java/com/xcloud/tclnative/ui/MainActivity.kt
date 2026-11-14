@@ -868,7 +868,7 @@ open class MainActivity : Activity() {
         } else {
             actions+=ConsoleAction(UiText.text("Testar via Android")) { rumble.test();showRumbleDiagnostics(back) }
             usbRumble.candidates().forEach { candidate ->
-                actions+=ConsoleAction(UiText.text("Testar USB/XInput — {0}",UiText.nested(candidate.label))) {
+                actions+=ConsoleAction(UiText.text("Somente vibração USB — {0}",UiText.nested(candidate.label))) {
                     usbDirect.disable { if(!isFinishing && !isDestroyed)
                         usbRumble.enableAndTest(candidate) { if(!isFinishing && !isDestroyed) showRumbleDiagnostics(back) }
                     }
@@ -876,11 +876,10 @@ open class MainActivity : Activity() {
             }
             actions+=ConsoleAction(UiText.text("Desativar teste USB")) { usbRumble.disable();showRumbleDiagnostics(back) }
         }
-        actions+=ConsoleAction(UiText.text("Voltar"),back)
         val description=if(active) usbDirect.snapshot().status.label+"\n"+
             com.xcloud.tclnative.ui.dashboard.UsbControllerPanel.describe(usbDirect.snapshot(),AndroidControllerMonitor.snapshot())
-            else rumble.describe()+"\n\n"+usbRumble.describe()
-        ConsoleDialogs.message(this,UiText.text("Vibração do controle"),description,actions,onCancel=back)
+            else usbDirect.snapshot().status.label+"\n\n"+rumble.describe()+"\n\n"+usbRumble.describe()
+        com.xcloud.tclnative.ui.dashboard.RumbleDiagnosticsPanel.show(this,description,actions,back)
     }
     private fun showGameMenu() {
         if (transitionPanel.visibility==View.VISIBLE || gameMenuDialog?.isShowing == true || (webrtcClient == null && reloadTransmission==null) || queuePanel.visibility == View.VISIBLE) return

@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 74
-        versionName = "0.36.1-startup-input"
+        versionCode = 75
+        versionName = "0.36.1-tv-usb-guide"
     }
 
     signingConfigs {

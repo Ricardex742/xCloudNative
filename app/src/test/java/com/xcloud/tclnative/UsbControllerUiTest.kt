@@ -75,6 +75,31 @@ class UsbControllerUiTest {
             panel.dismiss();navigation.clear();assertNull(AppControllerWindows.current(a)?.takeIf { it===panel.window })
         } finally { navigation.clear();AppControllerWindows.clear(a);controller.pause().stop().destroy() }
     }
+    @Test fun vibrationDiagnosticsUsesReadableRowsAndDistinguishesDirectInputFromTheOutputOnlyTest() {
+        val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get();a.setContentView(FrameLayout(a))
+        val port=Port();var direct=0;var legacy=0
+        try {
+            val label=UiText.text("Somente vibração USB — {0}",UiText.nested("USB 2dc8:0100 interface 0"))
+            val panel=RumbleDiagnosticsPanel.show(a,UsbControllerStatus.OFF.label,listOf(
+                ConsoleAction(UiText.text("USB direto e teste de comandos")) { direct++;UsbControllerPanel(a,port).show {} },
+                ConsoleAction(UiText.text("Testar via Android")) {},
+                ConsoleAction(label) { legacy++ },
+                ConsoleAction(UiText.text("Desativar teste USB")) {}
+            ),{})
+            layout(panel.window!!)
+            val rows=views(panel.body).filterIsInstance<TextView>().filter { it.isClickable }
+            assertEquals(4,rows.size)
+            assertTrue(rows.all { it.width>panel.panel.width*.8f })
+            assertTrue(rows.all { row -> (0 until row.layout.lineCount).all { row.layout.getEllipsisCount(it)==0 } })
+            assertTrue(views(panel.body).filterIsInstance<TextView>().any { it.text.contains("envia apenas vibração") })
+            val image=Bitmap.createBitmap(panel.window!!.decorView.width,648,Bitmap.Config.ARGB_8888)
+            panel.window!!.decorView.draw(Canvas(image))
+            File("build/reports/dashboard/usb-rumble-guide.png").apply { parentFile!!.mkdirs() }.outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) };image.recycle()
+            click(panel,"USB direto e teste de comandos")
+            assertEquals(1,direct);assertEquals(0,legacy);assertEquals(0,port.activations)
+            assertTrue(views(latest().panel).filterIsInstance<TextView>().any { it.text.toString()=="ATIVAR USB DIRETO" })
+        } finally { latest().dismiss();AppControllerWindows.clear(a);controller.pause().stop().destroy() }
+    }
     @Test fun exclusiveCaptureRequiresASeparateConfirmationAndDefaultSelectionDoesNotEnableIt() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get();a.setContentView(FrameLayout(a))
         val port=Port()

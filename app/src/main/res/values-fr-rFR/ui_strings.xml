@@ -1103,4 +1103,6 @@
     <string name="ui_45e9029175e26c89">"Manette : {0}\nAndroid : {1} appuis / {2} relâchements / {3} mouvements\nUSB : {4} reçus / {5} valides / {6} ignorés / {7} sorties\nBoutons : {8}\nLX/LY : {9} | RX/RY : {10} | LT/RT : {11}\nLivraison USB → app : {12} ms moyenne / {13} ms pic\nMouvements regroupés : {14} | Débordements : {15}"</string>
     <string name="ui_f53807aa6cf5d027">"Espace"</string>
     <string name="ui_7d2434081ba52265">"Effacer"</string>
+    <string name="ui_3c94e3db7ef588ce" formatted="false">"Vibration USB uniquement — {0}"</string>
+    <string name="ui_d8a34d8a2266a7c0" formatted="false">"Pour utiliser les boutons et les sticks, activez USB direct et test des commandes. Le test de vibration USB envoie uniquement des vibrations."</string>
 </resources>

@@ -31,20 +31,28 @@ class RecreatedBackgroundTest {
     }
     @After fun cleanup() { ShadowDialog.getLatestDialog()?.dismiss();DashboardTheme.apply(app,UiTheme.GREEN) }
     @Test @Config(sdk=[31],qualifiers="w1280dp-h720dp-land-television-mdpi")
-    fun televisionKeepsExplicitAnimationsWithAConservativeBudgetAndStopsThemWhenHidden() {
+    fun televisionRestoresThirtyUpdatesForBackgroundAndPreviewWithSimplerDrawingAndStopsWhenHidden() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
         AppearanceSettingsStore(a).saveMotion(BackgroundMotion.ON)
         val selected=RecreatedXboxBackgrounds.entries.first { it.family==RecreationFamily.CORE }.wallpaper()
         SeriesPersonalizationStore(a).select(selected)
         val backdrop=ConsoleThemeBackdrop(a)
+        val preview=MotionArtworkView(a)
         try {
             assertTrue(BackgroundMotionPolicy.television(a))
-            assertEquals(67L,BackgroundMotionPolicy.interval(BackgroundMotion.ON,ConsoleScene.XBOX_SERIES,false,false,false,true,true,true,true))
+            assertEquals(33L,BackgroundMotionPolicy.interval(BackgroundMotion.ON,ConsoleScene.XBOX_SERIES,false,false,false,true,true,true))
+            assertEquals(100L,BackgroundMotionPolicy.interval(BackgroundMotion.ON,ConsoleScene.XBOX_SERIES,true,false,false,true,true,true))
             a.setContentView(backdrop);layout(backdrop);backdrop.onWindowFocusChanged(true);backdrop.onVisibilityAggregated(true)
-            advance(1000);assertTrue(backdrop.renderedTicks in 13..16);assertTrue(backdrop.framePending)
+            advance(1000);assertTrue("TV updates=${backdrop.renderedTicks}",backdrop.renderedTicks in 29..31);assertTrue(backdrop.framePending)
             backdrop.setPresentationEnabled(false);val ticks=backdrop.renderedTicks;advance(500)
             assertEquals(ticks,backdrop.renderedTicks);assertFalse(backdrop.framePending)
-        } finally { backdrop.close();c.pause().stop().destroy() }
+            val art=MotionWallpaperArt.create(selected);preview.showArt(art)
+            a.setContentView(preview);layout(preview);preview.onWindowFocusChanged(true);preview.onVisibilityAggregated(true)
+            advance(1000);assertTrue("Preview updates=${preview.ticks}",preview.ticks in 29..31)
+            assertTrue(art.lowDetail);assertTrue(preview.framePending)
+            preview.setPresentationEnabled(false);val previewTicks=preview.ticks;advance(500)
+            assertEquals(previewTicks,preview.ticks);assertFalse(preview.framePending)
+        } finally { backdrop.close();preview.close();c.pause().stop().destroy() }
     }
     private fun all(v: View): List<View> = listOf(v)+if(v is ViewGroup) (0 until v.childCount).flatMap { all(v.getChildAt(it)) } else emptyList()
     private fun layout(v: View,w: Int=1280,h: Int=720) {

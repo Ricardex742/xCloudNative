@@ -21,11 +21,11 @@ import java.util.WeakHashMap
 /** No timer for the seven color palettes, hidden screens or gameplay. AUTO is conservative. */
 internal object BackgroundMotionPolicy {
     fun interval(mode: BackgroundMotion,scene: ConsoleScene,lowRam: Boolean,largeUi: Boolean,
-                 powerSave: Boolean,animations: Boolean,presented: Boolean,independentAnimation: Boolean=false,
-                 television: Boolean=false): Long? {
+                 powerSave: Boolean,animations: Boolean,presented: Boolean,independentAnimation: Boolean=false): Long? {
         if(!presented || scene==ConsoleScene.NONE || mode==BackgroundMotion.OFF) return null
         if(mode==BackgroundMotion.AUTO && (powerSave || !animations || lowRam || largeUi)) return null
-        return if(powerSave) 250L else if(independentAnimation) { if(lowRam || largeUi) 100L else if(television) 67L else 33L }
+        // TV drawing uses fewer elements; being a TV alone must not halve animation cadence.
+        return if(powerSave) 250L else if(independentAnimation) { if(lowRam || largeUi) 100L else 33L }
             else if(lowRam || largeUi) 167L else 84L
     }
     fun television(context: Context)=
@@ -161,9 +161,9 @@ internal class ConsoleThemeBackdrop(context: Context): View(context) {
         val mode=AppearanceSettingsStore(context).motion();explicitMotion=mode==BackgroundMotion.ON
         refreshWallpaper()
         wallpaperArt?.animationEnabled=BackgroundMotionPolicy.interval(mode,DashboardTheme.palette.theme.scene,
-            lowRam,width.toLong()*height>2560L*1440L,powerSave,animations,true,true,television)!=null
+            lowRam,width.toLong()*height>2560L*1440L,powerSave,animations,true,true)!=null
         val next=BackgroundMotionPolicy.interval(mode,DashboardTheme.palette.theme.scene,
-            lowRam,width.toLong()*height>2560L*1440L,powerSave,animations,canPresent(),wallpaper?.recreation!=null || DashboardTheme.palette.theme.scene==ConsoleScene.XBOX_ORIGINAL,television)
+            lowRam,width.toLong()*height>2560L*1440L,powerSave,animations,canPresent(),wallpaper?.recreation!=null || DashboardTheme.palette.theme.scene==ConsoleScene.XBOX_ORIGINAL)
         if(next==interval && framePending) return
         stop();interval=next
         if(mode==BackgroundMotion.OFF) { phase=0f;invalidate() }
