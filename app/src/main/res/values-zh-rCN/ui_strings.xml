@@ -1106,4 +1106,28 @@
     <string name="ui_3c94e3db7ef588ce" formatted="false">"仅 USB 振动 — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"要使用按钮和摇杆，请启用“USB 直连和输入测试”。USB 振动测试只发送振动指令。"</string>
     <string name="ui_593568ec86b6df4c">"USB 已打开 — 等待输入"</string>
+    <string name="ui_0cc7b98d6de68d4f">"自动 — 文字与边缘"</string>
+    <string name="ui_e9264e00db8a5420">"四角 — HUD"</string>
+    <string name="ui_9ed6722fce45f888">"30 → 最高60 FPS — 实验性"</string>
+    <string name="ui_e0ad5c986673250d">"图像实验室 — 实验性"</string>
+    <string name="ui_aec08916b99dc11d">"默认关闭。请逐项启用。重建与超采样会改变图像，补帧可能增加延迟。保护机制会降低高开销效果，不会更改已保存的选择。"</string>
+    <string name="ui_d50d8fee0f3c7d5f">"内存不足：使用轻量重建；此设备暂停神经处理、超采样与补帧。"</string>
+    <string name="ui_a877364109ff8ea4">"实验室：{0}"</string>
+    <string name="ui_9fe5d68cd57976b9">"残差修复：{0}%"</string>
+    <string name="ui_490938aaf8a779f4">"残差修复"</string>
+    <string name="ui_2658b9614c0e0964">"在限制亮度与颜色变化的前提下增强细节。0%关闭此重建。支持时使用应用的小型神经模型，否则使用空间重建。"</string>
+    <string name="ui_7b015f90ee2a86af">"神经重建：{0}"</string>
+    <string name="ui_313dba358bc48645">"HUD与文字保护：{0}"</string>
+    <string name="ui_1be7f55001e09c0e">"HUD与文字保护"</string>
+    <string name="ui_5e1662a13bf304ae">"自动模式寻找高对比度细线，并非文字识别。四角模式保留固定区域。应用的虚拟按键位于视频之外。"</string>
+    <string name="ui_a374b20ea4836804">"超采样：{0}"</string>
+    <string name="ui_1c9c09d9fed4d5bd">"超采样"</string>
+    <string name="ui_77906f8acdfe5f28">"先在更大的中间尺寸处理，再缩回当前输出。不改变向Xbox请求的分辨率。可使边缘更平滑，但消耗更多GPU与内存。诊断显示实际尺寸。"</string>
+    <string name="ui_996b37fa85eb2671">"帧生成：{0}"</string>
+    <string name="ui_40cba96ab53d2dfa">"帧生成"</string>
+    <string name="ui_84413010c6b3eb44">"下次会话生效。将稳定的30 FPS内容插值为最高每秒60次提交，也检测60 FPS流中交替出现的重复帧。需要GLES 3及可用内存，最高2.5 MP。会增加等待并可能产生伪影。遇到切镜、不确定判断、过载及对比模式时保留原始帧。不改变游戏本身的FPS，也不保证物理屏幕达到60 Hz。"</string>
+    <string name="ui_a6758ef230714832">"对比"</string>
+    <string name="ui_911c57d77df54ec4">"对比同一帧并保留颜色设置。原始与分屏模式暂停补帧；下次会话请重新启用。"</string>
+    <string name="ui_3e8ff61db03f1b7d">"关闭实验室"</string>
+    <string name="ui_394ba7345cda8b85">"图像实验室：{0}"</string>
 </resources>

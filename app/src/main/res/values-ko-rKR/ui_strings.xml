@@ -1106,4 +1106,28 @@
     <string name="ui_3c94e3db7ef588ce" formatted="false">"USB 진동만 — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"버튼과 스틱을 사용하려면 USB 직접 연결 및 입력 테스트를 활성화하세요. USB 진동 테스트는 진동만 전송합니다."</string>
     <string name="ui_593568ec86b6df4c">"USB 연결됨 — 입력 대기 중"</string>
+    <string name="ui_0cc7b98d6de68d4f">"자동 — 텍스트와 윤곽"</string>
+    <string name="ui_e9264e00db8a5420">"네 모서리 — HUD"</string>
+    <string name="ui_9ed6722fce45f888">"30 → 최대 60 FPS — 실험적"</string>
+    <string name="ui_e0ad5c986673250d">"이미지 실험실 — 실험적"</string>
+    <string name="ui_aec08916b99dc11d">"기본적으로 꺼져 있습니다. 한 번에 하나씩 켜세요. 재구성과 슈퍼샘플링은 이미지를 바꾸며 프레임 생성은 지연을 늘릴 수 있습니다. 보호 기능은 저장된 선택을 바꾸지 않고 무거운 효과를 줄입니다."</string>
+    <string name="ui_d50d8fee0f3c7d5f">"메모리 부족: 가벼운 재구성을 사용하며 이 기기에서는 신경망 처리, 슈퍼샘플링과 생성을 일시 중지합니다."</string>
+    <string name="ui_a877364109ff8ea4">"실험실: {0}"</string>
+    <string name="ui_9fe5d68cd57976b9">"잔차 복원: {0}%"</string>
+    <string name="ui_490938aaf8a779f4">"잔차 복원"</string>
+    <string name="ui_2658b9614c0e0964">"휘도와 색상 변화를 제한하며 세부를 개선합니다. 0%는 이 재구성을 끕니다. 지원 시 앱의 작은 신경망 모델을 사용하고, 지원하지 않으면 공간 재구성을 적용합니다."</string>
+    <string name="ui_7b015f90ee2a86af">"신경망 재구성: {0}"</string>
+    <string name="ui_313dba358bc48645">"HUD 및 텍스트 보호: {0}"</string>
+    <string name="ui_1be7f55001e09c0e">"HUD 및 텍스트 보호"</string>
+    <string name="ui_5e1662a13bf304ae">"자동은 대비가 높은 가는 선을 찾으며 텍스트 인식은 아닙니다. 네 모서리는 고정 영역을 보존합니다. 앱의 가상 조작 버튼은 영상 바깥에 있습니다."</string>
+    <string name="ui_a374b20ea4836804">"슈퍼샘플링: {0}"</string>
+    <string name="ui_1c9c09d9fed4d5bd">"슈퍼샘플링"</string>
+    <string name="ui_77906f8acdfe5f28">"더 큰 중간 크기로 처리한 뒤 현재 출력 크기로 줄입니다. Xbox에 요청하는 해상도는 바꾸지 않습니다. 윤곽을 부드럽게 할 수 있지만 GPU와 메모리를 더 사용합니다. 실제 크기는 진단에 표시됩니다."</string>
+    <string name="ui_996b37fa85eb2671">"프레임 생성: {0}"</string>
+    <string name="ui_40cba96ab53d2dfa">"프레임 생성"</string>
+    <string name="ui_84413010c6b3eb44">"다음 세션에 적용됩니다. 안정적인 30 FPS 영상을 초당 최대 60회 제출하도록 보간하고 60 FPS 스트림의 번갈아 나오는 중복도 찾습니다. GLES 3와 여유 메모리가 필요하며 최대 2.5 MP입니다. 대기 시간이 늘고 왜곡이 생길 수 있습니다. 장면 전환, 불확실성, 과부하 및 비교 시 원본 프레임을 보존합니다. 게임 FPS를 바꾸거나 실제 60 Hz 표시를 보장하지 않습니다."</string>
+    <string name="ui_a6758ef230714832">"비교"</string>
+    <string name="ui_911c57d77df54ec4">"동일한 프레임을 색상 설정을 유지하며 비교합니다. 원본 및 분할은 생성을 중지합니다. 다음 세션에 다시 켜세요."</string>
+    <string name="ui_3e8ff61db03f1b7d">"실험실 끄기"</string>
+    <string name="ui_394ba7345cda8b85">"이미지 실험실: {0}"</string>
 </resources>

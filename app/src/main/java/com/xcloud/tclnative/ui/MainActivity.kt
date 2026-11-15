@@ -839,6 +839,7 @@ open class MainActivity : Activity() {
         surfaceRenderer.setImageAdjustments(settings.sharpness,settings.saturation,settings.brightness,settings.contrast)
         surfaceRenderer.setImageTreatment(settings.imageTreatment)
         surfaceRenderer.setReconstruction(settings.reconstruction)
+        surfaceRenderer.setImageLab(settings.imageLab)
         surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
         webrtcClient?.setOutputGain(settings.audioGain)
     }
@@ -847,6 +848,7 @@ open class MainActivity : Activity() {
         surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
         surfaceRenderer.setImageTreatment(settings.imageTreatment)
         surfaceRenderer.setReconstruction(settings.reconstruction)
+        surfaceRenderer.setImageLab(settings.imageLab)
         surfaceRenderer.setPresentationPacing(settings.presentationPacing)
         surfaceRenderer.nativeUpscaling=settings.nativeUpscaling
         surfaceRenderer.aspect=settings.aspect

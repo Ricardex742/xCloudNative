@@ -8,6 +8,7 @@ import org.webrtc.ImageAdjustmentDrawer
 import org.webrtc.FsrUpscaler
 import org.webrtc.ImageTreatmentPipeline
 import com.xcloud.tclnative.settings.ImageTreatmentSettings
+import com.xcloud.tclnative.settings.ImageLabSettings
 
 /** Removes only EglRenderer's centered aspect crop; decoder transforms/rotation remain intact. */
 object AspectTransform {
@@ -48,6 +49,8 @@ class AspectVideoDrawer(@Volatile var stretch: Boolean,
     @Volatile var reconstructionStrength=50
     @Volatile var imageComparison=0
     @Volatile var treatment=ImageTreatmentSettings()
+    @Volatile var imageLab=ImageLabSettings()
+    @Volatile var imageLabLevel=3
     @Volatile var onDraw: (() -> Unit)?=null
     @Volatile private var pipeline: ImageTreatmentPipeline?=null
     private var lastTreatment: ImageTreatmentSettings?=null
@@ -79,11 +82,12 @@ class AspectVideoDrawer(@Volatile var stretch: Boolean,
     private fun enhanced(kind: ImageTreatmentPipeline.Input,texture: Int,textures: IntArray?,matrix: FloatArray,
         fw: Int,fh: Int,x: Int,y: Int,w: Int,h: Int,upscaler: FsrUpscaler?): Boolean {
         val value=treatment
-        if(!value.active && !sgsrEnabled && reconstructionLevel==0) { pipeline?.release();pipeline=null;return false }
+        if(!value.active && !sgsrEnabled && reconstructionLevel==0 && (!imageLab.enabled || imageLabLevel==0)) { pipeline?.release();pipeline=null;return false }
         val engine=pipeline ?: treatmentFactory?.invoke()?.also { pipeline=it } ?: return false
         if(lastTreatment!=value) { lastTreatment=value;treatmentOptions=value.glOptions() }
         engine.configure(treatmentOptions,sharpness,fsrSharpness,saturation,brightness,contrast)
         engine.configureReconstruction(reconstructionLevel,reconstructionStrength,imageComparison)
+        engine.configureLab(imageLab.enabled,imageLab.restoration,imageLab.protection.ordinal,imageLab.supersampling.scale,imageLab.comparison.ordinal,imageLabLevel,imageLab.neural)
         val drawn=engine.draw(kind,texture,textures,matrix,fw,fh,if(stretch) sourceWidth else fw,
             if(stretch) sourceHeight else fh,x,y,w,h,upscaler,sgsrEnabled)
         if(drawn && engine.didScaleThisFrame()) onFsrDraw?.invoke()

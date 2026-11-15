@@ -1106,4 +1106,28 @@
     <string name="ui_3c94e3db7ef588ce" formatted="false">"Nur USB-Vibration — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"Aktiviere „Direktes USB und Eingabetest“, um Tasten und Sticks zu nutzen. Der USB-Vibrationstest sendet nur Vibrationen."</string>
     <string name="ui_593568ec86b6df4c">"USB geöffnet — Eingaben werden erwartet"</string>
+    <string name="ui_0cc7b98d6de68d4f">"Automatisch — Text und Kanten"</string>
+    <string name="ui_e9264e00db8a5420">"Vier Ecken — HUDs"</string>
+    <string name="ui_9ed6722fce45f888">"30 → bis zu 60 FPS — experimentell"</string>
+    <string name="ui_e0ad5c986673250d">"Bildlabor — experimentell"</string>
+    <string name="ui_aec08916b99dc11d">"Anfangs deaktiviert. Jeweils nur eine Option aktivieren. Rekonstruktion und Supersampling verändern das Bild; Bilderzeugung kann die Latenz erhöhen. Der Schutz reduziert aufwendige Effekte, ohne gespeicherte Einstellungen zu ändern."</string>
+    <string name="ui_d50d8fee0f3c7d5f">"Wenig Speicher: leichte Rekonstruktion; neuronale Verarbeitung, Supersampling und Bilderzeugung sind auf diesem Gerät ausgesetzt."</string>
+    <string name="ui_a877364109ff8ea4">"Labor: {0}"</string>
+    <string name="ui_9fe5d68cd57976b9">"Residualrestaurierung: {0}%"</string>
+    <string name="ui_490938aaf8a779f4">"Residualrestaurierung"</string>
+    <string name="ui_2658b9614c0e0964">"Verbessert Details mit Helligkeits- und Farbgrenzen. 0% deaktiviert diese Rekonstruktion. Neuronal nutzt bei Unterstützung das kleine App-Modell; andernfalls wird räumliche Rekonstruktion verwendet."</string>
+    <string name="ui_7b015f90ee2a86af">"Neuronale Rekonstruktion: {0}"</string>
+    <string name="ui_313dba358bc48645">"HUD- und Textschutz: {0}"</string>
+    <string name="ui_1be7f55001e09c0e">"HUD- und Textschutz"</string>
+    <string name="ui_5e1662a13bf304ae">"Automatisch sucht dünne, kontrastreiche Strukturen; dies ist keine Texterkennung. Vier Ecken schützt feste Bereiche. Die virtuellen App-Steuerelemente liegen außerhalb des Videos."</string>
+    <string name="ui_a374b20ea4836804">"Supersampling: {0}"</string>
+    <string name="ui_1c9c09d9fed4d5bd">"Supersampling"</string>
+    <string name="ui_77906f8acdfe5f28">"Verarbeitet eine größere Zwischengröße und verkleinert auf die aktuelle Ausgabe. Ändert nicht die bei Xbox angeforderte Auflösung. Kann Kanten glätten; benötigt mehr GPU und Speicher. Die effektive Größe steht in der Diagnose."</string>
+    <string name="ui_996b37fa85eb2671">"Bilderzeugung: {0}"</string>
+    <string name="ui_40cba96ab53d2dfa">"Bilderzeugung"</string>
+    <string name="ui_84413010c6b3eb44">"Gilt ab der nächsten Sitzung. Interpoliert stabile 30-FPS-Inhalte auf bis zu 60 Bildübergaben/s; sucht auch abwechselnde Duplikate in 60-FPS-Streams. Erfordert GLES 3 und verfügbaren Speicher, bis 2,5 MP. Fügt Wartezeit hinzu und kann Artefakte erzeugen. Schnitte, Unsicherheit, Überlastung und Vergleich bewahren Originalbilder. Ändert nicht die Spiel-FPS und garantiert keine physischen 60 Hz."</string>
+    <string name="ui_a6758ef230714832">"Vergleich"</string>
+    <string name="ui_911c57d77df54ec4">"Vergleicht dasselbe Bild und behält Farbeinstellungen bei. Original und Geteilt setzen die Erzeugung aus; nächste Sitzung erneut aktivieren."</string>
+    <string name="ui_3e8ff61db03f1b7d">"Labor deaktivieren"</string>
+    <string name="ui_394ba7345cda8b85">"Bildlabor: {0}"</string>
 </resources>

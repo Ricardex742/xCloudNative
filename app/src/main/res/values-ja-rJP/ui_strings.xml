@@ -1106,4 +1106,28 @@
     <string name="ui_3c94e3db7ef588ce" formatted="false">"USB振動のみ — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"ボタンとスティックを使うには「USB直接接続と入力テスト」を有効にしてください。USB振動テストでは振動のみ送信します。"</string>
     <string name="ui_593568ec86b6df4c">"USB接続済み — 入力待機中"</string>
+    <string name="ui_0cc7b98d6de68d4f">"自動 — 文字と輪郭"</string>
+    <string name="ui_e9264e00db8a5420">"四隅 — HUD"</string>
+    <string name="ui_9ed6722fce45f888">"30 → 最大60 FPS — 実験的"</string>
+    <string name="ui_e0ad5c986673250d">"画像ラボ — 実験的"</string>
+    <string name="ui_aec08916b99dc11d">"初期状態は無効です。一度に1つずつ有効にしてください。再構成とスーパーサンプリングは画像を変え、フレーム生成は遅延を増やす場合があります。保護機能は保存済みの設定を変えずに重い処理を減らします。"</string>
+    <string name="ui_d50d8fee0f3c7d5f">"メモリ不足：軽量再構成を使用します。この端末ではニューラル処理、スーパーサンプリング、フレーム生成を一時停止します。"</string>
+    <string name="ui_a877364109ff8ea4">"ラボ：{0}"</string>
+    <string name="ui_9fe5d68cd57976b9">"残差復元：{0}%"</string>
+    <string name="ui_490938aaf8a779f4">"残差復元"</string>
+    <string name="ui_2658b9614c0e0964">"輝度と色の変化を制限しながら細部を強調します。0%でこの再構成を無効にします。対応時はアプリの小型ニューラルモデルを使用し、非対応時は空間再構成を適用します。"</string>
+    <string name="ui_7b015f90ee2a86af">"ニューラル再構成：{0}"</string>
+    <string name="ui_313dba358bc48645">"HUDと文字の保護：{0}"</string>
+    <string name="ui_1be7f55001e09c0e">"HUDと文字の保護"</string>
+    <string name="ui_5e1662a13bf304ae">"自動はコントラストの高い細線を探します。文字認識ではありません。四隅は固定領域を保持します。アプリの仮想操作ボタンは動画の外側にあります。"</string>
+    <string name="ui_a374b20ea4836804">"スーパーサンプリング：{0}"</string>
+    <string name="ui_1c9c09d9fed4d5bd">"スーパーサンプリング"</string>
+    <string name="ui_77906f8acdfe5f28">"大きい中間サイズで処理して現在の出力サイズに縮小します。Xboxへの要求解像度は変えません。輪郭を滑らかにできますが、GPUとメモリを多く使います。実際のサイズは診断に表示されます。"</string>
+    <string name="ui_996b37fa85eb2671">"フレーム生成：{0}"</string>
+    <string name="ui_40cba96ab53d2dfa">"フレーム生成"</string>
+    <string name="ui_84413010c6b3eb44">"次のセッションから適用します。安定した30 FPS映像を最大60回/秒の描画送信に補間し、60 FPSストリーム内の交互の重複も検出します。GLES 3と空きメモリが必要で、上限は2.5 MPです。待ち時間が増え、映像の乱れが生じる場合があります。カット、不確実な判定、過負荷、比較時は元のフレームを保持します。ゲーム自体のFPSは変わらず、実表示60 Hzも保証しません。"</string>
+    <string name="ui_a6758ef230714832">"比較"</string>
+    <string name="ui_911c57d77df54ec4">"同じフレームを色設定を保って比較します。元画像と分割表示はフレーム生成を停止します。次のセッションで再度有効にしてください。"</string>
+    <string name="ui_3e8ff61db03f1b7d">"ラボを無効にする"</string>
+    <string name="ui_394ba7345cda8b85">"画像ラボ：{0}"</string>
 </resources>

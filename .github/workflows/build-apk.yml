@@ -98,6 +98,7 @@ jobs:
           python3 scripts/verify_fsr1.py
           python3 scripts/verify_image_treatment.py
           python3 scripts/verify_reconstruction.py
+          python3 scripts/verify_image_lab.py
           cat app/build/reports/dashboard/image-filter-validation.txt >> "$GITHUB_STEP_SUMMARY"
           cat app/build/reports/dashboard/fsr1-validation.txt >> "$GITHUB_STEP_SUMMARY"
           cat app/build/reports/dashboard/image-treatment-validation.txt >> "$GITHUB_STEP_SUMMARY"
@@ -124,4 +125,5 @@ jobs:
             app/build/reports/dashboard/
             app/build/reports/huds/
             app/build/reports/reconstruction/
+            app/build/reports/image-lab/
             app/build/reports/themes/

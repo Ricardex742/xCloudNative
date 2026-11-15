@@ -1106,4 +1106,28 @@
     <string name="ui_3c94e3db7ef588ce" formatted="false">"Somente vibração USB — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"Para usar os botões e analógicos, ative USB direto e teste de comandos. O teste de vibração USB envia apenas vibração."</string>
     <string name="ui_593568ec86b6df4c">"USB aberto — aguardando comandos"</string>
+    <string name="ui_0cc7b98d6de68d4f">"Automático — textos e bordas"</string>
+    <string name="ui_e9264e00db8a5420">"Quatro cantos — HUDs"</string>
+    <string name="ui_9ed6722fce45f888">"30 → até 60 FPS — experimental"</string>
+    <string name="ui_e0ad5c986673250d">"Laboratório de imagem — experimental"</string>
+    <string name="ui_aec08916b99dc11d">"Começa desativado. Ative uma opção por vez. Reconstrução e superamostragem mudam a imagem; geração de quadros pode aumentar o atraso. A proteção reduz efeitos pesados sem mudar suas escolhas salvas."</string>
+    <string name="ui_d50d8fee0f3c7d5f">"Pouca memória: usa reconstrução leve; neural, superamostragem e geração ficam suspensas neste aparelho."</string>
+    <string name="ui_a877364109ff8ea4">"Laboratório: {0}"</string>
+    <string name="ui_9fe5d68cd57976b9">"Restauração residual: {0}%"</string>
+    <string name="ui_490938aaf8a779f4">"Restauração residual"</string>
+    <string name="ui_2658b9614c0e0964">"Realça detalhes com limites de luminância e cor. 0% desliga esta reconstrução. Neural usa o pequeno modelo do app quando suportado; sem suporte, aplica reconstrução espacial."</string>
+    <string name="ui_7b015f90ee2a86af">"Reconstrução neural: {0}"</string>
+    <string name="ui_313dba358bc48645">"Proteção de HUDs e textos: {0}"</string>
+    <string name="ui_1be7f55001e09c0e">"Proteção de HUDs e textos"</string>
+    <string name="ui_5e1662a13bf304ae">"Automático procura traços finos de alto contraste; não é reconhecimento de texto. Quatro cantos preserva regiões fixas. Os controles virtuais do app ficam fora do vídeo."</string>
+    <string name="ui_a374b20ea4836804">"Superamostragem: {0}"</string>
+    <string name="ui_1c9c09d9fed4d5bd">"Superamostragem"</string>
+    <string name="ui_77906f8acdfe5f28">"Processa em tamanho intermediário maior e reduz à saída atual. Não muda a resolução pedida ao Xbox. Pode suavizar contornos; exige mais GPU e memória. O tamanho efetivo aparece no diagnóstico."</string>
+    <string name="ui_996b37fa85eb2671">"Geração de quadros: {0}"</string>
+    <string name="ui_40cba96ab53d2dfa">"Geração de quadros"</string>
+    <string name="ui_84413010c6b3eb44">"Aplica na próxima partida. Interpola conteúdo estável a 30 FPS para até 60 submissões/s; também procura duplicatas alternadas em streams a 60. Requer GLES 3 e memória disponível, até 2,5 MP. Acrescenta espera e pode gerar artefatos. Cortes, dúvidas, sobrecarga e comparação preservam os quadros originais. Não altera o FPS do jogo nem garante 60 Hz físicos."</string>
+    <string name="ui_a6758ef230714832">"Comparação"</string>
+    <string name="ui_911c57d77df54ec4">"Compara o mesmo quadro, mantendo os ajustes de cor. Original e Dividida suspendem a geração; reative-a na próxima partida."</string>
+    <string name="ui_3e8ff61db03f1b7d">"Desativar laboratório"</string>
+    <string name="ui_394ba7345cda8b85">"Laboratório de imagem: {0}"</string>
 </resources>

@@ -172,9 +172,12 @@ class PlaybackSettingsPanel(
                 addMenuItem(UiText.text("Filtros adicionais: {0}",UiText.nested(if(filters) UiText.text("Ativados") else UiText.text("Desativados")))) { showTreatment() }
                 addMenuItem(UiText.text("Cores da imagem")) { showImageAdjustments(onBack=::back) }
                 addMenuItem(UiText.text("Proteção de desempenho: {0}",UiText.nested(if(value.imageTreatment.autoProtect) UiText.text("Ativada") else UiText.text("Desativada")))) { choosePerformanceProtection() }
+                addMenuItem(UiText.text("Laboratório de imagem: {0}",UiText.nested(if(value.imageLab.enabled) UiText.text("Ativado") else UiText.text("Desativado")))) {
+                    ImageLabPanel(context,store,changed) { showUpscaling() }.show()
+                }
                 addMenuItem(UiText.text("Restaurar imagem original")) {
                     save(value.copy(nativeUpscaling=true,fsr=FsrMode.OFF,fsrOutput=FsrOutput.AUTO,fsrSharpness=50,
-                        reconstruction=ReconstructionSettings(),imageTreatment=ImageTreatmentSettings(),sharpness=0,saturation=100,brightness=0,contrast=100),::back)
+                        reconstruction=ReconstructionSettings(),imageLab=ImageLabSettings(),imageTreatment=ImageTreatmentSettings(),sharpness=0,saturation=100,brightness=0,contrast=100),::back)
                 }
             }
             addAction(UiText.text("Voltar"),returnToParent);setOnCancelListener { returnToParent() };show()

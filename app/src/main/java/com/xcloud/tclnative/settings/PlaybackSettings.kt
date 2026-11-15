@@ -70,14 +70,15 @@ data class PlaybackSettings(
     val imageTreatment: ImageTreatmentSettings = ImageTreatmentSettings(),
     val presentationPacing: PresentationPacing = PresentationPacing.OFF,
     val reconstruction: ReconstructionSettings = ReconstructionSettings(),
-    val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD
+    val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD,
+    val imageLab: ImageLabSettings = ImageLabSettings()
 ) {
     fun forSession(): PlaybackSettings {
         val selected=if(videoCodec==VideoCodecMode.H264_BASELINE || videoMode==VideoMode.COMPATIBILITY)
             copy(resolution=StreamResolution.HD_720) else this
         return when(videoMode) {
             VideoMode.COMPATIBILITY -> selected.copy(imageTreatment=ImageTreatmentSettings(),
-                presentationPacing=PresentationPacing.OFF,fsr=FsrMode.OFF)
+                presentationPacing=PresentationPacing.OFF,fsr=FsrMode.OFF,imageLab=ImageLabSettings())
             VideoMode.LOW_LATENCY -> selected.copy(presentationPacing=PresentationPacing.OFF)
             else -> selected
         }
@@ -132,7 +133,12 @@ class PlaybackSettingsStore(context: Context,
                 ReconstructionQuality.entries.firstOrNull { it.name==prefs.getString("reconstruction_quality",null) } ?: ReconstructionQuality.AUTO,
                 prefs.getInt("reconstruction_strength",50),
                 ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_comparison",null) } ?: ImageComparison.PROCESSED).bounded(),
-            audioMode = AudioPlaybackMode.entries.firstOrNull { it.name==prefs.getString("audio_mode",null) } ?: AudioPlaybackMode.STANDARD)
+            audioMode = AudioPlaybackMode.entries.firstOrNull { it.name==prefs.getString("audio_mode",null) } ?: AudioPlaybackMode.STANDARD,
+            imageLab = ImageLabSettings(prefs.getBoolean("image_lab_enabled",false),prefs.getInt("image_lab_restoration",35),
+                HudProtection.entries.firstOrNull { it.name==prefs.getString("image_lab_protection",null) } ?: HudProtection.AUTO,
+                ImageSupersampling.entries.firstOrNull { it.name==prefs.getString("image_lab_supersampling",null) } ?: ImageSupersampling.OFF,
+                ExperimentalFrameGeneration.entries.firstOrNull { it.name==prefs.getString("image_lab_frame_generation",null) } ?: ExperimentalFrameGeneration.OFF,
+                ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_lab_comparison",null) } ?: ImageComparison.PROCESSED,prefs.getBoolean("image_lab_neural",false)).bounded())
     }
     fun save(settings: PlaybackSettings) {
         prefs.edit().putString("video_mode",settings.videoMode.name).putBoolean("low_latency_video",settings.videoMode.lowLatency)
@@ -160,7 +166,14 @@ class PlaybackSettingsStore(context: Context,
             .putString("reconstruction_quality",settings.reconstruction.quality.name)
             .putInt("reconstruction_strength",settings.reconstruction.strength.coerceIn(0,100))
             .putString("image_comparison",settings.reconstruction.comparison.name)
-            .putString("audio_mode",settings.audioMode.name).apply()
+            .putString("audio_mode",settings.audioMode.name)
+            .putBoolean("image_lab_enabled",settings.imageLab.enabled)
+            .putInt("image_lab_restoration",settings.imageLab.restoration.coerceIn(0,100))
+            .putString("image_lab_protection",settings.imageLab.protection.name)
+            .putString("image_lab_supersampling",settings.imageLab.supersampling.name)
+            .putString("image_lab_frame_generation",settings.imageLab.frameGeneration.name)
+            .putString("image_lab_comparison",settings.imageLab.comparison.name)
+            .putBoolean("image_lab_neural",settings.imageLab.neural).apply()
     }
 }
 

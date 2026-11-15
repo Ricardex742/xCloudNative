@@ -1106,4 +1106,28 @@
     <string name="ui_3c94e3db7ef588ce" formatted="false">"Vibration USB uniquement — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"Pour utiliser les boutons et les sticks, activez USB direct et test des commandes. Le test de vibration USB envoie uniquement des vibrations."</string>
     <string name="ui_593568ec86b6df4c">"USB ouvert — en attente de commandes"</string>
+    <string name="ui_0cc7b98d6de68d4f">"Automatique — texte et contours"</string>
+    <string name="ui_e9264e00db8a5420">"Quatre coins — HUD"</string>
+    <string name="ui_9ed6722fce45f888">"30 → jusqu’à 60 FPS — expérimental"</string>
+    <string name="ui_e0ad5c986673250d">"Laboratoire d’image — expérimental"</string>
+    <string name="ui_aec08916b99dc11d">"Désactivé au départ. Activez une option à la fois. La reconstruction et le suréchantillonnage modifient l’image ; la génération d’images peut augmenter la latence. La protection réduit les effets coûteux sans modifier vos choix enregistrés."</string>
+    <string name="ui_d50d8fee0f3c7d5f">"Mémoire limitée : reconstruction légère ; traitement neuronal, suréchantillonnage et génération suspendus sur cet appareil."</string>
+    <string name="ui_a877364109ff8ea4">"Laboratoire : {0}"</string>
+    <string name="ui_9fe5d68cd57976b9">"Restauration résiduelle : {0}%"</string>
+    <string name="ui_490938aaf8a779f4">"Restauration résiduelle"</string>
+    <string name="ui_2658b9614c0e0964">"Améliore les détails avec des limites de luminance et de couleur. 0% désactive cette reconstruction. Le mode neuronal utilise le petit modèle de l’application si possible ; sinon, une reconstruction spatiale est appliquée."</string>
+    <string name="ui_7b015f90ee2a86af">"Reconstruction neuronale : {0}"</string>
+    <string name="ui_313dba358bc48645">"Protection du HUD et du texte : {0}"</string>
+    <string name="ui_1be7f55001e09c0e">"Protection du HUD et du texte"</string>
+    <string name="ui_5e1662a13bf304ae">"Automatique recherche les traits fins à fort contraste ; ce n’est pas une reconnaissance de texte. Quatre coins préserve des zones fixes. Les commandes virtuelles de l’application restent hors de la vidéo."</string>
+    <string name="ui_a374b20ea4836804">"Suréchantillonnage : {0}"</string>
+    <string name="ui_1c9c09d9fed4d5bd">"Suréchantillonnage"</string>
+    <string name="ui_77906f8acdfe5f28">"Traite à une taille intermédiaire supérieure puis réduit à la sortie actuelle. Ne change pas la résolution demandée à Xbox. Peut lisser les contours ; utilise davantage de GPU et de mémoire. La taille effective figure dans le diagnostic."</string>
+    <string name="ui_996b37fa85eb2671">"Génération d’images : {0}"</string>
+    <string name="ui_40cba96ab53d2dfa">"Génération d’images"</string>
+    <string name="ui_84413010c6b3eb44">"S’applique à la prochaine partie. Interpole un contenu stable à 30 FPS jusqu’à 60 soumissions/s ; recherche aussi les doublons alternés dans les flux à 60 FPS. Nécessite GLES 3 et de la mémoire disponible, jusqu’à 2,5 MP. Ajoute une attente et peut créer des artefacts. Coupures, incertitude, surcharge et comparaison préservent les images originales. Ne change pas les FPS du jeu et ne garantit pas 60 Hz physiques."</string>
+    <string name="ui_a6758ef230714832">"Comparaison"</string>
+    <string name="ui_911c57d77df54ec4">"Compare la même image en conservant les réglages de couleur. Originale et Divisée suspendent la génération ; réactivez-la à la prochaine partie."</string>
+    <string name="ui_3e8ff61db03f1b7d">"Désactiver le laboratoire"</string>
+    <string name="ui_394ba7345cda8b85">"Laboratoire d’image : {0}"</string>
 </resources>
