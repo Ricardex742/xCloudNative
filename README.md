@@ -126,13 +126,14 @@ Pesquisa e configurações acompanham a identidade de cada console:
 
 ## Idiomas do aplicativo
 
-- **Português (Brasil)** como padrão, com dez idiomas adicionais disponíveis sem baixar pacotes.
+- **Português (Brasil)** como padrão, com 15 opções de idioma e região disponíveis sem baixar pacotes.
 - Troca em **Configurações › Aparência e temas › Idioma do aplicativo**, na tela de login ou no menu da partida.
 - Aplicação imediata e preferência salva no aparelho, sem reiniciar o app ou desconectar a partida.
+- Chinês simplificado para China continental e Singapura; chinês tradicional para Taiwan, Hong Kong e Macau.
 - Nomes dos idiomas exibidos em sua forma nativa, para facilitar a volta ao idioma desejado.
 - O idioma dos menus é independente do idioma solicitado aos jogos nas opções da sessão.
 
-| País | Idioma |
+| País ou região | Idioma |
 |---|---|
 | Brasil | Português |
 | Estados Unidos | Inglês |
@@ -142,7 +143,11 @@ Pesquisa e configurações acompanham a identidade de cada console:
 | Itália | Italiano |
 | Japão | Japonês |
 | Coreia do Sul | Coreano |
-| China | Chinês simplificado |
+| China continental | Chinês simplificado |
+| Singapura | Chinês simplificado |
+| Taiwan | Chinês tradicional |
+| Hong Kong | Chinês tradicional |
+| Macau | Chinês tradicional |
 | Rússia | Russo |
 | Turquia | Turco |
 

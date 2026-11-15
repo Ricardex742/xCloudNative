@@ -38,7 +38,8 @@ import javax.xml.parsers.DocumentBuilderFactory
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class LanguageUiTest {
-    private val settingsNames=listOf("Configurações","Settings","Ajustes","Paramètres","Einstellungen","Impostazioni","設定","설정","设置","Настройки","Ayarlar")
+    private val settingsNames=listOf("Configurações","Settings","Ajustes","Paramètres","Einstellungen","Impostazioni","設定","설정",
+        "设置","设置","設定","設定","設定","Настройки","Ayarlar")
     @Before fun defaults() {
         val app=RuntimeEnvironment.getApplication()
         app.getSharedPreferences("app_language",0).edit().clear().commit()
@@ -60,11 +61,11 @@ class LanguageUiTest {
         File("build/reports/languages/$name.png").apply { parentFile!!.mkdirs() }.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) }
         bitmap.recycle()
     }
-    @Test fun portugueseIsTheDefaultAndAllTenNewCountriesPersistIndependentlyOfSessionSettings() {
+    @Test fun portugueseIsTheDefaultAndEveryLanguagePersistsIndependentlyOfSessionSettings() {
         val app=RuntimeEnvironment.getApplication();val store=AppLanguageStore(app)
         val session=SessionOptionsStore(app,"language-test");val before=session.read()
         val playback=PlaybackSettingsStore(app).read();val systemLocale=java.util.Locale.getDefault()
-        assertEquals(11,AppLanguage.entries.size);assertEquals(AppLanguage.PORTUGUESE,store.read())
+        assertEquals(15,AppLanguage.entries.size);assertEquals(AppLanguage.PORTUGUESE,store.read())
         for((index,language) in AppLanguage.entries.withIndex()) {
             store.save(language);UiText.install(app)
             assertEquals(language,AppLanguageStore(app).read());assertEquals(language,UiText.language)
@@ -96,6 +97,38 @@ class LanguageUiTest {
             }
         }
     }
+    @Test fun allChineseRegionsUseTheCorrectScriptAndPreserveTheExistingChinesePreference() {
+        val app=RuntimeEnvironment.getApplication();val store=AppLanguageStore(app)
+        app.getSharedPreferences("app_language",0).edit().putString("language","zh-CN").commit()
+        assertEquals(AppLanguage.CHINESE,store.read())
+        val chinese=AppLanguage.entries.filter { it.locale.language=="zh" }
+        assertEquals(setOf("zh-CN","zh-SG","zh-TW","zh-HK","zh-MO"),chinese.map {it.tag}.toSet())
+        val before=SessionOptionsStore(app,"chinese-regions").read()
+        for(language in chinese) {
+            store.save(language);UiText.install(app)
+            val traditional=language.tag in setOf("zh-TW","zh-HK","zh-MO")
+            assertEquals(language,AppLanguageStore(app).read())
+            assertEquals(if(traditional) "設定" else "设置",UiText.text("Configurações"))
+            assertEquals(if(traditional) "已啟用" else "已启用",UiText.text("Ativado"))
+            assertEquals(if(traditional) "已停用" else "已禁用",UiText.text("Desativado"))
+            assertEquals(before,SessionOptionsStore(app,"chinese-regions").read())
+        }
+    }
+    @Test fun theLastChineseRegionRemainsFocusedAndReachableWhenReopeningTheMenu() {
+        val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get()
+        try {
+            a.setContentView(FrameLayout(a));layout(a.window.decorView)
+            AppLanguageStore(a).save(AppLanguage.CHINESE_MACAU);UiText.install(a)
+            val menu=LanguageMenu.show(a) {}
+            layout(menu.window!!.decorView)
+            val row=all(menu.body).filterIsInstance<TextView>().single {
+                it.isClickable && it.text.contains(AppLanguage.CHINESE_MACAU.nativeName)
+            }
+            assertTrue(row.isFocused)
+            assertEquals(5,all(menu.body).filterIsInstance<TextView>().count { it.isClickable && it.text.contains("中文") })
+            capture(menu.window!!.decorView,"chinese-regions-menu")
+        } finally { controller.pause().stop().destroy() }
+    }
     @Test fun existingViewsTranslateNestedLabelsAndReturnToPortugueseWithoutTouchingUserText() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get()
         try {
@@ -126,7 +159,7 @@ class LanguageUiTest {
             val before=PlaybackSettingsStore(a).read();AppearanceSettingsStore(a).save(UiTheme.PLATINUM_SILVER)
             var returns=0
             val menu=LanguageMenu.show(a) { returns++ }
-            assertEquals(11,all(menu.body).filterIsInstance<TextView>().count { it.isClickable })
+            assertEquals(AppLanguage.entries.size,all(menu.body).filterIsInstance<TextView>().count { it.isClickable })
             menu.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
             shadowOf(Looper.getMainLooper()).idle()
             assertEquals(1,returns);assertEquals(AppLanguage.PORTUGUESE,AppLanguageStore(a).read())
@@ -173,12 +206,13 @@ class LanguageUiTest {
             assertEquals(HudPreset.CALL_OF_DUTY,GameHud.automatic("test","Call of Duty: Modern Warfare III"))
         }
     }
-    @Test fun englishAndJapaneseLoginViewsRenderAndLiveSwitchWithoutResettingTheLogin() {
+    @Test fun loginViewsRenderAndLiveSwitchWithoutResettingTheLogin() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get()
         val view=ConsoleLoginView(a,{}, {}, {})
         try {
             a.setContentView(view);layout(view)
-            for(language in listOf(AppLanguage.ENGLISH,AppLanguage.GERMAN,AppLanguage.JAPANESE,AppLanguage.PORTUGUESE)) {
+            for(language in listOf(AppLanguage.ENGLISH,AppLanguage.GERMAN,AppLanguage.JAPANESE,
+                AppLanguage.CHINESE,AppLanguage.CHINESE_TAIWAN,AppLanguage.CHINESE_HONG_KONG,AppLanguage.PORTUGUESE)) {
                 UiText.apply(a,language);UiText.refresh(view);layout(view)
                 val texts=all(view).filterIsInstance<TextView>().map { it.text.toString() }
                 assertTrue(texts.contains(UiText.text("ENTRAR COM QR CODE")))

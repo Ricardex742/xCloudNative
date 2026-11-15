@@ -8,7 +8,9 @@ enum class AppLanguage(val tag: String,val nativeName: String) {
     SPANISH("es-ES","Español (España)"), FRENCH("fr-FR","Français (France)"),
     GERMAN("de-DE","Deutsch (Deutschland)"), ITALIAN("it-IT","Italiano (Italia)"),
     JAPANESE("ja-JP","日本語（日本）"), KOREAN("ko-KR","한국어 (대한민국)"),
-    CHINESE("zh-CN","简体中文（中国）"), RUSSIAN("ru-RU","Русский (Россия)"),
+    CHINESE("zh-CN","简体中文（中国大陆）"), CHINESE_SINGAPORE("zh-SG","简体中文（新加坡）"),
+    CHINESE_TAIWAN("zh-TW","繁體中文（台灣）"), CHINESE_HONG_KONG("zh-HK","繁體中文（香港）"),
+    CHINESE_MACAU("zh-MO","繁體中文（澳門）"), RUSSIAN("ru-RU","Русский (Россия)"),
     TURKISH("tr-TR","Türkçe (Türkiye)");
     val locale: Locale get()=Locale.forLanguageTag(tag)
 }

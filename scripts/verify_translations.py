@@ -8,7 +8,8 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "app/src/main/res"
-LOCALES = ("en-rUS", "es-rES", "fr-rFR", "de-rDE", "it-rIT", "ja-rJP", "ko-rKR", "zh-rCN", "ru-rRU", "tr-rTR")
+LOCALES = ("en-rUS", "es-rES", "fr-rFR", "de-rDE", "it-rIT", "ja-rJP", "ko-rKR",
+           "zh-rCN", "zh-rSG", "zh-rTW", "zh-rHK", "zh-rMO", "ru-rRU", "tr-rTR")
 
 
 def messages(path):
@@ -42,7 +43,7 @@ def main():
             assert translated.strip(), (locale, name, "empty translation")
             assert sorted(re.findall(r"\{\d+\}", translated)) == sorted(re.findall(r"\{\d+\}", original)), (locale, name, "interpolation fields")
             assert not re.search(r"ZXQ\d+QXZ", translated), (locale, name, "unfinished translation")
-    print(f"Português + {len(LOCALES)} idiomas: {len(source)} mensagens por idioma; campos variáveis consistentes.")
+    print(f"{len(LOCALES)+1} opções de idioma: {len(source)} mensagens por opção; campos variáveis consistentes.")
 
 
 if __name__ == "__main__":
