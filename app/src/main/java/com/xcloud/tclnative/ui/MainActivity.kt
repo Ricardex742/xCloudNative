@@ -856,7 +856,7 @@ open class MainActivity : Activity() {
         return surfaceRenderer.eglBase
     }
     private fun showRumbleDiagnostics(back: () -> Unit) {
-        val active=usbDirect.snapshot().status==UsbControllerStatus.READY
+        val active=usbDirect.snapshot().status in setOf(UsbControllerStatus.READY,UsbControllerStatus.WAITING_INPUT)
         val actions=mutableListOf(ConsoleAction(UiText.text("USB direto e teste de comandos")) {
             com.xcloud.tclnative.ui.dashboard.UsbControllerPanel(this,usbDirect,activate={ candidate,exclusive ->
                 usbRumble.disable { if(!isFinishing && !isDestroyed) usbDirect.enable(candidate,exclusive) }

@@ -14,6 +14,8 @@ internal class UsbGamepadSession(private val io: Io,private val exclusive: Boole
     interface Io: AutoCloseable {
         fun claim(force: Boolean): Boolean
         fun startInput(): Boolean
+        fun initializeInput(): Int? = null
+        fun diagnostics(): String = ""
         fun poll(timeoutMs: Long): Completion
         fun write(packet: ByteArray): Boolean
         fun cancelInput()
@@ -21,6 +23,7 @@ internal class UsbGamepadSession(private val io: Io,private val exclusive: Boole
     }
     private val running=AtomicBoolean(true)
     val rumble=UsbRumbleEnvelope()
+    fun diagnostics()=io.diagnostics()
     fun stop() { running.set(false);rumble.stop() }
     fun run() {
         var claimed=false;var outputPending=false;var sent: Pair<Int,Int>?=null
@@ -29,6 +32,10 @@ internal class UsbGamepadSession(private val io: Io,private val exclusive: Boole
             check(claimed) { "USB_INTERFACE_BUSY" }
             if(!running.get()) return
             check(io.startInput()) { "USB_INPUT_QUEUE" }
+            // Queue interrupt IN first, as xpad does. A stalled/short optional query must
+            // not disable a pad which already produces standard interrupt reports.
+            io.initializeInput()
+            if(!running.get()) return
             onReady()
             while(running.get()) {
                 val levels=rumble.levels(clock())

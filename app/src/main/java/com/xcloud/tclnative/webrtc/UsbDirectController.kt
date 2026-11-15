@@ -97,7 +97,7 @@ internal class UsbDirectController(context: Context,
     }
     override fun snapshot()=UsbControllerSnapshot(status,source ?: transport,packets.get(),valid.get(),ignored.get(),writes.get(),state,detail,
         synchronized(captureLock) { raw.toList() },if(deliveries>0) deliveryTotal.toDouble()/deliveries else 0.0,
-        deliveryPeak,pendingFrames.coalesced,pendingFrames.overflows)
+        deliveryPeak,pendingFrames.coalesced,pendingFrames.overflows,session?.diagnostics().orEmpty())
     override fun enable(candidate: UsbControllerDescriptor,exclusive: Boolean) {
         if(closed || !foreground) return
         if(Build.VERSION.SDK_INT<26) { status=UsbControllerStatus.ANDROID_REQUIRED;return }
@@ -222,7 +222,7 @@ internal class UsbDirectController(context: Context,
                             initialButtons=parsed.buttons
                             main.post {
                                 if(!closed && foreground && generation.get()==token) {
-                                    source=runtime;detail=""
+                                    source=runtime;status=UsbControllerStatus.READY;detail=""
                                     ownedAndroidAliases.clear()
                                     candidate.androidId?.let { ownedAndroidAliases+=it }
                                     val currentAndroidId=currentAndroidPeer(runtime)
@@ -241,7 +241,7 @@ internal class UsbDirectController(context: Context,
                 },{
                     main.post {
                         if(!closed && foreground && generation.get()==token) {
-                            transport=runtime;status=UsbControllerStatus.READY;detail="USB_INPUT_PENDING"
+                            transport=runtime;status=UsbControllerStatus.WAITING_INPUT;detail="USB_INPUT_PENDING"
                         }
                     }
                 })

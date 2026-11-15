@@ -156,4 +156,50 @@ class UsbDirectCoreTest {
         catch(error: IllegalStateException) { assertEquals("USB_OUTPUT_QUEUE",error.message) }
         assertEquals(1,io.released);assertEquals(1,io.closed)
     }
+    @Test fun thirdPartyInputStartsOnlyAfterTheQueuedReadAndTheCapabilitiesQuery() {
+        val order=mutableListOf<String>();val base=Io();var initialized=false
+        val io=object: UsbGamepadSession.Io by base {
+            override fun claim(force: Boolean)=base.claim(force).also { order+="claim" }
+            override fun startInput(): Boolean { order+="queue";return true }
+            override fun initializeInput(): Int {
+                assertEquals(listOf("claim","queue"),order)
+                initialized=true;order+="init"
+                base.completions.addLast(UsbGamepadSession.Completion.Input(report(second=16),20))
+                return 20
+            }
+            override fun poll(timeoutMs: Long): UsbGamepadSession.Completion {
+                assertTrue(initialized);return base.poll(timeoutMs)
+            }
+        }
+        val received=mutableListOf<GamepadState?>();lateinit var session: UsbGamepadSession
+        session=UsbGamepadSession(io,false,{base.clock},{ _,_,state,_ -> received+=state },{ order+="ready" })
+        base.onPoll={ if(base.clock>=80) session.stop() };session.run()
+        assertEquals(listOf("claim","queue","init","ready"),order)
+        assertEquals(16,received.single()!!.buttons)
+        assertEquals(1,base.released);assertEquals(1,base.closed)
+    }
+    @Test fun aStalledOrShortCapabilitiesQueryDoesNotBreakPadsAlreadySendingInput() {
+        for(reply in listOf(-1,0,8)) {
+            val base=Io();base.completions.addLast(UsbGamepadSession.Completion.Input(report(second=32),20))
+            var queries=0
+            val io=object: UsbGamepadSession.Io by base {
+                override fun initializeInput(): Int { queries++;return reply }
+            }
+            val received=mutableListOf<GamepadState?>();lateinit var session: UsbGamepadSession
+            session=UsbGamepadSession(io,false,{base.clock},{ _,_,state,_ -> received+=state },{})
+            base.onPoll={ if(base.clock>=80) session.stop() };session.run()
+            assertEquals(1,queries);assertEquals(32,received.single()!!.buttons)
+            assertEquals(1,base.released);assertEquals(1,base.closed)
+        }
+    }
+    @Test fun capabilitiesSuccessAloneDoesNotBecomeAControllerInputFrame() {
+        val base=Io();var queries=0
+        val io=object: UsbGamepadSession.Io by base {
+            override fun initializeInput(): Int { queries++;return 20 }
+        }
+        var received=0;lateinit var session: UsbGamepadSession
+        session=UsbGamepadSession(io,false,{base.clock},{ _,_,_,_ -> received++ },{})
+        base.onPoll={ if(base.clock>=80) session.stop() };session.run()
+        assertEquals(1,queries);assertEquals(0,received)
+    }
 }

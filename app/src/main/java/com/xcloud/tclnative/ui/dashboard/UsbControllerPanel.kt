@@ -80,7 +80,8 @@ class UsbControllerPanel(private val context: Context,private val port: UsbContr
                 UiText.nested("${buttons.ifBlank { "—" }} [%04x]".format(state.buttons)),UiText.nested(pair(state.leftX,state.leftY)),
                 UiText.nested(pair(state.rightX,state.rightY)),UiText.nested(pair(state.leftTrigger,state.rightTrigger)),
                 UiText.nested(String.format(Locale.US,"%.2f",s.deliveryMeanMs)),UiText.nested(s.deliveryPeakMs),UiText.nested(s.coalesced),UiText.nested(s.overflows))+
-                (if(s.detail.isNotBlank()) "\n${s.detail}" else "")
+                (if(s.detail.isNotBlank()) "\n${s.detail}" else "")+
+                (if(s.transportDetails.isNotBlank()) "\n${s.transportDetails}" else "")
         }
         private fun pair(a: Float,b: Float)=String.format(Locale.US,"%.3f / %.3f",a,b)
     }

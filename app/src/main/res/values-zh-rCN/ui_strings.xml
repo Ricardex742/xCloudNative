@@ -1105,4 +1105,5 @@
     <string name="ui_7d2434081ba52265">"删除"</string>
     <string name="ui_3c94e3db7ef588ce" formatted="false">"仅 USB 振动 — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"要使用按钮和摇杆，请启用“USB 直连和输入测试”。USB 振动测试只发送振动指令。"</string>
+    <string name="ui_593568ec86b6df4c">"USB 已打开 — 等待输入"</string>
 </resources>

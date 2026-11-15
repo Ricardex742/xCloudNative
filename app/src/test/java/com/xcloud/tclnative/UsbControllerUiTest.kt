@@ -75,6 +75,16 @@ class UsbControllerUiTest {
             panel.dismiss();navigation.clear();assertNull(AppControllerWindows.current(a)?.takeIf { it===panel.window })
         } finally { navigation.clear();AppControllerWindows.clear(a);controller.pause().stop().destroy() }
     }
+    @Test fun anOpenUsbWithoutValidInputShowsTheEndpointAndInitializationDiagnostics() {
+        val port=Port()
+        val pending=UsbControllerSnapshot(UsbControllerStatus.WAITING_INPUT,port.source,writes=7,
+            detail="USB_INPUT_PENDING",transportDetails="IN 81 INT 32B interval=4 | OUT 02 INT 32B interval=4\nXINPUT_INIT=-1/20B | IN_QUEUE=1 IN_DONE=0 OUT_DONE=7 WAITS=20")
+        assertEquals("USB aberto — aguardando comandos",pending.status.label)
+        val report=UsbControllerPanel.describe(pending,AndroidControllerMonitor.snapshot())
+        assertTrue(report.contains("0 recebidos / 0 válidos / 0 ignorados / 7 saídas"))
+        assertTrue(report.contains("IN 81 INT 32B"));assertTrue(report.contains("XINPUT_INIT=-1/20B"))
+        assertTrue(report.contains("IN_QUEUE=1 IN_DONE=0 OUT_DONE=7 WAITS=20"))
+    }
     @Test fun vibrationDiagnosticsUsesReadableRowsAndDistinguishesDirectInputFromTheOutputOnlyTest() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get();a.setContentView(FrameLayout(a))
         val port=Port();var direct=0;var legacy=0

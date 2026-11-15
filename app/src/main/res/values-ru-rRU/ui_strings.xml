@@ -1105,4 +1105,5 @@
     <string name="ui_7d2434081ba52265">"Удалить"</string>
     <string name="ui_3c94e3db7ef588ce" formatted="false">"Только вибрация USB — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"Чтобы использовать кнопки и стики, включите прямое USB-подключение и проверку ввода. Тест вибрации USB отправляет только вибрацию."</string>
+    <string name="ui_593568ec86b6df4c">"USB открыт — ожидание ввода"</string>
 </resources>

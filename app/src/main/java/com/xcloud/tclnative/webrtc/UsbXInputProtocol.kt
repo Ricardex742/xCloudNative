@@ -10,6 +10,14 @@ object UsbXInputProtocol {
     fun packet(strong: Int, weak: Int): ByteArray = byteArrayOf(0,8,0,
         (strong.coerceIn(0,100)*255/100).toByte(),(weak.coerceIn(0,100)*255/100).toByte(),0,0,0)
 
+    /**
+     * XInput capabilities query, also needed by some third-party pads to enable IN reports.
+     * Follow xpad_start_input (Linux) and FetchXInputCapabilities (SDL): C1/01/0100/0000.
+     * This is a bounded read, not a rumble command or a controller input report.
+     */
+    fun initializeInput(transfer: (Int,Int,Int,Int,ByteArray,Int) -> Int): Int =
+        transfer(0xc1,0x01,0x0100,0x0000,ByteArray(20),100)
+
     /** Refuse ambiguous receivers/controllers, including a second receiver with the same IDs. */
     fun inputDeviceId(vendor: Int,product: Int,usbIds: List<Pair<Int,Int>>,inputIds: List<Triple<Int,Int,Int>>): Int? {
         if(vendor<=0 || product<=0 || usbIds.count { it.first==vendor && it.second==product }!=1) return null

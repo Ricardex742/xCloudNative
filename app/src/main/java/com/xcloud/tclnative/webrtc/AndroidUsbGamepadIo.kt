@@ -16,18 +16,31 @@ internal class AndroidUsbGamepadIo(private val connection: UsbDeviceConnection,p
     private val bytes=ByteArray(input.maxPacketSize)
     private var readReady=false;private var writeReady=false;private var pending=false
     private var inputEnabled=false
+    @Volatile private var initResult: Int?=null
+    @Volatile private var queued=0L
+    @Volatile private var received=0L
+    @Volatile private var outputs=0L
+    @Volatile private var timeouts=0L
     override fun claim(force: Boolean)=connection.claimInterface(intf,force)
     override fun startInput(): Boolean {
         inputEnabled=true
         if(!readReady) { readReady=read.initialize(connection,input);if(!readReady) return false }
-        incoming.clear();return read.queue(incoming)
+        incoming.clear();return read.queue(incoming).also { if(it) queued++ }
     }
+    override fun initializeInput(): Int = UsbXInputProtocol.initializeInput { type,request,value,index,data,timeout ->
+        connection.controlTransfer(type,request,value,index,data,data.size,timeout)
+    }.also { initResult=it }
+    override fun diagnostics(): String =
+        "IN %02x INT %dB interval=%d | OUT %02x INT %dB interval=%d".format(
+            input.address,input.maxPacketSize,input.interval,output.address,output.maxPacketSize,output.interval)+
+            "\nXINPUT_INIT=${initResult?.toString() ?: "pending"}/20B | IN_QUEUE=$queued IN_DONE=$received OUT_DONE=$outputs WAITS=$timeouts"
     override fun poll(timeoutMs: Long): UsbGamepadSession.Completion {
         val completed=try { connection.requestWait(timeoutMs) }
-            catch(_: TimeoutException) { return UsbGamepadSession.Completion.Timeout }
+            catch(_: TimeoutException) { timeouts++;return UsbGamepadSession.Completion.Timeout }
         return when(completed) {
             read -> {
                 if(!inputEnabled) return UsbGamepadSession.Completion.Timeout
+                received++
                 val size=incoming.position();incoming.flip();incoming.get(bytes,0,size)
                 if(!startInput()) throw IOException("USB_INPUT_REQUEUE")
                 UsbGamepadSession.Completion.Input(bytes,size)
@@ -35,6 +48,7 @@ internal class AndroidUsbGamepadIo(private val connection: UsbDeviceConnection,p
             write -> {
                 pending=false
                 if(outgoing.position()!=8) throw IOException("USB_OUTPUT_SHORT")
+                outputs++
                 UsbGamepadSession.Completion.Output
             }
             else -> throw IOException("USB_COMPLETION_FAILED")

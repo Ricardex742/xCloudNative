@@ -1105,4 +1105,5 @@
     <string name="ui_7d2434081ba52265">"Sil"</string>
     <string name="ui_3c94e3db7ef588ce" formatted="false">"Yalnızca USB titreşimi — {0}"</string>
     <string name="ui_d8a34d8a2266a7c0" formatted="false">"Düğmeleri ve çubukları kullanmak için doğrudan USB ve giriş testini etkinleştirin. USB titreşim testi yalnızca titreşim gönderir."</string>
+    <string name="ui_593568ec86b6df4c">"USB açık — giriş bekleniyor"</string>
 </resources>

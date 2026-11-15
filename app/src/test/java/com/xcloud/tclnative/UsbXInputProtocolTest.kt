@@ -6,6 +6,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class UsbXInputProtocolTest {
+    @Test fun inputInitializationUsesTheXInputVendorReadAndNeverASyntheticButtonReport() {
+        var calls=0
+        val result=UsbXInputProtocol.initializeInput { type,request,value,index,data,timeout ->
+            calls++
+            assertEquals(0xc1,type);assertEquals(0x01,request)
+            assertEquals(0x0100,value);assertEquals(0,index)
+            assertEquals(20,data.size);assertEquals(100,timeout)
+            assertTrue(data.all { it==0.toByte() })
+            20
+        }
+        assertEquals(1,calls);assertEquals(20,result)
+        // A failed/short capabilities response remains distinguishable from IN reports.
+        for(reply in listOf(-1,0,8)) assertEquals(reply,UsbXInputProtocol.initializeInput { _,_,_,_,_,_ -> reply })
+    }
     @Test fun onlyAnUnambiguousWiredXInputInterfaceIsAccepted() {
         assertTrue(UsbXInputProtocol.supported(0xff,0x5d,1,0,true,listOf(32)))
         for((klass,sub,protocol) in listOf(Triple(3,0,0),Triple(0xff,0x47,0xd0),Triple(0xff,0x5d,0x81)))

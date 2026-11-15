@@ -63,6 +63,7 @@ class UsbDirectControllerTest {
         init { if(neutral) incoming.offer(UsbGamepadSession.Completion.Input(ByteArray(20).apply { this[1]=20 },20)) }
         override fun claim(force: Boolean): Boolean { claims+=force;return true }
         override fun startInput()=true
+        override fun diagnostics()="IN 81 INT 32B | OUT 02 INT 32B\nXINPUT_INIT=20/20B"
         override fun poll(timeoutMs: Long)=incoming.poll(2,TimeUnit.MILLISECONDS) ?: UsbGamepadSession.Completion.Timeout
         override fun write(packet: ByteArray): Boolean { packets+=packet.clone();incoming.offer(UsbGamepadSession.Completion.Output);return true }
         override fun cancelInput()=Unit
@@ -152,13 +153,16 @@ class UsbDirectControllerTest {
         val io=Io(false);val states=CopyOnWriteArrayList<GamepadState>();var connected=0
         val driver=UsbDirectController(app,connected={ _,_ -> connected++ },input={ _,state -> states+=state },connectionFactory={ _,_,_,_ -> io })
         try {
-            driver.enable(driver.candidates().single());await { driver.snapshot().status==UsbControllerStatus.READY }
+            driver.enable(driver.candidates().single());await { driver.snapshot().status==UsbControllerStatus.WAITING_INPUT }
             io.incoming.offer(UsbGamepadSession.Completion.Input(byteArrayOf(1,3,0),3))
             await { driver.snapshot().ignored==1L };assertNull(driver.source);assertEquals(0,connected)
+            assertEquals(UsbControllerStatus.WAITING_INPUT,driver.snapshot().status)
+            assertTrue(driver.snapshot().transportDetails.contains("XINPUT_INIT=20/20B"))
             driver.test();await { io.packets.any { it[3].toInt()==102 } }
             fun button(value: Int)=UsbGamepadSession.Completion.Input(ByteArray(20).apply { this[1]=20;this[3]=value.toByte() },20)
             io.incoming.offer(button(16));await { driver.source!=null && states.isNotEmpty() }
             assertEquals(0,states.last().buttons);assertEquals(0,driver.currentInput().buttons)
+            assertEquals(UsbControllerStatus.READY,driver.snapshot().status)
             io.incoming.offer(button(0));await { driver.snapshot().state.buttons==0 }
             io.incoming.offer(button(16));await { states.last().buttons==16 }
             assertEquals(1,connected)
@@ -260,7 +264,7 @@ class UsbDirectControllerTest {
         val driver=UsbDirectController(app,connected={ _,id -> attached=id },connectionFactory={ _,_,_,_ -> io })
         try {
             val candidate=driver.candidates().single();assertEquals(7,candidate.androidId)
-            driver.enable(candidate);await { driver.snapshot().status==UsbControllerStatus.READY }
+            driver.enable(candidate);await { driver.snapshot().status==UsbControllerStatus.WAITING_INPUT }
             install(8)
             io.incoming.offer(UsbGamepadSession.Completion.Input(ByteArray(20).apply { this[1]=20 },20))
             await { driver.source!=null };assertEquals(8,attached)
