@@ -57,7 +57,8 @@ internal class SessionMessageTrace(private val clockMs: () -> Long) {
         private fun route(target: String?): String {
             if(target==null) return "NONE"
             return TARGETS[target] ?: when {
-                target.startsWith("/streaming/touchControls/") -> "TOUCH_CONTROLS"
+                target=="/streaming/touchcontrols" || target.startsWith("/streaming/touchcontrols/") ||
+                    target.startsWith("/streaming/touchControls/") -> "TOUCH_CONTROLS"
                 target.startsWith("/streaming/systemUi/") -> "SYSTEM_UI_OTHER"
                 target.startsWith("/streaming/properties/") -> "PROPERTIES_OTHER"
                 target.startsWith("/streaming/characteristics/") -> "CHARACTERISTICS_OTHER"

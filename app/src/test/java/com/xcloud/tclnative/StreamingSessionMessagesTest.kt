@@ -46,6 +46,8 @@ class StreamingSessionMessagesTest {
         assertEquals(0x80004005.toInt(),result.disconnect!!.hresult)
         val ack=json(result.replies.single())
         assertEquals("TransactionComplete",ack.getString("type"));assertEquals("opaque-server-id",ack.getString("id"));assertEquals("",ack.getString("content"))
+        assertTrue(messages.diagnostics().contains("reply_queued=1; reply_sent=0"))
+        messages.sent(result.replies.single());assertTrue(messages.diagnostics().contains("reply_sent=1"))
         val error=XboxServerDisconnectException(result.disconnect!!)
         val failure=SessionFailure.from(error)
         assertEquals(FailureStage.SESSION_STATE,failure.stage);assertEquals(FailureKind.SESSION_ENDED,failure.kind)
@@ -65,21 +67,16 @@ class StreamingSessionMessagesTest {
             assertNull(result.disconnect?.hresult);assertFalse(messages.diagnostics().contains("private-value"))
         }
     }
-    @Test fun unsupportedRequestsReceiveTheOfficialUnhandledEnvelopeWithoutAFalseSuccessOrAnInfiniteReplyLoop() {
-        val cv="AAAAAAAAAAAAAAAAAAAAAA.4"
-        for(type in listOf("Message","TransactionStart")) {
+    @Test fun passiveAndUnimplementedTargetsNeverProduceAutomaticProtocolReplies() {
+        for(type in listOf("Message","TransactionStart","Unhandled","Error","TransactionComplete","ReceiverCancel","SenderCancel"))
+            for(target in listOf("/unsupported/feature","/streaming/touchcontrols/show","/streaming/systemUi/messages/ShowMessageDialog",
+                StreamingSessionMessages.TITLE_INFO,StreamingSessionMessages.GAME_TIME)) {
             val messages=StreamingSessionMessages()
-            val request=JSONObject().put("type",type).put("id","server-request").put("target","/unsupported/feature")
-                .put("content","private-account bearer private-token").put("cv",cv)
+            val request=JSONObject().put("type",type).put("id","server-request").put("target",target)
+                .put("content","private-account bearer private-token").put("cv","AAAAAAAAAAAAAAAAAAAAAA.4")
             val result=messages.receive(request);assertNull(result.disconnect)
-            val reply=json(result.replies.single())
-            assertEquals("Unhandled",reply.getString("type"));assertEquals("server-request",reply.getString("id"))
-            assertEquals("/unsupported/feature",reply.getString("target"));assertEquals("AAAAAAAAAAAAAAAAAAAAAA.5",reply.getString("cv"))
-            assertFalse(reply.has("content"));assertTrue(messages.diagnostics().contains("reply_queued=1; reply_sent=0"))
-            messages.sent(result.replies.single());assertTrue(messages.diagnostics().contains("reply_sent=1"))
-            for(response in listOf("Unhandled","Error","TransactionComplete","ReceiverCancel","SenderCancel")) {
-                assertTrue(messages.receive(JSONObject(request.toString()).put("type",response)).replies.isEmpty())
-            }
+            assertTrue("No automatic response for $type $target",result.replies.isEmpty())
+            assertTrue(messages.diagnostics().contains("reply_queued=0; reply_sent=0"))
             assertFalse(messages.diagnostics().contains("private-account"));assertFalse(messages.diagnostics().contains("private-token"))
         }
     }
@@ -98,8 +95,7 @@ class StreamingSessionMessagesTest {
         assertTrue(text.contains("0:Active/true>3000:Closed/false"))
         listOf("private-id","private-aumid","server-id").forEach { assertFalse(text.contains(it)) }
         val unexpected=messages.receive(notification.put("type","TransactionStart"))
-        assertEquals("ReceiverCancel",json(unexpected.replies.single()).getString("type"))
-        assertFalse(json(unexpected.replies.single()).has("content"))
+        assertTrue(unexpected.replies.isEmpty());assertNull(unexpected.disconnect)
     }
     @Test fun passiveTimeNotificationsDoNotInventAQuotaOrAcknowledgeAnUnexpectedTransactionAsCompleted() {
         val messages=StreamingSessionMessages()
@@ -107,7 +103,7 @@ class StreamingSessionMessagesTest {
             .put("content",JSONObject().put("private-time-data","private-user"))
         assertTrue(messages.receive(message).replies.isEmpty());assertFalse(messages.diagnostics().contains("private-user"))
         val result=messages.receive(message.put("type","TransactionStart"))
-        assertEquals("ReceiverCancel",json(result.replies.single()).getString("type"));assertNull(result.disconnect)
+        assertTrue(result.replies.isEmpty());assertNull(result.disconnect)
     }
     @Test fun malformedEnvelopesAndCorrelationVectorsCannotEchoPayloadsOrCreateInvalidReplies() {
         val messages=StreamingSessionMessages()
@@ -118,7 +114,8 @@ class StreamingSessionMessagesTest {
             assertTrue(messages.receive(JSONObject().put("type","TransactionStart").put("target",target).put("id","id")).replies.isEmpty())
         }
         for(cv in listOf("private-bearer", "x".repeat(500),"AAAAAAAAAAAAAAAAAAAAAA.9999999999")) {
-            val reply=messages.receive(JSONObject().put("type","Message").put("target","/unknown").put("id","id").put("cv",cv)).replies.single()
+            val reply=messages.receive(JSONObject().put("type","TransactionStart").put("target",StreamingSessionMessages.SERVER_DISCONNECT)
+                .put("id","id").put("cv",cv).put("content",JSONObject().put("reason","KickForStopCommand"))).replies.single()
             assertTrue(json(reply).getString("cv").matches(Regex("[A-Za-z0-9+/]{22}\\.0")))
         }
     }
@@ -128,12 +125,21 @@ class StreamingSessionMessagesTest {
             now+=10
             val result=messages.receive(JSONObject().put("type","Message").put("target","/private-account-$i").put("id","private-id-$i")
                 .put("content","private-body"))
-            messages.sent(result.replies.single())
+            assertTrue(result.replies.isEmpty())
         }
         val text=messages.diagnostics()
-        assertTrue(text.length<1000);assertTrue(text.contains("rx=100; reply_queued=100; reply_sent=100"))
+        assertTrue(text.length<1000);assertTrue(text.contains("rx=100; reply_queued=0; reply_sent=0"))
         assertEquals(8,text.substringAfter("RX_MESSAGES/").split('>').size)
         listOf("private-account","private-id","private-body").forEach { assertFalse(text.contains(it)) }
+    }
+    @Test fun lowerCaseTouchControlRoutesAreRecognizedWithoutRecordingTheRouteOrChangingTheSession() {
+        val messages=StreamingSessionMessages()
+        for(route in listOf("/streaming/touchcontrols","/streaming/touchcontrols/private-layout")) {
+            val result=messages.receive(JSONObject().put("type","Message").put("target",route).put("id","id"))
+            assertTrue(result.replies.isEmpty());assertNull(result.disconnect)
+        }
+        assertTrue(messages.diagnostics().contains("Message/TOUCH_CONTROLS"))
+        assertFalse(messages.diagnostics().contains("private-layout"))
     }
 
 }
