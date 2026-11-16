@@ -65,4 +65,75 @@ class StreamingSessionMessagesTest {
             assertNull(result.disconnect?.hresult);assertFalse(messages.diagnostics().contains("private-value"))
         }
     }
+    @Test fun unsupportedRequestsReceiveTheOfficialUnhandledEnvelopeWithoutAFalseSuccessOrAnInfiniteReplyLoop() {
+        val cv="AAAAAAAAAAAAAAAAAAAAAA.4"
+        for(type in listOf("Message","TransactionStart")) {
+            val messages=StreamingSessionMessages()
+            val request=JSONObject().put("type",type).put("id","server-request").put("target","/unsupported/feature")
+                .put("content","private-account bearer private-token").put("cv",cv)
+            val result=messages.receive(request);assertNull(result.disconnect)
+            val reply=json(result.replies.single())
+            assertEquals("Unhandled",reply.getString("type"));assertEquals("server-request",reply.getString("id"))
+            assertEquals("/unsupported/feature",reply.getString("target"));assertEquals("AAAAAAAAAAAAAAAAAAAAAA.5",reply.getString("cv"))
+            assertFalse(reply.has("content"));assertTrue(messages.diagnostics().contains("reply_queued=1; reply_sent=0"))
+            messages.sent(result.replies.single());assertTrue(messages.diagnostics().contains("reply_sent=1"))
+            for(response in listOf("Unhandled","Error","TransactionComplete","ReceiverCancel","SenderCancel")) {
+                assertTrue(messages.receive(JSONObject(request.toString()).put("type",response)).replies.isEmpty())
+            }
+            assertFalse(messages.diagnostics().contains("private-account"));assertFalse(messages.diagnostics().contains("private-token"))
+        }
+    }
+    @Test fun titleNotificationsRecordOnlyDeclaredStateAndFocusAndNeverCloseTheSessionByThemselves() {
+        var now=1000L;val messages=StreamingSessionMessages { now }
+        val notification=JSONObject().put("type","Message").put("target",StreamingSessionMessages.TITLE_INFO)
+            .put("content",JSONObject().put("state",4).put("focused",true).put("titleid","private-id").put("titleaumid","private-aumid").toString())
+        assertTrue(messages.receive(notification).replies.isEmpty())
+        assertTrue(messages.diagnostics().contains("TITLE_STATE/Active; focused=true; updates=1"))
+        now+=3000
+        notification.put("id","server-id").put("content",JSONObject().put("state",0).put("focused",false))
+        val closed=messages.receive(notification)
+        assertNull(closed.disconnect);assertTrue(closed.replies.isEmpty())
+        val text=messages.diagnostics()
+        assertTrue(text.contains("TITLE_STATE/Closed; focused=false; updates=2"))
+        assertTrue(text.contains("0:Active/true>3000:Closed/false"))
+        listOf("private-id","private-aumid","server-id").forEach { assertFalse(text.contains(it)) }
+        val unexpected=messages.receive(notification.put("type","TransactionStart"))
+        assertEquals("ReceiverCancel",json(unexpected.replies.single()).getString("type"))
+        assertFalse(json(unexpected.replies.single()).has("content"))
+    }
+    @Test fun passiveTimeNotificationsDoNotInventAQuotaOrAcknowledgeAnUnexpectedTransactionAsCompleted() {
+        val messages=StreamingSessionMessages()
+        val message=JSONObject().put("type","Message").put("target",StreamingSessionMessages.GAME_TIME).put("id","time-request")
+            .put("content",JSONObject().put("private-time-data","private-user"))
+        assertTrue(messages.receive(message).replies.isEmpty());assertFalse(messages.diagnostics().contains("private-user"))
+        val result=messages.receive(message.put("type","TransactionStart"))
+        assertEquals("ReceiverCancel",json(result.replies.single()).getString("type"));assertNull(result.disconnect)
+    }
+    @Test fun malformedEnvelopesAndCorrelationVectorsCannotEchoPayloadsOrCreateInvalidReplies() {
+        val messages=StreamingSessionMessages()
+        for(id in listOf("", "x".repeat(129),"bad\nid")) {
+            assertTrue(messages.receive(JSONObject().put("type","TransactionStart").put("target","/unknown").put("id",id)).replies.isEmpty())
+        }
+        for(target in listOf("https://private.example", "/"+"x".repeat(300),"/bad\ntarget")) {
+            assertTrue(messages.receive(JSONObject().put("type","TransactionStart").put("target",target).put("id","id")).replies.isEmpty())
+        }
+        for(cv in listOf("private-bearer", "x".repeat(500),"AAAAAAAAAAAAAAAAAAAAAA.9999999999")) {
+            val reply=messages.receive(JSONObject().put("type","Message").put("target","/unknown").put("id","id").put("cv",cv)).replies.single()
+            assertTrue(json(reply).getString("cv").matches(Regex("[A-Za-z0-9+/]{22}\\.0")))
+        }
+    }
+    @Test fun theProtocolTranscriptIsBoundedAndCannotRecordUnknownTargetsOrBodyValues() {
+        var now=100L;val messages=StreamingSessionMessages { now }
+        repeat(100) { i ->
+            now+=10
+            val result=messages.receive(JSONObject().put("type","Message").put("target","/private-account-$i").put("id","private-id-$i")
+                .put("content","private-body"))
+            messages.sent(result.replies.single())
+        }
+        val text=messages.diagnostics()
+        assertTrue(text.length<1000);assertTrue(text.contains("rx=100; reply_queued=100; reply_sent=100"))
+        assertEquals(8,text.substringAfter("RX_MESSAGES/").split('>').size)
+        listOf("private-account","private-id","private-body").forEach { assertFalse(text.contains(it)) }
+    }
+
 }

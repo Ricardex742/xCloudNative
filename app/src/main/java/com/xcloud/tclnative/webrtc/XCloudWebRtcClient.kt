@@ -200,9 +200,9 @@ class XCloudWebRtcClient(
     fun resumeAudio() { if(synchronized(audioLock) { audioTracks.isNotEmpty() }) audioSession.requestFocus() }
     fun inputDiagnostics(): String = (if(nativeTouch)
         UiText.text("Toque nativo: {0}; espaço de input: {1}; slot virtual 0: {2}",UiText.nested(if(touchEnabled) UiText.text("sinalizado ativo") else UiText.text("desativado para HUD")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(if(channelsReady.isCompleted) "registro enviado" else UiText.text("aguardando canal")))
-        else if(nativeKeyboardMouse) UiText.text("Input Xbox: mouse/teclado nativos, versão negociada {0}",UiText.nested(negotiatedInputVersion)) else UiText.text("Input Xbox: controle/HUD"))+"\n"+controllerEventTiming.diagnostics()+
-        (if(nativeTouch) "\n${pendingTouch.diagnostics()}" else "")+"\n"+remoteInputTrace.diagnostics(negotiatedInputVersion)+"\n"+
-        UiText.text("Input sem interação: {0} pacotes de manutenção enviados; sem comandos de jogo",UiText.nested(inputPump?.metrics?.idleReportsSent ?: 0))+"\n"+channelTrace.diagnostics()+"\n"+handshake.sessionMessages.diagnostics()+(if(nativeTouch) "\nTOUCH_SLOT_INIT/${inputPump?.metrics?.initialStateReportsSent ?: 0}" else "")
+        else if(nativeKeyboardMouse) UiText.text("Input Xbox: mouse/teclado nativos, versão negociada {0}",UiText.nested(negotiatedInputVersion)) else UiText.text("Input Xbox: controle/HUD"))+"\n"+
+        handshake.sessionMessages.diagnostics()+"\n"+channelTrace.diagnostics()+"\n"+controllerEventTiming.diagnostics()+
+        (if(nativeTouch) "\n${pendingTouch.diagnostics()}" else "")+"\n"+remoteInputTrace.diagnostics(negotiatedInputVersion)
     fun latencyDiagnostics(): String = (if (lowLatencyVideo) "Playout solicitado: 0–40 ms" else "Playout: adaptativo") +
         " | " + (if (lowLatencyVideo) decoderLatency.get() else UiText.text("codec padrão")) +
         if(nativeTouch) UiText.text(" | Toque: {0}, {1}, {2} eventos enviados",UiText.nested(if(touchEnabled) UiText.text("ativo") else UiText.text("desativado")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(inputPump?.metrics?.pointerEventsSent ?: 0)) else ""
@@ -426,8 +426,7 @@ class XCloudWebRtcClient(
                 onFailure = { fail("CHANNELS: falha no envio de input") },
                 prioritize = { runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DISPLAY) }; Unit },
                 initialGamepads = gamepads.keys.toSet(), touch = pendingTouch, inputHz = if(compatibility) 60 else 250,
-                initialTouchDimensions = inputDimensions,desktop=desktopInput,idleReports=nativeTouch && negotiatedInputVersion==8,
-                initializeTouchSlot=nativeTouch && negotiatedInputVersion==8
+                initialTouchDimensions = inputDimensions,desktop=desktopInput
             )
                 inputPump = pump
                 gamepads.forEach { (index,state) -> pump.update(state,index) }

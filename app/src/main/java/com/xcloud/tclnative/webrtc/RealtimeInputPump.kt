@@ -48,7 +48,7 @@ class GamepadInputBuffer {
 
 data class InputMetrics(val bufferedBytes: Long = 0, val maxSchedulerDelayMs: Double = 0.0,
                         val backpressureSkips: Long = 0, val coalescedEdges: Long = 0, val sentState: GamepadState = GamepadState(),
-                        val pointerEventsSent: Long=0,val sentBytes: Long=0,val idleReportsSent: Long=0,val initialStateReportsSent: Long=0)
+                        val pointerEventsSent: Long=0,val sentBytes: Long=0)
 
 /** Native sends run independently from decoder/default-coroutine CPU load. Never catch up by replaying old ticks. */
 class RealtimeInputPump(
@@ -60,9 +60,7 @@ class RealtimeInputPump(
     private val touch: NativeTouchBuffer = NativeTouchBuffer(),
     private val inputHz: Int = INPUT_HZ,
     initialTouchDimensions: TouchInputDimensions? = null,
-    private val desktop: DesktopInputBuffer = DesktopInputBuffer(),
-    private val idleReports: Boolean = false,
-    private val initializeTouchSlot: Boolean = false
+    private val desktop: DesktopInputBuffer = DesktopInputBuffer()
 ) {
     init { require(inputHz in 60..INPUT_HZ) }
     private val running = AtomicBoolean(false)
@@ -109,8 +107,6 @@ class RealtimeInputPump(
                 prioritize()
                 val period = 1_000_000_000L / inputHz
                 val started = System.nanoTime()
-                var lastReportAt=started
-                var initialStatePending=initializeTouchSlot
                 var deadline = started
                 var sequence = 1 // Client metadata has already used sequence 0.
                 var skipped = 0L
@@ -142,21 +138,12 @@ class RealtimeInputPump(
                         // Coordinates have no meaning until ServerMetadata establishes their scale.
                         val pointers=if(dimensions == null) emptyList() else touch.next()
                         val desktopFrames=desktop.next()
-                        val hasInput=states.isNotEmpty() || pointers.isNotEmpty() || desktopFrames.first.isNotEmpty() || desktopFrames.second.isNotEmpty()
-                        // Native touch can start with no physical pads and no finger contacts.
-                        // Experimental idle transport report; None never represents a user action.
-                        // Compatibility experiment: initialize the already registered touch slot once.
-                        // No held control or synthetic finger, and no extra state after real input starts.
-                        val initial=initialStatePending && dimensions!=null && !hasInput
-                        val idle=idleReports && !hasInput && !initial && now-lastReportAt>=IDLE_REPORT_NS
-                        val packet=if(initial) GamepadPacket.neutralTouchSlot(sequence++,(now-started)/1_000_000.0)
-                            else if(hasInput || idle) GamepadPacket.encode(states, sequence++,
+                        val packet=if(states.isNotEmpty() || pointers.isNotEmpty() || desktopFrames.first.isNotEmpty() || desktopFrames.second.isNotEmpty()) GamepadPacket.encode(states, sequence++,
                             (now - started) / 1_000_000.0,pointers,dimensions?.width ?: 1,dimensions?.height ?: 1,desktopFrames.first,desktopFrames.second) else null
                         if (packet!=null && !send(packet)) {
                             if (running.get()) onFailure()
                             break
                         }
-                        if(packet!=null) { lastReportAt=now;if(initial || hasInput) initialStatePending=false }
                         if(pointers.isNotEmpty()) touch.accepted(pointers)
                         synchronized(lock) {
                             retiring.forEach { (index,revision) ->
@@ -167,7 +154,7 @@ class RealtimeInputPump(
                             }
                         }
                         metrics = metrics.copy(sentState = states[0] ?: GamepadState(),pointerEventsSent=metrics.pointerEventsSent+pointers.size,
-                            sentBytes=metrics.sentBytes+(packet?.size ?: 0),idleReportsSent=metrics.idleReportsSent+(if(idle) 1 else 0),initialStateReportsSent=metrics.initialStateReportsSent+(if(initial) 1 else 0))
+                            sentBytes=metrics.sentBytes+(packet?.size ?: 0))
                     }
                     metrics = metrics.copy(bufferedBytes = queued, maxSchedulerDelayMs = maxDelay,
                         backpressureSkips = skipped, coalescedEdges = synchronized(lock) { buffers.sumOf { it.coalescedEdges } })
@@ -188,7 +175,6 @@ class RealtimeInputPump(
     }
     companion object {
         const val INPUT_HZ = 250
-        const val IDLE_REPORT_NS=1_000_000_000L
         // At most two reports queued locally before suppressing additional state snapshots.
         const val MAX_BUFFERED_BYTES = 2 * 38L
     }

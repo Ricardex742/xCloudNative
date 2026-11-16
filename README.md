@@ -275,7 +275,6 @@ Pesquisa e configurações acompanham a identidade de cada console:
 - Abrir os ajustes do HUD preserva o modo de toque atual. Em uma sessão iniciada com toque nativo, é possível usar o HUD temporariamente para menus e voltar ao toque nativo pelo mesmo painel.
 - No celular, **Automático** prioriza o toque nativo quando disponível; a opção **Toque nativo Xbox — experimental** permite selecioná-lo manualmente nos títulos compatíveis.
 - Mapeamento dos toques conforme a área do vídeo, incluindo os modos Original, Esticar e Zoom.
-- Manutenção experimental do transporte de toque nativo v8 durante períodos sem interação, com relatórios vazios que não geram comandos no jogo.
 - Giroscópio opcional junto ao toque nativo, em aparelhos com sensor e jogos que aceitem essa combinação de entradas.
 
 ![Fortnite no celular com toque nativo Xbox](docs/screenshots/native-touch-fortnite.jpg)

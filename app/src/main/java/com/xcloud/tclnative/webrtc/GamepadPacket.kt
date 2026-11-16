@@ -15,10 +15,6 @@ data class GamepadState(
 object GamepadPacket {
     fun metadata(timestampMs: Double, maxTouchPoints: Int = 0): ByteArray =
         header(15, 8, 0, timestampMs).put(maxTouchPoints.coerceIn(0,10).toByte()).array()
-    /** One all-released state for the logical touch slot, with both physicality masks zero. */
-    fun neutralTouchSlot(sequence: Int,timestampMs: Double): ByteArray =
-        // allocate() zeroes the 23-byte slot payload: index 0, no buttons, axes, triggers or action masks.
-        header(38,2,sequence,timestampMs).put(1).array()
     fun encode(state: GamepadState, sequence: Int, timestampMs: Double): ByteArray = encode(mapOf(0 to state),sequence,timestampMs)
     fun encode(states: Map<Int,GamepadState>, sequence: Int, timestampMs: Double,
                pointers: List<NativePointer> = emptyList(), width: Int = 1920, height: Int = 1080,
