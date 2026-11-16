@@ -10,6 +10,36 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 class NativeTouchProtocolTest {
+    @Test fun extendedMetadataFlagsAndAnIncompleteTrailingRumbleDoNotDiscardTouchDimensions() {
+        for(flags in listOf(16,16 or 512,16 or 128)) {
+            val data=ByteBuffer.allocate(10).order(ByteOrder.LITTLE_ENDIAN).putShort(flags.toShort()).putInt(1080).putInt(1920)
+            data.flip();val report=RemoteInputReport.parse(data)!!
+            assertEquals(1920,report.width);assertEquals(1080,report.height);assertEquals(0,data.position())
+        }
+        val bad=ByteBuffer.allocate(10).order(ByteOrder.LITTLE_ENDIAN).putShort(16).putInt(0).putInt(1920)
+        bad.flip();assertNull(RemoteInputReport.parse(bad))
+    }
+    @Test fun touchWaitOfferRequiresForegroundPlaybackAndNeverSwitchesControlsAutomatically() {
+        val readiness=NativeTouchReadiness(15000)
+        assertFalse(readiness.offer(0,true,false,true))
+        assertFalse(readiness.offer(14000,true,false,true))
+        assertFalse(readiness.offer(20000,true,false,false))
+        assertFalse(readiness.offer(30000,true,false,true))
+        assertTrue(readiness.offer(45000,true,false,true))
+        assertFalse(readiness.offer(60000,true,false,true))
+        val working=NativeTouchReadiness(1)
+        assertFalse(working.offer(0,true,false,true));assertFalse(working.offer(2,true,true,true))
+        assertFalse(working.offer(4,false,false,true));assertFalse(working.offer(5,true,false,true))
+    }
+    @Test fun remoteInputTraceRetainsCountersAndHeaderFlagsWithoutPacketContents() {
+        val trace=RemoteInputTrace()
+        val data=ByteBuffer.wrap(byteArrayOf(16,0,56,4,0,0,-128,7,0,0)+"PRIVATE_PAYLOAD".toByteArray())
+        val report=RemoteInputReport.parse(data)
+        trace.observe(data,report);trace.observe(ByteBuffer.wrap(byteArrayOf(1)),null)
+        val text=trace.diagnostics(8)
+        assertTrue(text.contains("pacotes 2"));assertTrue(text.contains("metadata válida 1"));assertTrue(text.contains("ignorados 1"))
+        assertFalse(text.contains("PRIVATE_PAYLOAD"));assertEquals(0,data.position())
+    }
     @Test fun logicalTouchSlotIsRegisteredOnceAndSurvivesPhysicalGamepadChanges() {
         // The isolated official TAK bridge + source manager emits [{index:0,added:true}].
         val handshake=ChannelHandshake(true)

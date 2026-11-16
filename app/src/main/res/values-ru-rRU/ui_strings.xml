@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"Созданные кадры не уложились в срок"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"Ошибка обработки"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"Приостановлена во время сравнения"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"Удалённый ввод: версия {0}; пакетов {1}; корректных метаданных {2}; пропущено {3}; последний размер {4} Б; флаги {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"Предыдущее состояние трансляции: {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"Сенсорное управление ожидает Xbox"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox ещё не отправил метаданные для встроенного сенсорного управления. Можно подождать или использовать экранные кнопки приложения в этом сеансе."</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"Использовать экранные кнопки"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"Продолжить ожидание"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"Сведения об оставшемся времени"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"Не удалось авторизовать запрос времени."</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"Служба времени вернула ошибку HTTP."</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"Не удалось завершить подключение к службе времени."</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"Ответ службы времени превысил предел чтения."</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"Служба времени вернула нераспознанные данные."</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"Служба вернула несколько учётных записей. Приложение не смогло определить, чей остаток времени использовать."</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox не предоставил проверяемый остаток времени в этом ответе."</string>
 </resources>

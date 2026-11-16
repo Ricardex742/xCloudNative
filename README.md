@@ -23,7 +23,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 
 - Login direto na página oficial da Microsoft pelo próprio aparelho, com QR Code como alternativa e restauração da sessão salva. Celulares priorizam o login direto; TVs e boxes mantêm o QR Code em primeiro lugar.
 - Perfil Xbox com avatar e identificação da assinatura, quando informados pelo serviço.
-- **Tempo restante de nuvem** abaixo da assinatura, consultado no serviço Xbox: horas disponíveis, ilimitado ou indisponível quando não há confirmação. Atualiza ao entrar, retornar da partida ou usar **Biblioteca e conta › Atualizar tempo restante**; não é uma contagem regressiva local.
+- **Tempo restante de nuvem** abaixo da assinatura, consultado no serviço Xbox: horas disponíveis, ilimitado ou indisponível quando não há confirmação. Atualiza ao entrar, retornar da partida ou usar **Biblioteca e conta › Atualizar tempo restante**; não é uma contagem regressiva local. **Detalhes do tempo restante** informa o motivo de uma consulta indisponível, sem expor dados da conta.
 - **Voltar a jogar** com o histórico da conta no Xbox Cloud Gaming.
 - Favoritos separados por conta e salvos no aparelho.
 - **Game Pass**, **Transmita seu jogo**, **Adições recentes** e **Todos os jogos**.
@@ -171,7 +171,7 @@ Pesquisa e configurações acompanham a identidade de cada console:
 - **Experimentos de codec:** H.264 High, H.265/HEVC Main, VP9 e AV1, oferecidos somente quando há decoder de hardware compatível com a resolução solicitada a 60 FPS. H.264 Main/Baseline continuam como alternativas. O diagnóstico separa capacidade local, oferta e resposta do serviço; selecionar uma preferência não garante recebê-la.
 - **Fluidez da apresentação opcional** em Adaptativo, com fila de um quadro pendente e descarte de quadros substituídos. Pode acrescentar atraso; Menor atraso e Compatibilidade usam apresentação imediata.
 - Fila com arte do jogo, estimativa do serviço, tempo aguardado e cancelamento. Os seis dashboards Xbox têm telas de espera próprias, acompanhando o visual do tema escolhido.
-- Recuperação de vídeo por solicitação de quadro-chave, decoder e superfície de exibição.
+- Recuperação de vídeo por solicitação de quadro-chave, decoder e superfície de exibição. O diagnóstico preserva o estado de input anterior à substituição da transmissão e identifica o canal encerrado.
 - Reconexão manual da transmissão na mesma sessão Xbox. Sessões confirmadas como encerradas pelo serviço orientam o retorno ao catálogo; a reconexão não cria uma nova partida ou fila.
 - Menu da partida com ajustes e desconexão para retornar ao catálogo.
 
@@ -271,6 +271,7 @@ Pesquisa e configurações acompanham a identidade de cada console:
 
 - Toque nativo Xbox nos jogos que anunciam suporte no catálogo, incluindo **Fortnite**.
 - Os toques são enviados ao jogo, que apresenta seus próprios botões e gestos, sem o HUD virtual do aplicativo.
+- Se a sessão continuar sem os metadados necessários ao toque, o app oferece aguardar ou usar seu HUD virtual na mesma partida; a troca depende da escolha do usuário.
 - No celular, **Automático** prioriza o toque nativo quando disponível; a opção **Toque nativo Xbox — experimental** permite selecioná-lo manualmente nos títulos compatíveis.
 - Mapeamento dos toques conforme a área do vídeo, incluindo os modos Original, Esticar e Zoom.
 - Giroscópio opcional junto ao toque nativo, em aparelhos com sensor e jogos que aceitem essa combinação de entradas.

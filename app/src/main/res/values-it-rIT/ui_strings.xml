@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"Fotogrammi generati fuori tempo"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"Errore di elaborazione"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"Sospesa durante il confronto"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"Input remoto: versione {0}; pacchetti {1}; metadati validi {2}; ignorati {3}; ultima dimensione {4} B; flag {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"Stato precedente della trasmissione: {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"Tocco nativo in attesa di Xbox"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox non ha ancora inviato i metadati necessari per il tocco nativo. Puoi continuare ad attendere o usare i comandi su schermo dell’app per questa partita."</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"Usa comandi su schermo"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"Continua ad attendere"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"Dettagli del tempo rimanente"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"Impossibile autorizzare la richiesta del tempo."</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"Il servizio del tempo ha restituito un errore HTTP."</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"Impossibile completare la connessione al servizio del tempo."</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"La risposta del servizio del tempo ha superato il limite di lettura."</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"Il servizio del tempo ha restituito dati non riconosciuti."</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"Il servizio ha restituito più account e l’app non ha potuto confermare quale saldo usare."</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox non ha fornito un saldo di tempo verificabile in questa risposta."</string>
 </resources>

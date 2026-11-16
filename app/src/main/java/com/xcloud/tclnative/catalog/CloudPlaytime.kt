@@ -2,6 +2,7 @@ package com.xcloud.tclnative.catalog
 
 import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.net.awaitResponse
+import com.xcloud.tclnative.net.CloudHttpException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,7 +13,17 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 enum class CloudPlaytimeStatus { CHECKING, UNAVAILABLE, LIMITED, UNLIMITED }
-data class CloudPlaytime(val status: CloudPlaytimeStatus=CloudPlaytimeStatus.UNAVAILABLE,val seconds: Long=0) {
+enum class PlaytimeFailure(private val source: String) {
+    AUTHORIZATION("Não foi possível autorizar a consulta de horas."),
+    HTTP("O serviço de horas retornou um erro HTTP."), NETWORK("Não foi possível concluir a conexão com o serviço de horas."),
+    TOO_LARGE("A resposta do serviço de horas excedeu o limite de leitura."),
+    INVALID_RESPONSE("O serviço de horas retornou dados não reconhecidos."),
+    ACCOUNT_SELECTION("O serviço retornou várias contas e o app não conseguiu confirmar qual saldo usar."),
+    NO_QUOTA("O Xbox não informou um saldo de horas verificável nesta resposta.");
+    val label get()=UiText.text(source)
+}
+data class CloudPlaytime(val status: CloudPlaytimeStatus=CloudPlaytimeStatus.UNAVAILABLE,val seconds: Long=0,
+    val failure: PlaytimeFailure?=null,val httpStatus: Int?=null) {
     val label: String get()=when(status) {
         CloudPlaytimeStatus.CHECKING -> UiText.text("Tempo restante: consultando…")
         CloudPlaytimeStatus.UNAVAILABLE -> UiText.text("Tempo restante: indisponível")
@@ -21,6 +32,9 @@ data class CloudPlaytime(val status: CloudPlaytimeStatus=CloudPlaytimeStatus.UNA
             else UiText.text("Tempo restante: {0}h{1}min",UiText.nested(seconds.coerceAtLeast(0)/3600),
                 UiText.nested(String.format(Locale.ROOT,"%02d",seconds.coerceAtLeast(0)/60%60)))
     }
+    fun diagnostics()=label+(failure?.let { "\n"+it.label } ?: "")+
+        (httpStatus?.takeIf { it in 100..599 }?.let { "\nHTTP $it" } ?: "")+
+        "\nPLAYTIME/${failure?.name ?: status.name}"
 }
 
 /** Server quota snapshot, not a local session countdown or a guess from the subscription's name. */
@@ -34,9 +48,11 @@ class CloudPlaytimeService(
     private val appVersion: String="1.0"
 ) {
     suspend fun fetch(): CloudPlaytime=withContext(Dispatchers.IO) {
+        var authorizing=true
         try {
             beforeRequest()
             val token=authorization()
+            authorizing=false
             beforeRequest()
             val url=endpoint.toHttpUrl().newBuilder().addQueryParameter("market",market.uppercase(Locale.ROOT))
                 .addQueryParameter("offering","xgpuweb").build()
@@ -44,13 +60,14 @@ class CloudPlaytimeService(
                 .header("Calling-App-Name","xCloudNative").header("Calling-App-Version",appVersion)
                 .get().build()
             client.newCall(request).awaitResponse().use { response ->
-                check(response.isSuccessful) { "PLAYTIME_HTTP_${response.code}" }
-                val source=response.body?.source() ?: error("PLAYTIME_EMPTY")
-                check(!source.request(ContentAccessPlaytime.MAX_BYTES+1L)) { "PLAYTIME_TOO_LARGE" }
+                if(!response.isSuccessful) return@withContext CloudPlaytime(failure=PlaytimeFailure.HTTP,httpStatus=response.code)
+                val source=response.body?.source() ?: return@withContext CloudPlaytime(failure=PlaytimeFailure.INVALID_RESPONSE)
+                if(source.request(ContentAccessPlaytime.MAX_BYTES+1L)) return@withContext CloudPlaytime(failure=PlaytimeFailure.TOO_LARGE)
                 ContentAccessPlaytime.decode(source.readByteArray())
             }
         } catch(cancelled: CancellationException) { throw cancelled }
-          catch(_: Exception) { CloudPlaytime() }
+          catch(error: Exception) { CloudPlaytime(failure=if(authorizing) PlaytimeFailure.AUTHORIZATION else PlaytimeFailure.NETWORK,
+              httpStatus=(error as? CloudHttpException)?.status) }
     }
 }
 
@@ -84,15 +101,20 @@ internal object ContentAccessPlaytime {
             } else root.skip(tag)
         }
         // A cloud user token normally returns one PUID. Never combine or guess between accounts.
-        require(accounts.size==1)
+        check(accounts.size<=1) { "PLAYTIME_ACCOUNT_SELECTION" }
+        check(accounts.size==1) { "PLAYTIME_UNAVAILABLE" }
         val quota=quotas[accounts.single()] ?: error("PLAYTIME_UNAVAILABLE")
         val present=listOfNotNull(quota.periodic,quota.persistent)
-        require(present.isNotEmpty() && present.any { it.declared })
+        check(present.isNotEmpty() && present.any { it.declared }) { "PLAYTIME_UNAVAILABLE" }
         require(present.all { it.remaining>=-1 && it.maximum>=-1 })
         // The official quota classifier uses -1 in either ad-free remaining/max field for unlimited.
         if(present.any { it.remaining==-1 || it.maximum==-1 }) CloudPlaytime(CloudPlaytimeStatus.UNLIMITED)
         else CloudPlaytime(CloudPlaytimeStatus.LIMITED,present.sumOf { it.remaining.toLong() })
-    } catch(_: Exception) { CloudPlaytime() }
+    } catch(error: Exception) { CloudPlaytime(failure=when(error.message) {
+        "PLAYTIME_ACCOUNT_SELECTION" -> PlaytimeFailure.ACCOUNT_SELECTION
+        "PLAYTIME_UNAVAILABLE" -> PlaytimeFailure.NO_QUOTA
+        else -> PlaytimeFailure.INVALID_RESPONSE
+    }) }
 
     private fun readQuota(message: Wire): Quota {
         var periodic: Budget?=null;var persistent: Budget?=null

@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"Üretilen kareler süre sınırını aştı"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"İşleme hatası"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"Karşılaştırma sırasında duraklatıldı"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"Uzak giriş: sürüm {0}; paketler {1}; geçerli meta veriler {2}; yok sayılan {3}; son boyut {4} B; bayraklar {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"Önceki yayın durumu: {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"Yerel dokunma Xbox yanıtını bekliyor"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox, yerel dokunma için gereken meta verileri henüz göndermedi. Beklemeye devam edebilir veya bu oturumda uygulamanın ekran kontrollerini kullanabilirsiniz."</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"Ekran kontrollerini kullan"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"Beklemeye devam et"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"Kalan süre ayrıntıları"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"Süre sorgusu yetkilendirilemedi."</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"Süre hizmeti bir HTTP hatası döndürdü."</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"Süre hizmetine bağlantı tamamlanamadı."</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"Süre hizmetinin yanıtı okuma sınırını aştı."</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"Süre hizmeti tanınmayan veriler döndürdü."</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"Hizmet birden fazla hesap döndürdü ve uygulama hangi bakiyenin kullanılacağını doğrulayamadı."</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox bu yanıtta doğrulanabilir bir süre bakiyesi sağlamadı."</string>
 </resources>

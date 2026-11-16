@@ -43,6 +43,20 @@ class SessionToolsUiTest {
     private fun capture(d: ConsoleDialog,name: String) {
         val root=d.window!!.decorView;layout(root,d.window!!.attributes.width,648);capture(root,name)
     }
+    @Test fun waitingForNativeTouchOffersAManualHudAndQuotaDetailsShowTheSafeFailureReason() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView)
+        try {
+            var selected=0
+            val wait=NativeTouchPanel.waiting(a) { selected++ };capture(wait,"native-touch-waiting")
+            assertEquals(0,selected);click(wait,"CONTINUAR AGUARDANDO");assertEquals(0,selected)
+            click(NativeTouchPanel.waiting(a) { selected++ },"USAR CONTROLES NA TELA");assertEquals(1,selected)
+            val info=com.xcloud.tclnative.catalog.CloudPlaytime(failure=com.xcloud.tclnative.catalog.PlaytimeFailure.HTTP,httpStatus=401).diagnostics()
+            val panel=PlaybackSettingsPanel(a,PlaybackSettingsStore(a),{},{},{},{},playtimeInformation={info})
+            click(panel.showAccount(),"Detalhes do tempo restante")
+            val details=latest();capture(details,"playtime-details")
+            assertTrue(all(details.panel).filterIsInstance<TextView>().any { it.text.contains("HTTP 401") })
+        } finally { c.pause().stop().destroy() }
+    }
     @Test fun endedAllocationHasNoReconnectActionAndReturnsToTheCatalog() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView)
         try {

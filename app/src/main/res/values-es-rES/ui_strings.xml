@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"Fotogramas generados fuera de plazo"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"Fallo de procesamiento"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"Suspendida durante la comparación"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"Entrada remota: versión {0}; paquetes {1}; metadatos válidos {2}; ignorados {3}; último tamaño {4} B; flags {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"Estado anterior de la transmisión: {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"Toque nativo esperando a Xbox"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox aún no ha enviado los metadatos necesarios para el toque nativo. Puedes seguir esperando o usar los controles en pantalla de la aplicación durante esta partida."</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"Usar controles en pantalla"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"Seguir esperando"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"Detalles del tiempo restante"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"No se pudo autorizar la consulta de tiempo."</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"El servicio de tiempo devolvió un error HTTP."</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"No se pudo completar la conexión con el servicio de tiempo."</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"La respuesta del servicio de tiempo superó el límite de lectura."</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"El servicio de tiempo devolvió datos no reconocidos."</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"El servicio devolvió varias cuentas y la aplicación no pudo confirmar qué saldo usar."</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox no proporcionó un saldo de tiempo verificable en esta respuesta."</string>
 </resources>

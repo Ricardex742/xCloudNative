@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"Erzeugte Bilder waren zu spät"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"Verarbeitungsfehler"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"Während des Vergleichs pausiert"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"Remote-Eingabe: Version {0}; Pakete {1}; gültige Metadaten {2}; ignoriert {3}; letzte Größe {4} B; Flags {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"Vorheriger Streamzustand: {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"Native Touch-Eingabe wartet auf Xbox"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox hat die für native Touch-Eingaben erforderlichen Metadaten noch nicht gesendet. Du kannst weiter warten oder für diese Sitzung die Bildschirmsteuerung der App verwenden."</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"Bildschirmsteuerung verwenden"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"Weiter warten"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"Details zur Restzeit"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"Die Zeitabfrage konnte nicht autorisiert werden."</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"Der Zeitdienst hat einen HTTP-Fehler zurückgegeben."</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"Die Verbindung zum Zeitdienst konnte nicht abgeschlossen werden."</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"Die Antwort des Zeitdienstes überschritt das Leselimit."</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"Der Zeitdienst hat unbekannte Daten zurückgegeben."</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"Der Dienst hat mehrere Konten zurückgegeben. Die App konnte nicht bestätigen, welches Guthaben zu verwenden ist."</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox hat in dieser Antwort kein überprüfbares Zeitguthaben angegeben."</string>
 </resources>

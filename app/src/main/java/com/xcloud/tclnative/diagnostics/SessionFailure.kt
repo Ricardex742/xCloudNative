@@ -33,22 +33,23 @@ enum class FailureKind(private val sourceLabel: String) {
 
 /** A bounded description, never an arbitrary exception message, URL, SDP or HTTP body. */
 data class SessionFailure(val stage: FailureStage,val kind: FailureKind,val httpStatus: Int?=null,
-                          val serviceCode: String?=null,val exceptionType: String?=null) {
+                          val serviceCode: String?=null,val exceptionType: String?=null,val channel: String?=null) {
     private val safeStatus get()=httpStatus?.takeIf { it in 100..599 }
     private val safeService get()=serviceCode?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{1,64}")) }
     private val safeType get()=exceptionType?.takeIf { it.matches(Regex("[A-Za-z_$][A-Za-z0-9_$]{0,63}")) }
+    private val safeChannel get()=channel?.takeIf { it in setOf("input","control","message") }
     val code get()="${stage.name}/${kind.name}"+(if(kind==FailureKind.HTTP) safeStatus?.let { "_$it" }.orEmpty() else "")
-    val description: String get()=UiText.join(UiText.text("{0}: {1}",UiText.nested(stage.label),UiText.nested(kind.label)),(if(kind==FailureKind.HTTP) safeStatus?.let { " $it" }.orEmpty() else ""),safeService?.let { UiText.text(" • código do serviço: {0}",UiText.nested(it)) }.orEmpty(),UiText.text("\nCódigo técnico: {0}",UiText.nested(code)),safeType?.let { " • $it" }.orEmpty())
+    val description: String get()=UiText.join(UiText.text("{0}: {1}",UiText.nested(stage.label),UiText.nested(kind.label)),(if(kind==FailureKind.HTTP) safeStatus?.let { " $it" }.orEmpty() else ""),safeService?.let { UiText.text(" • código do serviço: {0}",UiText.nested(it)) }.orEmpty(),safeChannel?.let { " • $it" }.orEmpty(),UiText.text("\nCódigo técnico: {0}",UiText.nested(code)),safeType?.let { " • $it" }.orEmpty())
     fun json()=JSONObject().put("stage",stage.name).put("kind",kind.name).put("status",safeStatus)
-        .put("serviceCode",safeService).put("type",safeType)
+        .put("serviceCode",safeService).put("type",safeType).put("channel",safeChannel)
     companion object {
         fun read(json: JSONObject?): SessionFailure? {
             if(json==null) return null
             val stage=FailureStage.entries.firstOrNull { it.name==json.optString("stage") } ?: return null
             val kind=FailureKind.entries.firstOrNull { it.name==json.optString("kind") } ?: return null
             val status=json.optInt("status").takeIf { it in 100..599 }
-            val raw=SessionFailure(stage,kind,status,json.optString("serviceCode"),json.optString("type"))
-            return raw.copy(serviceCode=raw.safeService,exceptionType=raw.safeType)
+            val raw=SessionFailure(stage,kind,status,json.optString("serviceCode"),json.optString("type"),json.optString("channel"))
+            return raw.copy(serviceCode=raw.safeService,exceptionType=raw.safeType,channel=raw.safeChannel)
         }
         fun from(error: Throwable): SessionFailure {
             val chain=generateSequence(error) { it.cause }.take(8).toList()
@@ -92,7 +93,8 @@ data class SessionFailure(val stage: FailureStage,val kind: FailureKind,val http
                 else -> FailureKind.UNCLASSIFIED
             }
             return SessionFailure(stage,kind,http?.status,http?.serviceCode,
-                chain.last().javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z_$][A-Za-z0-9_$]{0,63}")) })
+                chain.last().javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z_$][A-Za-z0-9_$]{0,63}")) },
+                setOf("input","control","message").firstOrNull { message=="CHANNELS: $it fechado" })
         }
     }
 }

@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"生成フレームが期限に間に合いませんでした"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"処理エラー"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"比較中は停止"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"リモート入力: バージョン {0}、パケット {1}、有効なメタデータ {2}、無視 {3}、最終サイズ {4} B、フラグ {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"切り替え前の配信状態: {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"ネイティブタッチ: Xboxの応答待ち"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xboxからネイティブタッチに必要なメタデータがまだ届いていません。このまま待つか、このセッションではアプリの画面上の操作ボタンを利用できます。"</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"画面上の操作ボタンを使う"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"待機を続ける"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"残り時間の詳細"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"時間の照会を認証できませんでした。"</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"時間サービスがHTTPエラーを返しました。"</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"時間サービスへの接続を完了できませんでした。"</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"時間サービスの応答が読み取り上限を超えました。"</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"時間サービスが認識できないデータを返しました。"</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"サービスから複数のアカウントが返されたため、どの残高を使用するか確認できませんでした。"</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"この応答には、確認可能なXboxの残り時間が含まれていません。"</string>
 </resources>

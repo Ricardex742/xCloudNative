@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"生成的帧未能及时提交"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"处理失败"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"比较期间暂停"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"远程输入：版本 {0}；数据包 {1}；有效元数据 {2}；已忽略 {3}；最近大小 {4} B；标志 {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"此前的串流状态：{0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"原生触控正在等待 Xbox"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox 尚未发送原生触控所需的元数据。你可以继续等待，或在本次会话中使用应用的屏幕控件。"</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"使用屏幕控件"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"继续等待"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"剩余时间详情"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"无法授权时间查询。"</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"时间服务返回了 HTTP 错误。"</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"无法完成与时间服务的连接。"</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"时间服务响应超过了读取上限。"</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"时间服务返回了无法识别的数据。"</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"服务返回了多个账户，应用无法确认应使用哪个账户的剩余时间。"</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox 未在此响应中提供可验证的剩余时间。"</string>
 </resources>

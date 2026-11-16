@@ -24,7 +24,8 @@ class PlaybackSettingsPanel(
     private val onPageEntered: (SettingsPage) -> Unit = {},
     private val catalogInformation: () -> String? = { null },
     private val backgrounds: () -> List<SeriesWallpaper> = { emptyList() },
-    private val refreshPlaytime: () -> Unit = {}
+    private val refreshPlaytime: () -> Unit = {},
+    private val playtimeInformation: () -> String = { com.xcloud.tclnative.catalog.CloudPlaytime().diagnostics() }
 ) {
     private var currentPage=SettingsPage.ROOT
     private var upscalingBack: () -> Unit = { showImage() }
@@ -277,6 +278,11 @@ class PlaybackSettingsPanel(
     fun showAccount(): ConsoleDialog = category(SettingsPage.ACCOUNT,UiText.text("Biblioteca e conta"),listOf(
         ConsoleAction(UiText.text("Atalhos dos favoritos"),homeShortcuts),ConsoleAction(UiText.text("Gerenciar assinatura Microsoft"),subscription),
         ConsoleAction(UiText.text("Atualizar tempo restante")) { refreshPlaytime();showAccount() },
+        ConsoleAction(UiText.text("Detalhes do tempo restante")) {
+            ConsoleDialogs.message(context,UiText.text("Detalhes do tempo restante"),playtimeInformation(),
+                listOf(ConsoleAction(UiText.text("Atualizar tempo restante")) { refreshPlaytime();showAccount() },
+                    ConsoleAction(UiText.text("Voltar")) { showAccount() }),onCancel={ showAccount() })
+        },
         ConsoleAction(UiText.text("Informações do catálogo")) {
             ConsoleDialogs.message(context,UiText.text("Informações do catálogo"),catalogInformation()?.takeIf { it.isNotBlank() }
                 ?: UiText.text("Catálogos oficiais com disponibilidade sujeita à conta, à região e às condições do serviço."),

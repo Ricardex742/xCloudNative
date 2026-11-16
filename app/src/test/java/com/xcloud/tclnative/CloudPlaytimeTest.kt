@@ -22,6 +22,21 @@ class CloudPlaytimeTest {
     private fun quota(periodic: ByteArray?=null,persistent: ByteArray?=null)=
         (periodic?.let {message(2,it)} ?: byteArrayOf())+(persistent?.let {message(3,it)} ?: byteArrayOf())
     private fun decode(bytes: ByteArray)=ContentAccessPlaytime.decode(bytes)
+    @Test fun diagnosticExplainsUnknownWithoutInferringUnlimitedOrLeakingPrivateErrorText()=runBlocking {
+        val empty=decode(message(1,message(1,"12345".toByteArray())+message(2,byteArrayOf())))
+        assertEquals(PlaytimeFailure.NO_QUOTA,empty.failure)
+        assertTrue(empty.diagnostics().contains("PLAYTIME/NO_QUOTA"))
+        assertEquals(PlaytimeFailure.ACCOUNT_SELECTION,decode(account("12345",quota(budget(-1,-1)))+account("23456",quota(budget(-1,-1)))).failure)
+        val denied=CloudPlaytimeService({throw com.xcloud.tclnative.net.CloudHttpException("STORE_XSTS",401,"private-value",null)}).fetch()
+        assertEquals(PlaytimeFailure.AUTHORIZATION,denied.failure);assertEquals(401,denied.httpStatus)
+        assertFalse(denied.diagnostics().contains("private-value"));assertTrue(denied.diagnostics().contains("HTTP 401"))
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setResponseCode(403).setBody("private-response"))
+            val response=CloudPlaytimeService({"secret"},endpoint=server.url("/all/v1").toString()).fetch()
+            assertEquals(PlaytimeFailure.HTTP,response.failure);assertEquals(403,response.httpStatus)
+            assertFalse(response.diagnostics().contains("secret"));assertFalse(response.diagnostics().contains("private-response"))
+        }
+    }
     @Test fun officialAdFreeBudgetsAddWithoutUsingAdSupportedOrPerGameCounters() {
         val q=quota(budget(3600,7200)+number(3,1800000000),budget(1800,1800))+
             message(4,budget(-1,-1))+message(1,message(1,"some-game".toByteArray())+message(2,budget(-1,-1)))

@@ -6,6 +6,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SessionReportTest {
+    @Test fun firstTransportInputSnapshotSurvivesReplacementAndChannelNamesAreRestricted() {
+        val t=tracker();t.begin(0,"Wi-Fi")
+        val error=java.io.IOException("CHANNELS: input fechado")
+        t.recordInterruption(error,"Toque: 1920x1080; enviados 185")
+        t.recordInterruption(java.io.IOException("SDP: replacement failed"),"Toque: aguardando metadata; enviados 0")
+        val r=finish(t,11000)
+        assertEquals("input",r.interruption!!.channel)
+        assertEquals("Toque: 1920x1080; enviados 185",r.interruptionDetails)
+        assertTrue(r.text().contains("Estado anterior da transmissão:"));assertFalse(r.text().contains("replacement failed"))
+        val forged=SessionFailure(FailureStage.CHANNELS,FailureKind.CHANNEL_CLOSED,channel="private-url")
+        assertFalse(forged.json().toString().contains("private-url"));assertFalse(forged.description.contains("private-url"))
+    }
     @Test fun endingAfterAnInterruptionPreservesItsOriginWithoutMislabelingTheUserAction() {
         val t=tracker();t.begin(0,"Ethernet")
         t.recordInterruption(java.io.IOException("ICE: FAILED"))

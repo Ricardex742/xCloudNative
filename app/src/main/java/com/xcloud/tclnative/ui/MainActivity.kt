@@ -160,6 +160,7 @@ open class MainActivity : Activity() {
     private val controllerShortcut = ControllerShortcut()
     private var shortcutFlushJob: Job? = null
     private var videoRecoveryDialog: Dialog? = null
+    private var nativeTouchDialog: Dialog? = null
     private var dashboard: GameDashboardView? = null
     private var dashboardJob: Job? = null
     private var galleryLaunchJob: Job? = null
@@ -725,7 +726,8 @@ open class MainActivity : Activity() {
             sessionOptions={ showSessionOptionsMenu(session,::back) },controllerProfiles={ showControllerProfiles(::back) },
             onPageEntered={ returnPage=it },catalogInformation={ dashboard?.catalogInformation },
             backgrounds={ dashboard?.wallpaperChoices() ?: com.xcloud.tclnative.ui.dashboard.SeriesWallpaperGallery.fromGames(currentGames,listOfNotNull(activeGame)) },
-            refreshPlaytime={ dashboard?.let { refreshCloudPlaytime(it,force=true) } }).open(startPage)
+            refreshPlaytime={ dashboard?.let { refreshCloudPlaytime(it,force=true) } },
+            playtimeInformation={ dashboard?.cloudPlaytimeDiagnostics() ?: CloudPlaytime().diagnostics() }).open(startPage)
     }
     private fun showControllerProfiles(back: () -> Unit) {
         com.xcloud.tclnative.ui.dashboard.ControllerProfilePanel(this,controllerProfiles,
@@ -948,7 +950,7 @@ open class MainActivity : Activity() {
             statistics={ toggleStatistics() },
             statisticsOptions={ com.xcloud.tclnative.ui.dashboard.StatisticsSettingsPanel(this,statisticsStore,::refreshStatisticsSettings,::showGameMenu).show() },
             recovery={ showTransmissionRecovery() },
-            diagnostics={ showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(currentSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))) },
+            diagnostics={ showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(currentSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))+"\n"+(webrtcClient?.inputDiagnostics() ?: "")) },
             disconnect={ cancelPlayback() },
             hud=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ({ showGameHudSettings() }) else null,
             sessionOptions={ currentSession?.let(::showSessionOptionsMenu) },
@@ -1176,6 +1178,7 @@ open class MainActivity : Activity() {
                         updateJoystickDispatch()
                         currentTouchMode=touchMode
                         touchView.configure(touchMode,game,hudStore.read(titleId))
+                        if(touchMode==TouchMode.NATIVE) webrtcClient?.setNativeTouchEnabled(true)
                         resumeAuxiliaryInput()
                         hudTextView.visibility = View.GONE
                         gameLibrary?.recordPlayed(titleId)
@@ -1222,7 +1225,7 @@ open class MainActivity : Activity() {
                 var rtc=buildRtc()
                 webrtcClient = rtc
                 val appVersion=packageManager.getPackageInfo(packageName,0).versionName ?: "n/d"
-                tracker.inputDetails = { UiText.join(UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())),"\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}","\nUSB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}","\n${inputDevice.diagnostics()}",(when(touchMode) { TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}";TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}";else -> "" }),UiText.text("\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10} | Mouse/teclado: {11} | Entrada MKB ativa: {12} | Captura Android: {13}",UiText.nested(joystickDispatch.diagnostics()),UiText.nested(signaling.profileDiagnostics()),UiText.nested(signaling.keepAliveDiagnostics()),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(playbackDisplay.diagnostics(window.decorView.display)),UiText.nested(rtc.audioDiagnostics()),UiText.nested(rtc.latencyDiagnostics()),UiText.nested(rtc.iceDiagnostics()),UiText.nested(rtc.codecDiagnostics()),UiText.nested(rumble.diagnostics()),UiText.nested(gyro.status),UiText.nested(sessionDesktopMode.label),UiText.nested(desktopCaptured),UiText.nested(if(Build.VERSION.SDK_INT>=26) window.decorView.hasPointerCapture() else false)))+"\n"+recoveryState.diagnostics() }
+                tracker.inputDetails = { (dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" } ?: "")+UiText.join(UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())),"\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}","\nUSB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}","\n${inputDevice.diagnostics()}",(when(touchMode) { TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}";TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}";else -> "" }),UiText.text("\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10} | Mouse/teclado: {11} | Entrada MKB ativa: {12} | Captura Android: {13}",UiText.nested(joystickDispatch.diagnostics()),UiText.nested(signaling.profileDiagnostics()),UiText.nested(signaling.keepAliveDiagnostics()),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(playbackDisplay.diagnostics(window.decorView.display)),UiText.nested(rtc.audioDiagnostics()),UiText.nested(rtc.latencyDiagnostics()),UiText.nested(rtc.iceDiagnostics()),UiText.nested(rtc.codecDiagnostics()),UiText.nested(rumble.diagnostics()),UiText.nested(gyro.status),UiText.nested(sessionDesktopMode.label),UiText.nested(desktopCaptured),UiText.nested(if(Build.VERSION.SDK_INT>=26) window.decorView.hasPointerCapture() else false)))+"\n"+recoveryState.diagnostics() }
                 surfaceRenderer.displayDimensions()?.let(rtc::updateDisplayDimensions)
                 if(touchMode!=TouchMode.NATIVE) (0..3).filter { controllers.sourceFor(it)!=null }.forEach { publishGamepad(it) }
                 signaling.startAndConnectWebRtcSession(titleId, rtc, resolution = settings.resolution, nativeTouch=touchMode==TouchMode.NATIVE,options=sessionOptions,microphone=settings.microphone, onQueueStatus = { status -> runOnUiThread {
@@ -1246,6 +1249,7 @@ open class MainActivity : Activity() {
                     throw java.io.IOException("VIDEO: transporte conectado, mas nenhum quadro foi renderizado em 20s.")
                 }
                 val recovery = VideoRecoveryPolicy(compatible)
+                val nativeReadiness=com.xcloud.tclnative.webrtc.NativeTouchReadiness()
                 var lastToken = -1L
                 var recovering = false
                 var pendingRecoveryTouch: TouchMode?=null
@@ -1259,7 +1263,7 @@ open class MainActivity : Activity() {
                             Toast.makeText(this@MainActivity,if(requested) UiText.text("Recuperação de imagem solicitada.")
                                 else UiText.text("Use Recarregar transmissão para tentar reconectar."),Toast.LENGTH_SHORT).show()
                         } catch(error: Exception) {
-                            tracker.recordInterruption(error)
+                            tracker.recordInterruption(error,rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics())
                             recoveryState.interrupted(recoveryState.epoch,error);transmissionReady=false;renderStatistics()
                             pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
                             showTransmissionInterrupted()
@@ -1268,11 +1272,12 @@ open class MainActivity : Activity() {
                 }
                 reloadTransmission=reload@ {
                     val token=recoveryState.begin() ?: return@reload
+                    val previousInput=rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics()
                     val savedTouch=pendingRecoveryTouch ?: currentTouchMode
                     pendingRecoveryTouch=savedTouch
                     transmissionReady=false;latestMetrics=null;renderStatistics()
                     resetController();currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
-                    videoRecoveryDialog?.dismiss()
+                    videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
                     hudTextView.visibility=View.VISIBLE;hudTextView.setTextColor(Color.YELLOW)
                     hudTextView.text=UiText.text("Recarregando áudio e vídeo da partida atual…")
                     transmissionReloadJob=playbackScope.launch {
@@ -1313,7 +1318,7 @@ open class MainActivity : Activity() {
                             if(generation==playbackGeneration && recoveryState.current(token)) {
                                 surfaceRenderer.detachTrack();allocatedRtc?.close()
                                 webrtcClient=null;allocatedRtc=null
-                                tracker.recordInterruption(error)
+                                tracker.recordInterruption(error,previousInput)
                                 recoveryState.failed(token,error);transmissionReady=false;renderStatistics()
                                 hudTextView.text=if(recoveryState.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) UiText.text("A sessão Xbox foi encerrada. Volte ao catálogo para iniciar outra partida.") else UiText.text("A transmissão não voltou. Você pode tentar reconectar à sessão atual.")
                                 showTransmissionInterrupted()
@@ -1330,7 +1335,7 @@ open class MainActivity : Activity() {
                         if(recoveryState.phase!=TransmissionRecoveryState.Phase.ACTIVE || !recoveryState.current(token)) continue
                         if(failure!=null) {
                             if(recoveryState.interrupted(token,failure)) {
-                                tracker.recordInterruption(failure)
+                                tracker.recordInterruption(failure,rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics())
                                 transmissionReady=false;renderStatistics();resetController()
                                 pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
                                 hudTextView.visibility=View.VISIBLE;hudTextView.text=UiText.text("A transmissão foi interrompida. Você pode tentar reconectar à sessão atual.")
@@ -1339,6 +1344,11 @@ open class MainActivity : Activity() {
                             continue
                         }
                         val now = android.os.SystemClock.elapsedRealtime()
+                        if(nativeReadiness.offer(now,currentTouchMode==TouchMode.NATIVE,rtc.nativeTouchMetadataReady(),
+                                activityVisible && gameplayInputEnabled())) {
+                            nativeTouchDialog=com.xcloud.tclnative.ui.dashboard.NativeTouchPanel.waiting(this@MainActivity) { enableGameHud() }
+                                .also { dialog -> dialog.setOnDismissListener { if(nativeTouchDialog===dialog) nativeTouchDialog=null } }
+                        }
                         val health = surfaceRenderer.probeVideoHealth()
                         val receiving=streamHistory.receivingVideo(now)
                         val action = recovery.observe(now, health.presentedToken, health.deliveredRecently,receiving)
@@ -1346,7 +1356,7 @@ open class MainActivity : Activity() {
                         if (health.presentedToken != lastToken && recovering) {
                             recovering = false
                             hudTextView.visibility = View.GONE
-                            videoRecoveryDialog?.dismiss()
+                            videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
                             hudTextView.text = UiText.text("Vídeo nativo ativo [{0}]",UiText.nested(gameName))
                             hudTextView.setTextColor(Color.GREEN)
                         }
@@ -1419,7 +1429,7 @@ open class MainActivity : Activity() {
                         statsView.visibility = View.GONE
                     }
                     allowTransitionFrame()
-                    videoRecoveryDialog?.dismiss()
+                    videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
                     resetController()
                     currentTouchMode=TouchMode.OFF
                     touchView.configure(TouchMode.OFF)
@@ -1524,7 +1534,7 @@ open class MainActivity : Activity() {
         closing?.cancel()
         activeGame = null
         gameMenuDialog?.dismiss()
-        videoRecoveryDialog?.dismiss()
+        videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         resetController()
         currentTouchMode=TouchMode.OFF
         touchView.configure(TouchMode.OFF)
@@ -1550,7 +1560,7 @@ open class MainActivity : Activity() {
     }
 
     private fun gameplayInputEnabled() = controlPanel.visibility == View.GONE &&
-        transitionPanel.visibility!=View.VISIBLE && queuePanel.visibility != View.VISIBLE && videoRecoveryDialog?.isShowing != true && webrtcClient != null &&
+        transitionPanel.visibility!=View.VISIBLE && queuePanel.visibility != View.VISIBLE && videoRecoveryDialog?.isShowing != true && nativeTouchDialog?.isShowing != true && webrtcClient != null &&
         transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE && !touchView.isEditing && hasWindowFocus()
 
     private fun updateJoystickDispatch() { joystickDispatch.request(activityVisible && immediateJoystickForSession && gameplayInputEnabled()) }
@@ -1681,7 +1691,7 @@ open class MainActivity : Activity() {
         com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.show(this,{ recoverImage?.invoke() },{ reloadTransmission?.invoke() },::showGameMenu)
     }
     private fun showTransmissionInterrupted() {
-        videoRecoveryDialog?.dismiss()
+        videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         videoRecoveryDialog=com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.failed(this,
             { reloadTransmission?.invoke() },{ cancelPlayback() },::showGameMenu,
             sessionEnded=transmissionRecovery?.phase==TransmissionRecoveryState.Phase.SESSION_ENDED).also { dialog ->
@@ -1885,7 +1895,7 @@ open class MainActivity : Activity() {
         loginView?.close()
         transitionPanel.close()
         queuePanel.close()
-        videoRecoveryDialog?.dismiss()
+        videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         surfaceRenderer.clearSession()
         webrtcClient?.close()
         surfaceRenderer.release()

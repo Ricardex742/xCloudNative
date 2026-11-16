@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"생성 프레임이 처리 기한을 넘김"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"처리 실패"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"비교 중 일시 중지"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"원격 입력: 버전 {0}; 패킷 {1}; 유효한 메타데이터 {2}; 무시 {3}; 마지막 크기 {4} B; 플래그 {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"이전 스트리밍 상태: {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"네이티브 터치: Xbox 응답 대기 중"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox가 네이티브 터치에 필요한 메타데이터를 아직 보내지 않았습니다. 계속 기다리거나 이번 세션에서 앱의 화면 컨트롤을 사용할 수 있습니다."</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"화면 컨트롤 사용"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"계속 기다리기"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"남은 시간 상세 정보"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"시간 조회를 인증할 수 없습니다."</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"시간 서비스에서 HTTP 오류를 반환했습니다."</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"시간 서비스 연결을 완료할 수 없습니다."</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"시간 서비스 응답이 읽기 한도를 초과했습니다."</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"시간 서비스에서 인식할 수 없는 데이터를 반환했습니다."</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"서비스에서 여러 계정을 반환하여 어떤 잔여 시간을 사용할지 확인할 수 없습니다."</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"이 응답에 확인 가능한 Xbox 잔여 시간이 제공되지 않았습니다."</string>
 </resources>

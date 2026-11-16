@@ -13,16 +13,18 @@ data class RemoteInputReport(val width: Int? = null, val height: Int? = null, va
             val bytes=data.slice().order(ByteOrder.LITTLE_ENDIAN)
             if(bytes.remaining()<2) return null
             val type=bytes.short.toInt() and 0xffff
-            if(type and (16 or 128).inv()!=0) return null
-            var width: Int?=null; var height: Int?=null
+            // The official reliable receiver gives metadata priority, even with other flags.
+            // Ignoring the whole packet here can leave touch waiting forever.
+            var width: Int?=null;var height: Int?=null
             if(type and 16!=0) {
                 if(bytes.remaining()<8) return null
                 val h=bytes.int; val w=bytes.int
-                if(w in 1..16384 && h in 1..16384) { width=w; height=h }
+                if(w !in 1..16384 || h !in 1..16384) return null
+                width=w;height=h
             }
             var rumble: RumbleCommand?=null
             if(type and 128!=0) {
-                if(bytes.remaining()<11) return null
+                if(bytes.remaining()<11) return if(width!=null) RemoteInputReport(width,height) else null
                 val kind=bytes.get().toInt() and 255
                 val player=bytes.get().toInt() and 255
                 val motors=IntArray(4) { (bytes.get().toInt() and 255).coerceAtMost(100) }
@@ -31,7 +33,7 @@ data class RemoteInputReport(val width: Int? = null, val height: Int? = null, va
                 val repeat=bytes.get().toInt() and 255
                 if(kind==0 && player in 0..3) rumble=RumbleCommand(player,motors[0],motors[1],motors[2],motors[3],duration,delay,repeat)
             }
-            return RemoteInputReport(width,height,rumble)
+            return if(width!=null || type and 128!=0) RemoteInputReport(width,height,rumble) else null
         }
     }
 }

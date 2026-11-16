@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"Quadros gerados fora do prazo"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"Falha no processamento"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"Suspensa durante a comparação"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"Input remoto: versão {0}; pacotes {1}; metadata válida {2}; ignorados {3}; último tamanho {4} B; flags {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"Estado anterior da transmissão: {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"Toque nativo aguardando o Xbox"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"O Xbox ainda não enviou os metadados necessários para o toque nativo. Você pode continuar aguardando ou usar os controles na tela do app nesta partida."</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"Usar controles na tela"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"Continuar aguardando"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"Detalhes do tempo restante"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"Não foi possível autorizar a consulta de horas."</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"O serviço de horas retornou um erro HTTP."</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"Não foi possível concluir a conexão com o serviço de horas."</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"A resposta do serviço de horas excedeu o limite de leitura."</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"O serviço de horas retornou dados não reconhecidos."</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"O serviço retornou várias contas e o app não conseguiu confirmar qual saldo usar."</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"O Xbox não informou um saldo de horas verificável nesta resposta."</string>
 </resources>

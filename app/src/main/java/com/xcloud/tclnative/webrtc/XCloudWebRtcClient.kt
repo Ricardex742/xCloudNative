@@ -49,6 +49,8 @@ class XCloudWebRtcClient(
     private val gamepads = mutableMapOf<Int,GamepadState>().apply { if(!nativeTouch && !nativeKeyboardMouse) put(0,GamepadState()) }
     private val gamepadConnections = GamepadConnections()
     @Volatile private var inputDimensions: TouchInputDimensions? = null
+    private val remoteInputTrace=RemoteInputTrace()
+    fun nativeTouchMetadataReady()=inputDimensions!=null
     private val pumpLock = Any()
     private val pendingTouch = NativeTouchBuffer()
     private val desktopInput=DesktopInputBuffer()
@@ -195,7 +197,7 @@ class XCloudWebRtcClient(
     fun inputDiagnostics(): String = (if(nativeTouch)
         UiText.text("Toque nativo: {0}; espaço de input: {1}; slot virtual 0: {2}",UiText.nested(if(touchEnabled) UiText.text("sinalizado ativo") else UiText.text("desativado para HUD")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(if(channelsReady.isCompleted) "registro enviado" else UiText.text("aguardando canal")))
         else if(nativeKeyboardMouse) UiText.text("Input Xbox: mouse/teclado nativos, versão negociada {0}",UiText.nested(negotiatedInputVersion)) else UiText.text("Input Xbox: controle/HUD"))+"\n"+controllerEventTiming.diagnostics()+
-        (if(nativeTouch) "\n${pendingTouch.diagnostics()}" else "")
+        (if(nativeTouch) "\n${pendingTouch.diagnostics()}" else "")+"\n"+remoteInputTrace.diagnostics(negotiatedInputVersion)
     fun latencyDiagnostics(): String = (if (lowLatencyVideo) "Playout solicitado: 0–40 ms" else "Playout: adaptativo") +
         " | " + (if (lowLatencyVideo) decoderLatency.get() else UiText.text("codec padrão")) +
         if(nativeTouch) UiText.text(" | Toque: {0}, {1}, {2} eventos enviados",UiText.nested(if(touchEnabled) UiText.text("ativo") else UiText.text("desativado")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(inputPump?.metrics?.pointerEventsSent ?: 0)) else ""
@@ -345,13 +347,17 @@ class XCloudWebRtcClient(
                 override fun onMessage(buffer: DataChannel.Buffer?) {
                     if (!current() || buffer == null) return
                     if(name=="input" && buffer.binary) {
-                        RemoteInputReport.parse(buffer.data)?.let { report ->
-                            if (report.width != null && report.height != null) synchronized(pumpLock) {
-                                val dimensions = TouchInputDimensions(report.width,report.height)
+                        val report=RemoteInputReport.parse(buffer.data)
+                        remoteInputTrace.observe(buffer.data,report)
+                        report?.let { parsed ->
+                            if (parsed.width != null && parsed.height != null) synchronized(pumpLock) {
+                                val first=inputDimensions==null
+                                val dimensions = TouchInputDimensions(parsed.width,parsed.height)
                                 inputDimensions = dimensions
                                 inputPump?.setTouchDimensions(dimensions)
+                                if(first && nativeTouch && touchEnabled) setNativeTouchEnabled(true)
                             }
-                            report.rumble?.let(onRumble)
+                            parsed.rumble?.let(onRumble)
                         }
                         return
                     }

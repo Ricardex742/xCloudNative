@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"Images générées hors délai"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"Échec du traitement"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"Suspendue pendant la comparaison"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"Entrée distante : version {0} ; paquets {1} ; métadonnées valides {2} ; ignorés {3} ; dernière taille {4} o ; indicateurs {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"État précédent du flux : {0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"Contrôle tactile natif en attente de Xbox"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox n’a pas encore envoyé les métadonnées nécessaires au contrôle tactile natif. Vous pouvez patienter ou utiliser les commandes à l’écran de l’application pour cette partie."</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"Utiliser les commandes à l’écran"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"Continuer à patienter"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"Détails du temps restant"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"Impossible d’autoriser la consultation du temps."</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"Le service de temps a renvoyé une erreur HTTP."</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"Impossible de terminer la connexion au service de temps."</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"La réponse du service de temps dépasse la limite de lecture."</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"Le service de temps a renvoyé des données non reconnues."</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"Le service a renvoyé plusieurs comptes et l’application n’a pas pu confirmer quel solde utiliser."</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox n’a pas fourni de solde de temps vérifiable dans cette réponse."</string>
 </resources>

@@ -45,9 +45,10 @@ class SessionReportUiTest {
     @Test fun interruptionSurvivesStorageEvenWhenTheUserEndsTheSession() {
         val app=org.robolectric.RuntimeEnvironment.getApplication()
         val reason=SessionFailure.from(java.io.IOException("ICE: FAILED"))
-        val report=demo().copy(end=SessionEnd.USER,interruption=reason)
+        val report=demo().copy(end=SessionEnd.USER,interruption=reason,interruptionDetails="Toque 1920x1080; enviados 185")
         val store=SessionReportStore(app);store.save(report)
         assertEquals(reason,store.read()!!.interruption)
+        assertEquals(report.interruptionDetails,store.read()!!.interruptionDetails)
         assertTrue(store.read()!!.text().contains("Primeira interrupção observada"))
         val prefs=app.getSharedPreferences("session_diagnostic",0)
         val legacy=org.json.JSONObject(prefs.getString("last",null)!!).apply { remove("interruption") }

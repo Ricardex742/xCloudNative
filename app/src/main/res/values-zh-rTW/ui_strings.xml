@@ -1169,4 +1169,18 @@
     <string name="ui_5489beb70fc5ad63" formatted="false">"生成的幀未能及時提交"</string>
     <string name="ui_856791dfa18ce90d" formatted="false">"處理失敗"</string>
     <string name="ui_766196382fc5dff9" formatted="false">"比較期間暫停"</string>
+    <string name="ui_cf89d44a8fc65f9e" formatted="false">"遠端輸入：版本 {0}；資料包 {1}；有效後設資料 {2}；已忽略 {3}；最近大小 {4} B；標誌 {5}"</string>
+    <string name="ui_4a75ce7e5d52437e" formatted="false">"此前的串流狀態：{0}\n"</string>
+    <string name="ui_7702d6f73f9b553e" formatted="false">"原生觸控正在等待 Xbox"</string>
+    <string name="ui_8d662134381a7d10" formatted="false">"Xbox 尚未傳送原生觸控所需的後設資料。你可以繼續等待，或在本次會話中使用應用的螢幕控制元件。"</string>
+    <string name="ui_c299858f8da33b5b" formatted="false">"使用螢幕控制元件"</string>
+    <string name="ui_72e8769d9bb7aee5" formatted="false">"繼續等待"</string>
+    <string name="ui_ec0827d4663c3bf0" formatted="false">"剩餘時間詳情"</string>
+    <string name="ui_4b5b66d1255675b3" formatted="false">"無法授權時間查詢。"</string>
+    <string name="ui_6a435b3b6c82606f" formatted="false">"時間服務返回了 HTTP 錯誤。"</string>
+    <string name="ui_975fe05e168f588b" formatted="false">"無法完成與時間服務的連線。"</string>
+    <string name="ui_9da9f78f3953fb2c" formatted="false">"時間服務響應超過了讀取上限。"</string>
+    <string name="ui_b61aecc0b18e2784" formatted="false">"時間服務返回了無法識別的資料。"</string>
+    <string name="ui_7d0bb0514d1b3bba" formatted="false">"服務返回了多個賬戶，應用無法確認應使用哪個賬戶的剩餘時間。"</string>
+    <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox 未在此響應中提供可驗證的剩餘時間。"</string>
 </resources>
