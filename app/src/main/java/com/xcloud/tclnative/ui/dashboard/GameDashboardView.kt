@@ -415,6 +415,7 @@ class GameDashboardView(
         if(updated!=profile) { profile=updated; renderProfile() }
     }
     fun setCloudPlaytime(value: CloudPlaytime) { cloudPlaytime=value;remainingTime.bindTime(value) }
+    fun cloudPlaytimeSnapshot()=cloudPlaytime
     fun cloudPlaytimeDiagnostics()=cloudPlaytime.diagnostics()
     private fun renderProfile() {
         accountName.text = if(designScene==ConsoleScene.NONE) profile.displayName.uppercase(Locale.getDefault()) else profile.displayName

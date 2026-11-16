@@ -1187,4 +1187,6 @@
     <string name="ui_9c4d0eabc2496260" formatted="false">"Etkileşimsiz giriş: {0} bağlantı bakım paketi gönderildi; oyun komutu yok"</string>
     <string name="ui_d82f2ba389166c32" formatted="false">"Yayın kesintiye uğradı. Puan, mevcut örnekleri özetler ve oyunun normal çalıştığını doğrulamaz."</string>
     <string name="ui_ba143e37d17552d4" formatted="false">"Kanallar: {0}; yetkilendirme gönderildi {1}; meta veri gönderildi {2}; ack {3}; alınan kontrol {4}/{5}; alınan mesaj {6}/{7}; ilk kapanış {8} ms sonra"</string>
+    <string name="ui_671df84f68498f95" formatted="false">"Kalan bulut oyun süresi"</string>
+    <string name="ui_c159db6c309b3fc0" formatted="false">"İstatistikler görünürken bulut oyun süresi bakiyesi beş dakikada bir kontrol edilir."</string>
 </resources>

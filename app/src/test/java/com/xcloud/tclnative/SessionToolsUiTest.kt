@@ -99,6 +99,8 @@ class SessionToolsUiTest {
             assertEquals(setOf(StatisticField.FPS),store.read().fields);assertEquals("Selecione pelo menos um indicador.",ShadowToast.getTextOfLatestToast())
             assertTrue(row.hasFocus());assertEquals(2,changes)
             click(fields,"Codec recebido");assertEquals(setOf(StatisticField.FPS,StatisticField.CODEC),store.read().fields)
+            click(fields,"Tempo restante de nuvem")
+            assertEquals(setOf(StatisticField.FPS,StatisticField.CODEC,StatisticField.PLAYTIME),store.read().fields)
             click(fields,"VOLTAR");click(latest(),"Posição:");click(latest(),"Inferior direito")
             assertEquals(StatisticsPosition.BOTTOM_RIGHT,store.read().position)
             click(latest(),"Modo:");click(latest(),"Completo")

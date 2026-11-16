@@ -1187,4 +1187,6 @@
     <string name="ui_9c4d0eabc2496260" formatted="false">"無操作輸入：已傳送 {0} 個連線維護封包；無遊戲指令"</string>
     <string name="ui_d82f2ba389166c32" formatted="false">"串流曾發生中斷。評分僅概括現有取樣，不能證明遊戲運作正常。"</string>
     <string name="ui_ba143e37d17552d4" formatted="false">"通道：{0}；已傳送授權 {1}；已傳送中繼資料 {2}；ack {3}；已接收控制 {4}/{5}；已接收訊息 {6}/{7}；首次關閉發生在 {8} ms 後"</string>
+    <string name="ui_671df84f68498f95" formatted="false">"剩餘雲端遊戲時間"</string>
+    <string name="ui_c159db6c309b3fc0" formatted="false">"顯示統計資訊時，每五分鐘查詢一次雲端遊戲時數餘額。"</string>
 </resources>

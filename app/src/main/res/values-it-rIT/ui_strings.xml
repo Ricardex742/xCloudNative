@@ -1187,4 +1187,6 @@
     <string name="ui_9c4d0eabc2496260" formatted="false">"Input inattivo: {0} pacchetti di mantenimento inviati; nessun comando di gioco"</string>
     <string name="ui_d82f2ba389166c32" formatted="false">"La trasmissione è stata interrotta. Il punteggio riassume i campioni disponibili e non conferma che la partita abbia funzionato normalmente."</string>
     <string name="ui_ba143e37d17552d4" formatted="false">"Canali: {0}; autorizzazione inviata {1}; metadati inviati {2}; ack {3}; controllo ricevuto {4}/{5}; messaggio ricevuto {6}/{7}; prima chiusura dopo {8} ms"</string>
+    <string name="ui_671df84f68498f95" formatted="false">"Tempo di gioco cloud rimanente"</string>
+    <string name="ui_c159db6c309b3fc0" formatted="false">"Il saldo del tempo di gioco cloud viene controllato ogni cinque minuti mentre le statistiche sono visibili."</string>
 </resources>

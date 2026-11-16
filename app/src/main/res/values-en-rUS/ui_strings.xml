@@ -1187,4 +1187,6 @@
     <string name="ui_9c4d0eabc2496260" formatted="false">"Idle input: {0} maintenance packets sent; no game commands"</string>
     <string name="ui_d82f2ba389166c32" formatted="false">"The stream was interrupted. The score summarizes the available samples and does not confirm that the game worked normally."</string>
     <string name="ui_ba143e37d17552d4" formatted="false">"Channels: {0}; authorization sent {1}; metadata sent {2}; ack {3}; control received {4}/{5}; message received {6}/{7}; first closure after {8} ms"</string>
+    <string name="ui_671df84f68498f95" formatted="false">"Remaining cloud playtime"</string>
+    <string name="ui_c159db6c309b3fc0" formatted="false">"The cloud playtime balance is checked every five minutes while statistics are visible."</string>
 </resources>

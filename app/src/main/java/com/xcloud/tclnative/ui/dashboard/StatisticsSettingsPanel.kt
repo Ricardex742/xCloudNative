@@ -43,6 +43,7 @@ class StatisticsSettingsPanel(private val context: Context,private val store: St
     private fun fields(): ConsoleDialog=ConsoleDialog(context,UiText.text("Escolher indicadores")).apply {
         body.addView(text(UiText.text("As escolhas valem no modo Personalizado e ficam salvas. Cada partida começa com as estatísticas ocultas. INFO/F10 ou o menu da partida ligam e desligam o painel."),18,color=DashboardTheme.muted))
         body.addView(text(UiText.text("FPS mede o vídeo decodificado; ping é o RTT da conexão. O agendador mede somente o envio de comandos."),17,color=DashboardTheme.muted))
+        body.addView(text(UiText.text("O saldo de nuvem é consultado a cada cinco minutos enquanto as estatísticas estão visíveis."),17,color=DashboardTheme.muted))
         StatisticField.entries.forEach { field ->
             fun label()=UiText.text("{0}  {1}",UiText.nested(if(field in store.read().fields) "✓" else "○"),UiText.nested(field.label))
             val row=addMenuItem(label()) {}

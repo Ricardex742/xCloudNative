@@ -1187,4 +1187,6 @@
     <string name="ui_9c4d0eabc2496260" formatted="false">"Entrée au repos : {0} paquets de maintien envoyés ; aucune commande de jeu"</string>
     <string name="ui_d82f2ba389166c32" formatted="false">"La diffusion a été interrompue. Le score résume les échantillons disponibles et ne confirme pas que la partie a fonctionné normalement."</string>
     <string name="ui_ba143e37d17552d4" formatted="false">"Canaux : {0} ; autorisation envoyée {1} ; métadonnées envoyées {2} ; ack {3} ; contrôle reçu {4}/{5} ; message reçu {6}/{7} ; première fermeture après {8} ms"</string>
+    <string name="ui_671df84f68498f95" formatted="false">"Temps de jeu cloud restant"</string>
+    <string name="ui_c159db6c309b3fc0" formatted="false">"Le solde de temps de jeu cloud est consulté toutes les cinq minutes lorsque les statistiques sont visibles."</string>
 </resources>

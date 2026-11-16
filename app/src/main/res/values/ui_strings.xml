@@ -1187,4 +1187,6 @@
     <string name="ui_9c4d0eabc2496260" formatted="false">"Input sem interação: {0} pacotes de manutenção enviados; sem comandos de jogo"</string>
     <string name="ui_d82f2ba389166c32" formatted="false">"Houve uma interrupção na transmissão. O índice resume as amostras disponíveis e não confirma que a partida funcionou normalmente."</string>
     <string name="ui_ba143e37d17552d4" formatted="false">"Canais: {0}; autorização enviada {1}; metadata enviada {2}; ack {3}; controle recebido {4}/{5}; mensagem recebida {6}/{7}; primeiro fechamento após {8} ms"</string>
+    <string name="ui_671df84f68498f95" formatted="false">"Tempo restante de nuvem"</string>
+    <string name="ui_c159db6c309b3fc0" formatted="false">"O saldo de nuvem é consultado a cada cinco minutos enquanto as estatísticas estão visíveis."</string>
 </resources>

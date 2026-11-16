@@ -8,7 +8,7 @@ import org.json.JSONObject
 enum class StatisticField(private val source: String) {
     FPS("FPS do vídeo"), RTT("Ping (RTT)"), BITRATE("Bitrate"), RESOLUTION("Resolução recebida"), CODEC("Codec recebido"),
     DECODE("Tempo de decodificação"), JITTER("Jitter da rede"), LOSS("Perda de pacotes"), BUFFER("Buffer de vídeo"),
-    DROPPED("Quadros descartados"), INPUT("Agendador de input");
+    DROPPED("Quadros descartados"), INPUT("Agendador de input"), PLAYTIME("Tempo restante de nuvem");
     val label get()=UiText.text(source)
 }
 enum class StatisticsPosition(private val source: String) {

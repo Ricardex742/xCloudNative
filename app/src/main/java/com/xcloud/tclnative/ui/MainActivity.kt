@@ -675,16 +675,17 @@ open class MainActivity : Activity() {
             showOwnershipFilter()
         }) { query -> view.setSearch(query) }
     }
-    private fun refreshCloudPlaytime(view: GameDashboardView,force: Boolean=false) {
-        if(dashboard!==view || activeGame!=null || !activityVisible || playtimeJob?.isActive==true) return
+    private fun refreshCloudPlaytime(view: GameDashboardView,force: Boolean=false,duringPlayback: Boolean=false) {
+        if(dashboard!==view || activeGame!=null && !duringPlayback || duringPlayback && !transmissionReady || !activityVisible || playtimeJob?.isActive==true) return
         val now=android.os.SystemClock.elapsedRealtime()
-        if(!force && playtimeCheckedAt?.let { now-it<300_000 }==true) return
+        if(!force && view.cloudPlaytimeSnapshot().status!=CloudPlaytimeStatus.CHECKING && playtimeCheckedAt?.let { now-it<300_000 }==true) return
         playtimeCheckedAt=now;view.setCloudPlaytime(CloudPlaytime(CloudPlaytimeStatus.CHECKING))
         playtimeJob=mainScope.launch {
             try {
                 val version=packageManager.getPackageInfo(packageName,0).versionName ?: "1.0"
-                val value=CloudPlaytimeService({ authenticator.loadStoreAuthorization().getOrThrow() },catalogWork::await,appVersion=version).fetch()
-                if(dashboard===view) view.setCloudPlaytime(value)
+                val gate: suspend () -> Unit=if(duringPlayback) ({}) else catalogWork::await
+                val value=CloudPlaytimeService({ authenticator.loadStoreAuthorization().getOrThrow() },gate,appVersion=version).fetch()
+                if(dashboard===view) { view.setCloudPlaytime(value);if(duringPlayback) renderStatistics() }
             } finally { if(playtimeJob===currentCoroutineContext()[Job]) playtimeJob=null }
         }
     }
@@ -1699,10 +1700,13 @@ open class MainActivity : Activity() {
         if(statsView.visibility!=View.VISIBLE) return
         val metrics=latestMetrics ?: return
         val settings=sessionSettings ?: playbackSettings
+        val showPlaytime=statistics.mode==2 || StatisticField.PLAYTIME in statisticsSettings.fields
+        if(showPlaytime) dashboard?.let { refreshCloudPlaytime(it,duringPlayback=true) }
+        val playtime=dashboard?.cloudPlaytimeSnapshot() ?: CloudPlaytime()
         com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.constrain(statsView,rootLayout.width,rootLayout.height)
-        statsView.text=surfaceRenderer.frameGenerationSummary()?.let { "$it\n" }.orEmpty()+if(statistics.mode==2) metrics.overlay(latestInput,"",settings.resolution,settings.videoMode==VideoMode.COMPATIBILITY)+
+        statsView.text=surfaceRenderer.frameGenerationSummary()?.let { "$it\n" }.orEmpty()+if(statistics.mode==2) playtime.label+"\n"+metrics.overlay(latestInput,"",settings.resolution,settings.videoMode==VideoMode.COMPATIBILITY)+
             surfaceRenderer.diagnostics()+"\n"+(webrtcClient?.latencyDiagnostics() ?: "")
-            else CustomStatistics.format(metrics,latestInput,statisticsSettings)
+            else CustomStatistics.format(metrics,latestInput,statisticsSettings,playtime)
     }
     private fun showTransmissionRecovery() {
         if(reloadTransmission==null) return
