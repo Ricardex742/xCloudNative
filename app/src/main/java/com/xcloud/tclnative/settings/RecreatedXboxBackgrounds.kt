@@ -121,28 +121,40 @@ object RecreatedXboxBackgrounds {
     fun wallpapers(context: android.content.Context): List<SeriesWallpaper> = cachedArtwork ?: synchronized(this) {
         cachedArtwork ?: wallpapers(OfficialXboxWallpapers.read(context)).also { cachedArtwork=it }
     }
+    // Identity pairs from the shipped public catalog. No substring/title-family fallback:
+    // another edition, season or anniversary artwork is not an interchangeable base image.
+    internal val artworkIds=mapOf(
+        "recreation:diablo-iv-lord-of-hatred" to "official:945043ba3955e5c79d3d2682", // Diablo IV: Lord of Hatred
+        "recreation:invincible-vs" to "official:83c24bb7e946ce6001f4e31b", // Invincible VS
+        "recreation:kiln" to "official:0c65094384ca8184b5ae85cb", // Kiln
+        "recreation:overwatch" to "official:c5e488e7b391d5007971644b", // Overwatch
+        "recreation:sea-of-thieves" to "official:45f5d6410cd0a296199d396f", // Sea of Thieves
+        "recreation:towerborne" to "official:9d7dba73ab33e953a906bed0", // Towerborne
+        "recreation:keeper" to "official:4a5a365586684ef36fa23ab2", // Keeper
+        "recreation:the-elder-scrolls-online" to "official:30ae84a1c7259a8fed2e082f", // The Elder Scrolls Online
+        "recreation:the-outer-worlds-2" to "official:bb2a8680c5a237bc91826a80", // The Outer Worlds 2
+        "recreation:call-of-duty-black-ops-7-vault-edition" to "official:c72345110bf57ad43ab04822", // Call of Duty®: Black Ops 7 - Vault Edition
+        "recreation:gears-of-war-reloaded" to "official:1373d4e585cd71e4e10479bc", // Gears of War: Reloaded
+        "recreation:grounded-2" to "official:5becb954f5cf843ebde5271f", // Grounded 2
+        "recreation:ninja-gaiden-4" to "official:13d3cbf46229fc515ae6517f", // NINJA GAIDEN 4
+        "recreation:international-day-of-the-world-s-indigenous-peoples-2025" to "official:c470876a1df515f7adaa69eb", // International Day of the World's Indigenous Peoples 2025
+        "recreation:the-witcher-3-wild-hunt" to "official:4dbde8c38032112e398b564e", // The Witcher 3 - Wildhunt
+        "recreation:pride-2025" to "official:8f0ae49eabc1fedd6e5f4c44", // Pride Month 2025
+        "recreation:doom-the-dark-ages" to "official:661d08d977c2d286421284a2", // DOOM: The Dark Ages
+        "recreation:metaphor-refantazio" to "official:480ff007d735ebc3d1e83fdc", // Metaphor: ReFantazio
+        "recreation:asian-and-pacific-islander-heritage-month-2025" to "official:06f19398df0db01dc0a5b345", // Asian and Pacific Island Heritage Month 2025
+        "recreation:monster-hunter-wilds" to "official:6b6d3b43ca7a523ee338cff3", // Monster Hunter Wilds
+        "recreation:international-women-s-day-2025" to "official:352eda8307fc75febe7502c4", // International Women's Day 2025
+        "recreation:pride-2024" to "official:de406c1eebdd9a36e12aef6a", // Pride 2024
+        "recreation:asian-and-pacific-islander-heritage-month-2024" to "official:eaf0362ecc709dee26f8e75d", // Asian and Pacific Islander Heritage Month 2024
+        "recreation:destiny-2" to "official:8957bab897c3dcfcdc2b0c0d", // Destiny 2
+    )
+    internal fun restoredArtwork(id: String,url: String?): String? {
+        val expected=artworkIds[id] ?: return null
+        return url?.takeIf { OfficialXboxWallpapers.entry("Artwork",it)?.id==expected }
+    }
     internal fun wallpapers(items: List<SeriesWallpaper>): List<SeriesWallpaper> {
-            val characters=Regex("[^\\p{L}\\p{N} ]")
-            val spaces=Regex("\\s+")
-            fun clean(value: String)=value.lowercase().replace(characters,"").replace(spaces," ").trim()
-            val official=items.map { clean(it.name) to it }
-            return entries.map { entry ->
-                val token=clean(entry.name.substringBefore(" — "))
-                val base=clean(entry.name.substringBefore(":").substringBefore(" — "))
-                val alias=when {
-                    entry.family==RecreationFamily.ANNIVERSARY -> "creator series klobrilles xbox 25"
-                    entry.name.startsWith("Women’s History") -> "womens history month 2024"
-                    entry.name.startsWith("Mental Wellness") -> "mental health awareness month"
-                    entry.name=="Pride 2025" -> "pride month 2025"
-                    entry.name.startsWith("International Women") -> "international womens day 2025"
-                    entry.name.startsWith("Asian and Pacific Islander") && "2025" in entry.name -> "asian and pacific island heritage month 2025"
-                    else -> token
-                }
-                val picture=if(entry.family==RecreationFamily.CORE || entry.family==RecreationFamily.PIXELS || entry.name=="Motes") null
-                    else (official.firstOrNull { it.first==alias }
-                        ?: official.firstOrNull { it.first.contains(token) && token.length>=5 }
-                        ?: official.firstOrNull { it.first.contains(base) && base.length>=5 })?.second?.artUrl
-                entry.wallpaper(picture)
-            }
+        val official=items.filter { it.official }.associateBy { it.id }
+        return entries.map { entry -> entry.wallpaper(artworkIds[entry.id]?.let { official[it]?.artUrl }) }
     }
 }

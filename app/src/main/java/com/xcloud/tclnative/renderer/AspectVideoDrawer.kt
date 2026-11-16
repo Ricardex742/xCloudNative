@@ -84,14 +84,14 @@ class AspectVideoDrawer(@Volatile var stretch: Boolean,
     private fun enhanced(kind: ImageTreatmentPipeline.Input,texture: Int,textures: IntArray?,matrix: FloatArray,
         fw: Int,fh: Int,x: Int,y: Int,w: Int,h: Int,upscaler: FsrUpscaler?): Boolean {
         val value=treatment
-        if(!value.active && !sgsrEnabled && reconstructionLevel==0 && globalImageComparison==0 && (!imageLab.enabled || imageLabLevel==0)) { pipeline?.release();pipeline=null;return false }
+        if(!value.active && !sgsrEnabled && reconstructionLevel==0 && globalImageComparison==0 && (!imageLab.hasImageEffects || imageLabLevel==0)) { pipeline?.release();pipeline=null;return false }
         val engine=pipeline ?: treatmentFactory?.invoke()?.also { pipeline=it } ?: return false
         if(lastTreatment!=value) { lastTreatment=value;treatmentOptions=value.glOptions() }
         engine.configure(treatmentOptions,sharpness,fsrSharpness,saturation,brightness,contrast)
         engine.configureReconstruction(reconstructionLevel,reconstructionStrength,imageComparison)
         engine.configureComparison(globalImageComparison)
         engine.configureMotionHistory(motionTemporalAllowed)
-        engine.configureLab(imageLab.enabled,imageLab.restoration,imageLab.protection.ordinal,imageLab.supersampling.scale,imageLab.comparison.ordinal,imageLabLevel,imageLab.neural)
+        engine.configureLab(imageLab.hasImageEffects,imageLab.restoration,imageLab.protection.ordinal,imageLab.supersampling.scale,imageLab.comparison.ordinal,imageLabLevel,imageLab.neural)
         val drawn=engine.draw(kind,texture,textures,matrix,fw,fh,if(stretch) sourceWidth else fw,
             if(stretch) sourceHeight else fh,x,y,w,h,upscaler,sgsrEnabled)
         if(drawn && engine.didScaleThisFrame()) onFsrDraw?.invoke()

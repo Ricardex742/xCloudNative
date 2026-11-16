@@ -48,6 +48,9 @@ import com.xcloud.tclnative.catalog.GalleryProduct
 import com.xcloud.tclnative.catalog.OfficialGalleryKind
 import com.xcloud.tclnative.catalog.GameLibrary
 import com.xcloud.tclnative.catalog.GameOwnershipService
+import com.xcloud.tclnative.catalog.CloudPlaytimeService
+import com.xcloud.tclnative.catalog.CloudPlaytime
+import com.xcloud.tclnative.catalog.CloudPlaytimeStatus
 import com.xcloud.tclnative.catalog.OwnershipFilter
 import com.xcloud.tclnative.home.GameLaunchLink
 import com.xcloud.tclnative.home.PendingGameLaunch
@@ -162,6 +165,8 @@ open class MainActivity : Activity() {
     private var galleryLaunchJob: Job? = null
     private var recentHistoryJob: Job? = null
     private var ownershipJob: Job? = null
+    private var playtimeJob: Job? = null
+    private var playtimeCheckedAt: Long?=null
     private var gameLibrary: GameLibrary? = null
     private var loginView: ConsoleLoginView? = null
     private var browserLogin: MicrosoftLoginDialog? = null
@@ -378,6 +383,7 @@ open class MainActivity : Activity() {
     }
 
     private fun renderLoginMenu() {
+        playtimeJob?.cancel();playtimeJob=null;playtimeCheckedAt=null
         ownershipJob?.cancel();ownershipJob=null
         browserLogin?.close();browserLogin=null
         galleryLaunchJob?.cancel(); galleryLaunchJob=null
@@ -518,6 +524,7 @@ open class MainActivity : Activity() {
     }
 
     private fun renderGameDashboard(session: XCloudSession, validatedGames: List<GameTitle>? = null) {
+        playtimeJob?.cancel();playtimeJob=null;playtimeCheckedAt=null
         ownershipJob?.cancel();ownershipJob=null
         galleryLaunchJob?.cancel(); galleryLaunchJob=null
         dashboardJob?.cancel()
@@ -564,6 +571,7 @@ open class MainActivity : Activity() {
             hudTextView.visibility = View.GONE
             view.setGames(allGames)
             revealDashboard(view)
+            refreshCloudPlaytime(view)
             refreshCloudHistory(view,signaling,library)
             currentGames = allGames
             currentSignaling = signaling
@@ -666,6 +674,19 @@ open class MainActivity : Activity() {
             showOwnershipFilter()
         }) { query -> view.setSearch(query) }
     }
+    private fun refreshCloudPlaytime(view: GameDashboardView,force: Boolean=false) {
+        if(dashboard!==view || activeGame!=null || !activityVisible || playtimeJob?.isActive==true) return
+        val now=android.os.SystemClock.elapsedRealtime()
+        if(!force && playtimeCheckedAt?.let { now-it<300_000 }==true) return
+        playtimeCheckedAt=now;view.setCloudPlaytime(CloudPlaytime(CloudPlaytimeStatus.CHECKING))
+        playtimeJob=mainScope.launch {
+            try {
+                val version=packageManager.getPackageInfo(packageName,0).versionName ?: "1.0"
+                val value=CloudPlaytimeService({ authenticator.loadStoreAuthorization().getOrThrow() },catalogWork::await,appVersion=version).fetch()
+                if(dashboard===view) view.setCloudPlaytime(value)
+            } finally { if(playtimeJob===currentCoroutineContext()[Job]) playtimeJob=null }
+        }
+    }
 
     private fun showOwnershipFilter() {
         val view=dashboard ?: return
@@ -703,7 +724,8 @@ open class MainActivity : Activity() {
             homeShortcuts = { showHomeShortcuts(::back) },lastReport={ showLatestReport(::back) },
             sessionOptions={ showSessionOptionsMenu(session,::back) },controllerProfiles={ showControllerProfiles(::back) },
             onPageEntered={ returnPage=it },catalogInformation={ dashboard?.catalogInformation },
-            backgrounds={ dashboard?.wallpaperChoices() ?: com.xcloud.tclnative.ui.dashboard.SeriesWallpaperGallery.fromGames(currentGames,listOfNotNull(activeGame)) }).open(startPage)
+            backgrounds={ dashboard?.wallpaperChoices() ?: com.xcloud.tclnative.ui.dashboard.SeriesWallpaperGallery.fromGames(currentGames,listOfNotNull(activeGame)) },
+            refreshPlaytime={ dashboard?.let { refreshCloudPlaytime(it,force=true) } }).open(startPage)
     }
     private fun showControllerProfiles(back: () -> Unit) {
         com.xcloud.tclnative.ui.dashboard.ControllerProfilePanel(this,controllerProfiles,
@@ -986,6 +1008,7 @@ open class MainActivity : Activity() {
         controlPanel.visibility = View.VISIBLE
         dashboard?.let { view ->
             hudTextView.visibility=View.GONE; revealDashboard(view)
+            refreshCloudPlaytime(view,force=true)
             val signaling=currentSignaling; val library=gameLibrary
             if(signaling!=null && library!=null) refreshCloudHistory(view,signaling,library)
         }
@@ -1070,6 +1093,7 @@ open class MainActivity : Activity() {
     }
 
     private fun launchCloudGame(signaling: XCloudSignalingClient, game: GameTitle, touchChoice: TouchMode? = null) {
+        playtimeJob?.cancel();playtimeJob=null
         recentHistoryJob?.cancel(); recentHistoryJob=null
         catalogReturnJob?.cancel(); catalogReturnJob=null
         startupArtJob?.cancel(); startupArtJob=null
@@ -1182,7 +1206,7 @@ open class MainActivity : Activity() {
                         if(current()) {
                             val now=android.os.SystemClock.elapsedRealtime()
                             streamHistory.add(now,metrics,input); tracker.add(now,metrics,input)
-                            if(settings.fsr==com.xcloud.tclnative.settings.FsrMode.FSR1 && !compatible) runOnUiThread {
+                            if(!compatible) runOnUiThread {
                                 if(current()) surfaceRenderer.observeFsrPerformance(now,metrics,
                                     firstFrame.isCompleted && activityVisible && gameplayInputEnabled())
                             }
@@ -1235,6 +1259,7 @@ open class MainActivity : Activity() {
                             Toast.makeText(this@MainActivity,if(requested) UiText.text("Recuperação de imagem solicitada.")
                                 else UiText.text("Use Recarregar transmissão para tentar reconectar."),Toast.LENGTH_SHORT).show()
                         } catch(error: Exception) {
+                            tracker.recordInterruption(error)
                             recoveryState.interrupted(recoveryState.epoch,error);transmissionReady=false;renderStatistics()
                             pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
                             showTransmissionInterrupted()
@@ -1288,8 +1313,9 @@ open class MainActivity : Activity() {
                             if(generation==playbackGeneration && recoveryState.current(token)) {
                                 surfaceRenderer.detachTrack();allocatedRtc?.close()
                                 webrtcClient=null;allocatedRtc=null
+                                tracker.recordInterruption(error)
                                 recoveryState.failed(token,error);transmissionReady=false;renderStatistics()
-                                hudTextView.text=UiText.text("A transmissão não voltou. Você pode tentar reconectar à sessão atual.")
+                                hudTextView.text=if(recoveryState.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) UiText.text("A sessão Xbox foi encerrada. Volte ao catálogo para iniciar outra partida.") else UiText.text("A transmissão não voltou. Você pode tentar reconectar à sessão atual.")
                                 showTransmissionInterrupted()
                             }
                         }
@@ -1304,6 +1330,7 @@ open class MainActivity : Activity() {
                         if(recoveryState.phase!=TransmissionRecoveryState.Phase.ACTIVE || !recoveryState.current(token)) continue
                         if(failure!=null) {
                             if(recoveryState.interrupted(token,failure)) {
+                                tracker.recordInterruption(failure)
                                 transmissionReady=false;renderStatistics();resetController()
                                 pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
                                 hudTextView.visibility=View.VISIBLE;hudTextView.text=UiText.text("A transmissão foi interrompida. Você pode tentar reconectar à sessão atual.")
@@ -1644,18 +1671,20 @@ open class MainActivity : Activity() {
         val metrics=latestMetrics ?: return
         val settings=sessionSettings ?: playbackSettings
         com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.constrain(statsView,rootLayout.width,rootLayout.height)
-        statsView.text=if(statistics.mode==2) metrics.overlay(latestInput,"",settings.resolution,settings.videoMode==VideoMode.COMPATIBILITY)+
+        statsView.text=surfaceRenderer.frameGenerationSummary()?.let { "$it\n" }.orEmpty()+if(statistics.mode==2) metrics.overlay(latestInput,"",settings.resolution,settings.videoMode==VideoMode.COMPATIBILITY)+
             surfaceRenderer.diagnostics()+"\n"+(webrtcClient?.latencyDiagnostics() ?: "")
             else CustomStatistics.format(metrics,latestInput,statisticsSettings)
     }
     private fun showTransmissionRecovery() {
         if(reloadTransmission==null) return
+        if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) { showTransmissionInterrupted();return }
         com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.show(this,{ recoverImage?.invoke() },{ reloadTransmission?.invoke() },::showGameMenu)
     }
     private fun showTransmissionInterrupted() {
         videoRecoveryDialog?.dismiss()
         videoRecoveryDialog=com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.failed(this,
-            { reloadTransmission?.invoke() },{ cancelPlayback() },::showGameMenu).also { dialog ->
+            { reloadTransmission?.invoke() },{ cancelPlayback() },::showGameMenu,
+            sessionEnded=transmissionRecovery?.phase==TransmissionRecoveryState.Phase.SESSION_ENDED).also { dialog ->
                 dialog.setOnDismissListener { if(videoRecoveryDialog===dialog) videoRecoveryDialog=null }
             }
     }
@@ -1822,6 +1851,7 @@ open class MainActivity : Activity() {
         rumble.enabled=playbackSettings.rumble && webrtcClient!=null
         updateJoystickDispatch()
         if(activeGame==null && dashboard!=null && controlPanel.visibility==View.VISIBLE && transitionPanel.visibility!=View.VISIBLE) {
+            refreshCloudPlaytime(dashboard!!)
             val signaling=currentSignaling; val library=gameLibrary
             if(signaling!=null && library!=null) refreshCloudHistory(dashboard!!,signaling,library)
         }

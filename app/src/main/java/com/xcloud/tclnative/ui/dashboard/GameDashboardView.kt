@@ -34,12 +34,14 @@ import com.xcloud.tclnative.catalog.GameLibrary
 import com.xcloud.tclnative.catalog.GamePassCatalog
 import com.xcloud.tclnative.catalog.LibraryTab
 import com.xcloud.tclnative.catalog.XboxProfile
+import com.xcloud.tclnative.catalog.CloudPlaytime
 import com.xcloud.tclnative.catalog.CatalogCard
 import com.xcloud.tclnative.catalog.GalleryProduct
 import com.xcloud.tclnative.catalog.OfficialGallery
 import com.xcloud.tclnative.catalog.OfficialGalleryKind
 import com.xcloud.tclnative.catalog.CatalogInput
 import com.xcloud.tclnative.catalog.CatalogPresentation
+import com.xcloud.tclnative.catalog.CatalogPresentationEngine
 import com.xcloud.tclnative.catalog.CatalogChanges
 import com.xcloud.tclnative.catalog.Ownership
 import com.xcloud.tclnative.catalog.OwnershipFilter
@@ -99,6 +101,7 @@ class GameDashboardView(
     private var recentLoading=true
     private var recentFailed=false
     private var profile = XboxProfile()
+    private var cloudPlaytime=CloudPlaytime()
     var activeTab = LibraryTab.RECENT
         private set
     var searchQuery = ""
@@ -143,8 +146,8 @@ class GameDashboardView(
     private var metadataJob: Job? = null
     private var pendingMetadata: List<GameTitle>? = null
     private var catalogJob: Job? = null
+    private val catalogEngine=CatalogPresentationEngine()
     private var pendingCatalog: CatalogInput? = null
-    private var catalogRevision = 0L
     private var renderedTab = activeTab
     private var renderedQuery = searchQuery
     private var positions = emptyMap<String, Int>()
@@ -179,6 +182,7 @@ class GameDashboardView(
     private val accountName = label(26f)
     private val gamertag = label(24f).apply { setTextColor(DashboardTheme.muted) }
     private val subscription = label(20f).apply { gravity = Gravity.CENTER }
+    private val remainingTime=label(17f,false).apply { setTextColor(DashboardTheme.muted) }
     private val settingsButton = DashboardTheme.button(context,"⚙") { onOptions() }.apply {
         id=generateViewId(); contentDescription=UiText.text("Configurações")
         typeface=android.graphics.Typeface.DEFAULT
@@ -266,7 +270,7 @@ class GameDashboardView(
         addView(searchButton)
         profilePanel.addView(avatar); profilePanel.addView(avatarLetter)
         profilePanel.addView(connected); profilePanel.addView(accountName); profilePanel.addView(gamertag)
-        profilePanel.addView(subscription); profilePanel.addView(settingsButton)
+        profilePanel.addView(subscription);profilePanel.addView(remainingTime);profilePanel.addView(settingsButton)
         profilePanel.setOnFocusChangeListener { _, focused ->
             profilePanel.background = if(!focused) null else if(designScene==ConsoleScene.NONE) DashboardTheme.shape(UiColor.PROFILE_FOCUS,9f)
                 else rounded(Color.TRANSPARENT,2f,if(designScene==ConsoleScene.XBOX_360) 0xff52721d.toInt() else DashboardTheme.accent)
@@ -360,7 +364,7 @@ class GameDashboardView(
         consoleBackdrop.setArtwork(null)
         shortcutSkins.forEach { it.clear() }
         artworkPaused=true
-        catalogRevision++; pendingCatalog=null; pendingFocus=null; carouselTarget=null; focusRequest++
+        pendingCatalog=null; pendingFocus=null; carouselTarget=null; focusRequest++
         metadataJob?.cancel(); metadataJob=null; pendingMetadata=null
         headerArtJob?.cancel(); posters.pause()
     }
@@ -410,11 +414,13 @@ class GameDashboardView(
         val updated=value.copy(subscription=value.subscription ?: profile.subscription)
         if(updated!=profile) { profile=updated; renderProfile() }
     }
+    fun setCloudPlaytime(value: CloudPlaytime) { cloudPlaytime=value;remainingTime.text=value.label }
     private fun renderProfile() {
         accountName.text = if(designScene==ConsoleScene.NONE) profile.displayName.uppercase(Locale.getDefault()) else profile.displayName
         gamertag.text = if(designScene==ConsoleScene.NONE) profile.gamertag.uppercase(Locale.getDefault()) else profile.gamertag
         subscription.text = profile.subscription?.let { if (it == "FREE") "FREE" else "GAME PASS $it" } ?: UiText.text("ASSINATURA NÃO INFORMADA")
         subscription.background = if(designScene==ConsoleScene.NONE) DashboardTheme.shape(UiColor.SUBSCRIPTION,3f) else null
+        remainingTime.text=cloudPlaytime.label
         avatarLetter.text = profile.displayName.take(1).uppercase(Locale.getDefault())
         connected.contentDescription = UiText.text("Conta autenticada no Xbox Cloud")
         profilePanel.contentDescription = if(SeriesGuidePanel.enabled(context))
@@ -441,7 +447,6 @@ class GameDashboardView(
     fun refresh() {
         if(closed) return
         if(ownershipFilter!=OwnershipFilter.ALL && (ownershipProducts()-ownershipRequested).isNotEmpty()) onOwnershipNeeded()
-        catalogRevision++
         if(artworkPaused) return
         if(renderedTab!=activeTab || renderedQuery!=searchQuery || renderedOwnershipFilter!=ownershipFilter) {
             // Do not leave clickable cards from the previous category while preparing the next.
@@ -458,13 +463,14 @@ class GameDashboardView(
             while(!closed && !artworkPaused) {
                 val input=pendingCatalog ?: break
                 pendingCatalog=null
-                val revision=catalogRevision
                 val before=adapter.items
                 val (presentation,changes)=withContext(Dispatchers.Default) {
-                    val result=CatalogPresentation.build(input)
+                    val result=catalogEngine.build(input)
                     result to CatalogChanges.between(before,result.cards)
                 }
-                if(!closed && !artworkPaused && revision==catalogRevision) applyCatalog(presentation,changes)
+                // Metadata arriving during a build must not starve an otherwise current category.
+                if(!closed && !artworkPaused && input.tab==activeTab && input.query==searchQuery && input.ownershipFilter==ownershipFilter)
+                    applyCatalog(presentation,if(adapter.items!==before) CatalogChanges(true,emptyList()) else changes)
             }
         }
     }
@@ -833,9 +839,10 @@ class GameDashboardView(
         place(avatarLetter, 10*s, 12*s, a, a); place(avatar, 10*s, 12*s, a, a)
         place(connected, 10*s+a-19*s, 12*s+a-18*s, 15*s, 15*s)
         val tx = 106*s
-        place(accountName, tx, 0f, 320*s, 34*s)
-        place(gamertag, tx, 30*s, 320*s, 30*s)
-        place(subscription, tx, 68*s, 250*s, 32*s)
+        place(accountName, tx, 0f, 320*s, 31*s)
+        place(gamertag, tx, 31*s, 320*s, 26*s)
+        place(subscription, tx, 60*s, 250*s, 25*s)
+        place(remainingTime,tx,88*s,250*s,22*s);textSize(remainingTime,17f)
         place(settingsButton, tx+264*s, 64*s, 60*s, 42*s)
         textSize(accountName, 27f); textSize(gamertag, 24f); textSize(subscription, 20f)
         textSize(settingsButton, 28f); textSize(avatarLetter, 28f)
@@ -916,9 +923,9 @@ class GameDashboardView(
                 LibraryTab.RECENT -> 1.65f;LibraryTab.ADDED -> 1.35f;LibraryTab.ALL -> 1.16f;LibraryTab.PURCHASED -> 1.95f;else -> 1f
             })
         }
-        listOf(headerTitle,accountName,gamertag,subscription,metadataNote,catalogNote,emptyState).forEach { view ->
+        listOf(headerTitle,accountName,gamertag,subscription,remainingTime,metadataNote,catalogNote,emptyState).forEach { view ->
             view.typeface=if(console) Typeface.create(if(next==ConsoleScene.XBOX_ORIGINAL) "sans-serif-condensed" else "sans-serif-medium",Typeface.NORMAL) else DashboardTheme.font(context,view!==metadataNote && view!==catalogNote && view!==emptyState)
-            view.setTextColor(if(console) consoleTextColor() else if(view===gamertag || view===metadataNote || view===catalogNote) DashboardTheme.muted else if(view===emptyState) DashboardTheme.color(UiColor.CATALOG_NOTICE) else Color.WHITE)
+            view.setTextColor(if(console) consoleTextColor() else if(view===gamertag || view===remainingTime || view===metadataNote || view===catalogNote) DashboardTheme.muted else if(view===emptyState) DashboardTheme.color(UiColor.CATALOG_NOTICE) else Color.WHITE)
         }
         if(android.os.Build.VERSION.SDK_INT>=26) headerTitle.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
         headerTitle.maxLines=2
@@ -1013,10 +1020,11 @@ class GameDashboardView(
         if(era) headerIcon.visibility=GONE
         consoleBrand.visibility=VISIBLE
         // Compact real account header, independent from the content panels.
-        pos(profilePanel,if(designScene==ConsoleScene.XBOX_360) wide-380 else 54f,26f,300f,80f)
+        pos(profilePanel,if(designScene==ConsoleScene.XBOX_360) wide-380 else 54f,26f,300f,84f)
         pos(avatar,0f,0f,48f,48f);pos(avatarLetter,0f,0f,48f,48f);text(avatarLetter,25f)
-        pos(accountName,61f,0f,235f,28f);pos(gamertag,61f,28f,235f,23f)
-        pos(subscription,61f,52f,235f,21f);text(accountName,23f);text(gamertag,17f);text(subscription,14f)
+        pos(accountName,61f,0f,235f,25f);pos(gamertag,61f,25f,235f,19f)
+        pos(subscription,61f,44f,235f,17f);text(accountName,23f);text(gamertag,16f);text(subscription,13f)
+        pos(remainingTime,61f,61f,235f,18f);text(remainingTime,13f)
         subscription.background=null
         pos(connected,38f,39f,10f,10f)
         pos(settingsButton,0f,0f,1f,1f);settingsButton.visibility=GONE
@@ -1041,7 +1049,7 @@ class GameDashboardView(
         when(designScene) {
             ConsoleScene.XBOX_360_NXE -> {
                 pos(consoleBrand,58f,29f,250f,64f)
-                pos(profilePanel,wide-414f,24f,294f,76f)
+                pos(profilePanel,wide-414f,24f,294f,84f)
                 pos(navigation,48f,159f,294f,410f);pos(consoleTabRow,0f,0f,294f,410f)
                 tabs.forEachIndexed { i,v ->
                     pos(v,0f,i*65f,290f,59f);text(v,if(i==activeTab.ordinal) 27f else 23f)
@@ -1065,7 +1073,7 @@ class GameDashboardView(
             ConsoleScene.XBOX_360_METRO -> {
                 pos(consoleBrand,146f,25f,300f,62f)
                 pos(searchButton,52f,22f,76f,76f)
-                pos(profilePanel,wide-362f,23f,304f,76f)
+                pos(profilePanel,wide-362f,23f,304f,84f)
                 pos(navigation,52f,106f,wide-104f,62f);pos(consoleTabRow,0f,0f,wide-104f,62f)
                 val weights=floatArrayOf(1.3f,.9f,1f,1.65f,1.4f,1.4f);var x=0f
                 tabs.forEachIndexed { i,v ->
@@ -1099,8 +1107,8 @@ class GameDashboardView(
                     v.nextFocusDownId=grid.id
                 }
                 pos(searchButton,left+28,44f,84f,84f)
-                pos(profilePanel,left+35,138f,270f,76f)
-                pos(headerIcon,left+44,215f,220f,285f);headerArtSize=ArtworkSize.forDisplay((220*s).roundToInt(),(285*s).roundToInt())
+                pos(profilePanel,left+35,138f,270f,84f)
+                pos(headerIcon,left+44,228f,220f,272f);headerArtSize=ArtworkSize.forDisplay((220*s).roundToInt(),(272*s).roundToInt())
                 pos(headerTitle,left+303,137f,width-345,70f);text(headerTitle,29f)
                 pos(grid,left+302,222f,width-341,377f);coverHeight=(62*s).roundToInt()
                 pos(emptyState,left+302,222f,width-341,377f)
@@ -1177,6 +1185,10 @@ class GameDashboardView(
                 pos(metadataNote,60f,650f,wide-120f,22f);text(metadataNote,13f)
             }
             else -> Unit
+        }
+        val profileTextWidth=(profilePanel.layoutParams.width/s-65f).coerceAtLeast(1f)
+        listOf(accountName,gamertag,subscription,remainingTime).forEach { line ->
+            line.layoutParams=line.layoutParams.apply { width=(profileTextWidth*s).roundToInt() }
         }
         if(designScene==ConsoleScene.XBOX_ONE) {
             coverArtSize=ArtworkSize.forDisplay(((grid.layoutParams.width/3f)-10*s).roundToInt(),(170*s).roundToInt())

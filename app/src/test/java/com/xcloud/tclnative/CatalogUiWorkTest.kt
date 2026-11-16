@@ -22,6 +22,23 @@ import org.robolectric.annotation.LooperMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class CatalogUiWorkTest {
+    @Test fun largeCatalogStaysReachableDuringTabSwitchesAndMetadataBursts() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
+        val view=GameDashboardView(a,com.xcloud.tclnative.catalog.GameLibrary(a,"large-catalog"),{},{},{},{})
+        a.setContentView(view)
+        val games=(0 until 4000).map { com.xcloud.tclnative.signaling.GameTitle("G$it","Game %04d".format(it)) }
+        view.setGames(games)
+        repeat(12) { i ->
+            view.selectTab(if(i%2==0) com.xcloud.tclnative.catalog.LibraryTab.ALL else com.xcloud.tclnative.catalog.LibraryTab.FAVORITES)
+            view.updateMetadata(listOf(games[i].copy(name="Updated %04d".format(i))))
+            org.robolectric.Shadows.shadowOf(Looper.getMainLooper()).idle()
+        }
+        view.selectTab(com.xcloud.tclnative.catalog.LibraryTab.ALL);view.awaitCatalog()
+        assertNotNull(view.selectedGame)
+        view.setSearch("Updated 0011");view.awaitCatalog()
+        assertEquals("G11",view.selectedGame!!.titleId)
+        view.close();c.pause().stop().destroy()
+    }
     @Test fun fixedCoverChangesInvalidatePixelsWithoutRequestingAParentRemeasureAndCanStillResize() {
         val c=Robolectric.buildActivity(Activity::class.java).setup(); val a=c.get()
         val parent=object: FrameLayout(a) { var requests=0; override fun requestLayout() { requests++; super.requestLayout() } }

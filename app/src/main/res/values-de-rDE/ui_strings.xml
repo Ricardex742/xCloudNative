@@ -1150,4 +1150,23 @@
     <string name="ui_785f6f8adbf92b77" formatted="false">"Im Besitz"</string>
     <string name="ui_5024187419f3b962" formatted="false">"Nicht im Besitz"</string>
     <string name="ui_13ee7cd1ee354c13" formatted="false">"Besitz unbestätigt"</string>
+    <string name="ui_cc08b5d5ab2aadf7" formatted="false">"Bildgenerierung: {0} | erzeugt {1} | gesendet/s {2} | Zeichnungen/s {3}"</string>
+    <string name="ui_a87456780def71f7" formatted="false">"Die Xbox-Sitzung wurde beendet. Kehre zum Katalog zurück, um ein anderes Spiel zu starten."</string>
+    <string name="ui_30c31fa98c2d92ca" formatted="false">"Restzeit: wird geprüft…"</string>
+    <string name="ui_4755a4d7f48e0d49" formatted="false">"Restzeit: nicht verfügbar"</string>
+    <string name="ui_f5c2a1e76bc23643" formatted="false">"Restzeit: unbegrenzt"</string>
+    <string name="ui_357520cc3b52e48b" formatted="false">"Restzeit: weniger als 1 Min."</string>
+    <string name="ui_e2636f0c83fce63c" formatted="false">"Restzeit: {0}h{1}min"</string>
+    <string name="ui_30c3f7f3ef53d09c" formatted="false">"Erste beobachtete Unterbrechung: {0}\n"</string>
+    <string name="ui_b711aee1f71e49e1" formatted="false">"Xbox-Sitzung beendet"</string>
+    <string name="ui_1ed7941ca87f7100" formatted="false">"Xbox hat gemeldet, dass diese Sitzung nicht mehr aktiv ist. Eine erneute Verbindung kann sie nicht wiederherstellen. Kehre zum Katalog zurück, um ein anderes Spiel zu starten."</string>
+    <string name="ui_8c80f17b24599377" formatted="false">"Restzeit aktualisieren"</string>
+    <string name="ui_dfd02635c76e0c86" formatted="false">"Warte auf stabile Inhalte mit 30 FPS"</string>
+    <string name="ui_65cb84f03d1e5889" formatted="false">"Aktiv"</string>
+    <string name="ui_1273bc39d8ede975" formatted="false">"Auf diesem Gerät oder in diesem Modus nicht verfügbar"</string>
+    <string name="ui_0094704857985c6b" formatted="false">"Gilt ab der nächsten Sitzung"</string>
+    <string name="ui_6951ce4eb4f607aa" formatted="false">"Durch Leistungsschutz pausiert"</string>
+    <string name="ui_5489beb70fc5ad63" formatted="false">"Erzeugte Bilder waren zu spät"</string>
+    <string name="ui_856791dfa18ce90d" formatted="false">"Verarbeitungsfehler"</string>
+    <string name="ui_766196382fc5dff9" formatted="false">"Während des Vergleichs pausiert"</string>
 </resources>

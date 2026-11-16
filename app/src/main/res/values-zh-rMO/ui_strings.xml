@@ -1150,4 +1150,23 @@
     <string name="ui_785f6f8adbf92b77" formatted="false">"已擁有"</string>
     <string name="ui_5024187419f3b962" formatted="false">"未擁有"</string>
     <string name="ui_13ee7cd1ee354c13" formatted="false">"所有權未確認"</string>
+    <string name="ui_cc08b5d5ab2aadf7" formatted="false">"幀生成：{0} | 已生成 {1} | 提交/秒 {2} | 繪製/秒 {3}"</string>
+    <string name="ui_a87456780def71f7" formatted="false">"Xbox 會話已結束。請返回目錄開始另一場遊戲。"</string>
+    <string name="ui_30c31fa98c2d92ca" formatted="false">"剩餘時間：查詢中…"</string>
+    <string name="ui_4755a4d7f48e0d49" formatted="false">"剩餘時間：不可用"</string>
+    <string name="ui_f5c2a1e76bc23643" formatted="false">"剩餘時間：無限制"</string>
+    <string name="ui_357520cc3b52e48b" formatted="false">"剩餘時間：不足 1 分鐘"</string>
+    <string name="ui_e2636f0c83fce63c" formatted="false">"剩餘時間：{0}小時{1}分鐘"</string>
+    <string name="ui_30c3f7f3ef53d09c" formatted="false">"首次觀測到的中斷：{0}\n"</string>
+    <string name="ui_b711aee1f71e49e1" formatted="false">"Xbox 會話已結束"</string>
+    <string name="ui_1ed7941ca87f7100" formatted="false">"Xbox 返回此會話已不再活躍。重新連接無法恢復該會話。請返回目錄開始另一場遊戲。"</string>
+    <string name="ui_8c80f17b24599377" formatted="false">"刷新剩餘時間"</string>
+    <string name="ui_dfd02635c76e0c86" formatted="false">"等待穩定的 30 FPS 內容"</string>
+    <string name="ui_65cb84f03d1e5889" formatted="false">"已啓用"</string>
+    <string name="ui_1273bc39d8ede975" formatted="false">"此設備或模式不可用"</string>
+    <string name="ui_0094704857985c6b" formatted="false">"下一次會話生效"</string>
+    <string name="ui_6951ce4eb4f607aa" formatted="false">"因性能保護而暫停"</string>
+    <string name="ui_5489beb70fc5ad63" formatted="false">"生成的幀未能及時提交"</string>
+    <string name="ui_856791dfa18ce90d" formatted="false">"處理失敗"</string>
+    <string name="ui_766196382fc5dff9" formatted="false">"比較期間暫停"</string>
 </resources>

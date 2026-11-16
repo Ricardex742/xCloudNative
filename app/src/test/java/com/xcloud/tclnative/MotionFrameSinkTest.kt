@@ -57,6 +57,22 @@ class MotionFrameSinkTest {
     private fun push(sink: MotionFrameSink,timestamp: Long): Buffer {
         val b=Buffer();val f=VideoFrame(b,0,timestamp);sink.onFrame(f);f.release();return b
     }
+    @Test fun effectiveStatusAndRatesCountSubmissionsAndDrawsSeparatelyAndClearStaleRates() {
+        val clock=Clock();val backend=Backend(clock);var draws=0L
+        val sink=MotionFrameSink(VideoSink { draws++ },{backend},clock)
+        assertEquals(FrameGenerationPhase.WAITING,sink.snapshot().phase)
+        sink.observePresentation(draws,1000);clock.flush()
+        repeat(30) { i -> backend.signature=20+i*4;push(sink,1_000_000_000L+i*33_333_333L);clock.flush();clock.advance(33_333_333L) }
+        sink.observePresentation(draws,2000);clock.flush()
+        val active=sink.snapshot()
+        assertEquals(FrameGenerationPhase.ACTIVE,active.phase);assertTrue(active.generated>0)
+        assertTrue(active.submittedPerSecond!!>45);assertEquals(draws.toDouble(),active.drawsPerSecond!!,0.0)
+        sink.setEnabled(false,FrameGenerationPhase.COMPARISON);clock.flush()
+        assertEquals(FrameGenerationPhase.COMPARISON,sink.snapshot().phase)
+        sink.observePresentation(draws,6000);clock.flush()
+        assertNull(sink.snapshot().drawsPerSecond)
+        sink.close();clock.flush()
+    }
     @Test fun movingNativeThirtyFpsProducesOrderedMidpointsWithOneBoundedOriginalWait(){
         val clock=Clock();val backend=Backend(clock);val seen=mutableListOf<Long>();val buffers=mutableListOf<Buffer>()
         val sink=MotionFrameSink(VideoSink {seen+=it.timestampNs},{backend},clock)

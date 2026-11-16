@@ -30,6 +30,27 @@ class RecreatedBackgroundTest {
         UiText.apply(app,AppLanguage.PORTUGUESE);DashboardTheme.apply(app,UiTheme.XBOX_SERIES)
     }
     @After fun cleanup() { ShadowDialog.getLatestDialog()?.dismiss();DashboardTheme.apply(app,UiTheme.GREEN) }
+    @Test fun namedRecreationsNeverPickAnotherSeasonEditionOrAnniversaryAndOldMismatchesAreRemoved() {
+        val official=OfficialXboxWallpapers.read(app)
+        val choices=RecreatedXboxBackgrounds.wallpapers(official)
+        val unrelated=official.first { it.name.contains("Klobrille",true) && it.name.contains("25") }
+        for(id in listOf("recreation:x25-special-edition","recreation:xbox-25th-anniversary","recreation:xbox-25-anos-part-culas")) {
+            val selected=choices.single { it.id==id };assertNull(selected.artUrl)
+            val old=selected.copy(artUrl=unrelated.artUrl)
+            assertEquals(selected,SeriesWallpaper.parse(old.json()))
+        }
+        for(id in listOf("recreation:sea-of-thieves-megalodon","recreation:sea-of-thieves-sunset","recreation:black-history-month-2025","recreation:battlefield-6","recreation:madden-nfl-26"))
+            assertNull(choices.single { it.id==id }.artUrl)
+        val witcher=choices.single { it.id=="recreation:the-witcher-3-wild-hunt" }
+        assertEquals(official.single { it.name=="The Witcher 3 - Wildhunt" }.artUrl,witcher.artUrl)
+        assertEquals(choices,RecreatedXboxBackgrounds.wallpapers(official.reversed()))
+        // Every declared pair must still exist in the shipped catalog, with no duplicate/guessed identity.
+        assertTrue(RecreatedXboxBackgrounds.artworkIds.values.all { id -> official.count { it.id==id }==1 })
+        assertTrue(choices.filter { it.artUrl!=null }.all { SeriesWallpaper.parse(it.json())==it })
+        val saved=SeriesPersonalizationStore(app)
+        saved.select(choices.first { it.artUrl!=null }.copy(artUrl=unrelated.artUrl))
+        assertNull(SeriesPersonalizationStore(app).selected().artUrl)
+    }
     @Test @Config(sdk=[31],qualifiers="w1280dp-h720dp-land-television-mdpi")
     fun televisionRestoresThirtyUpdatesForBackgroundAndPreviewWithSimplerDrawingAndStopsWhenHidden() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()

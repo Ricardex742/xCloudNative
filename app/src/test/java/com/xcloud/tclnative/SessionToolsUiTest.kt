@@ -43,6 +43,16 @@ class SessionToolsUiTest {
     private fun capture(d: ConsoleDialog,name: String) {
         val root=d.window!!.decorView;layout(root,d.window!!.attributes.width,648);capture(root,name)
     }
+    @Test fun endedAllocationHasNoReconnectActionAndReturnsToTheCatalog() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView)
+        try {
+            var reloads=0;var exits=0
+            val dialog=TransmissionRecoveryPanel.failed(a,{reloads++},{exits++},{},sessionEnded=true)
+            capture(dialog,"session-ended")
+            assertFalse(all(dialog.panel).filterIsInstance<TextView>().any { it.isClickable && it.text.contains("RECONECTAR",true) })
+            click(dialog,"VOLTAR AO CATÁLOGO");assertEquals(1,exits);assertEquals(0,reloads)
+        } finally { c.pause().stop().destroy() }
+    }
     @Test fun eachIndicatorCanBeChosenWithoutLeavingTheDialogAndAtLeastOneStaysEnabled() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView)
         try {

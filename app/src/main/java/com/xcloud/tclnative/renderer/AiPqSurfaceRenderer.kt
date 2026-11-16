@@ -115,10 +115,10 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     fun setImageComparison(value: ImageComparison) {
         if(imageComparison==value)return
         imageComparison=value;aspectDrawer?.globalImageComparison=value.ordinal;fsrPerformance.reset()
-        if(value!=ImageComparison.PROCESSED)frameInterpolation?.setEnabled(false)
+        if(value!=ImageComparison.PROCESSED)frameInterpolation?.setEnabled(false,FrameGenerationPhase.COMPARISON)
     }
     private fun requestedLabLevel()=when {
-        !imageLab.enabled || compatibility -> 0
+        !imageLab.hasImageEffects || compatibility -> 0
         devicePolicy.constrainedMemory -> 1
         imageLab.supersampling!=com.xcloud.tclnative.settings.ImageSupersampling.OFF -> 3
         imageLab.neural -> 2
@@ -129,7 +129,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         imageLab=value.bounded();imageLabLevel=requestedLabLevel()
         fsrPerformance.reset();applyTreatmentBudget()
         frameInterpolation?.updateProtection(value.protection.ordinal)
-        if(!value.enabled || value.comparison!=ImageComparison.PROCESSED || value.frameGeneration==com.xcloud.tclnative.settings.ExperimentalFrameGeneration.OFF) frameInterpolation?.setEnabled(false)
+        if(!value.enabled || value.comparison!=ImageComparison.PROCESSED || value.frameGeneration==com.xcloud.tclnative.settings.ExperimentalFrameGeneration.OFF) frameInterpolation?.setEnabled(false,if(value.comparison!=ImageComparison.PROCESSED) FrameGenerationPhase.COMPARISON else FrameGenerationPhase.OFF)
     }
     private val reconstructionController=ReconstructionController()
     private var requestedTreatment=ImageTreatmentSettings()
@@ -378,14 +378,14 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         }
         frameInterpolation?.observePresentation(allDraws.get(),now)
         if((context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager)?.isPowerSaveMode==true)
-            frameInterpolation?.setEnabled(false)
+            frameInterpolation?.setEnabled(false,FrameGenerationPhase.PROTECTED)
         if(imageComparison!=ImageComparison.PROCESSED || compatibility || (!requestedTreatment.autoProtect && imageLabLevel==0) || (!fsrEnabled && !treatmentBudget.image.active && imageLabLevel==0) ||
             (fsrMode==FsrMode.FSR1 && aspectDrawer?.isFsrBypassed()==true && !treatmentBudget.image.active && imageLabLevel==0)) { fsrPerformance.reset();return }
         val slow=fsrPerformance.observe(now,allDraws.get(),metrics,foreground && fresh) ?: return
         val rate=String.format(java.util.Locale.US,"%.1f",slow.drawsPerSecond)
         if(imageLabLevel>0) {
             imageLabLevel--;treatmentCuts.add("image lab level $imageLabLevel ($rate draws/s)")
-            if(imageLabLevel==0)frameInterpolation?.setEnabled(false)
+            if(imageLabLevel==0)frameInterpolation?.setEnabled(false,FrameGenerationPhase.PROTECTED)
             applyTreatmentBudget();fsrPerformance.reset();return
         }
         if(fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION && reconstructionController.reduce()) {
@@ -469,11 +469,26 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             previous?.let { removeView(it);it.release() }
         }
     }
+    fun frameGenerationSummary(): String? {
+        frameInterpolation?.let {
+            val state=it.snapshot()
+            val requested=imageLab.enabled && imageLab.frameGeneration!=com.xcloud.tclnative.settings.ExperimentalFrameGeneration.OFF
+            val resumedComparison=state.phase==FrameGenerationPhase.COMPARISON && imageComparison==ImageComparison.PROCESSED && imageLab.comparison==ImageComparison.PROCESSED
+            return (if(requested && (state.phase==FrameGenerationPhase.OFF || resumedComparison)) state.copy(phase=FrameGenerationPhase.NEXT_SESSION) else state).text()
+        }
+        if(!imageLab.enabled || imageLab.frameGeneration==com.xcloud.tclnative.settings.ExperimentalFrameGeneration.OFF) return null
+        val gl=(context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
+        return FrameGenerationSnapshot(when {
+            compatibility || devicePolicy.constrainedMemory || gl<0x30000 -> FrameGenerationPhase.UNSUPPORTED
+            imageComparison!=ImageComparison.PROCESSED || imageLab.comparison!=ImageComparison.PROCESSED -> FrameGenerationPhase.COMPARISON
+            else -> FrameGenerationPhase.NEXT_SESSION
+        }).text()
+    }
     private fun imageDiagnostics(): String {
         val active=if(compatibility || treatmentFailure!=null || imageComparison==ImageComparison.ORIGINAL) ImageTreatmentSettings() else treatmentBudget.image.copy(
             neural=aspectDrawer?.effectiveNeural() ?: 0,temporal=aspectDrawer?.effectiveTemporal() ?: 0)
         fun describe(value: ImageTreatmentSettings,applied: Boolean=false)="${if(applied && fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION) "XCLOUD_RECONSTRUCTION" else if(applied && fsrEnabled && fsrMode==FsrMode.SGSR1) "SGSR1" else value.sharpening.name}; deband=${value.deband}%; cleanup=${value.cleanup}%; chroma=${value.chroma}%; AA=${value.antialias}%; temporal=${value.temporal}%; neural=${value.neural}%"
-        return UiText.join(UiText.text("Tratamento solicitado: {0}",UiText.nested(describe(requestedTreatment))),"\n",
+        return (frameGenerationSummary()?.let { "$it\n" } ?: "")+UiText.join(UiText.text("Tratamento solicitado: {0}",UiText.nested(describe(requestedTreatment))),"\n",
             UiText.text("Tratamento aplicado: {0}",UiText.nested(describe(active,true))),"\n",
             "Cuts: ${treatmentCuts.joinToString()}${treatmentFailure?.let { "; $it" } ?: ""}\n",
             aspectDrawer?.treatmentDiagnostics() ?: "Treatment: off","\n",

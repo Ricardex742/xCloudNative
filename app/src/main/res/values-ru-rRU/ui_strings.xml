@@ -1150,4 +1150,23 @@
     <string name="ui_785f6f8adbf92b77" formatted="false">"Приобретено"</string>
     <string name="ui_5024187419f3b962" formatted="false">"Не приобретено"</string>
     <string name="ui_13ee7cd1ee354c13" formatted="false">"Владение не подтверждено"</string>
+    <string name="ui_cc08b5d5ab2aadf7" formatted="false">"Генерация: {0} | создано {1} | отправлено/с {2} | отрисовок/с {3}"</string>
+    <string name="ui_a87456780def71f7" formatted="false">"Сеанс Xbox завершён. Вернитесь в каталог, чтобы начать другую игру."</string>
+    <string name="ui_30c31fa98c2d92ca" formatted="false">"Осталось времени: проверка…"</string>
+    <string name="ui_4755a4d7f48e0d49" formatted="false">"Осталось времени: недоступно"</string>
+    <string name="ui_f5c2a1e76bc23643" formatted="false">"Осталось времени: без ограничений"</string>
+    <string name="ui_357520cc3b52e48b" formatted="false">"Осталось времени: менее 1 мин"</string>
+    <string name="ui_e2636f0c83fce63c" formatted="false">"Осталось времени: {0}ч{1}мин"</string>
+    <string name="ui_30c3f7f3ef53d09c" formatted="false">"Первое замеченное прерывание: {0}\n"</string>
+    <string name="ui_b711aee1f71e49e1" formatted="false">"Сеанс Xbox завершён"</string>
+    <string name="ui_1ed7941ca87f7100" formatted="false">"Xbox сообщил, что этот сеанс больше не активен. Повторное подключение не восстановит его. Вернитесь в каталог, чтобы начать другую игру."</string>
+    <string name="ui_8c80f17b24599377" formatted="false">"Обновить оставшееся время"</string>
+    <string name="ui_dfd02635c76e0c86" formatted="false">"Ожидание стабильного контента с 30 FPS"</string>
+    <string name="ui_65cb84f03d1e5889" formatted="false">"Активна"</string>
+    <string name="ui_1273bc39d8ede975" formatted="false">"Недоступно на этом устройстве или в этом режиме"</string>
+    <string name="ui_0094704857985c6b" formatted="false">"Применится в следующем сеансе"</string>
+    <string name="ui_6951ce4eb4f607aa" formatted="false">"Приостановлена защитой производительности"</string>
+    <string name="ui_5489beb70fc5ad63" formatted="false">"Созданные кадры не уложились в срок"</string>
+    <string name="ui_856791dfa18ce90d" formatted="false">"Ошибка обработки"</string>
+    <string name="ui_766196382fc5dff9" formatted="false">"Приостановлена во время сравнения"</string>
 </resources>

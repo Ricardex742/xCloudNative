@@ -1150,4 +1150,23 @@
     <string name="ui_785f6f8adbf92b77" formatted="false">"所有済み"</string>
     <string name="ui_5024187419f3b962" formatted="false">"未所有"</string>
     <string name="ui_13ee7cd1ee354c13" formatted="false">"所有状況未確認"</string>
+    <string name="ui_cc08b5d5ab2aadf7" formatted="false">"フレーム生成: {0} | 生成数 {1} | 送信/秒 {2} | 描画/秒 {3}"</string>
+    <string name="ui_a87456780def71f7" formatted="false">"Xboxセッションが終了しました。カタログに戻って別のゲームを開始してください。"</string>
+    <string name="ui_30c31fa98c2d92ca" formatted="false">"残り時間: 確認中…"</string>
+    <string name="ui_4755a4d7f48e0d49" formatted="false">"残り時間: 取得できません"</string>
+    <string name="ui_f5c2a1e76bc23643" formatted="false">"残り時間: 無制限"</string>
+    <string name="ui_357520cc3b52e48b" formatted="false">"残り時間: 1分未満"</string>
+    <string name="ui_e2636f0c83fce63c" formatted="false">"残り時間: {0}時間{1}分"</string>
+    <string name="ui_30c3f7f3ef53d09c" formatted="false">"最初に検出した中断: {0}\n"</string>
+    <string name="ui_b711aee1f71e49e1" formatted="false">"Xboxセッション終了"</string>
+    <string name="ui_1ed7941ca87f7100" formatted="false">"Xboxから、このセッションは既に終了しているとの応答がありました。再接続では復元できません。カタログに戻って別のゲームを開始してください。"</string>
+    <string name="ui_8c80f17b24599377" formatted="false">"残り時間を更新"</string>
+    <string name="ui_dfd02635c76e0c86" formatted="false">"安定した30 FPSコンテンツを待機中"</string>
+    <string name="ui_65cb84f03d1e5889" formatted="false">"有効"</string>
+    <string name="ui_1273bc39d8ede975" formatted="false">"この端末またはモードでは利用できません"</string>
+    <string name="ui_0094704857985c6b" formatted="false">"次のセッションから適用"</string>
+    <string name="ui_6951ce4eb4f607aa" formatted="false">"性能保護により停止中"</string>
+    <string name="ui_5489beb70fc5ad63" formatted="false">"生成フレームが期限に間に合いませんでした"</string>
+    <string name="ui_856791dfa18ce90d" formatted="false">"処理エラー"</string>
+    <string name="ui_766196382fc5dff9" formatted="false">"比較中は停止"</string>
 </resources>

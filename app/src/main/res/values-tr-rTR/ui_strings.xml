@@ -1150,4 +1150,23 @@
     <string name="ui_785f6f8adbf92b77" formatted="false">"Sahip olunan"</string>
     <string name="ui_5024187419f3b962" formatted="false">"Sahip olunmayan"</string>
     <string name="ui_13ee7cd1ee354c13" formatted="false">"Sahiplik doğrulanmadı"</string>
+    <string name="ui_cc08b5d5ab2aadf7" formatted="false">"Kare üretimi: {0} | üretilen {1} | gönderilen/sn {2} | çizim/sn {3}"</string>
+    <string name="ui_a87456780def71f7" formatted="false">"Xbox oturumu sona erdi. Başka bir oyun başlatmak için kataloğa dönün."</string>
+    <string name="ui_30c31fa98c2d92ca" formatted="false">"Kalan süre: kontrol ediliyor…"</string>
+    <string name="ui_4755a4d7f48e0d49" formatted="false">"Kalan süre: kullanılamıyor"</string>
+    <string name="ui_f5c2a1e76bc23643" formatted="false">"Kalan süre: sınırsız"</string>
+    <string name="ui_357520cc3b52e48b" formatted="false">"Kalan süre: 1 dakikadan az"</string>
+    <string name="ui_e2636f0c83fce63c" formatted="false">"Kalan süre: {0}sa{1}dk"</string>
+    <string name="ui_30c3f7f3ef53d09c" formatted="false">"İlk gözlenen kesinti: {0}\n"</string>
+    <string name="ui_b711aee1f71e49e1" formatted="false">"Xbox oturumu sona erdi"</string>
+    <string name="ui_1ed7941ca87f7100" formatted="false">"Xbox bu oturumun artık etkin olmadığını bildirdi. Yeniden bağlanmak oturumu kurtaramaz. Başka bir oyun başlatmak için kataloğa dönün."</string>
+    <string name="ui_8c80f17b24599377" formatted="false">"Kalan süreyi yenile"</string>
+    <string name="ui_dfd02635c76e0c86" formatted="false">"Sabit 30 FPS içerik bekleniyor"</string>
+    <string name="ui_65cb84f03d1e5889" formatted="false">"Etkin"</string>
+    <string name="ui_1273bc39d8ede975" formatted="false">"Bu cihazda veya modda kullanılamıyor"</string>
+    <string name="ui_0094704857985c6b" formatted="false">"Sonraki oturumda uygulanır"</string>
+    <string name="ui_6951ce4eb4f607aa" formatted="false">"Performans koruması tarafından duraklatıldı"</string>
+    <string name="ui_5489beb70fc5ad63" formatted="false">"Üretilen kareler süre sınırını aştı"</string>
+    <string name="ui_856791dfa18ce90d" formatted="false">"İşleme hatası"</string>
+    <string name="ui_766196382fc5dff9" formatted="false">"Karşılaştırma sırasında duraklatıldı"</string>
 </resources>

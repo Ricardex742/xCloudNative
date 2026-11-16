@@ -8,6 +8,7 @@ data class ImageLabSettings(val enabled: Boolean=false,val restoration: Int=35,
     val protection: HudProtection=HudProtection.AUTO,val supersampling: ImageSupersampling=ImageSupersampling.OFF,
     val frameGeneration: ExperimentalFrameGeneration=ExperimentalFrameGeneration.OFF,
     val comparison: ImageComparison=ImageComparison.PROCESSED,val neural: Boolean=false) {
+    val hasImageEffects get()=enabled && (restoration>0 || supersampling!=ImageSupersampling.OFF)
     fun bounded()=copy(restoration=restoration.coerceIn(0,100))
     fun forDevice(constrainedMemory: Boolean)=if(!constrainedMemory) bounded() else bounded().copy(
         restoration=restoration.coerceIn(0,25),neural=false,supersampling=ImageSupersampling.OFF,

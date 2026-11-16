@@ -42,6 +42,18 @@ class SessionReportUiTest {
             transportSentBytes=(i+1)*20000L,droppedFrames=0),InputMetrics(sentBytes=(i+1)*2280L)) }
         return t.finish(10000,SessionEnd.USER)!!
     }
+    @Test fun interruptionSurvivesStorageEvenWhenTheUserEndsTheSession() {
+        val app=org.robolectric.RuntimeEnvironment.getApplication()
+        val reason=SessionFailure.from(java.io.IOException("ICE: FAILED"))
+        val report=demo().copy(end=SessionEnd.USER,interruption=reason)
+        val store=SessionReportStore(app);store.save(report)
+        assertEquals(reason,store.read()!!.interruption)
+        assertTrue(store.read()!!.text().contains("Primeira interrupção observada"))
+        val prefs=app.getSharedPreferences("session_diagnostic",0)
+        val legacy=org.json.JSONObject(prefs.getString("last",null)!!).apply { remove("interruption") }
+        prefs.edit().putString("last",legacy.toString()).commit()
+        assertNull(store.read()!!.interruption)
+    }
     @Test fun latestReportSurvivesActivityRecreationAndCorruptOrFutureRecordsAreIgnored() {
         var c=Robolectric.buildActivity(Activity::class.java).setup()
         val original=demo(); SessionReportStore(c.get()).save(original)

@@ -7,6 +7,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class TransmissionRecoveryStateTest {
+    @Test fun expiredXboxAllocationCannotBeRetriedAndOtherHttpErrorsRemainRetryable() {
+        for(stage in listOf("KEEPALIVE","RECONNECT_KEEPALIVE")) {
+            val state=TransmissionRecoveryState();val token=state.begin()!!
+            state.failed(token,com.xcloud.tclnative.net.CloudHttpException(stage,410,"SessionNotActive",null))
+            assertEquals(TransmissionRecoveryState.Phase.SESSION_ENDED,state.phase)
+            assertNull(state.begin());assertFalse(state.current(token));assertFalse(state.connected(token))
+            assertTrue(state.diagnostics().contains("HTTP_410"))
+        }
+        for(status in listOf(429,500,503)) {
+            val state=TransmissionRecoveryState();val token=state.begin()!!
+            state.failed(token,com.xcloud.tclnative.net.CloudHttpException("RECONNECT_KEEPALIVE",status,null,null))
+            assertEquals(TransmissionRecoveryState.Phase.WAITING_RETRY,state.phase);assertNotNull(state.begin())
+        }
+    }
     @Test fun doublePressIsIgnoredAndOldCallbacksCannotCompleteOrInterruptTheNewAttempt() {
         val state=TransmissionRecoveryState();val old=state.epoch
         val token=state.begin()!!

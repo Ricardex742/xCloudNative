@@ -1150,4 +1150,23 @@
     <string name="ui_785f6f8adbf92b77" formatted="false">"Owned"</string>
     <string name="ui_5024187419f3b962" formatted="false">"Not owned"</string>
     <string name="ui_13ee7cd1ee354c13" formatted="false">"Ownership unconfirmed"</string>
+    <string name="ui_cc08b5d5ab2aadf7" formatted="false">"Generation: {0} | generated {1} | submitted/s {2} | draws/s {3}"</string>
+    <string name="ui_a87456780def71f7" formatted="false">"The Xbox session has ended. Return to the catalog to start another game."</string>
+    <string name="ui_30c31fa98c2d92ca" formatted="false">"Time remaining: checking…"</string>
+    <string name="ui_4755a4d7f48e0d49" formatted="false">"Time remaining: unavailable"</string>
+    <string name="ui_f5c2a1e76bc23643" formatted="false">"Time remaining: unlimited"</string>
+    <string name="ui_357520cc3b52e48b" formatted="false">"Time remaining: less than 1 min"</string>
+    <string name="ui_e2636f0c83fce63c" formatted="false">"Time remaining: {0}h{1}min"</string>
+    <string name="ui_30c3f7f3ef53d09c" formatted="false">"First observed interruption: {0}\n"</string>
+    <string name="ui_b711aee1f71e49e1" formatted="false">"Xbox session ended"</string>
+    <string name="ui_1ed7941ca87f7100" formatted="false">"Xbox reported that this session is no longer active. Reconnecting cannot recover it. Return to the catalog to start another game."</string>
+    <string name="ui_8c80f17b24599377" formatted="false">"Refresh time remaining"</string>
+    <string name="ui_dfd02635c76e0c86" formatted="false">"Waiting for stable 30 FPS content"</string>
+    <string name="ui_65cb84f03d1e5889" formatted="false">"Active"</string>
+    <string name="ui_1273bc39d8ede975" formatted="false">"Unavailable on this device or mode"</string>
+    <string name="ui_0094704857985c6b" formatted="false">"Applies next session"</string>
+    <string name="ui_6951ce4eb4f607aa" formatted="false">"Suspended by performance protection"</string>
+    <string name="ui_5489beb70fc5ad63" formatted="false">"Generated frames missed their deadline"</string>
+    <string name="ui_856791dfa18ce90d" formatted="false">"Processing failure"</string>
+    <string name="ui_766196382fc5dff9" formatted="false">"Suspended during comparison"</string>
 </resources>

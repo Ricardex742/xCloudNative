@@ -6,6 +6,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SessionReportTest {
+    @Test fun endingAfterAnInterruptionPreservesItsOriginWithoutMislabelingTheUserAction() {
+        val t=tracker();t.begin(0,"Ethernet")
+        t.recordInterruption(java.io.IOException("ICE: FAILED"))
+        t.recordInterruption(java.io.IOException("private text must not be copied"))
+        val r=finish(t,5000)
+        assertEquals(SessionEnd.USER,r.end);assertNull(r.failure)
+        assertEquals(FailureKind.ICE_FAILED,r.interruption!!.kind)
+        assertTrue(r.text().contains("Primeira interrupção observada"))
+        assertFalse(r.text().contains("private text"))
+        assertEquals(FailureStage.KEEPALIVE,SessionFailure.from(com.xcloud.tclnative.net.CloudHttpException("RECONNECT_KEEPALIVE",410,"SessionNotActive",null)).stage)
+        assertEquals(FailureKind.NO_VIDEO,SessionFailure.from(java.io.IOException("RECONNECT_FRAME_TIMEOUT: private")).kind)
+        assertEquals(FailureKind.TIMEOUT,SessionFailure.from(java.io.IOException("RECONNECT_TIMEOUT: private")).kind)
+    }
     @Test fun lowRttAndFastDecodeDoNotHideADeepVideoBufferOrMislabelSchedulerTiming() {
         val t=tracker();t.begin(0,"Ethernet")
         t.add(1000,sample(rtt=12.0).copy(decodeMs=3.0,jitterBufferMs=60.0,jitterBufferTargetMs=40.0),InputMetrics())

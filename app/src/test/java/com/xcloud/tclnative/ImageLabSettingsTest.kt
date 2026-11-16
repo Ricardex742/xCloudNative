@@ -13,6 +13,13 @@ import org.webrtc.ImageLabPlan
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28])
 class ImageLabSettingsTest {
+    @Test fun generationOnlyDoesNotRequireNeutralRestorationOrSupersamplingPasses() {
+        val onlyGeneration=ImageLabSettings(enabled=true,restoration=0,frameGeneration=ExperimentalFrameGeneration.AUTO_30_TO_60)
+        assertFalse(onlyGeneration.hasImageEffects)
+        assertTrue(onlyGeneration.copy(restoration=1).hasImageEffects)
+        assertTrue(onlyGeneration.copy(supersampling=ImageSupersampling.X125).hasImageEffects)
+        assertFalse(onlyGeneration.copy(enabled=false,restoration=100).hasImageEffects)
+    }
     @Test fun existingPreferencesStayIntactAndEveryNewFeatureBeginsDisabled(){
         val app=RuntimeEnvironment.getApplication();val prefs=app.getSharedPreferences("stream_preferences",Context.MODE_PRIVATE)
         prefs.edit().clear().putString("resolution","HD_720").putInt("sharpness",75).putString("fsr_mode","FSR1").commit()

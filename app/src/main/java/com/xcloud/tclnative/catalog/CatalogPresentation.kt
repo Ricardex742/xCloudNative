@@ -25,50 +25,60 @@ internal data class CatalogPresentation(
     val gamePassProducts: Set<String>?
 ) {
     companion object {
-        fun build(input: CatalogInput): CatalogPresentation {
-            val products = if (input.galleries.containsKey(OfficialGalleryKind.GAME_PASS))
-                input.galleries[OfficialGalleryKind.GAME_PASS]?.products?.map { it.productId }?.toSet()
-                else input.legacyProducts?.map(GamePassCatalog::productKey)?.toSet()
-            val membership = products ?: emptySet()
-            val titles = input.legacyTitles.map(GamePassCatalog::productKey).toSet()
-            val games = input.games.map { game ->
-                val member = GamePassCatalog.contains(game, membership, titles)
-                if (game.gamePass == member) game else game.copy(gamePass = member)
+        fun build(input: CatalogInput): CatalogPresentation = CatalogPresentationEngine().build(input)
+    }
+}
+
+/** One account/view worker owns this index. Tab/search/license changes reuse the immutable artwork joins. */
+internal class CatalogPresentationEngine {
+    private var data: IndexedCatalog?=null
+    fun build(input: CatalogInput): CatalogPresentation {
+        val catalog=data?.takeIf { it.matches(input) } ?: IndexedCatalog(input).also { data=it }
+        val search=CatalogQuery(input.query)
+        val visible=catalog.select(input).filter { card ->
+            search.matches(card) && input.ownershipFilter.accepts(input.ownership[card.ownershipProductId()] ?: Ownership.UNKNOWN)
+        }
+        return CatalogPresentation(visible,visible.withIndex().associate { it.value.key to it.index },catalog.subscription,catalog.products)
+    }
+    private class IndexedCatalog(private val source: CatalogInput) {
+        val products=if(source.galleries.containsKey(OfficialGalleryKind.GAME_PASS))
+            source.galleries[OfficialGalleryKind.GAME_PASS]?.products?.map { it.productId }?.toSet()
+            else source.legacyProducts?.map(GamePassCatalog::productKey)?.toSet()
+        private val membership=products ?: emptySet()
+        private val titles=source.legacyTitles.map(GamePassCatalog::productKey).toSet()
+        private val games=source.games.map { game ->
+            val member=GamePassCatalog.contains(game,membership,titles)
+            if(game.gamePass==member) game else game.copy(gamePass=member)
+        }
+        val subscription=XboxProfile.subscription(source.games.flatMap { it.userSubscriptions+it.userPrograms })
+        private val index=CloudTitleIndex(games)
+        private val galleries=source.galleries.mapNotNull { (kind,gallery) -> gallery?.let {
+            kind to OfficialGalleryCards.matching(it,index,source.bindings,membership,"").sortedBy { it.sortKey }.toList()
+        } }.toMap()
+        private val official=galleries.values.flatten().distinctBy { it.key }
+        private val byProduct=official.associateBy { it.product!!.productId }
+        private val byTitle=official.filter { it.game!=null }.groupBy { GamePassCatalog.productKey(it.game!!.titleId) }
+        private val native=games.associate { game ->
+            val direct=game.productId?.let { byProduct[GamePassCatalog.productKey(it)] }
+                ?.takeIf { it.game?.titleId?.equals(game.titleId,true)==true }
+            val alias=direct ?: byTitle[GamePassCatalog.productKey(game.titleId)]?.singleOrNull()
+            game.titleId to CatalogCard(game,alias?.product,alias?.gamePass ?: game.gamePass,nativeIdentity=true)
+        }
+        private val all: List<CatalogCard> = run {
+            val selected=GameLibrary.select(games,LibraryTab.ALL,emptySet(),emptyMap(),products?.toList(),null).map { native.getValue(it.titleId) }
+            if(official.isEmpty()) selected else {
+                val represented=selected.mapNotNull { it.product?.productId }.toSet()
+                (selected+official.filter { it.product!!.productId !in represented }).sortedBy { it.sortKey }
             }
-            val native=CloudTitleIndex(games)
-            val search=CatalogQuery(input.query)
-            val kind = when (input.tab) {
-                LibraryTab.GAME_PASS -> OfficialGalleryKind.GAME_PASS
-                LibraryTab.PURCHASED -> OfficialGalleryKind.PURCHASED
-                else -> null
-            }
-            val gallery=input.galleries[kind]
-            val cards=if(gallery!=null) {
-                OfficialGalleryCards.matching(gallery,native,input.bindings,membership,input.query).sortedBy { it.sortKey }.toList()
-            } else {
-                val official=input.galleries.values.filterNotNull().asSequence().flatMap {
-                    OfficialGalleryCards.matching(it,native,input.bindings,membership,"")
-                }.distinctBy { it.key }.toList()
-                val byProduct=official.associateBy { it.product!!.productId }
-                val byTitle=official.filter { it.game!=null }.groupBy { GamePassCatalog.productKey(it.game!!.titleId) }
-                fun display(game: GameTitle): CatalogCard {
-                    val direct=game.productId?.let { byProduct[GamePassCatalog.productKey(it)] }
-                        ?.takeIf { it.game?.titleId?.equals(game.titleId,true)==true }
-                    val alias=direct ?: byTitle[GamePassCatalog.productKey(game.titleId)]?.singleOrNull()
-                    return CatalogCard(game,alias?.product,alias?.gamePass ?: game.gamePass,nativeIdentity=true)
-                }
-                // Search the displayed aliases too, after preserving the requested category/order.
-                val selected=GameLibrary.select(games,input.tab,input.favorites,emptyMap(),
-                    products?.toList(),input.added,"",titles,input.recent).map(::display)
-                if(input.tab==LibraryTab.ALL && official.isNotEmpty()) {
-                    val represented=selected.mapNotNull { it.product?.productId }.toSet()
-                    (selected.asSequence()+official.asSequence().filter { it.product!!.productId !in represented })
-                        .filter(search::matches).sortedBy { it.sortKey }.toList()
-                } else selected.filter(search::matches)
-            }
-            val visible=cards.filter { input.ownershipFilter.accepts(input.ownership[it.ownershipProductId()] ?: Ownership.UNKNOWN) }
-            return CatalogPresentation(visible, visible.withIndex().associate { it.value.key to it.index },
-                XboxProfile.subscription(input.games.flatMap { it.userSubscriptions + it.userPrograms }), products)
+        }
+        fun matches(input: CatalogInput)=source.games===input.games && source.galleries==input.galleries &&
+            source.bindings==input.bindings && source.legacyProducts==input.legacyProducts && source.legacyTitles==input.legacyTitles
+        fun select(input: CatalogInput): List<CatalogCard> {
+            val kind=when(input.tab) { LibraryTab.GAME_PASS -> OfficialGalleryKind.GAME_PASS;LibraryTab.PURCHASED -> OfficialGalleryKind.PURCHASED;else -> null }
+            galleries[kind]?.let { return it }
+            if(input.tab==LibraryTab.ALL)return all
+            return GameLibrary.select(games,input.tab,input.favorites,emptyMap(),products?.toList(),input.added,"",titles,input.recent)
+                .map { native.getValue(it.titleId) }
         }
     }
 }

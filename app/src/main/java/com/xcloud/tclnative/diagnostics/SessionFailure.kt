@@ -63,18 +63,19 @@ data class SessionFailure(val stage: FailureStage,val kind: FailureKind,val http
                 else -> message.substringBefore(':').take(32)
             }
             val stage=when(prefix) {
-                "KEEPALIVE" -> FailureStage.KEEPALIVE
-                "TRANSPORT","ICE" -> FailureStage.TRANSPORT
+                "KEEPALIVE","RECONNECT_KEEPALIVE" -> FailureStage.KEEPALIVE
+                "TRANSPORT","ICE","RECONNECT_TIMEOUT" -> FailureStage.TRANSPORT
                 "CHANNELS" -> FailureStage.CHANNELS
                 "VIDEO_CODEC" -> FailureStage.VIDEO_CODEC
                 "RENDERER" -> FailureStage.RENDERER
-                "VIDEO" -> FailureStage.VIDEO
+                "VIDEO","RECONNECT_FRAME_TIMEOUT" -> FailureStage.VIDEO
                 "SESSION_STATE" -> FailureStage.SESSION_STATE
                 "SDP","SDP_LOCAL","SDP_OFFER","SDP_ANSWER","ICE_LOCAL","ICE_REMOTE","PLAY","CONSOLE_CONNECT" -> FailureStage.SIGNALING
                 else -> if(http!=null || request!=null) FailureStage.NETWORK else FailureStage.UNKNOWN
             }
             val kind=when {
                 http!=null -> FailureKind.HTTP
+                prefix=="RECONNECT_TIMEOUT" -> FailureKind.TIMEOUT
                 rendering -> FailureKind.RENDERER
                 stage==FailureStage.TRANSPORT && message in setOf("ICE: FAILED","TRANSPORT: ICE FAILED") -> FailureKind.ICE_FAILED
                 stage==FailureStage.TRANSPORT && message in setOf("ICE: CLOSED","TRANSPORT: ICE CLOSED") -> FailureKind.ICE_CLOSED

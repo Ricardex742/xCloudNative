@@ -17,14 +17,14 @@ suspend fun awaitTransmissionFrame(frame: Deferred<Unit>,failure: Deferred<Excep
 
 /** Old native callbacks cannot terminate a new transport; the cloud allocation has a separate lifetime. */
 class TransmissionRecoveryState {
-    enum class Phase { ACTIVE, RELOADING, WAITING_RETRY, CLOSED }
+    enum class Phase { ACTIVE, RELOADING, WAITING_RETRY, SESSION_ENDED, CLOSED }
     @Volatile var phase=Phase.ACTIVE;private set
     @Volatile var epoch=0;private set
     private var requested=0;private var succeeded=0;private var failed=0;private var repaired=0
     private var lastFailure="n/d"
-    fun current(token: Int)=phase!=Phase.CLOSED && epoch==token
+    fun current(token: Int)=phase!=Phase.CLOSED && phase!=Phase.SESSION_ENDED && epoch==token
     @Synchronized fun begin(): Int? {
-        if(phase==Phase.RELOADING || phase==Phase.CLOSED) return null
+        if(phase==Phase.RELOADING || phase==Phase.CLOSED || phase==Phase.SESSION_ENDED) return null
         phase=Phase.RELOADING;epoch++;requested++;return epoch
     }
     @Synchronized fun connected(token: Int): Boolean {
@@ -32,14 +32,17 @@ class TransmissionRecoveryState {
         phase=Phase.ACTIVE;succeeded++;return true
     }
     @Synchronized fun failed(token: Int,error: Throwable?=null) {
-        if(current(token) && phase==Phase.RELOADING) { phase=Phase.WAITING_RETRY;failed++;recordFailure(error) }
+        if(current(token) && phase==Phase.RELOADING) { phase=if(sessionEnded(error)) Phase.SESSION_ENDED else Phase.WAITING_RETRY;failed++;recordFailure(error) }
     }
     @Synchronized fun interrupted(token: Int,error: Throwable?=null): Boolean {
         if(!current(token) || phase!=Phase.ACTIVE) return false
-        phase=Phase.WAITING_RETRY;recordFailure(error);return true
+        phase=if(sessionEnded(error)) Phase.SESSION_ENDED else Phase.WAITING_RETRY;recordFailure(error);return true
     }
     @Synchronized fun repaired() { if(phase==Phase.ACTIVE) repaired++ }
     @Synchronized fun close() { phase=Phase.CLOSED;epoch++ }
+    private fun sessionEnded(error: Throwable?)=generateSequence(error) { it.cause }.take(8).any {
+        it is CloudHttpException && it.status==410 && it.stage in setOf("KEEPALIVE","RECONNECT_KEEPALIVE")
+    }
     private fun recordFailure(error: Throwable?) {
         if(error==null) return
         lastFailure=if(error is CloudHttpException) "${error.stage}/HTTP_${error.status}" else

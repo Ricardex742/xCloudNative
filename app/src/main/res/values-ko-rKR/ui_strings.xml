@@ -1150,4 +1150,23 @@
     <string name="ui_785f6f8adbf92b77" formatted="false">"소유"</string>
     <string name="ui_5024187419f3b962" formatted="false">"미소유"</string>
     <string name="ui_13ee7cd1ee354c13" formatted="false">"소유 여부 미확인"</string>
+    <string name="ui_cc08b5d5ab2aadf7" formatted="false">"프레임 생성: {0} | 생성 수 {1} | 전송/초 {2} | 그리기/초 {3}"</string>
+    <string name="ui_a87456780def71f7" formatted="false">"Xbox 세션이 종료되었습니다. 카탈로그로 돌아가 다른 게임을 시작하세요."</string>
+    <string name="ui_30c31fa98c2d92ca" formatted="false">"남은 시간: 확인 중…"</string>
+    <string name="ui_4755a4d7f48e0d49" formatted="false">"남은 시간: 확인 불가"</string>
+    <string name="ui_f5c2a1e76bc23643" formatted="false">"남은 시간: 무제한"</string>
+    <string name="ui_357520cc3b52e48b" formatted="false">"남은 시간: 1분 미만"</string>
+    <string name="ui_e2636f0c83fce63c" formatted="false">"남은 시간: {0}시간 {1}분"</string>
+    <string name="ui_30c3f7f3ef53d09c" formatted="false">"처음 관측된 중단: {0}\n"</string>
+    <string name="ui_b711aee1f71e49e1" formatted="false">"Xbox 세션 종료"</string>
+    <string name="ui_1ed7941ca87f7100" formatted="false">"Xbox가 이 세션이 더 이상 활성 상태가 아니라고 응답했습니다. 다시 연결해도 복구할 수 없습니다. 카탈로그로 돌아가 다른 게임을 시작하세요."</string>
+    <string name="ui_8c80f17b24599377" formatted="false">"남은 시간 새로 고침"</string>
+    <string name="ui_dfd02635c76e0c86" formatted="false">"안정적인 30 FPS 콘텐츠 대기 중"</string>
+    <string name="ui_65cb84f03d1e5889" formatted="false">"활성"</string>
+    <string name="ui_1273bc39d8ede975" formatted="false">"이 기기 또는 모드에서는 사용 불가"</string>
+    <string name="ui_0094704857985c6b" formatted="false">"다음 세션부터 적용"</string>
+    <string name="ui_6951ce4eb4f607aa" formatted="false">"성능 보호로 일시 중지"</string>
+    <string name="ui_5489beb70fc5ad63" formatted="false">"생성 프레임이 처리 기한을 넘김"</string>
+    <string name="ui_856791dfa18ce90d" formatted="false">"처리 실패"</string>
+    <string name="ui_766196382fc5dff9" formatted="false">"비교 중 일시 중지"</string>
 </resources>

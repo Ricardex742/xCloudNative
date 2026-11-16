@@ -25,7 +25,8 @@ data class SessionReport(
     val efficient: Boolean?,val videoBytes: Long?,val receivedBytes: Long?,val uploadedBytes: Long?,val inputBytes: Long,
     val droppedFrames: Long?,val pointerEvents: Long,val inputWaits: Long,val inputCoalesced: Long,
     val stalledMs: Long,val stalledEvents: Long,val stalledWithoutDataMs: Long,val stalledWithDataMs: Long,
-    val recovery: Map<VideoRecoveryAction,Int>,val score: Int?,val inputDetails: String? = null,val failure: SessionFailure? = null
+    val recovery: Map<VideoRecoveryAction,Int>,val score: Int?,val inputDetails: String? = null,val failure: SessionFailure? = null,
+    val interruption: SessionFailure? = null
 ) {
     val quality: String get()=when { score==null -> UiText.text("Dados parciais"); score>=90 -> UiText.text("Excelente"); score>=75 -> UiText.text("Boa"); score>=60 -> UiText.text("Regular"); else -> UiText.text("Atenção") }
     fun findings(): List<String> = buildList {
@@ -50,6 +51,7 @@ data class SessionReport(
         append(UiText.text("Tempo conectado: {0} | Observado: {1} | {2} amostras\n",UiText.nested(duration(durationMs)),UiText.nested(duration(observedMs)),UiText.nested(samples)))
         append(UiText.text("{0} | Pedido: {1} | Apresentação solicitada: {2} FPS\n",UiText.nested(end.label),UiText.nested(requestedProfile),UiText.nested(presentationFps)))
         if(end==SessionEnd.FAILURE) append(UiText.text("Motivo do encerramento: {0}\n",UiText.nested(failure?.description ?: UiText.text("não registrado nesta versão do relatório"))))
+        interruption?.let { append(UiText.text("Primeira interrupção observada: {0}\n",UiText.nested(it.description))) }
         inputDetails?.let { append("$it\n") }
         append(UiText.text("Recebido: {0} | {1} | {2}\n",UiText.nested(resolution ?: "n/d"),UiText.nested(codec ?: "n/d"),UiText.nested(decoder ?: "n/d")))
         append(UiText.text("Índice estimado: {0}/100 • {1}\n\n",UiText.nested(score?.toString() ?: "n/d"),UiText.nested(quality)))
@@ -85,6 +87,10 @@ class SessionReportTracker(private val game: String,private val device: String,p
                            private val fpsTarget: Int,private val wallClock: () -> Long = System::currentTimeMillis) {
     @Volatile var inputDetails: (() -> String)? = null
     private var failure: SessionFailure?=null
+    private var interruption: SessionFailure?=null
+    @Synchronized fun recordInterruption(error: Throwable) {
+        if(!frozen && interruption==null && error !is kotlinx.coroutines.CancellationException) interruption=SessionFailure.from(error)
+    }
     @Synchronized fun recordFailure(error: Throwable) {
         if(!frozen && failure==null && error !is kotlinx.coroutines.CancellationException) failure=SessionFailure.from(error)
     }
@@ -179,7 +185,7 @@ class SessionReportTracker(private val game: String,private val device: String,p
             (observed*1000).toLong(),samples,wallClock(),end,metrics,resolution,codec,decoder,efficient,video.value(),down.value(),up.value(),
             input.sentBytes,dropped.takeIf { droppedKnown },input.pointerEventsSent,input.backpressureSkips,input.coalescedEdges,
             stallMs,stallEvents,noDataMs,withDataMs,recovery.toMap(),score,inputDetails?.invoke()?.take(SessionReport.MAX_INPUT_DETAILS),
-            failure.takeIf { end==SessionEnd.FAILURE })
+            failure.takeIf { end==SessionEnd.FAILURE },interruption)
         return report
     }
     @Synchronized fun takeReport(): SessionReport? { val ready=report ?: return null; if(delivered) return null; delivered=true; return ready }

@@ -23,7 +23,8 @@ class PlaybackSettingsPanel(
     private val sessionOptions: () -> Unit = {},private val controllerProfiles: () -> Unit = {},
     private val onPageEntered: (SettingsPage) -> Unit = {},
     private val catalogInformation: () -> String? = { null },
-    private val backgrounds: () -> List<SeriesWallpaper> = { emptyList() }
+    private val backgrounds: () -> List<SeriesWallpaper> = { emptyList() },
+    private val refreshPlaytime: () -> Unit = {}
 ) {
     private var currentPage=SettingsPage.ROOT
     private var upscalingBack: () -> Unit = { showImage() }
@@ -275,6 +276,7 @@ class PlaybackSettingsPanel(
     }
     fun showAccount(): ConsoleDialog = category(SettingsPage.ACCOUNT,UiText.text("Biblioteca e conta"),listOf(
         ConsoleAction(UiText.text("Atalhos dos favoritos"),homeShortcuts),ConsoleAction(UiText.text("Gerenciar assinatura Microsoft"),subscription),
+        ConsoleAction(UiText.text("Atualizar tempo restante")) { refreshPlaytime();showAccount() },
         ConsoleAction(UiText.text("Informações do catálogo")) {
             ConsoleDialogs.message(context,UiText.text("Informações do catálogo"),catalogInformation()?.takeIf { it.isNotBlank() }
                 ?: UiText.text("Catálogos oficiais com disponibilidade sujeita à conta, à região e às condições do serviço."),

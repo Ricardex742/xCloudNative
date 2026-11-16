@@ -23,6 +23,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 
 - Login direto na página oficial da Microsoft pelo próprio aparelho, com QR Code como alternativa e restauração da sessão salva. Celulares priorizam o login direto; TVs e boxes mantêm o QR Code em primeiro lugar.
 - Perfil Xbox com avatar e identificação da assinatura, quando informados pelo serviço.
+- **Tempo restante de nuvem** abaixo da assinatura, consultado no serviço Xbox: horas disponíveis, ilimitado ou indisponível quando não há confirmação. Atualiza ao entrar, retornar da partida ou usar **Biblioteca e conta › Atualizar tempo restante**; não é uma contagem regressiva local.
 - **Voltar a jogar** com o histórico da conta no Xbox Cloud Gaming.
 - Favoritos separados por conta e salvos no aparelho.
 - **Game Pass**, **Transmita seu jogo**, **Adições recentes** e **Todos os jogos**.
@@ -171,6 +172,7 @@ Pesquisa e configurações acompanham a identidade de cada console:
 - **Fluidez da apresentação opcional** em Adaptativo, com fila de um quadro pendente e descarte de quadros substituídos. Pode acrescentar atraso; Menor atraso e Compatibilidade usam apresentação imediata.
 - Fila com arte do jogo, estimativa do serviço, tempo aguardado e cancelamento. Os seis dashboards Xbox têm telas de espera próprias, acompanhando o visual do tema escolhido.
 - Recuperação de vídeo por solicitação de quadro-chave, decoder e superfície de exibição.
+- Reconexão manual da transmissão na mesma sessão Xbox. Sessões confirmadas como encerradas pelo serviço orientam o retorno ao catálogo; a reconexão não cria uma nova partida ou fila.
 - Menu da partida com ajustes e desconexão para retornar ao catálogo.
 
 <table>
@@ -220,6 +222,7 @@ Pesquisa e configurações acompanham a identidade de cada console:
 - **Reconstrução neural experimental** na luminância, com buffers half-float verificados e fonte de até 1080p; disponibilidade efetiva mostrada no diagnóstico.
 - Configuração central em **Imagem e tela › Upscaling e tratamento** com **Imagem original**, **Perfil leve** de nitidez em uma passagem e **Reconstrução xCloud** experimental com detalhe e histórico temporal. Intensidade e comparação ficam na mesma tela. **Avançado — métodos e filtros** preserva os controles individuais e os ajustes personalizados; os perfis não mudam o codec nem a resolução solicitada. Filtros desligados são retirados do shader compilado.
 - Proteção progressiva reduz efeitos e saída quando os desenhos ficam abaixo da cadência recebida, preservando as preferências salvas e registrando os cortes da partida.
+- **Geração de quadros experimental de 30 para até 60 quadros enviados/s**, com estimativa de movimento a partir da imagem e suspensão por custo ou atraso excessivo. O diagnóstico mostra o estado efetivo, o total gerado, os envios e os desenhos por segundo; essas medidas não são FPS físicos da tela nem do jogo. Ativar somente a geração dispensa as etapas neutras do laboratório de imagem.
 - Preferência por uma taxa de atualização compatível com a apresentação do vídeo.
 
 <table>

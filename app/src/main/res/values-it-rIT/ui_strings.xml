@@ -1150,4 +1150,23 @@
     <string name="ui_785f6f8adbf92b77" formatted="false">"Posseduti"</string>
     <string name="ui_5024187419f3b962" formatted="false">"Non posseduti"</string>
     <string name="ui_13ee7cd1ee354c13" formatted="false">"Possesso non confermato"</string>
+    <string name="ui_cc08b5d5ab2aadf7" formatted="false">"Generazione: {0} | generati {1} | inviati/s {2} | disegni/s {3}"</string>
+    <string name="ui_a87456780def71f7" formatted="false">"La sessione Xbox è terminata. Torna al catalogo per avviare un’altra partita."</string>
+    <string name="ui_30c31fa98c2d92ca" formatted="false">"Tempo rimanente: verifica…"</string>
+    <string name="ui_4755a4d7f48e0d49" formatted="false">"Tempo rimanente: non disponibile"</string>
+    <string name="ui_f5c2a1e76bc23643" formatted="false">"Tempo rimanente: illimitato"</string>
+    <string name="ui_357520cc3b52e48b" formatted="false">"Tempo rimanente: meno di 1 min"</string>
+    <string name="ui_e2636f0c83fce63c" formatted="false">"Tempo rimanente: {0}h{1}min"</string>
+    <string name="ui_30c3f7f3ef53d09c" formatted="false">"Prima interruzione osservata: {0}\n"</string>
+    <string name="ui_b711aee1f71e49e1" formatted="false">"Sessione Xbox terminata"</string>
+    <string name="ui_1ed7941ca87f7100" formatted="false">"Xbox ha segnalato che questa sessione non è più attiva. La riconnessione non può recuperarla. Torna al catalogo per avviare un’altra partita."</string>
+    <string name="ui_8c80f17b24599377" formatted="false">"Aggiorna tempo rimanente"</string>
+    <string name="ui_dfd02635c76e0c86" formatted="false">"In attesa di contenuti stabili a 30 FPS"</string>
+    <string name="ui_65cb84f03d1e5889" formatted="false">"Attiva"</string>
+    <string name="ui_1273bc39d8ede975" formatted="false">"Non disponibile su questo dispositivo o modalità"</string>
+    <string name="ui_0094704857985c6b" formatted="false">"Si applica alla prossima partita"</string>
+    <string name="ui_6951ce4eb4f607aa" formatted="false">"Sospesa dalla protezione delle prestazioni"</string>
+    <string name="ui_5489beb70fc5ad63" formatted="false">"Fotogrammi generati fuori tempo"</string>
+    <string name="ui_856791dfa18ce90d" formatted="false">"Errore di elaborazione"</string>
+    <string name="ui_766196382fc5dff9" formatted="false">"Sospesa durante il confronto"</string>
 </resources>

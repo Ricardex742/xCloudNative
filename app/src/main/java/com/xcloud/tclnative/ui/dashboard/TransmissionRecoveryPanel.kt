@@ -16,8 +16,11 @@ object TransmissionRecoveryPanel {
             }
             addAction(UiText.text("Voltar"),back);setOnCancelListener { back() };show()
         }
-    fun failed(context: Context,retry: () -> Unit,disconnect: () -> Unit,back: () -> Unit): ConsoleDialog =
-        ConsoleDialogs.message(context,UiText.text("Transmissão interrompida"),
+    fun failed(context: Context,retry: () -> Unit,disconnect: () -> Unit,back: () -> Unit,sessionEnded: Boolean=false): ConsoleDialog =
+        if(sessionEnded) ConsoleDialogs.message(context,UiText.text("Sessão Xbox encerrada"),
+            UiText.text("O Xbox informou que esta sessão não está mais ativa. Reconectar não pode recuperá-la. Volte ao catálogo para iniciar outra partida."),
+            listOf(ConsoleAction(UiText.text("Voltar ao catálogo"),disconnect)),onCancel=disconnect)
+        else ConsoleDialogs.message(context,UiText.text("Transmissão interrompida"),
             UiText.text("A transmissão não voltou. Você pode tentar reconectar enquanto a sessão Xbox estiver ativa. A tentativa não abre outra partida ou uma nova fila."),
             listOf(ConsoleAction(UiText.text("Tentar reconectar"),retry),ConsoleAction(UiText.text("Menu da partida"),back),ConsoleAction(UiText.text("Encerrar partida"),disconnect)),onCancel=back)
 }

@@ -51,7 +51,7 @@ data class SeriesWallpaper(val id: String,val name: String,val style: WallpaperS
                 if(original!=null && effect!=null) RecreatedXboxBackgrounds.animatedArtwork(original,effect) else null
             } else if(id.startsWith("recreation:")) {
                 val url=o.optString("url").takeIf { it.isNotBlank() && OfficialXboxWallpapers.trustedAsset(it) }
-                RecreatedXboxBackgrounds.find(id)?.wallpaper(url)
+                RecreatedXboxBackgrounds.find(id)?.wallpaper(RecreatedXboxBackgrounds.restoredArtwork(id,url))
             } else {
                 val url=o.optString("url")
                 if(id.startsWith("official:")) OfficialXboxWallpapers.entry(name,url,o.optString("preview").takeIf { it.isNotBlank() })?.takeIf { it.id==id }
