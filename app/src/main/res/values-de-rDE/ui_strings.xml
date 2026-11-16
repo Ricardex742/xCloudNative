@@ -1184,4 +1184,5 @@
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"Der Dienst hat mehrere Konten zurückgegeben. Die App konnte nicht bestätigen, welches Guthaben zu verwenden ist."</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox hat in dieser Antwort kein überprüfbares Zeitguthaben angegeben."</string>
     <string name="ui_9cec80a02bb8614c" formatted="false">"Warte auf die Verbindung der Steuerung, bevor du den Touch-Modus änderst."</string>
+    <string name="ui_9c4d0eabc2496260" formatted="false">"Eingabe ohne Interaktion: {0} Wartungspakete gesendet; keine Spielbefehle"</string>
 </resources>

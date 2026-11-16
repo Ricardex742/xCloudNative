@@ -1184,4 +1184,5 @@
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"Le service a renvoyé plusieurs comptes et l’application n’a pas pu confirmer quel solde utiliser."</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox n’a pas fourni de solde de temps vérifiable dans cette réponse."</string>
     <string name="ui_9cec80a02bb8614c" formatted="false">"Attendez la connexion des commandes pour changer le mode tactile."</string>
+    <string name="ui_9c4d0eabc2496260" formatted="false">"Entrée au repos : {0} paquets de maintien envoyés ; aucune commande de jeu"</string>
 </resources>

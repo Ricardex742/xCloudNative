@@ -1184,4 +1184,5 @@
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"服务返回了多个账户，应用无法确认应使用哪个账户的剩余时间。"</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox 未在此响应中提供可验证的剩余时间。"</string>
     <string name="ui_9cec80a02bb8614c" formatted="false">"请等待控制连接完成后再更改触控模式。"</string>
+    <string name="ui_9c4d0eabc2496260" formatted="false">"无操作输入：已发送 {0} 个连接维护数据包；无游戏指令"</string>
 </resources>

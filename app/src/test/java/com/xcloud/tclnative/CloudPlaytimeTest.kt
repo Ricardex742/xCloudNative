@@ -22,6 +22,29 @@ class CloudPlaytimeTest {
     private fun quota(periodic: ByteArray?=null,persistent: ByteArray?=null)=
         (periodic?.let {message(2,it)} ?: byteArrayOf())+(persistent?.let {message(3,it)} ?: byteArrayOf())
     private fun decode(bytes: ByteArray)=ContentAccessPlaytime.decode(bytes)
+    @Test fun requestMetadataUsesANumericAppVersionAndAFreshValidCorrelationVector()=runBlocking {
+        MockWebServer().use { server ->
+            repeat(2) { server.enqueue(MockResponse().setBody(Buffer().write(account("12345",quota(budget(-1,-1)))))) }
+            val service=CloudPlaytimeService({"test"},endpoint=server.url("/all/v1").toString(),appVersion="0.37.6-image-lab")
+            repeat(2) { assertEquals(CloudPlaytimeStatus.UNLIMITED,service.fetch().status) }
+            val one=server.takeRequest();val two=server.takeRequest()
+            assertEquals("0.37.6",one.getHeader("Calling-App-Version"))
+            val cv=one.getHeader("MS-CV")!!
+            assertTrue(cv.matches(Regex("[A-Za-z0-9+/]{22}\\.0")));assertNotEquals(cv,two.getHeader("MS-CV"))
+        }
+    }
+    @Test fun rejectedRequestReportsOnlyAnErrorCodeAndAKnownParameter()=runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setResponseCode(400).setBody("""{"error":{"code":"InvalidParameter","target":"Calling-App-Version","message":"private-account bearer private-token"}}"""))
+            val value=CloudPlaytimeService({"secret"},endpoint=server.url("/all/v1").toString()).fetch()
+            assertEquals("InvalidParameter",value.serviceCode);assertEquals("Calling-App-Version",value.rejectedField)
+            val text=value.diagnostics()
+            assertTrue(text.contains("CAS/InvalidParameter"));assertTrue(text.contains("CAS_FIELD/Calling-App-Version"))
+            assertFalse(text.contains("private-account"));assertFalse(text.contains("private-token"));assertFalse(text.contains("secret"))
+            val hidden=CloudPlaytimeContract.rejection("""{"code":"https://private.example/token","target":"private-account","message":"private-token"}""")
+            assertNull(hidden.code);assertNull(hidden.field)
+        }
+    }
     @Test fun diagnosticExplainsUnknownWithoutInferringUnlimitedOrLeakingPrivateErrorText()=runBlocking {
         val empty=decode(message(1,message(1,"12345".toByteArray())+message(2,byteArrayOf())))
         assertEquals(PlaytimeFailure.NO_QUOTA,empty.failure)

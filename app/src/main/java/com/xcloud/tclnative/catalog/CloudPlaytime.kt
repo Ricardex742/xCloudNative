@@ -9,6 +9,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okio.ByteString.Companion.toByteString
+import org.json.JSONObject
+import java.security.SecureRandom
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -23,7 +26,7 @@ enum class PlaytimeFailure(private val source: String) {
     val label get()=UiText.text(source)
 }
 data class CloudPlaytime(val status: CloudPlaytimeStatus=CloudPlaytimeStatus.UNAVAILABLE,val seconds: Long=0,
-    val failure: PlaytimeFailure?=null,val httpStatus: Int?=null) {
+    val failure: PlaytimeFailure?=null,val httpStatus: Int?=null,val serviceCode: String?=null,val rejectedField: String?=null) {
     val label: String get()=when(status) {
         CloudPlaytimeStatus.CHECKING -> UiText.text("Tempo restante: consultando…")
         CloudPlaytimeStatus.UNAVAILABLE -> UiText.text("Tempo restante: indisponível")
@@ -34,7 +37,34 @@ data class CloudPlaytime(val status: CloudPlaytimeStatus=CloudPlaytimeStatus.UNA
     }
     fun diagnostics()=label+(failure?.let { "\n"+it.label } ?: "")+
         (httpStatus?.takeIf { it in 100..599 }?.let { "\nHTTP $it" } ?: "")+
-        "\nPLAYTIME/${failure?.name ?: status.name}"
+        "\nPLAYTIME/${failure?.name ?: status.name}"+
+        (CloudPlaytimeContract.safeCode(serviceCode)?.let { "\nCAS/$it" } ?: "")+
+        (CloudPlaytimeContract.field(rejectedField)?.let { "\nCAS_FIELD/$it" } ?: "")
+}
+
+/** Match the SDK's request metadata without claiming to be a Microsoft application. */
+internal object CloudPlaytimeContract {
+    private val random=SecureRandom()
+    fun version(raw: String)=Regex("[0-9]{1,5}(?:\\.[0-9]{1,9}){1,3}").matchEntire(raw.substringBefore('-').substringBefore('+'))?.value ?: "1.0"
+    fun correlationVector()=ByteArray(16).also(random::nextBytes).toByteString().base64().trimEnd('=')+".0"
+    fun safeCode(raw: String?)=raw?.trim()?.takeIf { it.matches(Regex("(?:[A-Za-z][A-Za-z0-9_.-]{0,63}|-?[0-9]{1,12}|0[xX][A-Fa-f0-9]{1,8})")) }
+    private val fields=mapOf("callingappname" to "Calling-App-Name","callingappversion" to "Calling-App-Version",
+        "market" to "market","offering" to "offering","offeringid" to "offering","mscv" to "MS-CV",
+        "correlationvector" to "MS-CV","authorization" to "Authorization")
+    fun field(raw: String?)=raw?.takeIf { it.length<=100 }?.substringAfterLast('.')?.lowercase(Locale.ROOT)?.replace(Regex("[^a-z]"),"")?.let(fields::get)
+    data class Rejection(val code: String?=null,val field: String?=null)
+    fun rejection(raw: String,header: String?=null): Rejection {
+        val json=runCatching { JSONObject(raw) }.getOrNull()
+        val objects=sequenceOf(json?.optJSONObject("error"),json?.optJSONObject("Error"),json).filterNotNull().toList()
+        val code=safeCode(header) ?: objects.asSequence().flatMap { obj ->
+            sequenceOf("code","Code","errorCode","ErrorCode","error","Error","XErr").map { obj.opt(it)?.toString() }
+        }.mapNotNull(::safeCode).firstOrNull()
+        val target=objects.asSequence().flatMap { obj ->
+            sequenceOf("target","Target","parameter","Parameter","field","Field").map { obj.optString(it) }
+        }.mapNotNull(::field).firstOrNull() ?: json?.optJSONObject("errors")?.keys()?.asSequence()?.take(32)?.mapNotNull(::field)?.firstOrNull()
+        // Never expose error messages, URLs, account IDs, header values or the body itself.
+        return Rejection(code,target)
+    }
 }
 
 /** Server quota snapshot, not a local session countdown or a guess from the subscription's name. */
@@ -57,10 +87,16 @@ class CloudPlaytimeService(
             val url=endpoint.toHttpUrl().newBuilder().addQueryParameter("market",market.uppercase(Locale.ROOT))
                 .addQueryParameter("offering","xgpuweb").build()
             val request=Request.Builder().url(url).header("Authorization",token)
-                .header("Calling-App-Name","xCloudNative").header("Calling-App-Version",appVersion)
+                .header("Calling-App-Name","xCloudNative").header("Calling-App-Version",CloudPlaytimeContract.version(appVersion))
+                .header("MS-CV",CloudPlaytimeContract.correlationVector())
                 .get().build()
             client.newCall(request).awaitResponse().use { response ->
-                if(!response.isSuccessful) return@withContext CloudPlaytime(failure=PlaytimeFailure.HTTP,httpStatus=response.code)
+                if(!response.isSuccessful) {
+                    val rejection=runCatching { CloudPlaytimeContract.rejection(response.peekBody(8192).string(),response.header("x-ms-error-code")) }
+                        .getOrDefault(CloudPlaytimeContract.Rejection())
+                    return@withContext CloudPlaytime(failure=PlaytimeFailure.HTTP,httpStatus=response.code,
+                        serviceCode=rejection.code,rejectedField=rejection.field)
+                }
                 val source=response.body?.source() ?: return@withContext CloudPlaytime(failure=PlaytimeFailure.INVALID_RESPONSE)
                 if(source.request(ContentAccessPlaytime.MAX_BYTES+1L)) return@withContext CloudPlaytime(failure=PlaytimeFailure.TOO_LARGE)
                 ContentAccessPlaytime.decode(source.readByteArray())

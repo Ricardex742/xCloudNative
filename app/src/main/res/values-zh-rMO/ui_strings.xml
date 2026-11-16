@@ -1184,4 +1184,5 @@
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"服務返回了多個賬户，應用無法確認應使用哪個賬户的剩餘時間。"</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox 未在此響應中提供可驗證的剩餘時間。"</string>
     <string name="ui_9cec80a02bb8614c" formatted="false">"請等待控制連線完成後再更改觸控模式。"</string>
+    <string name="ui_9c4d0eabc2496260" formatted="false">"無操作輸入：已傳送 {0} 個連線維護封包；無遊戲指令"</string>
 </resources>

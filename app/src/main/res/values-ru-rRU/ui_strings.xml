@@ -1184,4 +1184,5 @@
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"Служба вернула несколько учётных записей. Приложение не смогло определить, чей остаток времени использовать."</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox не предоставил проверяемый остаток времени в этом ответе."</string>
     <string name="ui_9cec80a02bb8614c" formatted="false">"Дождитесь подключения управления, прежде чем менять сенсорный режим."</string>
+    <string name="ui_9c4d0eabc2496260" formatted="false">"Ввод без действий: отправлено служебных пакетов {0}; без игровых команд"</string>
 </resources>
