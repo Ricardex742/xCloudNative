@@ -41,7 +41,8 @@ class TransmissionRecoveryState {
     @Synchronized fun repaired() { if(phase==Phase.ACTIVE) repaired++ }
     @Synchronized fun close() { phase=Phase.CLOSED;epoch++ }
     private fun sessionEnded(error: Throwable?)=generateSequence(error) { it.cause }.take(8).any {
-        it is CloudHttpException && it.status==410 && it.stage in setOf("KEEPALIVE","RECONNECT_KEEPALIVE")
+        it is XboxServerDisconnectException && it.notice.reason.terminal ||
+            it is CloudHttpException && it.status==410 && it.stage in setOf("KEEPALIVE","RECONNECT_KEEPALIVE")
     }
     private fun recordFailure(error: Throwable?) {
         if(error==null) return

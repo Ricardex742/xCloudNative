@@ -1185,4 +1185,6 @@
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox did not provide a verifiable time balance in this response."</string>
     <string name="ui_9cec80a02bb8614c" formatted="false">"Wait for the controls to connect before changing touch mode."</string>
     <string name="ui_9c4d0eabc2496260" formatted="false">"Idle input: {0} maintenance packets sent; no game commands"</string>
+    <string name="ui_d82f2ba389166c32" formatted="false">"The stream was interrupted. The score summarizes the available samples and does not confirm that the game worked normally."</string>
+    <string name="ui_ba143e37d17552d4" formatted="false">"Channels: {0}; authorization sent {1}; metadata sent {2}; ack {3}; control received {4}/{5}; message received {6}/{7}; first closure after {8} ms"</string>
 </resources>

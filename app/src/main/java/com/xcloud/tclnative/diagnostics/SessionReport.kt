@@ -28,9 +28,10 @@ data class SessionReport(
     val recovery: Map<VideoRecoveryAction,Int>,val score: Int?,val inputDetails: String? = null,val failure: SessionFailure? = null,
     val interruption: SessionFailure? = null,val interruptionDetails: String?=null
 ) {
-    val quality: String get()=when { score==null -> UiText.text("Dados parciais"); score>=90 -> UiText.text("Excelente"); score>=75 -> UiText.text("Boa"); score>=60 -> UiText.text("Regular"); else -> UiText.text("Atenção") }
+    val quality: String get()=when { interruption!=null || end==SessionEnd.FAILURE -> UiText.text("Atenção"); score==null -> UiText.text("Dados parciais"); score>=90 -> UiText.text("Excelente"); score>=75 -> UiText.text("Boa"); score>=60 -> UiText.text("Regular"); else -> UiText.text("Atenção") }
     fun findings(): List<String> = buildList {
         if(end==SessionEnd.FAILURE) add(UiText.text("A sessão terminou com falha. O índice resume as amostras observadas e não exclui uma interrupção no fim da partida."))
+        if(interruption!=null && end!=SessionEnd.FAILURE) add(UiText.text("Houve uma interrupção na transmissão. O índice resume as amostras disponíveis e não confirma que a partida funcionou normalmente."))
         fun avg(k: ReportMetric)=metrics[k]?.average
         if((avg(ReportMetric.LOSS) ?: 0.0)>2 || (avg(ReportMetric.JITTER) ?: 0.0)>15)
             add(UiText.text("Perdas ou jitter elevados. Compare Ethernet e Wi-Fi próximo ao roteador; o serviço também pode variar."))

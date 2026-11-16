@@ -89,17 +89,19 @@ class ConsoleDashboardUiTest {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
         val view=GameDashboardView(a,GameLibrary(a,"playtime-layout"),{},{},{},{})
         a.setContentView(view);view.setGames(games());view.selectTab(LibraryTab.ALL)
-        view.setCloudPlaytime(CloudPlaytime(CloudPlaytimeStatus.LIMITED,45000))
+        view.setProfile(XboxProfile("Jogador","Perfil de demonstração",subscription="ULTIMATE"))
         for(theme in listOf(UiTheme.GREEN)+themes) {
             AppearanceSettingsStore(a).save(theme);DashboardTheme.apply(a,theme);view.refreshAppearance()
-            for((w,h) in listOf(1280 to 720,960 to 432)) {
-                layout(view,w,h)
-                val time=all(view).filterIsInstance<TextView>().single { it.text.toString().contains("Tempo restante: 12h30min") }
+            for((w,h) in listOf(1280 to 720,1920 to 1080,960 to 432)) for(value in listOf(CloudPlaytime(CloudPlaytimeStatus.LIMITED,45000),
+                CloudPlaytime(CloudPlaytimeStatus.UNLIMITED),CloudPlaytime())) {
+                view.setCloudPlaytime(value);layout(view,w,h)
+                val time=all(view).filterIsInstance<TextView>().single { it.text.toString()==value.label }
                 val parent=time.parent as ViewGroup
                 assertTrue("$theme width",time.left>=0 && time.right<=parent.width)
                 assertTrue("$theme height",time.top>=0 && time.bottom<=parent.height)
                 val plan=all(parent).filterIsInstance<TextView>().first { it.text.toString().contains("GAME PASS") || it.text.toString().contains("ASSINATURA") }
                 assertTrue("$theme overlap",plan.bottom<=time.top)
+                capture(parent,"account-benefits-${theme.name}-${value.status}-${w}")
             }
         }
         view.close();c.pause().stop().destroy()

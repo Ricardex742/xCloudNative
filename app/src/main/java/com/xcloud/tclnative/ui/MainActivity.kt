@@ -1238,7 +1238,8 @@ open class MainActivity : Activity() {
                     onRumble = { command -> if(current() && recoveryState.phase==TransmissionRecoveryState.Phase.ACTIVE) rumble.play(command) },compatibility=compatible,
                     videoCodec=settings.videoCodec,maxBitrateKbps=sessionOptions.maxBitrateKbps,
                     ipPreference=settings.ipPreference,nativeKeyboardMouse=sessionDesktopMode==DesktopInputMode.NATIVE,
-                    microphoneAllowed=settings.microphone,outputGain=playbackSettings.audioGain,audioMode=settings.audioMode).also { allocatedRtc=it } }
+                    microphoneAllowed=settings.microphone,outputGain=playbackSettings.audioGain,audioMode=settings.audioMode,
+                    onServerDisconnect={ notice -> runOnUiThread { if(current()) failure.complete(XboxServerDisconnectException(notice)) } }).also { allocatedRtc=it } }
                 }
                 var rtc=buildRtc()
                 webrtcClient = rtc

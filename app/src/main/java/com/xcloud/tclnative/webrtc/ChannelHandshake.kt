@@ -8,6 +8,7 @@ data class ChannelMessage(val channel: String, val bytes: ByteArray, val binary:
 /** Ordered protocol transitions; callbacks for the three channels can arrive in any order. */
 class ChannelHandshake(private val nativeTouch: Boolean = false,
                        private val resolution: StreamResolution = StreamResolution.HD_1080_HQ) {
+    val sessionMessages=StreamingSessionMessages()
     private val opened = mutableSetOf<String>()
     private var acknowledged = false
     private var started = false
@@ -39,7 +40,7 @@ class ChannelHandshake(private val nativeTouch: Boolean = false,
             config("/streaming/characteristics/orientationchanged", JSONObject().put("orientation", 0)),
             config("/streaming/characteristics/touchinputenabledchanged", JSONObject().put("touchInputEnabled", nativeTouch)),
             config("/streaming/characteristics/clientdevicecapabilities", JSONObject())
-        ) + listOfNotNull(displayDimensions?.let(::dimensions)) + resolutionRequest(resolution)
+        ) + listOfNotNull(displayDimensions?.let(::dimensions)) + sessionMessages.activateTitle() + resolutionRequest(resolution)
     }
     private fun config(target: String, content: JSONObject) = encode("message", JSONObject()
         .put("type", "Message").put("target", target).put("id", UUID.randomUUID().toString()).put("cv", "")

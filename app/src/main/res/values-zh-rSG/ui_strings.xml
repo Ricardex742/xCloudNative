@@ -1185,4 +1185,6 @@
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox 未在此响应中提供可验证的剩余时间。"</string>
     <string name="ui_9cec80a02bb8614c" formatted="false">"请等待控制连接完成后再更改触控模式。"</string>
     <string name="ui_9c4d0eabc2496260" formatted="false">"无操作输入：已发送 {0} 个连接维护数据包；无游戏指令"</string>
+    <string name="ui_d82f2ba389166c32" formatted="false">"串流曾发生中断。评分仅概括现有采样，不能证明游戏运行正常。"</string>
+    <string name="ui_ba143e37d17552d4" formatted="false">"通道：{0}；已发送授权 {1}；已发送元数据 {2}；ack {3}；已接收控制 {4}/{5}；已接收消息 {6}/{7}；首次关闭发生在 {8} ms 后"</string>
 </resources>

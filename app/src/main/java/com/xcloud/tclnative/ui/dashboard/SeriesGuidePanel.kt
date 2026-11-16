@@ -29,7 +29,12 @@ internal object SeriesGuidePanel {
                 val labels=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
                 labels.addView(text(it.gamertag.ifBlank { it.displayName },23,true))
                 it.subscription?.takeIf(String::isNotBlank)?.let { value ->
-                    labels.addView(text(if(value=="FREE") value else "GAME PASS $value",16,color=DashboardTheme.muted))
+                    val badgeScale=scale
+                    labels.addView(AccountStatusBadge(context,true).apply {
+                        typeface=DashboardTheme.font(context)
+                        setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,16*badgeScale)
+                        bindPlan(if(value=="FREE") value else "GAME PASS $value");refreshBadge(badgeScale)
+                    },LinearLayout.LayoutParams(-1,px(25)).apply { topMargin=px(5) })
                 }
                 row.addView(labels,LinearLayout.LayoutParams(0,-2,1f))
                 body.addView(row,LinearLayout.LayoutParams(-1,px(76)).apply { bottomMargin=px(9) })

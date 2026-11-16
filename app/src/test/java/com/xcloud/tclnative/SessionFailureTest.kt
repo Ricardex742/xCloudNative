@@ -65,6 +65,18 @@ class SessionFailureTest {
         tracker.recordFailure(IOException("CHANNELS: input fechado"))
         assertSame(report,tracker.finish(9000,SessionEnd.USER))
     }
+    @Test fun closingTheReportManuallyCannotHideAnEarlierChannelFailureBehindHealthyMetrics() {
+        val tracker=SessionReportTracker("Jogo","Dispositivo","720p",60);tracker.begin(0,"Wi-Fi")
+        repeat(7) { i -> tracker.add((i+1)*1000L,StreamMetrics(rttMs=40.0,jitterMs=1.0,packetLossPercent=0.0,
+            fps=60.0,decodeMs=10.0,intervalSeconds=1.0),InputMetrics()) }
+        tracker.recordInterruption(IOException("CHANNELS: control fechado"))
+        val report=tracker.finish(8000,SessionEnd.USER)!!
+        assertTrue(report.score!!>=90)
+        assertEquals("Atenção",report.quality)
+        assertTrue(report.findings().any { it.contains("Houve uma interrupção") })
+        assertFalse(report.findings().any { it.contains("não apresentaram um alerta") })
+        assertEquals(SessionEnd.USER,report.end)
+    }
     @Test fun normalCancellationHasNoFailureAndOldReportsExplicitlyLackACause() {
         val tracker=SessionReportTracker("Jogo","TV","1080p HQ",60);tracker.begin(0,"Ethernet")
         tracker.recordFailure(CancellationException("cancelled"))

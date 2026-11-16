@@ -29,7 +29,8 @@ class XCloudWebRtcClient(
     private val videoCodec: VideoCodecMode = VideoCodecMode.H264,
     private val maxBitrateKbps: Int = 0,private val ipPreference: IpPreference = IpPreference.AUTO,
     private val nativeKeyboardMouse: Boolean = false,private val microphoneAllowed: Boolean = false,outputGain: Int = 100,
-    private val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD
+    private val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD,
+    private val onServerDisconnect: (XboxServerDisconnect) -> Unit = {}
 ) : StreamingPeer {
     private val appContext=context.applicationContext
     private val factory: PeerConnectionFactory
@@ -44,12 +45,14 @@ class XCloudWebRtcClient(
     private val handshake = ChannelHandshake(nativeTouch,streamResolution)
     private val channels = java.util.concurrent.ConcurrentHashMap<String, DataChannel>()
     private val closed = AtomicBoolean(false)
+    private val serverEnded=java.util.concurrent.atomic.AtomicReference<XboxServerDisconnect?>(null)
     private val inputStarted = AtomicBoolean(false)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val gamepads = mutableMapOf<Int,GamepadState>().apply { if(!nativeTouch && !nativeKeyboardMouse) put(0,GamepadState()) }
     private val gamepadConnections = GamepadConnections()
     @Volatile private var inputDimensions: TouchInputDimensions? = null
     private val remoteInputTrace=RemoteInputTrace()
+    private val channelTrace=ChannelLifecycleTrace()
     fun nativeTouchMetadataReady()=inputDimensions!=null
     fun canUseNativeTouch()=nativeTouch && channelsReady.isCompleted && !closed.get()
     private val pumpLock = Any()
@@ -199,7 +202,7 @@ class XCloudWebRtcClient(
         UiText.text("Toque nativo: {0}; espaço de input: {1}; slot virtual 0: {2}",UiText.nested(if(touchEnabled) UiText.text("sinalizado ativo") else UiText.text("desativado para HUD")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(if(channelsReady.isCompleted) "registro enviado" else UiText.text("aguardando canal")))
         else if(nativeKeyboardMouse) UiText.text("Input Xbox: mouse/teclado nativos, versão negociada {0}",UiText.nested(negotiatedInputVersion)) else UiText.text("Input Xbox: controle/HUD"))+"\n"+controllerEventTiming.diagnostics()+
         (if(nativeTouch) "\n${pendingTouch.diagnostics()}" else "")+"\n"+remoteInputTrace.diagnostics(negotiatedInputVersion)+"\n"+
-        UiText.text("Input sem interação: {0} pacotes de manutenção enviados; sem comandos de jogo",UiText.nested(inputPump?.metrics?.idleReportsSent ?: 0))
+        UiText.text("Input sem interação: {0} pacotes de manutenção enviados; sem comandos de jogo",UiText.nested(inputPump?.metrics?.idleReportsSent ?: 0))+"\n"+channelTrace.diagnostics()+"\n"+handshake.sessionMessages.diagnostics()
     fun latencyDiagnostics(): String = (if (lowLatencyVideo) "Playout solicitado: 0–40 ms" else "Playout: adaptativo") +
         " | " + (if (lowLatencyVideo) decoderLatency.get() else UiText.text("codec padrão")) +
         if(nativeTouch) UiText.text(" | Toque: {0}, {1}, {2} eventos enviados",UiText.nested(if(touchEnabled) UiText.text("ativo") else UiText.text("desativado")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(inputPump?.metrics?.pointerEventsSent ?: 0)) else ""
@@ -246,6 +249,7 @@ class XCloudWebRtcClient(
     }
 
     private fun fail(message: String) {
+        if(serverEnded.get()!=null) return
         connected.completeExceptionally(IOException(message))
         channelsReady.completeExceptionally(IOException(message))
         if (!closed.get()) onConnectionStateChanged(message)
@@ -343,11 +347,13 @@ class XCloudWebRtcClient(
                 override fun onBufferedAmountChange(amount: Long) {}
                 override fun onStateChange() {
                     if(!current()) return
+                    channelTrace.state(name,channel.state().name)
                     if (channel.state() == DataChannel.State.OPEN) dispatch(handshake.onOpen(name))
                     else if (channel.state() == DataChannel.State.CLOSED && name != "chat") fail("CHANNELS: $name fechado")
                 }
                 override fun onMessage(buffer: DataChannel.Buffer?) {
                     if (!current() || buffer == null) return
+                    channelTrace.received(name,buffer.binary,buffer.data)
                     if(name=="input" && buffer.binary) {
                         val report=RemoteInputReport.parse(buffer.data)
                         remoteInputTrace.observe(buffer.data,report)
@@ -363,10 +369,21 @@ class XCloudWebRtcClient(
                         }
                         return
                     }
-                    if(name!="message" || buffer.binary) return
+                    if(name!="message" || buffer.binary || buffer.data.remaining()>8192) return
                     val bytes = ByteArray(buffer.data.remaining()).also { buffer.data.duplicate().get(it) }
-                    val type = runCatching { JSONObject(String(bytes, Charsets.UTF_8).trimEnd('\u0000')).optString("type") }.getOrNull()
-                    if (type == "HandshakeAck") dispatch(handshake.onHandshakeAck())
+                    val json=runCatching { JSONObject(String(bytes,Charsets.UTF_8).trimEnd('\u0000')) }.getOrNull() ?: return
+                    if (json.optString("type") == "HandshakeAck") dispatch(handshake.onHandshakeAck())
+                    else {
+                        val result=handshake.sessionMessages.receive(json)
+                        val notice=result.disconnect?.takeIf { it.reason.terminal }
+                        val first=notice!=null && serverEnded.compareAndSet(null,notice)
+                        dispatch(result.replies)
+                        if(first && notice!=null) {
+                            val error=XboxServerDisconnectException(notice)
+                            connected.completeExceptionally(error);channelsReady.completeExceptionally(error)
+                            if(!closed.get()) onServerDisconnect(notice)
+                        }
+                    }
                 }
             })
         }
@@ -394,6 +411,8 @@ class XCloudWebRtcClient(
                 fail("CHANNELS: falha ao enviar configuração ${message.channel}")
                 return
             }
+            channelTrace.sent(message)
+            handshake.sessionMessages.sent(message)
         }
         // Only the callback carrying startup metadata may start the pump; a duplicate Ack can race it.
         if (messages.any { it.channel == "input" && it.binary } && inputStarted.compareAndSet(false, true)) {

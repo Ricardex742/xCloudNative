@@ -2,6 +2,7 @@ package com.xcloud.tclnative.diagnostics
 
 import com.xcloud.tclnative.i18n.UiText
 
+import com.xcloud.tclnative.webrtc.XboxServerDisconnectException
 import com.xcloud.tclnative.net.CloudHttpException
 import com.xcloud.tclnative.net.CloudRequestException
 import java.io.EOFException
@@ -21,7 +22,7 @@ enum class FailureStage(private val sourceLabel: String) {
     val label: String get()=UiText.text(sourceLabel)
 }
 enum class FailureKind(private val sourceLabel: String) {
-    HTTP("resposta HTTP de erro"), TIMEOUT("tempo limite excedido"), DNS("falha ao localizar o servidor"),
+    SESSION_ENDED("Sessão Xbox encerrada"), HTTP("resposta HTTP de erro"), TIMEOUT("tempo limite excedido"), DNS("falha ao localizar o servidor"),
     TLS("falha na conexão segura"), CONNECTION("falha na conexão de rede"),
     ICE_FAILED("a conexão ICE falhou"), ICE_CLOSED("a conexão ICE foi fechada"),
     CHANNEL_CLOSED("o canal de controles foi fechado"), CONTROL_SEND("falha no envio de controles/configuração"),
@@ -53,11 +54,13 @@ data class SessionFailure(val stage: FailureStage,val kind: FailureKind,val http
         }
         fun from(error: Throwable): SessionFailure {
             val chain=generateSequence(error) { it.cause }.take(8).toList()
+            val server=chain.filterIsInstance<XboxServerDisconnectException>().firstOrNull()
             val http=chain.filterIsInstance<CloudHttpException>().firstOrNull()
             val request=chain.filterIsInstance<CloudRequestException>().firstOrNull()
             val rendering=chain.any { it is RenderFailureException }
             val message=error.message.orEmpty()
             val prefix=when {
+                server!=null -> "SESSION_STATE"
                 rendering -> "RENDERER"
                 http!=null -> http.stage
                 request!=null -> request.stage
@@ -75,6 +78,7 @@ data class SessionFailure(val stage: FailureStage,val kind: FailureKind,val http
                 else -> if(http!=null || request!=null) FailureStage.NETWORK else FailureStage.UNKNOWN
             }
             val kind=when {
+                server!=null -> FailureKind.SESSION_ENDED
                 http!=null -> FailureKind.HTTP
                 prefix=="RECONNECT_TIMEOUT" -> FailureKind.TIMEOUT
                 rendering -> FailureKind.RENDERER
@@ -92,7 +96,7 @@ data class SessionFailure(val stage: FailureStage,val kind: FailureKind,val http
                 chain.any { it is IOException } -> FailureKind.IO
                 else -> FailureKind.UNCLASSIFIED
             }
-            return SessionFailure(stage,kind,http?.status,http?.serviceCode,
+            return SessionFailure(stage,kind,http?.status,server?.notice?.reason?.wire ?: http?.serviceCode,
                 chain.last().javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z_$][A-Za-z0-9_$]{0,63}")) },
                 setOf("input","control","message").firstOrNull { message=="CHANNELS: $it fechado" })
         }

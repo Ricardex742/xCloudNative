@@ -1185,4 +1185,6 @@
     <string name="ui_f290cfb15f27bc52" formatted="false">"이 응답에 확인 가능한 Xbox 잔여 시간이 제공되지 않았습니다."</string>
     <string name="ui_9cec80a02bb8614c" formatted="false">"컨트롤 연결이 완료된 후 터치 모드를 변경하세요."</string>
     <string name="ui_9c4d0eabc2496260" formatted="false">"조작 없는 입력: 연결 유지 패킷 {0}개 전송; 게임 명령 없음"</string>
+    <string name="ui_d82f2ba389166c32" formatted="false">"스트리밍이 중단되었습니다. 점수는 수집된 표본을 요약하며 게임이 정상적으로 작동했음을 보장하지 않습니다."</string>
+    <string name="ui_ba143e37d17552d4" formatted="false">"채널: {0}; 인증 전송 {1}; 메타데이터 전송 {2}; ack {3}; 제어 수신 {4}/{5}; 메시지 수신 {6}/{7}; 첫 종료까지 {8} ms"</string>
 </resources>

@@ -181,8 +181,8 @@ class GameDashboardView(
     private val avatarLetter = label(28f).apply { gravity = Gravity.CENTER; text = "X" }
     private val accountName = label(26f)
     private val gamertag = label(24f).apply { setTextColor(DashboardTheme.muted) }
-    private val subscription = label(20f).apply { gravity = Gravity.CENTER }
-    private val remainingTime=label(17f,false).apply { setTextColor(DashboardTheme.muted) }
+    private val subscription = AccountStatusBadge(context,true)
+    private val remainingTime=AccountStatusBadge(context,false)
     private val settingsButton = DashboardTheme.button(context,"⚙") { onOptions() }.apply {
         id=generateViewId(); contentDescription=UiText.text("Configurações")
         typeface=android.graphics.Typeface.DEFAULT
@@ -414,14 +414,14 @@ class GameDashboardView(
         val updated=value.copy(subscription=value.subscription ?: profile.subscription)
         if(updated!=profile) { profile=updated; renderProfile() }
     }
-    fun setCloudPlaytime(value: CloudPlaytime) { cloudPlaytime=value;remainingTime.text=value.label }
+    fun setCloudPlaytime(value: CloudPlaytime) { cloudPlaytime=value;remainingTime.bindTime(value) }
     fun cloudPlaytimeDiagnostics()=cloudPlaytime.diagnostics()
     private fun renderProfile() {
         accountName.text = if(designScene==ConsoleScene.NONE) profile.displayName.uppercase(Locale.getDefault()) else profile.displayName
         gamertag.text = if(designScene==ConsoleScene.NONE) profile.gamertag.uppercase(Locale.getDefault()) else profile.gamertag
-        subscription.text = profile.subscription?.let { if (it == "FREE") "FREE" else "GAME PASS $it" } ?: UiText.text("ASSINATURA NÃO INFORMADA")
-        subscription.background = if(designScene==ConsoleScene.NONE) DashboardTheme.shape(UiColor.SUBSCRIPTION,3f) else null
-        remainingTime.text=cloudPlaytime.label
+        subscription.bindPlan(profile.subscription?.let { if (it == "FREE") "FREE" else "GAME PASS $it" } ?: UiText.text("ASSINATURA NÃO INFORMADA"))
+        subscription.refreshBadge(scale)
+        remainingTime.bindTime(cloudPlaytime)
         avatarLetter.text = profile.displayName.take(1).uppercase(Locale.getDefault())
         connected.contentDescription = UiText.text("Conta autenticada no Xbox Cloud")
         profilePanel.contentDescription = if(SeriesGuidePanel.enabled(context))
@@ -847,6 +847,7 @@ class GameDashboardView(
         place(settingsButton, tx+264*s, 64*s, 60*s, 42*s)
         textSize(accountName, 27f); textSize(gamertag, 24f); textSize(subscription, 20f)
         textSize(settingsButton, 28f); textSize(avatarLetter, 28f)
+        subscription.refreshBadge(s);remainingTime.refreshBadge(s)
         place(metadataNote, 106*s, headerTop+headerSize+5*s, w-210*s, 22*s); textSize(metadataNote, 17f)
         place(navigation, 48*s, navTop, w-84*s, navHeight+3*s)
         val shoulderTop = (navHeight-29*s)/2
@@ -1024,9 +1025,9 @@ class GameDashboardView(
         pos(profilePanel,if(designScene==ConsoleScene.XBOX_360) wide-380 else 54f,26f,300f,84f)
         pos(avatar,0f,0f,48f,48f);pos(avatarLetter,0f,0f,48f,48f);text(avatarLetter,25f)
         pos(accountName,61f,0f,235f,25f);pos(gamertag,61f,25f,235f,19f)
-        pos(subscription,61f,44f,235f,17f);text(accountName,23f);text(gamertag,16f);text(subscription,13f)
-        pos(remainingTime,61f,61f,235f,18f);text(remainingTime,13f)
-        subscription.background=null
+        pos(subscription,61f,44f,235f,18f);text(accountName,23f);text(gamertag,16f);text(subscription,13f)
+        pos(remainingTime,61f,65f,235f,18f);text(remainingTime,13f)
+        subscription.refreshBadge(s);remainingTime.refreshBadge(s)
         pos(connected,38f,39f,10f,10f)
         pos(settingsButton,0f,0f,1f,1f);settingsButton.visibility=GONE
         val searchSize=if(searchButton.phoneTarget) 76f else 56f
