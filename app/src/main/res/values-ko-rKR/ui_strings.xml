@@ -1183,4 +1183,5 @@
     <string name="ui_b61aecc0b18e2784" formatted="false">"시간 서비스에서 인식할 수 없는 데이터를 반환했습니다."</string>
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"서비스에서 여러 계정을 반환하여 어떤 잔여 시간을 사용할지 확인할 수 없습니다."</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"이 응답에 확인 가능한 Xbox 잔여 시간이 제공되지 않았습니다."</string>
+    <string name="ui_9cec80a02bb8614c" formatted="false">"컨트롤 연결이 완료된 후 터치 모드를 변경하세요."</string>
 </resources>

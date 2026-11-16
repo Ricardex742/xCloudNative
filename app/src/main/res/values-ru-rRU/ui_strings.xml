@@ -1183,4 +1183,5 @@
     <string name="ui_b61aecc0b18e2784" formatted="false">"Служба времени вернула нераспознанные данные."</string>
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"Служба вернула несколько учётных записей. Приложение не смогло определить, чей остаток времени использовать."</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox не предоставил проверяемый остаток времени в этом ответе."</string>
+    <string name="ui_9cec80a02bb8614c" formatted="false">"Дождитесь подключения управления, прежде чем менять сенсорный режим."</string>
 </resources>

@@ -1183,4 +1183,5 @@
     <string name="ui_b61aecc0b18e2784" formatted="false">"Süre hizmeti tanınmayan veriler döndürdü."</string>
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"Hizmet birden fazla hesap döndürdü ve uygulama hangi bakiyenin kullanılacağını doğrulayamadı."</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox bu yanıtta doğrulanabilir bir süre bakiyesi sağlamadı."</string>
+    <string name="ui_9cec80a02bb8614c" formatted="false">"Dokunma modunu değiştirmeden önce kontrollerin bağlanmasını bekleyin."</string>
 </resources>

@@ -1183,4 +1183,5 @@
     <string name="ui_b61aecc0b18e2784" formatted="false">"時間服務返回了無法識別的數據。"</string>
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"服務返回了多個賬户，應用無法確認應使用哪個賬户的剩餘時間。"</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox 未在此響應中提供可驗證的剩餘時間。"</string>
+    <string name="ui_9cec80a02bb8614c" formatted="false">"請等待控制連線完成後再更改觸控模式。"</string>
 </resources>

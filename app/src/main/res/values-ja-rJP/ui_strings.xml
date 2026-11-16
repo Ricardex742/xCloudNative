@@ -1183,4 +1183,5 @@
     <string name="ui_b61aecc0b18e2784" formatted="false">"時間サービスが認識できないデータを返しました。"</string>
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"サービスから複数のアカウントが返されたため、どの残高を使用するか確認できませんでした。"</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"この応答には、確認可能なXboxの残り時間が含まれていません。"</string>
+    <string name="ui_9cec80a02bb8614c" formatted="false">"操作の接続が完了してからタッチモードを変更してください。"</string>
 </resources>

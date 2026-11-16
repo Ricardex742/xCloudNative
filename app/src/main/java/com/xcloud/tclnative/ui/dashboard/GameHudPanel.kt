@@ -10,7 +10,8 @@ import com.xcloud.tclnative.touch.*
 
 class GameHudPanel(private val context: Context,private val game: GameTitle,private val store: GameHudStore,
                    private val changed: (HudSettings) -> Unit,private val edit: () -> Unit,
-                   private val hide: () -> Unit,private val page: (HudPreset) -> Unit) {
+                   private val hide: () -> Unit,private val page: (HudPreset) -> Unit,
+                   private val activate: (() -> Unit)?=null,private val nativeTouch: (() -> Unit)?=null) {
     fun show(): ConsoleDialog {
         val settings=store.read(game.titleId)
         val automatic=GameHud.automatic(game.titleId,game.name)
@@ -21,6 +22,8 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
             ConsoleAction(UiText.text("Tamanho dos controles: {0}%",UiText.nested(settings.scale))) { chooseValue(UiText.text("Tamanho dos controles"),listOf(75,90,100,115,130,150),settings.scale) { save(settings.copy(scale=it)) } },
             ConsoleAction(UiText.text("Opacidade: {0}%",UiText.nested(settings.opacity))) { chooseValue(UiText.text("Opacidade"),listOf(25,40,55,62,75,90,100),settings.opacity) { save(settings.copy(opacity=it)) } }
         )
+        activate?.let { actions.add(0,ConsoleAction(UiText.text("Usar controles na tela"),it)) }
+        nativeTouch?.let { actions.add(0,ConsoleAction(com.xcloud.tclnative.settings.TouchMode.NATIVE.label,it)) }
         if(effective.shooter) {
             actions+=ConsoleAction(UiText.text("Sensibilidade do arrasto: {0}%",UiText.nested(settings.sensitivity))) {
                 chooseValue(UiText.text("Sensibilidade da câmera por arrasto"),listOf(40,60,100,160,220,300,450,650,900,1200),settings.sensitivity,UiText.text("Ajusta a resposta do arrasto no HUD. A velocidade máxima de giro também depende da sensibilidade de controle configurada dentro do jogo.")) { save(settings.copy(sensitivity=it)) }
@@ -68,7 +71,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
                 UiText.text("No futebol, toque em ATAQUE / DEFESA para trocar os comandos. A troca é manual. No chute: arraste para baixo para colocado, para cima para cavadinha e para os lados para superchute. Marcar combina RT + A.\n\nNo editor, Ação permite combinar botões; Gestos configura cada direção de arrasto. Os comandos seguem o esquema do seu jogo.\n\nNo CoD, segure e arraste Mirar ou Atirar para mover a câmera. Mirar ao atirar é opcional. Arrastar o analógico para cima, na direção de Correr, ativa a corrida quando essa opção está ligada.\n\nNos jogos de tiro, aumente a sensibilidade do HUD e ajuste a compensação da zona morta. A velocidade máxima de giro também depende da sensibilidade de controle configurada dentro do jogo."),
                 listOf(ConsoleAction(UiText.text("Voltar")) { show() }),onCancel={ show() })
         }
-        actions+=ConsoleAction(UiText.text("Ocultar HUD"),hide)
+        if(activate==null) actions+=ConsoleAction(UiText.text("Ocultar HUD"),hide)
         return ConsoleDialogs.menu(context,"HUD • ${game.name}",actions)
     }
     private fun save(settings: HudSettings) {

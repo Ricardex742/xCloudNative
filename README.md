@@ -272,6 +272,7 @@ Pesquisa e configurações acompanham a identidade de cada console:
 - Toque nativo Xbox nos jogos que anunciam suporte no catálogo, incluindo **Fortnite**.
 - Os toques são enviados ao jogo, que apresenta seus próprios botões e gestos, sem o HUD virtual do aplicativo.
 - Se a sessão continuar sem os metadados necessários ao toque, o app oferece aguardar ou usar seu HUD virtual na mesma partida; a troca depende da escolha do usuário.
+- Abrir os ajustes do HUD preserva o modo de toque atual. Em uma sessão iniciada com toque nativo, é possível usar o HUD temporariamente para menus e voltar ao toque nativo pelo mesmo painel.
 - No celular, **Automático** prioriza o toque nativo quando disponível; a opção **Toque nativo Xbox — experimental** permite selecioná-lo manualmente nos títulos compatíveis.
 - Mapeamento dos toques conforme a área do vídeo, incluindo os modos Original, Esticar e Zoom.
 - Giroscópio opcional junto ao toque nativo, em aparelhos com sensor e jogos que aceitem essa combinação de entradas.

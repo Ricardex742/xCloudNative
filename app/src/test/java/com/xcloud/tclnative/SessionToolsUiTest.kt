@@ -43,6 +43,24 @@ class SessionToolsUiTest {
     private fun capture(d: ConsoleDialog,name: String) {
         val root=d.window!!.decorView;layout(root,d.window!!.attributes.width,648);capture(root,name)
     }
+    @Test fun openingHudSettingsPreservesNativeTouchAndBothModeChoicesRemainAvailable() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView)
+        try {
+            val game=com.xcloud.tclnative.signaling.GameTitle("TOUCH-DEMO","Touch game",supportedInputTypes=setOf("NativeTouch"))
+            val store=com.xcloud.tclnative.touch.GameHudStore(a);val before=store.read(game.titleId)
+            var native=true
+            fun panel()=GameHudPanel(a,game,store,{},{},{},{},
+                activate=if(native) ({ native=false }) else null,
+                nativeTouch=if(native) null else ({ native=true }))
+            val first=panel().show();assertTrue(native)
+            capture(first,"touch-mode-native")
+            assertFalse(all(first.panel).filterIsInstance<TextView>().any { it.isClickable && it.text.contains("Ocultar HUD") })
+            click(first,"Usar controles na tela");assertFalse(native)
+            val hud=panel().show();capture(hud,"touch-mode-hud")
+            click(hud,TouchMode.NATIVE.label);assertTrue(native)
+            assertEquals(before,store.read(game.titleId))
+        } finally { c.pause().stop().destroy() }
+    }
     @Test fun waitingForNativeTouchOffersAManualHudAndQuotaDetailsShowTheSafeFailureReason() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView)
         try {

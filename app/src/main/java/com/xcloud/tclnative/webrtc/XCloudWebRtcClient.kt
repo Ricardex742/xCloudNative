@@ -51,6 +51,7 @@ class XCloudWebRtcClient(
     @Volatile private var inputDimensions: TouchInputDimensions? = null
     private val remoteInputTrace=RemoteInputTrace()
     fun nativeTouchMetadataReady()=inputDimensions!=null
+    fun canUseNativeTouch()=nativeTouch && channelsReady.isCompleted && !closed.get()
     private val pumpLock = Any()
     private val pendingTouch = NativeTouchBuffer()
     private val desktopInput=DesktopInputBuffer()

@@ -1183,4 +1183,5 @@
     <string name="ui_b61aecc0b18e2784" formatted="false">"El servicio de tiempo devolvió datos no reconocidos."</string>
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"El servicio devolvió varias cuentas y la aplicación no pudo confirmar qué saldo usar."</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox no proporcionó un saldo de tiempo verificable en esta respuesta."</string>
+    <string name="ui_9cec80a02bb8614c" formatted="false">"Espera a que se conecten los controles para cambiar el modo táctil."</string>
 </resources>

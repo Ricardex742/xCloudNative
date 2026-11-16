@@ -1183,4 +1183,5 @@
     <string name="ui_b61aecc0b18e2784" formatted="false">"Der Zeitdienst hat unbekannte Daten zurückgegeben."</string>
     <string name="ui_7d0bb0514d1b3bba" formatted="false">"Der Dienst hat mehrere Konten zurückgegeben. Die App konnte nicht bestätigen, welches Guthaben zu verwenden ist."</string>
     <string name="ui_f290cfb15f27bc52" formatted="false">"Xbox hat in dieser Antwort kein überprüfbares Zeitguthaben angegeben."</string>
+    <string name="ui_9cec80a02bb8614c" formatted="false">"Warte auf die Verbindung der Steuerung, bevor du den Touch-Modus änderst."</string>
 </resources>

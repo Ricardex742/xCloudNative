@@ -966,6 +966,7 @@ open class MainActivity : Activity() {
             }
     }
     private fun enableGameHud(): Boolean {
+        if(transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) return false
         val game=activeGame ?: return false
         if(currentTouchMode==TouchMode.NATIVE && webrtcClient?.setNativeTouchEnabled(false)!=true) {
             Toast.makeText(this,UiText.text("Aguarde a conexão dos controles para ativar o HUD."),Toast.LENGTH_LONG).show()
@@ -978,13 +979,30 @@ open class MainActivity : Activity() {
         }
         return true
     }
+    private fun enableNativeTouch(): Boolean {
+        val game=activeGame ?: return false
+        val client=webrtcClient ?: return false
+        if(!client.canUseNativeTouch() || transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) return false
+        if(!client.setNativeTouchEnabled(true)) {
+            Toast.makeText(this,UiText.text("Aguarde a conexão dos controles para mudar o modo de toque."),Toast.LENGTH_LONG).show()
+            return false
+        }
+        resetController()
+        // Release only the app's virtual pad; a real controller keeps its source and slot.
+        if(controllers.sourceFor(0)==null) client.removeGamepad(0)
+        currentTouchMode=TouchMode.NATIVE
+        touchView.configure(TouchMode.NATIVE,game,hudStore.read(game.titleId))
+        rumble.enabled=playbackSettings.rumble
+        resumeAuxiliaryInput();return true
+    }
     private fun showGameHudSettings() {
         val game=activeGame ?: return
-        if(!enableGameHud()) return
         com.xcloud.tclnative.ui.dashboard.GameHudPanel(this,game,hudStore,
-            changed={ touchView.applyHud(it) },edit={ touchView.beginEditing() },
+            changed={ touchView.applyHud(it) },edit={ if(enableGameHud()) touchView.beginEditing() },
             hide={ resetController(); currentTouchMode=TouchMode.OFF; touchView.configure(TouchMode.OFF,game); rumble.enabled=playbackSettings.rumble },
-            page={ touchView.showPage(it) }).show()
+            page={ if(enableGameHud()) touchView.showPage(it) },
+            activate=if(currentTouchMode==TouchMode.VIRTUAL) null else ({ if(enableGameHud()) showGameHudSettings() }),
+            nativeTouch=if(currentTouchMode==TouchMode.NATIVE || webrtcClient?.canUseNativeTouch()!=true) null else ({ enableNativeTouch() })).show()
     }
     private fun chooseLaunchMode(signaling: XCloudSignalingClient,game: GameTitle) {
         launchCloudGame(signaling,game)
