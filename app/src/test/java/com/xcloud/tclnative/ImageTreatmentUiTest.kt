@@ -31,7 +31,7 @@ class ImageTreatmentUiTest {
             activity.getSharedPreferences("stream_preferences",0).edit().clear().commit()
             val store=PlaybackSettingsStore(activity);val original=store.read()
             val panel=PlaybackSettingsPanel(activity,store,{},{},{},{})
-            val first=panel.showUpscaling();capture(first,"adaptive-reconstruction-options")
+            val first=panel.showAdvancedImage();capture(first,"adaptive-reconstruction-options")
             assertEquals(original,store.read())
             click(first,"Método:")
             click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Reconstrução xCloud")
@@ -67,7 +67,8 @@ class ImageTreatmentUiTest {
             val updates=mutableListOf<PlaybackSettings>();val panel=PlaybackSettingsPanel(activity,store,{ updates+=it },{},{},{})
             val treatment=panel.showTreatment();capture(treatment,"image-treatment-options")
             assertEquals(original,store.read());assertTrue(updates.isEmpty())
-            click(treatment,"Perfil natural")
+            treatment.dismiss();click(panel.showUpscaling(),"Perfil de imagem:")
+            click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Perfil leve")
             assertEquals(ImageSharpening.RCAS_LUMA,store.read().imageTreatment.sharpening)
             assertEquals(0,store.read().imageTreatment.deband);assertFalse(store.read().imageTreatment.spatial);assertEquals(25,store.read().sharpness)
             (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
@@ -98,7 +99,7 @@ class ImageTreatmentUiTest {
             image.dismiss()
             for(mode in FsrMode.entries) {
                 val settings=original.copy(fsr=mode,videoMode=VideoMode.LOW_LATENCY);store.save(settings)
-                val dialog=panel.showUpscaling();capture(dialog,"organized-image-${mode.name.lowercase()}")
+                val dialog=panel.showAdvancedImage();capture(dialog,"organized-image-${mode.name.lowercase()}")
                 val names=all(dialog.body).filterIsInstance<TextView>().filter { it.isClickable }.map { it.text.toString() }
                 assertEquals(settings,store.read())
                 assertEquals(mode!=FsrMode.OFF,names.any { it.contains("Saída do escalador:") })
@@ -110,8 +111,11 @@ class ImageTreatmentUiTest {
             }
             store.save(original)
             var back=0
-            val session=panel.showUpscaling(onBack={back++});click(session,"Método:")
+            val session=panel.showUpscaling(onBack={back++});click(session,"Avançado — métodos e filtros")
+            click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Método:")
             click(ShadowDialog.getLatestDialog() as ConsoleDialog,"SGSR 1")
+            (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel()
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel()
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             assertEquals(1,back)
@@ -121,23 +125,25 @@ class ImageTreatmentUiTest {
             compatibility.dismiss()
         } finally { c.pause().stop().destroy() }
     }
-    @Test fun filterPresetsAdjustTheActiveMethodsIntensityWithoutChangingInactiveControls() {
+    @Test fun advancedFiltersHaveNoDuplicateProfilesAndAdjustOnlyTheSelectedStage() {
         val c=Robolectric.buildActivity(Activity::class.java).setup()
         try {
             val store=PlaybackSettingsStore(c.get());val panel=PlaybackSettingsPanel(c.get(),store,{},{},{},{})
             for(mode in FsrMode.entries) {
                 val before=PlaybackSettings(fsr=mode,sharpness=0,fsrSharpness=75,
                     reconstruction=ReconstructionSettings(strength=100,comparison=ImageComparison.ORIGINAL))
-                store.save(before);click(panel.showTreatment(),"Perfil leve")
+                store.save(before);val dialog=panel.showTreatment()
+                assertFalse(all(dialog.body).filterIsInstance<TextView>().any { it.isClickable && it.text.contains("Perfil") })
+                click(dialog,"Limpeza de compressão:")
+                click(ShadowDialog.getLatestDialog() as ConsoleDialog,"25%")
                 val after=store.read()
-                assertFalse("Light preset must not enable a pre-processing pass",after.imageTreatment.spatial)
+                assertEquals(25,after.imageTreatment.cleanup)
                 assertEquals(0,after.imageTreatment.temporal);assertEquals(0,after.imageTreatment.neural)
                 assertEquals(before.fsr,after.fsr);assertEquals(before.resolution,after.resolution)
                 assertEquals(before.touchMode,after.touchMode);assertEquals(before.videoCodec,after.videoCodec)
-                assertEquals(if(mode==FsrMode.OFF) 25 else before.sharpness,after.sharpness)
-                assertEquals(if(mode==FsrMode.FSR1 || mode==FsrMode.SGSR1) 25 else before.fsrSharpness,after.fsrSharpness)
-                assertEquals(if(mode==FsrMode.RECONSTRUCTION) 25 else before.reconstruction.strength,after.reconstruction.strength)
-                if(mode==FsrMode.SGSR1 || mode==FsrMode.RECONSTRUCTION) assertEquals(before.imageTreatment.sharpening,after.imageTreatment.sharpening)
+                assertEquals(before.sharpness,after.sharpness);assertEquals(before.fsrSharpness,after.fsrSharpness)
+                assertEquals(before.reconstruction,after.reconstruction)
+                assertEquals(before.imageTreatment.sharpening,after.imageTreatment.sharpening)
                 (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
             }
         } finally { c.pause().stop().destroy() }

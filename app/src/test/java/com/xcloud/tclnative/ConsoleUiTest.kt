@@ -124,11 +124,14 @@ class ConsoleUiTest {
         val imageCategory=panel.showImage()
         render(imageCategory,"image-settings-0.32.0")
         choose(imageCategory,"Upscaling e tratamento:")
+        choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Avançado — métodos e filtros")
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Upscaling nativo:")
         val upscale=ShadowDialog.getLatestDialog() as ConsoleDialog
         render(upscale,"green-upscaling-choice")
         choose(upscale,"Desativado —")
         assertFalse(store.read().nativeUpscaling); assertEquals(3,updates.size)
+        (ShadowDialog.getLatestDialog() as ConsoleDialog).dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
+        shadowOf(Looper.getMainLooper()).idle()
         (ShadowDialog.getLatestDialog() as ConsoleDialog).dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
         shadowOf(Looper.getMainLooper()).idle()
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Proporção:")
@@ -230,7 +233,7 @@ class ConsoleUiTest {
         fun choose(dialog: ConsoleDialog,text: String) {
             all(dialog.body).filterIsInstance<TextView>().single { it.isClickable && it.text.toString().contains(text) }.performClick()
         }
-        val image=panel.showUpscaling()
+        val image=panel.showAdvancedImage()
         render(image,"green-image-adjustments")
         assertEquals(0,store.read().sharpness)
         choose(image,"Nitidez:")
@@ -272,7 +275,7 @@ class ConsoleUiTest {
             assertEquals(FsrMode.FSR1,store.read().fsr)
             assertEquals(StreamResolution.HD_1080_HQ,store.read().resolution)
             (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
-            val image=panel.showUpscaling();render(image,"amd-fsr-image-adjustments")
+            val image=panel.showAdvancedImage();render(image,"amd-fsr-image-adjustments")
             all(image.body).filterIsInstance<TextView>().single { it.isClickable && it.text.startsWith("Nitidez:") }.performClick()
             val strength=ShadowDialog.getLatestDialog() as ConsoleDialog
             all(strength.body).filterIsInstance<TextView>().single { it.isClickable && it.text.contains("75%") }.performClick()

@@ -36,7 +36,7 @@ class ImageLabUiTest {
             a.getSharedPreferences("stream_preferences",0).edit().clear().commit()
             val store=PlaybackSettingsStore(a);val original=store.read();val updates=mutableListOf<PlaybackSettings>()
             val panel=PlaybackSettingsPanel(a,store,{updates+=it},{},{},{})
-            panel.showUpscaling();click("Laboratório de imagem:")
+            panel.showUpscaling();click("Avançado — métodos e filtros");click("Laboratório de imagem:")
             assertFalse(store.read().imageLab.enabled);assertTrue(updates.isEmpty())
             click("Laboratório:");assertTrue(store.read().imageLab.enabled)
             click("Superamostragem:");click("1,50")

@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"Compares the same frame, keeping color adjustments. Original and Split suspend generation; re-enable it next session."</string>
     <string name="ui_3e8ff61db03f1b7d">"Disable laboratory"</string>
     <string name="ui_394ba7345cda8b85">"Image laboratory: {0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"Games: {0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"Refresh licenses"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"Filter library"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"Filter this catalog using account licenses. Subscription access does not mean ownership. Unconfirmed editions and products remain separate.\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"Owned: {0} • Not owned: {1} • Unconfirmed: {2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"Checking account licenses…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"No confirmed games for this filter.\nUnconfirmed ownership has a separate option."</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} GAMES • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"Choose a profile and compare the same scene. More intensity does not guarantee more detail. Custom settings are under Advanced."</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"Image profile: {0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"Intensity: {0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"Advanced — methods and filters"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"Image profile"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"Original uses the received image with your color adjustments. Light applies moderate sharpening in one pass. Reconstruction combines detail and temporal history with performance protection; it remains experimental. No profile changes the requested codec or resolution."</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"Intensity"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Adjusts detail enhancement and, in Reconstruction, temporal weight. 0% preserves received detail. Intensity does not measure GPU cost."</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"Compares the same frame with and without processing, keeping colors and framing. Split shows the original on the left. Comparison suspends frame generation until the next session. Half-screen cost does not represent full-screen cost."</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"Owned"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"Not owned"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"Ownership unconfirmed"</string>
 </resources>

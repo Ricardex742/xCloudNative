@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"Сравнивает один кадр, сохраняя цветовые настройки. Оригинал и Разделённый приостанавливают генерацию; включите её в следующем сеансе."</string>
     <string name="ui_3e8ff61db03f1b7d">"Отключить лабораторию"</string>
     <string name="ui_394ba7345cda8b85">"Лаборатория изображения: {0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"Игры: {0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"Обновить лицензии"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"Фильтр библиотеки"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"Фильтрует этот каталог по лицензиям учётной записи. Доступ по подписке не означает владение. Неподтверждённые издания и продукты показаны отдельно.\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"Приобретено: {0} • Не приобретено: {1} • Не подтверждено: {2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"Проверка лицензий учётной записи…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"Нет подтверждённых игр для этого фильтра.\nДля неподтверждённого владения есть отдельный пункт."</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} ИГР • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"Выберите профиль и сравните одну и ту же сцену. Повышение интенсивности не гарантирует больше деталей. Свои настройки находятся в разделе «Дополнительно»."</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"Профиль изображения: {0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"Интенсивность: {0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"Дополнительно — методы и фильтры"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"Профиль изображения"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"Оригинал использует полученное изображение с вашими настройками цвета. Лёгкий профиль умеренно повышает резкость за один проход. Реконструкция сочетает детали и временную историю с защитой производительности и остаётся экспериментальной. Профили не меняют запрошенные кодек и разрешение."</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"Интенсивность"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Регулирует усиление деталей, а в реконструкции — вес временной истории. 0% сохраняет полученные детали. Интенсивность не измеряет нагрузку GPU."</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"Сравнивает один кадр с обработкой и без неё, сохраняя цвета и кадрирование. В разделённом режиме оригинал слева. Сравнение приостанавливает генерацию кадров до следующего сеанса. Затраты половины экрана не отражают затраты полного экрана."</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"Приобретено"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"Не приобретено"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"Владение не подтверждено"</string>
 </resources>

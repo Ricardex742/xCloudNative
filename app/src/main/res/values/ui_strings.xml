@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"Compara o mesmo quadro, mantendo os ajustes de cor. Original e Dividida suspendem a geração; reative-a na próxima partida."</string>
     <string name="ui_3e8ff61db03f1b7d">"Desativar laboratório"</string>
     <string name="ui_394ba7345cda8b85">"Laboratório de imagem: {0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"Jogos: {0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"Atualizar licenças"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"Filtrar biblioteca"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"Filtra os jogos deste catálogo pelas licenças da conta. Acesso por assinatura não significa propriedade. Edições e produtos não confirmados ficam separados.\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"Adquiridos: {0} • Não adquiridos: {1} • Não confirmados: {2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"Consultando as licenças da conta…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"Nenhum jogo confirmado para este filtro.\nA propriedade não confirmada fica em uma opção separada."</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} JOGOS • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"Escolha um perfil e compare a mesma cena. Mais intensidade não garante mais detalhes. Os ajustes personalizados ficam em Avançado."</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"Perfil de imagem: {0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"Intensidade: {0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"Avançado — métodos e filtros"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"Perfil de imagem"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"Original usa a imagem recebida com seus ajustes de cor. Leve aplica nitidez moderada em uma passagem. Reconstrução combina detalhe e histórico temporal, com proteção de desempenho; continua experimental. Nenhum perfil muda o codec ou a resolução solicitada."</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"Intensidade"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Ajusta o realce e, no perfil Reconstrução, o peso temporal. 0% preserva os detalhes recebidos. A intensidade não mede o custo da GPU."</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"Compara o mesmo quadro com e sem tratamento, mantendo as cores e o enquadramento. Dividida mostra o original à esquerda. A comparação suspende a geração de quadros até a próxima partida. O custo de meia tela não representa o de tela inteira."</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"Adquiridos"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"Não adquiridos"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"Propriedade não confirmada"</string>
 </resources>

@@ -227,6 +227,19 @@ class XalAuthenticator(
             }.distinctBy { it.name })
     }
 
+    /** Store rights use the Microsoft commerce audience, never the cloud bearer. Optional and read-only. */
+    suspend fun loadStoreAuthorization(): Result<String> = result {
+        val token=profileUserToken ?: throw AuthenticationRequiredException()
+        val hash=profileUserHash ?: throw AuthenticationRequiredException()
+        val response=JSONObject(post(endpoints.xstsAuthorizeUrl,"STORE_XSTS",json(JSONObject()
+            .put("RelyingParty","http://mp.microsoft.com/").put("TokenType","JWT").put("Properties",JSONObject()
+                .put("SandboxId","RETAIL").put("UserTokens",JSONArray().put(token))))))
+        check(profileUserToken==token && profileUserHash==hash) { "STORE_ACCOUNT_CHANGED" }
+        val user=response.optJSONObject("DisplayClaims")?.optJSONArray("xui")?.optJSONObject(0)
+            ?.optString("uhs")?.takeIf { it.isNotBlank() } ?: hash
+        "XBL3.0 x=$user;${response.getString("Token")}"
+    }
+
     /** Optional Xbox profile grant is separate from GSSV/console transfer and never blocks playing. */
     suspend fun loadXboxProfile(): Result<XboxProfile> = result {
         val token = profileUserToken ?: throw AuthenticationRequiredException()

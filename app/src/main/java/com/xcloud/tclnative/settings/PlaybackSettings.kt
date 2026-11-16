@@ -71,14 +71,21 @@ data class PlaybackSettings(
     val presentationPacing: PresentationPacing = PresentationPacing.OFF,
     val reconstruction: ReconstructionSettings = ReconstructionSettings(),
     val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD,
-    val imageLab: ImageLabSettings = ImageLabSettings()
+    val imageLab: ImageLabSettings = ImageLabSettings(),
+    val imageComparison: ImageComparison = ImageComparison.PROCESSED
 ) {
+    fun effectiveImageComparison(): ImageComparison = when {
+        imageComparison!=ImageComparison.PROCESSED -> imageComparison
+        imageLab.enabled -> imageLab.comparison
+        fsr==FsrMode.RECONSTRUCTION -> reconstruction.comparison
+        else -> ImageComparison.PROCESSED
+    }
     fun forSession(): PlaybackSettings {
         val selected=if(videoCodec==VideoCodecMode.H264_BASELINE || videoMode==VideoMode.COMPATIBILITY)
             copy(resolution=StreamResolution.HD_720) else this
         return when(videoMode) {
             VideoMode.COMPATIBILITY -> selected.copy(imageTreatment=ImageTreatmentSettings(),
-                presentationPacing=PresentationPacing.OFF,fsr=FsrMode.OFF,imageLab=ImageLabSettings())
+                presentationPacing=PresentationPacing.OFF,fsr=FsrMode.OFF,imageLab=ImageLabSettings(),imageComparison=ImageComparison.PROCESSED)
             VideoMode.LOW_LATENCY -> selected.copy(presentationPacing=PresentationPacing.OFF)
             else -> selected
         }
@@ -138,7 +145,8 @@ class PlaybackSettingsStore(context: Context,
                 HudProtection.entries.firstOrNull { it.name==prefs.getString("image_lab_protection",null) } ?: HudProtection.AUTO,
                 ImageSupersampling.entries.firstOrNull { it.name==prefs.getString("image_lab_supersampling",null) } ?: ImageSupersampling.OFF,
                 ExperimentalFrameGeneration.entries.firstOrNull { it.name==prefs.getString("image_lab_frame_generation",null) } ?: ExperimentalFrameGeneration.OFF,
-                ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_lab_comparison",null) } ?: ImageComparison.PROCESSED,prefs.getBoolean("image_lab_neural",false)).bounded())
+                ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_lab_comparison",null) } ?: ImageComparison.PROCESSED,prefs.getBoolean("image_lab_neural",false)).bounded(),
+            imageComparison=ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_comparison_all",null) } ?: ImageComparison.PROCESSED)
     }
     fun save(settings: PlaybackSettings) {
         prefs.edit().putString("video_mode",settings.videoMode.name).putBoolean("low_latency_video",settings.videoMode.lowLatency)
@@ -173,7 +181,8 @@ class PlaybackSettingsStore(context: Context,
             .putString("image_lab_supersampling",settings.imageLab.supersampling.name)
             .putString("image_lab_frame_generation",settings.imageLab.frameGeneration.name)
             .putString("image_lab_comparison",settings.imageLab.comparison.name)
-            .putBoolean("image_lab_neural",settings.imageLab.neural).apply()
+            .putBoolean("image_lab_neural",settings.imageLab.neural)
+            .putString("image_comparison_all",settings.imageComparison.name).apply()
     }
 }
 

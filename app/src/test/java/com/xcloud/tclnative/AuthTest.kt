@@ -44,6 +44,19 @@ class AuthTest {
     private fun fresh() = OAuthToken("t=access", "refresh", 3_600_000, XalAuthenticator.DEVICE_CLIENT_ID)
     private fun info(expires: Long = 100_000) = DeviceCodeInfo("USER", "DEVICE", "https://microsoft.com/link", null, 1, expires)
 
+    @Test fun storeOwnershipUsesCommerceGrantAndLogoutInvalidatesIt()=runBlocking {
+        store.token=fresh();exchange();val login=auth();login.authenticateToXCloud().getOrThrow()
+        repeat(3) { server.takeRequest() }
+        enqueue("""{"Token":"store-token","DisplayClaims":{"xui":[{"uhs":"hash"}]}}""")
+        assertEquals("XBL3.0 x=hash;store-token",login.loadStoreAuthorization().getOrThrow())
+        val body=JSONObject(server.takeRequest().body.readUtf8())
+        assertEquals("http://mp.microsoft.com/",body.getString("RelyingParty"))
+        assertEquals("user-token",body.getJSONObject("Properties").getJSONArray("UserTokens").getString(0))
+        assertEquals(fresh(),store.token)
+        login.clearSession();assertTrue(login.loadStoreAuthorization().isFailure)
+        assertEquals(4,server.requestCount)
+    }
+
     @Test fun optionalProfileUsesItsOwnXboxGrantAndDoesNotTreatGamerscoreAsRewards() = runBlocking {
         store.token = fresh(); exchange()
         val authenticator = auth()

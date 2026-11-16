@@ -13,7 +13,9 @@ internal data class CatalogInput(
     val favorites: Set<String>,
     val added: List<String>?,
     val recent: List<String>?,
-    val query: String
+    val query: String,
+    val ownershipFilter: OwnershipFilter=OwnershipFilter.ALL,
+    val ownership: Map<String,Ownership> = emptyMap()
 )
 
 internal data class CatalogPresentation(
@@ -64,7 +66,8 @@ internal data class CatalogPresentation(
                         .filter(search::matches).sortedBy { it.sortKey }.toList()
                 } else selected.filter(search::matches)
             }
-            return CatalogPresentation(cards, cards.withIndex().associate { it.value.key to it.index },
+            val visible=cards.filter { input.ownershipFilter.accepts(input.ownership[it.ownershipProductId()] ?: Ownership.UNKNOWN) }
+            return CatalogPresentation(visible, visible.withIndex().associate { it.value.key to it.index },
                 XboxProfile.subscription(input.games.flatMap { it.userSubscriptions + it.userPrograms }), products)
         }
     }

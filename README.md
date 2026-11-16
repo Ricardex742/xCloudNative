@@ -29,6 +29,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - Catálogos oficiais com nomes, capas e identificação das edições.
 - Selos de Game Pass e Xbox Series X|S conforme a inclusão e otimização informadas pelo catálogo.
 - Pesquisa por nome, tolerando diferenças de acentos, pontuação e marcas.
+- Em **Pesquisa › Jogos**, filtro experimental por **Adquiridos**, **Não adquiridos** ou **Propriedade não confirmada**, usando as licenças da conta. O filtro se aplica ao catálogo disponível no app; acesso por assinatura não comprova propriedade. Consultas incompletas ou indisponíveis ficam sem confirmação.
 - Informações detalhadas e avisos do catálogo em **Configurações › Biblioteca e conta › Informações do catálogo**.
 - Navegação por controle ou toque e cache de imagens do catálogo.
 
@@ -212,12 +213,12 @@ Pesquisa e configurações acompanham a identidade de cada console:
 - Saída do FSR em **Automático, 1440p ou 4K experimental**, com proteção para retorno à escala padrão.
 - **SGSR 1 experimental** como alternativa de ampliação e realce numa passagem.
 - **Reconstrução adaptativa xCloud experimental**, com níveis Automático, Leve, Equilibrado e Qualidade, intensidade ajustável e realce na resolução atual. O caminho espacial próprio usa uma passagem; efeitos adicionais podem acrescentar processamento.
-- Comparação da reconstrução com imagem **original, tratada ou dividida no mesmo quadro**, sem mudar os controles ou o enquadramento. O automático aumenta o nível após cadência estável e reduz a carga quando necessário.
+- Comparação dos métodos com imagem **original, tratada ou dividida no mesmo quadro**, preservando cores e enquadramento. A comparação suspende a geração de quadros até a próxima partida. O automático da reconstrução aumenta o nível após cadência estável e reduz a carga quando necessário.
 - Tratamento opcional com **RCAS adaptativo ou USM na luminância**, limite de halos e proteção contra ruído.
 - **Debanding com dithering**, limpeza seletiva de compressão, reconstrução de cor nas bordas e antialiasing ajustáveis.
-- **Estabilização temporal** com busca local de movimento, descarte de histórico em mudanças de geometria e rejeição de mudanças de cena.
+- **Estabilização temporal** com alinhamento por movimento estimado da imagem em fontes de até 1080p, busca local como alternativa, descarte de histórico em mudanças de geometria e rejeição de mudanças de cena. A geração de quadros suspende esse histórico temporal durante a sessão.
 - **Reconstrução neural experimental** na luminância, com buffers half-float verificados e fonte de até 1080p; disponibilidade efetiva mostrada no diagnóstico.
-- Configuração central em **Imagem e tela › Upscaling e tratamento**: escolha do método, ajustes correspondentes e filtros adicionais compartilhados. Perfis **Leve** e **Natural** ajustam somente o realce do método escolhido, sem ativar filtros adicionais; a restauração da imagem original fica na mesma tela. Filtros desligados são retirados do shader compilado.
+- Configuração central em **Imagem e tela › Upscaling e tratamento** com **Imagem original**, **Perfil leve** de nitidez em uma passagem e **Reconstrução xCloud** experimental com detalhe e histórico temporal. Intensidade e comparação ficam na mesma tela. **Avançado — métodos e filtros** preserva os controles individuais e os ajustes personalizados; os perfis não mudam o codec nem a resolução solicitada. Filtros desligados são retirados do shader compilado.
 - Proteção progressiva reduz efeitos e saída quando os desenhos ficam abaixo da cadência recebida, preservando as preferências salvas e registrando os cortes da partida.
 - Preferência por uma taxa de atualização compatível com a apresentação do vídeo.
 

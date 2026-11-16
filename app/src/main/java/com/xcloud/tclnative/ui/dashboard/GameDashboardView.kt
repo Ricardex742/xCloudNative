@@ -41,6 +41,9 @@ import com.xcloud.tclnative.catalog.OfficialGalleryKind
 import com.xcloud.tclnative.catalog.CatalogInput
 import com.xcloud.tclnative.catalog.CatalogPresentation
 import com.xcloud.tclnative.catalog.CatalogChanges
+import com.xcloud.tclnative.catalog.Ownership
+import com.xcloud.tclnative.catalog.OwnershipFilter
+import com.xcloud.tclnative.catalog.ownershipProductKey
 import com.xcloud.tclnative.signaling.GameTitle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -62,7 +65,8 @@ class GameDashboardView(
     private val onOptions: () -> Unit,
     private val onExit: () -> Unit,
     private val onFavoritesChanged: () -> Unit = {},
-    private val onPlayProduct: (GalleryProduct) -> Unit = {}
+    private val onPlayProduct: (GalleryProduct) -> Unit = {},
+    private val onOwnershipNeeded: () -> Unit = {}
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -99,6 +103,37 @@ class GameDashboardView(
         private set
     var searchQuery = ""
         private set
+    var ownershipFilter=OwnershipFilter.ALL
+        private set
+    private val ownership=mutableMapOf<String,Ownership>()
+    private val ownershipRequested=mutableSetOf<String>()
+    private var ownershipLoading=false
+    private var renderedOwnershipFilter=ownershipFilter
+    private var ownershipGames: List<GameTitle>?=null
+    private var ownershipGalleries: List<OfficialGallery>?=null
+    private var ownershipIds=emptySet<String>()
+    fun setOwnershipFilter(value: OwnershipFilter) { ownershipFilter=value;refresh();focusFirstCover() }
+    private fun ownershipProducts(): Set<String> {
+        val galleries=officialGalleries.values.filterNotNull()
+        if(ownershipGames!==games || ownershipGalleries!=galleries) {
+            ownershipGames=games;ownershipGalleries=galleries
+            ownershipIds=(games.mapNotNull { ownershipProductKey(it.productId) }+
+                galleries.flatMap { it.products }.mapNotNull { ownershipProductKey(it.productId) }).toSet()
+        }
+        return ownershipIds
+    }
+    fun beginOwnershipRequest(retry: Boolean=false): Set<String> {
+        if(retry) { ownershipRequested.clear();ownership.clear() }
+        return (ownershipProducts()-ownershipRequested).also { ownershipRequested+=it;ownershipLoading=it.isNotEmpty() }
+    }
+    fun updateOwnership(batch: Map<String,Ownership>) { ownership.putAll(batch);refresh() }
+    fun finishOwnershipRequest() { ownershipLoading=false;refresh() }
+    val ownershipInformation: String get() {
+        val ids=ownershipProducts()
+        return UiText.text("Adquiridos: {0} • Não adquiridos: {1} • Não confirmados: {2}",
+            UiText.nested(ids.count { ownership[it]==Ownership.OWNED }),UiText.nested(ids.count { ownership[it]==Ownership.NOT_OWNED }),
+            UiText.nested(ids.count { ownership[it]==null || ownership[it]==Ownership.UNKNOWN }))
+    }
     private var selectedCard: CatalogCard? = null
     val selectedGame: GameTitle? get() = selectedCard?.playableGame()
     private var scale = 1f
@@ -405,17 +440,18 @@ class GameDashboardView(
     }
     fun refresh() {
         if(closed) return
+        if(ownershipFilter!=OwnershipFilter.ALL && (ownershipProducts()-ownershipRequested).isNotEmpty()) onOwnershipNeeded()
         catalogRevision++
         if(artworkPaused) return
-        if(renderedTab!=activeTab || renderedQuery!=searchQuery) {
+        if(renderedTab!=activeTab || renderedQuery!=searchQuery || renderedOwnershipFilter!=ownershipFilter) {
             // Do not leave clickable cards from the previous category while preparing the next.
-            renderedTab=activeTab; renderedQuery=searchQuery
+            renderedTab=activeTab; renderedQuery=searchQuery;renderedOwnershipFilter=ownershipFilter
             adapter.submit(emptyList(),CatalogChanges(true,emptyList()))
             positions=emptyMap(); updateSelected(null)
             renderCatalogState(0,preparing=true)
         }
         pendingCatalog=CatalogInput(games,officialGalleries.toMap(),galleryBindings.toMap(),
-            gamePassProducts,gamePassTitles,activeTab,library.favorites,added,recent,searchQuery)
+            gamePassProducts,gamePassTitles,activeTab,library.favorites,added,recent,searchQuery,ownershipFilter,ownership.toMap())
         if(catalogJob?.isActive==true) return
         // One worker, one pending snapshot: bursts cannot build an unbounded CPU queue.
         catalogJob=scope.launch {
@@ -462,6 +498,8 @@ class GameDashboardView(
         emptyState.visibility = if (count==0 && !originalHome) View.VISIBLE else View.GONE
         emptyState.text = when {
             preparing -> UiText.text("Carregando catálogo…")
+            ownershipFilter!=OwnershipFilter.ALL && ownershipLoading -> UiText.text("Consultando as licenças da conta…")
+            ownershipFilter!=OwnershipFilter.ALL -> UiText.text("Nenhum jogo confirmado para este filtro.\nA propriedade não confirmada fica em uma opção separada.")
             searchQuery.isNotBlank() -> UiText.text("Nenhum jogo encontrado para “{0}”.\nX para pesquisar novamente.",UiText.nested(searchQuery))
             activeTab == LibraryTab.FAVORITES -> UiText.text("Seus favoritos aparecem aqui.\nSelecione um jogo e pressione Y para favoritar.")
             activeTab == LibraryTab.RECENT && recentLoading -> UiText.text("Consultando seu histórico do Xbox Cloud…")
@@ -479,6 +517,9 @@ class GameDashboardView(
         }
         catalogNote.text = when {
             preparing -> UiText.text("CARREGANDO CATÁLOGO…")
+            ownershipFilter!=OwnershipFilter.ALL -> UiText.text("{0} • {1} JOGOS • {2}",UiText.nested(ownershipFilter.label),UiText.nested(count),
+                UiText.nested(if(ownershipLoading) UiText.text("Consultando as licenças da conta…") else
+                    "${OwnershipFilter.UNKNOWN.label}: ${ownershipProducts().count { ownership[it]==null || ownership[it]==Ownership.UNKNOWN }}"))
             searchQuery.isNotBlank() -> UiText.text("BUSCA: {0}  •  {1} JOGOS",UiText.nested(searchQuery),UiText.nested(count))
             activeTab == LibraryTab.GAME_PASS && !gamePassLoaded -> UiText.text("{0} JOGOS • ATUALIZANDO GAME PASS…",UiText.nested(count))
             activeTab == LibraryTab.RECENT && recentLoading -> UiText.text("{0} JOGOS • ATUALIZANDO HISTÓRICO…",UiText.nested(count))

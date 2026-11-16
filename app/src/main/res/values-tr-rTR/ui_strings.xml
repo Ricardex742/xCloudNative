@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"Aynı kareyi renk ayarlarını koruyarak karşılaştırır. Özgün ve Bölünmüş, üretimi duraklatır; sonraki oturumda yeniden açın."</string>
     <string name="ui_3e8ff61db03f1b7d">"Laboratuvarı kapat"</string>
     <string name="ui_394ba7345cda8b85">"Görüntü laboratuvarı: {0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"Oyunlar: {0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"Lisansları yenile"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"Kitaplığı filtrele"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"Bu kataloğu hesap lisanslarına göre filtreler. Abonelik erişimi sahiplik anlamına gelmez. Doğrulanmamış sürümler ve ürünler ayrı tutulur.\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"Sahip olunan: {0} • Sahip olunmayan: {1} • Doğrulanmamış: {2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"Hesap lisansları kontrol ediliyor…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"Bu filtre için doğrulanmış oyun yok.\nSahipliği doğrulanmamış oyunlar ayrı bir seçenektedir."</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} OYUN • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"Bir profil seçin ve aynı sahneyi karşılaştırın. Daha yüksek yoğunluk daha fazla ayrıntı garanti etmez. Özel ayarlar Gelişmiş bölümündedir."</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"Görüntü profili: {0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"Yoğunluk: {0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"Gelişmiş — yöntemler ve filtreler"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"Görüntü profili"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"Orijinal, alınan görüntüyü renk ayarlarınızla kullanır. Hafif, tek geçişte orta düzey keskinlik uygular. Yeniden yapılandırma, ayrıntıları ve zamansal geçmişi performans korumasıyla birleştirir; deneysel olmaya devam eder. Hiçbir profil istenen kodeği veya çözünürlüğü değiştirmez."</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"Yoğunluk"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Ayrıntı vurgusunu ve Yeniden yapılandırmada zamansal ağırlığı ayarlar. %0 alınan ayrıntıları korur. Yoğunluk GPU maliyetini ölçmez."</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"Renkleri ve kadrajı koruyarak aynı kareyi işlemeli ve işlemesiz karşılaştırır. Bölünmüş görünümde orijinal soldadır. Karşılaştırma, sonraki oturuma kadar kare üretimini durdurur. Yarım ekran maliyeti tam ekran maliyetini yansıtmaz."</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"Sahip olunan"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"Sahip olunmayan"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"Sahiplik doğrulanmadı"</string>
 </resources>

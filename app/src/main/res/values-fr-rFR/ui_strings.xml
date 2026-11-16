@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"Compare la même image en conservant les réglages de couleur. Originale et Divisée suspendent la génération ; réactivez-la à la prochaine partie."</string>
     <string name="ui_3e8ff61db03f1b7d">"Désactiver le laboratoire"</string>
     <string name="ui_394ba7345cda8b85">"Laboratoire d’image : {0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"Jeux : {0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"Actualiser les licences"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"Filtrer la bibliothèque"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"Filtre ce catalogue selon les licences du compte. L’accès par abonnement ne signifie pas que le jeu est possédé. Les éditions et produits non confirmés restent séparés.\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"Possédés : {0} • Non possédés : {1} • Non confirmés : {2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"Vérification des licences du compte…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"Aucun jeu confirmé pour ce filtre.\nLes droits non confirmés ont une option distincte."</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} JEUX • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"Choisissez un profil et comparez la même scène. Une intensité accrue ne garantit pas plus de détails. Les réglages personnalisés sont dans Avancé."</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"Profil d’image : {0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"Intensité : {0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"Avancé — méthodes et filtres"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"Profil d’image"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"Original utilise l’image reçue avec vos réglages de couleur. Léger applique une netteté modérée en une passe. Reconstruction combine détails et historique temporel avec protection des performances ; elle reste expérimentale. Aucun profil ne change le codec ni la résolution demandés."</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"Intensité"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Règle le renforcement des détails et, avec Reconstruction, le poids temporel. 0% préserve les détails reçus. L’intensité ne mesure pas le coût GPU."</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"Compare la même image avec et sans traitement en conservant couleurs et cadrage. Partagée affiche l’original à gauche. La comparaison suspend la génération d’images jusqu’à la prochaine partie. Le coût d’une demi-écran ne représente pas celui du plein écran."</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"Possédés"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"Non possédés"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"Propriété non confirmée"</string>
 </resources>

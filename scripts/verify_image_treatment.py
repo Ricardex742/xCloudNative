@@ -7,6 +7,7 @@ from gles_test_context import *
 import math
 import struct
 import json
+import random
 
 ASSETS = root / "app/src/main/assets/enhancement"
 VERTEX = "attribute vec2 pos;varying highp vec2 tc;uniform mat4 tex_mat;void main(){gl_Position=vec4(pos,0.,1.);tc=(tex_mat*vec4(pos*.5+.5,0.,1.)).xy;}"
@@ -72,6 +73,12 @@ def draw(p, textures, w, h, params=None, target=0, matrix=IDENTITY, origin=(0,0)
                      ("source_origin",matrix[12]+.5*(matrix[0]/source_w+matrix[4]/source_h),matrix[13]+.5*(matrix[1]/source_w+matrix[5]/source_h)),
                      ("source_size",source_w,source_h),("frame_size",source_w,source_h),("output_size",w,h),("viewport_origin",*origin)]:
         uniform2f(uniform_location(p,name.encode()),a,b)
+    half_x=.5*(abs(matrix[0])/source_w+abs(matrix[4])/source_h)
+    half_y=.5*(abs(matrix[1])/source_w+abs(matrix[5])/source_h)
+    uniform2f(uniform_location(p,b"bounds_min"),matrix[12]+min(0,matrix[0])+min(0,matrix[4])+half_x,
+              matrix[13]+min(0,matrix[1])+min(0,matrix[5])+half_y)
+    uniform2f(uniform_location(p,b"bounds_max"),matrix[12]+max(0,matrix[0])+max(0,matrix[4])-half_x,
+              matrix[13]+max(0,matrix[1])+max(0,matrix[5])-half_y)
     for unit,(name,t) in enumerate(textures.items()):
         active_texture(0x84C0+unit);bind_texture(0x0DE1,t);uniform1i(uniform_location(p,name.encode()),unit)
     vertex_pointer(0,2,0x1406,0,0,vertices);enable_attribute(0);draw_arrays(5,0,4)
@@ -211,7 +218,70 @@ for mode in (1,2):
     out=draw(spatial,{"rgb_tex":colored_tex},16,16,{"finish_image":1,"sharpen_mode":mode,"sharpness":1.})
     verify(all(max(out[i+k]-colored[i+k] for k in range(3))-min(out[i+k]-colored[i+k] for k in range(3))<=1 for i in range(0,len(out),4)),"Adaptive sharpening must preserve chroma differences")
 
-report=f"GLES2 treatment: {checks} shader/flat-color/HUD/transform/SGSR/temporal/half-float-CNN checks passed.\n"
+# Same-frame comparison must preserve colors/crop on the original half, including odd viewports.
+enable=gl("glEnable",None,uint);disable=gl("glDisable",None,uint)
+set_scissor=gl("glScissor",None,integer,integer,integer,integer)
+reconstruction=program("\n#define RECON_LEVEL 2\n"+(ASSETS/"reconstruction.glsl").read_text(),True)
+for method in (spatial,sgsr,reconstruction):
+    for flip in (False,True):
+        matrix=IDENTITY[:]
+        if flip:matrix[5]=-.75;matrix[13]=.875
+        colors={"finish_image":1,"saturation":.75,"brightness":.03,"contrast_adjust":.1,"input_w":16,"input_h":16}
+        params=colors|{"sharpness":.75,"sharpen_mode":1,"reconstruction_strength":.75}
+        w,h=83,47;origin=(7,9)
+        original=draw(spatial,{"rgb_tex":noise_tex},w,h,colors,matrix=matrix,origin=origin)
+        processed=draw(method,{"rgb_tex":noise_tex},w,h,params,matrix=matrix,origin=origin)
+        verify(any(abs(a-b)>2 for a,b in zip(original,processed)),"The processed reference must actually change this fixture")
+        enable(0x0C11);set_scissor(origin[0],origin[1],w//2,h)
+        draw(spatial,{"rgb_tex":noise_tex},w,h,colors,matrix=matrix,origin=origin,read=False)
+        set_scissor(origin[0]+w//2,origin[1],w-w//2,h)
+        split=draw(method,{"rgb_tex":noise_tex},w,h,params,matrix=matrix,origin=origin)
+        disable(0x0C11)
+        verify(all(abs(split[(y*w+x)*4+k]-(original if x<w//2 else processed)[(y*w+x)*4+k])<=1
+                   for y in range(h) for x in range(w) for k in range(4)),
+               "Split comparison must use the same color-adjusted frame and transform on both halves")
+
+# Bounded backward image motion improves history alignment beyond the old +/-1px local refinement.
+# This controlled noise/pan fixture is a quality regression, not a claim about arbitrary games or TV speed.
+flow=program((ASSETS/"fg-flow.frag").read_text());w,h=96,64
+def motion_truth(shift):
+    pixels=[]
+    for y in range(h):
+        for x in range(w):
+            v=125+22*math.sin((x+shift)*.17)+18*math.cos(y*.23)+12*math.sin((x+shift)*.29+y*.19)
+            if 8<x<30 and 6<y<11:v=230 if x%4<2 else 30 # stationary HUD over moving background
+            pixels.extend([int(v),int(v*.92),int(v*.85),255])
+    return pixels
+def noisy_motion(pixels,seed):
+    rng=random.Random(seed)
+    return [max(0,min(255,v+rng.randint(-4,4))) if i%4<3 else 255 for i,v in enumerate(pixels)]
+def motion_mse(a,b):return sum((a[i]-b[i])**2 for i in range(len(a)) if i%4<3)/(w*h*3)
+motion_metrics=[]
+for shift in (0,4,8,16):
+    truth=motion_truth(shift);received=noisy_motion(truth,2)
+    current=texture(received,w,h);previous=texture(noisy_motion(motion_truth(0),1),w,h)
+    vectors=texture(None,64,36);vectors_fbo=framebuffer(vectors)
+    draw(flow,{"source":previous,"history_tex":current},64,36,{"input_w":w,"input_h":h},target=vectors_fbo,read=False)
+    local=draw(temporal,{"source":current,"history_tex":previous},w,h,{"strength":.35,"use_motion":0})
+    aligned=draw(temporal,{"source":current,"history_tex":previous,"motion_tex":vectors},w,h,{"strength":.35,"use_motion":1})
+    before,old,after=motion_mse(received,truth),motion_mse(local,truth),motion_mse(aligned,truth)
+    verify(after<before,"Aligned temporal history must reduce independent noise on the moving reference")
+    verify(after<=old*1.02,"Backward alignment must not regress the local-search moving reference")
+    if shift>=8:verify(after<old*.85,"Image motion must align pans beyond the legacy local-search radius")
+    verify(max(abs(aligned[(y*w+x)*4+k]-received[(y*w+x)*4+k])
+               for y in range(7,11) for x in range(10,29) for k in range(3))<=2,
+           "The stationary high-contrast HUD must not inherit background motion")
+    motion_metrics.append({"pan_px":shift,"received_mse":before,"local_history_mse":old,"aligned_history_mse":after})
+
+# Scene changes and uncovered borders must not drag old pictures into new source evidence.
+current=texture([20,90,160,255]*(w*h),w,h);previous=texture([240,200,20,255]*(w*h),w,h)
+vectors=texture([128,128,255,255]*(64*36),64,36)
+cut=draw(temporal,{"source":current,"history_tex":previous,"motion_tex":vectors},w,h,{"strength":.35,"use_motion":1})
+verify(cut==[20,90,160,255]*(w*h),"Scene-cut/color rejection must remain effective with image motion")
+report_dir=root/"app/build/reports/reconstruction";report_dir.mkdir(parents=True,exist_ok=True)
+(report_dir/"motion-history-quality.json").write_text(json.dumps({"scope":"controlled synthetic pan/noise/HUD; Mesa pixels, not device performance", "cases":motion_metrics},indent=2))
+
+report=f"GLES2 treatment: {checks} shader/flat-color/HUD/transform/comparison/SGSR/temporal/half-float-CNN checks passed.\n"
 output=root/"app/build/reports/dashboard/image-treatment-validation.txt";output.parent.mkdir(parents=True,exist_ok=True);output.write_text(report)
 print(report,end="")
 terminate(display)

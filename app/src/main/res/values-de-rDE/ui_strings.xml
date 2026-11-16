@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"Vergleicht dasselbe Bild und behält Farbeinstellungen bei. Original und Geteilt setzen die Erzeugung aus; nächste Sitzung erneut aktivieren."</string>
     <string name="ui_3e8ff61db03f1b7d">"Labor deaktivieren"</string>
     <string name="ui_394ba7345cda8b85">"Bildlabor: {0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"Spiele: {0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"Lizenzen aktualisieren"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"Bibliothek filtern"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"Filtert diesen Katalog anhand der Kontolizenzen. Abonnementzugriff bedeutet keinen Besitz. Unbestätigte Editionen und Produkte bleiben getrennt.\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"Im Besitz: {0} • Nicht im Besitz: {1} • Unbestätigt: {2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"Kontolizenzen werden geprüft…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"Keine bestätigten Spiele für diesen Filter.\nUnbestätigter Besitz hat eine eigene Option."</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} SPIELE • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"Wähle ein Profil und vergleiche dieselbe Szene. Mehr Intensität garantiert nicht mehr Details. Eigene Einstellungen stehen unter Erweitert."</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"Bildprofil: {0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"Intensität: {0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"Erweitert — Methoden und Filter"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"Bildprofil"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"Original verwendet das empfangene Bild mit deinen Farbeinstellungen. Leicht schärft moderat in einem Durchlauf. Rekonstruktion kombiniert Details und zeitlichen Verlauf mit Leistungsschutz; sie bleibt experimentell. Kein Profil ändert den angeforderten Codec oder die Auflösung."</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"Intensität"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Regelt die Detailverstärkung und bei Rekonstruktion das zeitliche Gewicht. 0% erhält die empfangenen Details. Die Intensität misst keine GPU-Kosten."</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"Vergleicht dasselbe Bild mit und ohne Verarbeitung bei gleichen Farben und gleichem Bildausschnitt. Geteilt zeigt das Original links. Der Vergleich pausiert die Bildgenerierung bis zur nächsten Sitzung. Die Kosten einer halben Bildschirmfläche entsprechen nicht denen des Vollbilds."</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"Im Besitz"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"Nicht im Besitz"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"Besitz unbestätigt"</string>
 </resources>

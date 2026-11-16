@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"Compara el mismo fotograma conservando los ajustes de color. Original y Dividida suspenden la generación; actívala de nuevo en la próxima partida."</string>
     <string name="ui_3e8ff61db03f1b7d">"Desactivar laboratorio"</string>
     <string name="ui_394ba7345cda8b85">"Laboratorio de imagen: {0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"Juegos: {0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"Actualizar licencias"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"Filtrar biblioteca"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"Filtra este catálogo según las licencias de la cuenta. El acceso por suscripción no implica propiedad. Las ediciones y los productos sin confirmar quedan separados.\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"Adquiridos: {0} • No adquiridos: {1} • Sin confirmar: {2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"Consultando las licencias de la cuenta…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"No hay juegos confirmados para este filtro.\nLa propiedad sin confirmar tiene una opción separada."</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} JUEGOS • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"Elige un perfil y compara la misma escena. Más intensidad no garantiza más detalles. Los ajustes personalizados están en Avanzado."</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"Perfil de imagen: {0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"Intensidad: {0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"Avanzado — métodos y filtros"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"Perfil de imagen"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"Original usa la imagen recibida con tus ajustes de color. Ligero aplica nitidez moderada en una pasada. Reconstrucción combina detalle e historial temporal con protección de rendimiento; sigue siendo experimental. Ningún perfil cambia el códec ni la resolución solicitados."</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"Intensidad"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Ajusta el realce y, en Reconstrucción, el peso temporal. 0% conserva los detalles recibidos. La intensidad no mide el coste de GPU."</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"Compara el mismo fotograma con y sin tratamiento, conservando los colores y el encuadre. Dividida muestra el original a la izquierda. La comparación suspende la generación de fotogramas hasta la siguiente partida. El coste de media pantalla no representa el de pantalla completa."</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"Adquiridos"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"No adquiridos"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"Propiedad sin confirmar"</string>
 </resources>

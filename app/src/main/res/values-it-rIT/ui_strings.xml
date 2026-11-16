@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"Confronta lo stesso fotogramma mantenendo i colori impostati. Originale e Divisa sospendono la generazione; riattivala nella prossima partita."</string>
     <string name="ui_3e8ff61db03f1b7d">"Disattiva laboratorio"</string>
     <string name="ui_394ba7345cda8b85">"Laboratorio immagine: {0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"Giochi: {0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"Aggiorna licenze"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"Filtra libreria"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"Filtra questo catalogo in base alle licenze dell’account. L’accesso tramite abbonamento non implica il possesso. Le edizioni e i prodotti non confermati restano separati.\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"Posseduti: {0} • Non posseduti: {1} • Non confermati: {2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"Verifica delle licenze dell’account…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"Nessun gioco confermato per questo filtro.\nIl possesso non confermato ha un’opzione separata."</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} GIOCHI • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"Scegli un profilo e confronta la stessa scena. Una maggiore intensità non garantisce più dettagli. Le impostazioni personalizzate sono in Avanzate."</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"Profilo immagine: {0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"Intensità: {0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"Avanzate — metodi e filtri"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"Profilo immagine"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"Originale usa l’immagine ricevuta con le tue regolazioni del colore. Leggero applica nitidezza moderata in un passaggio. Ricostruzione combina dettagli e cronologia temporale con protezione delle prestazioni; resta sperimentale. Nessun profilo cambia il codec o la risoluzione richiesti."</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"Intensità"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Regola il miglioramento dei dettagli e, con Ricostruzione, il peso temporale. 0% conserva i dettagli ricevuti. L’intensità non misura il costo della GPU."</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"Confronta lo stesso fotogramma con e senza trattamento, mantenendo colori e inquadratura. Divisa mostra l’originale a sinistra. Il confronto sospende la generazione dei fotogrammi fino alla prossima partita. Il costo di metà schermo non rappresenta quello a schermo intero."</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"Posseduti"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"Non posseduti"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"Possesso non confermato"</string>
 </resources>

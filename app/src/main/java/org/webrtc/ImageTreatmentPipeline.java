@@ -19,7 +19,7 @@ public final class ImageTreatmentPipeline {
   private ReconstructionDrawer labRestorer;
   private volatile int usedNeuralAmount;
   private final int[] framebuffer=new int[1],viewport=new int[4],activeTexture=new int[1],scissorBox=new int[4];
-  private int reconstructionLevel,reconstructionStrength=50,comparison;
+  private int reconstructionLevel,reconstructionStrength=50,comparison,requestedComparison,globalComparison;
   private int finalX,finalY,finalWidth,finalHeight;
   private final ReconstructionDrawer[] reconstruction=new ReconstructionDrawer[3];
   private boolean scissor,blend,closed,broken,historyValid,neuralRejected;
@@ -29,7 +29,11 @@ public final class ImageTreatmentPipeline {
   private long lastFrameNs;
   private final float[] lastTransform=new float[16];
   private boolean transformKnown;
-  private GlTextureFrameBuffer a,b,history;
+  private GlTextureFrameBuffer a,b,history,motion;
+  private Pass motionPass;
+  private boolean motionAllowed=true,motionRejected;
+  private volatile boolean usedMotion,mergedRestoration;
+  private volatile String motionStatus="off";
   private HalfTarget featureA,featureB;
   private GlRectDrawer copy;
   private TreatmentShaderDrawer spatial,sgsr;
@@ -45,9 +49,15 @@ public final class ImageTreatmentPipeline {
     if(lab.configure(enabled,restoration,protection,scale,comparison,level,neural))historyValid=false;
   }
   public void configureReconstruction(int level,int strength,int comparison) {
-    if(reconstructionLevel!=level || this.comparison!=comparison) historyValid=false;
+    if(reconstructionLevel!=level || this.requestedComparison!=comparison) historyValid=false;
     reconstructionLevel=Math.max(0,Math.min(3,level));reconstructionStrength=Math.max(0,Math.min(100,strength));
-    this.comparison=reconstructionLevel==0?0:Math.max(0,Math.min(2,comparison));
+    this.requestedComparison=reconstructionLevel==0?0:Math.max(0,Math.min(2,comparison));
+  }
+  public void configureComparison(int value) {
+    value=Math.max(0,Math.min(2,value));if(globalComparison!=value)historyValid=false;globalComparison=value;
+  }
+  public void configureMotionHistory(boolean allowed) {
+    if(motionAllowed!=allowed)historyValid=false;motionAllowed=allowed;
   }
   public void configure(TreatmentOptions requested,int sharpness,int fsrSharpness,int saturation,int brightness,int contrast) {
     if(options!=requested) {
@@ -100,8 +110,9 @@ public final class ImageTreatmentPipeline {
     scissor=GLES20.glIsEnabled(GLES20.GL_SCISSOR_TEST);blend=GLES20.glIsEnabled(GLES20.GL_BLEND);
     finalX=x;finalY=y;finalWidth=width;finalHeight=height;
     try {
-      passes=0;usedTemporal=false;usedNeural=false;usedNeuralAmount=0;usedScaling=false;
-      if(lab.enabled() && lab.comparison()==1) {
+      passes=0;usedTemporal=false;usedNeural=false;usedNeuralAmount=0;usedScaling=false;usedMotion=false;mergedRestoration=false;
+      comparison=globalComparison!=0?globalComparison:lab.enabled()?lab.comparison():requestedComparison;
+      if(comparison==1) {
         if(copy==null)copy=new GlRectDrawer();
         if(sharpness==0 && saturation==100 && brightness==0 && contrast==100)
           input(copy,kind,texture,textures,matrix,fw,fh,x,y,width,height);
@@ -110,12 +121,6 @@ public final class ImageTreatmentPipeline {
           spatial().setFinalDither(false);input(spatial(),kind,texture,textures,matrix,fw,fh,x,y,width,height);
         }
         passes=1;historyValid=false;return true;
-      }
-      if(reconstructionLevel>0 && comparison>0 && !lab.enabled()) {
-        if(copy==null) copy=new GlRectDrawer();
-        if(comparison==2) clip(x,y,width/2,height);
-        input(copy,kind,texture,textures,matrix,fw,fh,x,y,width,height);passes++;
-        if(comparison==1) { historyValid=false;return true; }
       }
       long pixels=(long)iw*ih;
       if(pixels>3840L*2160 || pixels*12>MAX_BYTES) throw new IllegalStateException("source exceeds treatment memory limit");
@@ -127,14 +132,22 @@ public final class ImageTreatmentPipeline {
       lastW=iw;lastH=ih;lastFrameNs=started;
       boolean wantsHistory=options.temporal>0;
       boolean labNeural=lab.neural();
-      long reserve=pixels*(8+(wantsHistory?4:0)+((options.neural>0||labNeural)?16:0)+(fsr!=null?4:0));
+      long motionReserve=wantsHistory&&motionAllowed&&pixels<=NEURAL_PIXELS?64L*36*4:0;
+      long reserve=pixels*(8+(wantsHistory?4:0)+((options.neural>0||labNeural)?16:0)+(fsr!=null?4:0))+motionReserve;
       boolean labActive=lab.begin(iw,ih,width,height,reserve,fsr!=null?2:1);
       if(!labActive && labNeural) {
-        labNeural=false;reserve=pixels*(8+(wantsHistory?4:0)+(options.neural>0?16:0)+(fsr!=null?4:0));
+        labNeural=false;reserve=pixels*(8+(wantsHistory?4:0)+(options.neural>0?16:0)+(fsr!=null?4:0))+motionReserve;
         labActive=lab.begin(iw,ih,width,height,reserve,fsr!=null?2:1);
       }
       int neuralAmount=Math.max(options.neural,labActive&&labNeural?lab.restoration():0);
       boolean wantsNeural=neuralAmount>0 && neuralAvailable(iw,ih);
+      if(comparison==2 && !labActive) {
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER,framebuffer[0]);
+        clip(x,y,width/2,height);
+        spatial().configure(TreatmentOptions.OFF,0,saturation,brightness,contrast,true);
+        spatial().setFinalDither(false);
+        input(spatial(),kind,texture,textures,matrix,fw,fh,x,y,width,height);passes++;
+      }
       if(labActive) {
         GLES20.glDisable(GLES20.GL_SCISSOR_TEST);GLES20.glDisable(GLES20.GL_BLEND);
         if(copy==null)copy=new GlRectDrawer();
@@ -143,6 +156,7 @@ public final class ImageTreatmentPipeline {
         kind=Input.RGB;texture=lab.baseTexture();textures=null;matrix=IDENTITY;fw=iw;fh=ih;
       }
       if(!wantsHistory && history!=null) { history.release();history=null;historyValid=false; }
+      if(!wantsHistory || !motionAllowed)releaseMotionTarget();
       if(!wantsNeural) releaseFeatures();
       if(!wantsHistory && !wantsNeural) {
         if(b!=null && !labActive) { b.release();b=null; }
@@ -192,16 +206,36 @@ public final class ImageTreatmentPipeline {
             history.setSize(iw,ih);
             GlTextureFrameBuffer next=current;
             if(historyValid) {
+              int motionTexture=0;
+              if(motionAllowed && !motionRejected && pixels<=NEURAL_PIXELS) {
+                try {
+                  if(motion==null)motion=new GlTextureFrameBuffer(GLES20.GL_RGBA);
+                  motion.setSize(64,36);
+                  if(motionPass==null)motionPass=new Pass(TreatmentShaderDrawer.asset(context,"fg-flow.frag"));
+                  // Match each current pixel to the previous source. Share the estimator
+                  // implementation with interpolation, without adding another full-size history.
+                  motionPass.flow(motion.getFrameBufferId(),iw,ih,history.getTextureId(),current.getTextureId());
+                  motionTexture=motion.getTextureId();passes++;usedMotion=true;motionStatus="64x36 backward alignment";
+                } catch(RuntimeException unsupported) {
+                  motionRejected=true;motionStatus="local search fallback: "+unsupported.getClass().getSimpleName();
+                  releaseMotionTarget();clearErrors();
+                }
+              } else motionStatus=motionAllowed?"local search (source/driver budget)":"local search (device policy)";
               if(temporal==null) temporal=new Pass(TreatmentShaderDrawer.asset(context,"temporal.frag"));
               next=target(current==a,iw,ih);
-              temporal.draw(next.getFrameBufferId(),iw,ih,current.getTextureId(),history.getTextureId(),0,options.temporal/100f);
+              temporal.draw(next.getFrameBufferId(),iw,ih,current.getTextureId(),history.getTextureId(),motionTexture,options.temporal/100f);
               passes++;usedTemporal=true;
             }
-            bind(history);copy.drawRgb(current.getTextureId(),IDENTITY,iw,ih,0,0,iw,ih);passes++;historyValid=true;current=next;
+            // The old source becomes history by ownership rotation, avoiding a full-frame copy.
+            // Keep history distinct from both scratch slots and from the temporal output.
+            GlTextureFrameBuffer retiredHistory=history;
+            history=current;
+            if(current==a)a=retiredHistory;else b=retiredHistory;
+            historyValid=true;current=next;
           }
           finalKind=Input.RGB;finalTexture=current.getTextureId();finalTextures=null;finalMatrix=IDENTITY;finalW=iw;finalH=ih;
         }
-        if(labActive && lab.restoration()>0 && !usedNeural) {
+        if(labActive && lab.restoration()>0 && !usedNeural && reconstructionLevel==0) {
           GlTextureFrameBuffer restored=target(a!=null && finalTexture==a.getTextureId(),iw,ih);
           GLES20.glDisable(GLES20.GL_SCISSOR_TEST);GLES20.glDisable(GLES20.GL_BLEND);bind(restored);
           if(labRestorer==null)labRestorer=new ReconstructionDrawer(context,1);
@@ -218,7 +252,9 @@ public final class ImageTreatmentPipeline {
         if(reconstructionLevel>0) {
           ReconstructionDrawer drawer=reconstruction[reconstructionLevel-1];
           if(drawer==null) { drawer=new ReconstructionDrawer(context,reconstructionLevel);reconstruction[reconstructionLevel-1]=drawer; }
-          drawer.configure(reconstructionStrength,saturation,brightness,contrast,options.deband>0);
+          int strength=labActive && !usedNeural?Math.max(reconstructionStrength,lab.restoration()):reconstructionStrength;
+          mergedRestoration=labActive && !usedNeural && lab.restoration()>0;
+          drawer.configure(strength,saturation,brightness,contrast,options.deband>0);
           input(drawer,finalKind,finalTexture,finalTextures,finalMatrix,finalW,finalH,drawX,drawY,drawWidth,drawHeight);passes++;usedScaling=true;
         } else if(useSgsr) {
           if(sgsr==null) sgsr=new TreatmentShaderDrawer(context,true);
@@ -232,12 +268,12 @@ public final class ImageTreatmentPipeline {
           input(spatial(),finalKind,finalTexture,finalTextures,finalMatrix,finalW,finalH,drawX,drawY,drawWidth,drawHeight);passes++;
         }
         if(labActive) {
-          original();lab.composite(framebuffer[0],x,y,width,height,iw,ih,saturation,brightness,contrast);passes++;
+          original();lab.composite(framebuffer[0],x,y,width,height,iw,ih,saturation,brightness,contrast,comparison);passes++;
         }
       }
       GlUtil.checkNoGLES2Error("image treatment");
       long elapsed=System.nanoTime()-started;totalNs+=elapsed;maxNs=Math.max(maxNs,elapsed);frames++;
-      workingBytes=pixels*4*((a!=null?1:0)+(b!=null?1:0)+(history!=null?1:0))+(featureA!=null?pixels*16:0)+lab.bytes();
+      workingBytes=pixels*4*((a!=null?1:0)+(b!=null?1:0)+(history!=null?1:0))+(featureA!=null?pixels*16:0)+lab.bytes()+(motion!=null?64L*36*4:0);
       return true;
     } catch(RuntimeException error) {
       broken=true;failure="image treatment rejected: "+error.getClass().getSimpleName();clearErrors();return false;
@@ -284,16 +320,19 @@ public final class ImageTreatmentPipeline {
   public String failureReason() { return failure; }
   public boolean didScaleThisFrame() { return usedScaling; }
   public int effectiveTemporal() { return usedTemporal && !broken ? options.temporal : 0; }
+  private void releaseMotionTarget(){if(motion!=null)motion.release();motion=null;usedMotion=false;}
   public int effectiveNeural() { return usedNeural && !broken ? usedNeuralAmount : 0; }
   public String diagnostics() {
     return lab.diagnostics()+"\n"+(reconstructionLevel>0?"Reconstruction: level="+reconstructionLevel+" | strength="+reconstructionStrength+"% | comparison="+comparison+" | ":"")+String.format(Locale.US,"Treatment: spatial=%s | sharpen=%d | temporal=%s | neural=%s | passes=%d | storage=%.1f MiB | CPU/GL submission=%.2f/%.2f ms (not GPU/display)",
         options.spatial(),options.sharpening,usedTemporal,(options.neural>0||lab.neural())?neuralStatus:"off",passes,
-        workingBytes/1048576.,frames==0?0:totalNs/1e6/frames,maxNs/1e6)+(failure==null?"":" | "+failure);
+        workingBytes/1048576.,frames==0?0:totalNs/1e6/frames,maxNs/1e6)+
+        " | motion="+(usedMotion?motionStatus:"off/local")+" | merged restoration="+mergedRestoration+(failure==null?"":" | "+failure);
   }
   public void release() {
     if(closed)return;closed=true;
     if(a!=null)a.release();if(b!=null)b.release();if(history!=null)history.release();releaseFeatures();
     lab.release();if(labRestorer!=null)labRestorer.release();
+    releaseMotionTarget();if(motionPass!=null)motionPass.shader.release();
     if(copy!=null)copy.release();if(spatial!=null)spatial.release();if(sgsr!=null)sgsr.release();
     for(ReconstructionDrawer drawer:reconstruction) if(drawer!=null) drawer.release();
     for(Pass pass:new Pass[]{featurePassA,featurePassB,neuralApply,temporal}) if(pass!=null)pass.shader.release();
@@ -305,11 +344,20 @@ public final class ImageTreatmentPipeline {
     void draw(int target,int w,int h,int source,int second,int third,float strength) {
       GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER,target);GLES20.glViewport(0,0,w,h);shader.useProgram();
       GLES20.glUniform2f(u("frame_size"),w,h);GLES20.glUniform1f(u("strength"),strength);
+      GLES20.glUniform1i(u("use_motion"),third!=0?1:0);
       GLES20.glActiveTexture(GLES20.GL_TEXTURE0);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,source);GLES20.glUniform1i(u("source"),0);
       if(second!=0) { GLES20.glActiveTexture(GLES20.GL_TEXTURE1);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,second);GLES20.glUniform1i(u("features_a"),1);GLES20.glUniform1i(u("history_tex"),1); }
-      if(third!=0) { GLES20.glActiveTexture(GLES20.GL_TEXTURE2);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,third);GLES20.glUniform1i(u("features_b"),2); }
+      if(third!=0) { GLES20.glActiveTexture(GLES20.GL_TEXTURE2);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,third);GLES20.glUniform1i(u("features_b"),2);GLES20.glUniform1i(u("motion_tex"),2); }
       QUAD.position(0);GLES20.glEnableVertexAttribArray(position);GLES20.glVertexAttribPointer(position,2,GLES20.GL_FLOAT,false,0,QUAD);
       GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,0,4);GlUtil.checkNoGLES2Error("treatment pass");
+    }
+    void flow(int target,int sourceWidth,int sourceHeight,int previous,int current) {
+      GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER,target);GLES20.glViewport(0,0,64,36);shader.useProgram();
+      GLES20.glUniform2f(u("frame_size"),sourceWidth,sourceHeight);
+      GLES20.glActiveTexture(GLES20.GL_TEXTURE0);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,previous);GLES20.glUniform1i(u("source"),0);
+      GLES20.glActiveTexture(GLES20.GL_TEXTURE1);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,current);GLES20.glUniform1i(u("history_tex"),1);
+      QUAD.position(0);GLES20.glEnableVertexAttribArray(position);GLES20.glVertexAttribPointer(position,2,GLES20.GL_FLOAT,false,0,QUAD);
+      GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,0,4);GlUtil.checkNoGLES2Error("temporal alignment");
     }
   }
   private static final class HalfTarget {

@@ -47,6 +47,8 @@ import com.xcloud.tclnative.catalog.CatalogService
 import com.xcloud.tclnative.catalog.GalleryProduct
 import com.xcloud.tclnative.catalog.OfficialGalleryKind
 import com.xcloud.tclnative.catalog.GameLibrary
+import com.xcloud.tclnative.catalog.GameOwnershipService
+import com.xcloud.tclnative.catalog.OwnershipFilter
 import com.xcloud.tclnative.home.GameLaunchLink
 import com.xcloud.tclnative.home.PendingGameLaunch
 import com.xcloud.tclnative.home.HomeShortcuts
@@ -159,6 +161,7 @@ open class MainActivity : Activity() {
     private var dashboardJob: Job? = null
     private var galleryLaunchJob: Job? = null
     private var recentHistoryJob: Job? = null
+    private var ownershipJob: Job? = null
     private var gameLibrary: GameLibrary? = null
     private var loginView: ConsoleLoginView? = null
     private var browserLogin: MicrosoftLoginDialog? = null
@@ -375,6 +378,7 @@ open class MainActivity : Activity() {
     }
 
     private fun renderLoginMenu() {
+        ownershipJob?.cancel();ownershipJob=null
         browserLogin?.close();browserLogin=null
         galleryLaunchJob?.cancel(); galleryLaunchJob=null
         recentHistoryJob?.cancel(); recentHistoryJob=null
@@ -514,6 +518,7 @@ open class MainActivity : Activity() {
     }
 
     private fun renderGameDashboard(session: XCloudSession, validatedGames: List<GameTitle>? = null) {
+        ownershipJob?.cancel();ownershipJob=null
         galleryLaunchJob?.cancel(); galleryLaunchJob=null
         dashboardJob?.cancel()
         recentHistoryJob?.cancel(); recentHistoryJob=null
@@ -545,7 +550,8 @@ open class MainActivity : Activity() {
                 onOptions = { showSettings(session) },
                 onExit = { showExitDialog() },
                 onFavoritesChanged = { syncHomeShortcuts() },
-                onPlayProduct = { product -> playGalleryProduct(signaling,product) })
+                onPlayProduct = { product -> playGalleryProduct(signaling,product) },
+                onOwnershipNeeded = { requestOwnership() })
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)
@@ -656,7 +662,33 @@ open class MainActivity : Activity() {
 
     private fun showCatalogSearch() {
         val view = dashboard ?: return
-        ConsoleDialogs.search(this, view.searchQuery) { query -> view.setSearch(query) }
+        ConsoleDialogs.search(this, view.searchQuery,ConsoleAction(UiText.text("Jogos: {0}",UiText.nested(view.ownershipFilter.label))) {
+            showOwnershipFilter()
+        }) { query -> view.setSearch(query) }
+    }
+
+    private fun showOwnershipFilter() {
+        val view=dashboard ?: return
+        com.xcloud.tclnative.ui.dashboard.LibraryFilterPanel.show(this,view.ownershipFilter,view.ownershipInformation,
+            choose={ filter -> if(dashboard===view) { view.setOwnershipFilter(filter);showCatalogSearch() } },
+            refresh={ requestOwnership(retry=true);showCatalogSearch() },onBack={ showCatalogSearch() })
+    }
+
+    private fun requestOwnership(retry: Boolean=false) {
+        val view=dashboard ?: return
+        if(ownershipJob?.isActive==true) return
+        val ids=view.beginOwnershipRequest(retry)
+        if(ids.isEmpty()) return
+        ownershipJob=mainScope.launch {
+            try {
+                GameOwnershipService(authorization={ authenticator.loadStoreAuthorization().getOrThrow() },awaitCatalog=catalogWork::await)
+                    .fetch(ids) { batch -> withContext(Dispatchers.Main) {
+                        if(dashboard===view) view.updateOwnership(batch)
+                    } }
+            } finally {
+                if(dashboard===view) { ownershipJob=null;view.finishOwnershipRequest() }
+            }
+        }
     }
 
     private fun showSettings(session: XCloudSession,startPage: SettingsPage=SettingsPage.ROOT) {
@@ -840,6 +872,7 @@ open class MainActivity : Activity() {
         surfaceRenderer.setImageTreatment(settings.imageTreatment)
         surfaceRenderer.setReconstruction(settings.reconstruction)
         surfaceRenderer.setImageLab(settings.imageLab)
+        surfaceRenderer.setImageComparison(settings.effectiveImageComparison())
         surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
         webrtcClient?.setOutputGain(settings.audioGain)
     }
@@ -849,6 +882,7 @@ open class MainActivity : Activity() {
         surfaceRenderer.setImageTreatment(settings.imageTreatment)
         surfaceRenderer.setReconstruction(settings.reconstruction)
         surfaceRenderer.setImageLab(settings.imageLab)
+        surfaceRenderer.setImageComparison(settings.effectiveImageComparison())
         surfaceRenderer.setPresentationPacing(settings.presentationPacing)
         surfaceRenderer.nativeUpscaling=settings.nativeUpscaling
         surfaceRenderer.aspect=settings.aspect

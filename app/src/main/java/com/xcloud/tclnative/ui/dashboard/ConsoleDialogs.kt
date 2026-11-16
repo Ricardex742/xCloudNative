@@ -192,11 +192,11 @@ class ConsoleDialog(context: Context, heading: String,private val purpose: Conso
 }
 
 object ConsoleDialogs {
-    fun search(context: Context, query: String, onSearch: (String) -> Unit): ConsoleDialog = searchField(context,query,
-        UiText.text("Pesquisar jogos"),UiText.text("Nome do jogo"),UiText.text("Encontre um jogo pelo nome."),onSearch)
+    fun search(context: Context, query: String, filter: ConsoleAction?=null, onSearch: (String) -> Unit): ConsoleDialog = searchField(context,query,
+        UiText.text("Pesquisar jogos"),UiText.text("Nome do jogo"),UiText.text("Encontre um jogo pelo nome."),onSearch,filter)
     fun searchWallpapers(context: Context,query: String,onSearch: (String) -> Unit): ConsoleDialog = searchField(context,query,
         UiText.text("Pesquisar fundos"),UiText.text("Nome do fundo"),UiText.text("Encontre um fundo pelo nome."),onSearch)
-    private fun searchField(context: Context,query: String,title: String,placeholder: String,help: String,onSearch: (String) -> Unit): ConsoleDialog {
+    private fun searchField(context: Context,query: String,title: String,placeholder: String,help: String,onSearch: (String) -> Unit,filter: ConsoleAction?=null): ConsoleDialog {
         val dialog = ConsoleDialog(context,title,ConsolePanelPurpose.SEARCH)
         val localKeyboard=AppControllerWindows.usbActive(context as? Activity)
         val skin=ConsolePanelSkin()
@@ -223,6 +223,7 @@ object ConsoleDialogs {
         }
         dialog.body.addView(dialog.text(help, 21, color=DashboardTheme.muted), LinearLayout.LayoutParams(-1,-2)
             .apply { bottomMargin=dialog.px(17) })
+        if(filter!=null) dialog.addMenuItem(filter.label) { onSearch(field.text.toString());filter.action() }
         dialog.body.addView(field, LinearLayout.LayoutParams(-1,dialog.px(65)))
         val keyboard=if(localKeyboard) ControllerSearchKeyboard.attach(dialog,field) else null
         dialog.addAction(UiText.text("Limpar busca")) { onSearch("") }

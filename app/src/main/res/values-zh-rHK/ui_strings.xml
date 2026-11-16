@@ -1130,4 +1130,24 @@
     <string name="ui_911c57d77df54ec4">"對比同一幀並保留顏色設定。原始與分屏模式暫停補幀；下次會話請重新啓用。"</string>
     <string name="ui_3e8ff61db03f1b7d">"關閉實驗室"</string>
     <string name="ui_394ba7345cda8b85">"圖像實驗室：{0}"</string>
+    <string name="ui_c18160c21dea3701" formatted="false">"遊戲：{0}"</string>
+    <string name="ui_9489c2da44aec13e" formatted="false">"刷新許可證"</string>
+    <string name="ui_29bf08c1d7053573" formatted="false">"篩選遊戲庫"</string>
+    <string name="ui_844612a0798865f3" formatted="false">"根據賬號許可證篩選此目錄。訂閲訪問權限不等於擁有遊戲。未確認的版本和產品將單獨顯示。\n{0}"</string>
+    <string name="ui_4f5eccaba1669591" formatted="false">"已擁有：{0} • 未擁有：{1} • 未確認：{2}"</string>
+    <string name="ui_ab6b0c2035f831e1" formatted="false">"正在查詢賬號許可證…"</string>
+    <string name="ui_2ae4b3a37e2251fb" formatted="false">"此篩選條件下沒有已確認的遊戲。\n所有權未確認的遊戲有單獨的選項。"</string>
+    <string name="ui_d2bae24c8071ec70" formatted="false">"{0} • {1} 款遊戲 • {2}"</string>
+    <string name="ui_65c12d4523af49ab" formatted="false">"選擇預設並比較同一場景。提高強度不保證增加細節。自定義設置位於高級選項中。"</string>
+    <string name="ui_343fc82bcd57cee3" formatted="false">"圖像預設：{0}"</string>
+    <string name="ui_b349d76be7b4196f" formatted="false">"強度：{0}%"</string>
+    <string name="ui_130109754b26bd14" formatted="false">"高級 — 處理方式和濾鏡"</string>
+    <string name="ui_d15dfe13919d6bdc" formatted="false">"圖像預設"</string>
+    <string name="ui_3cb6517ac3bbc236" formatted="false">"原始使用接收的圖像並保留顏色調整。輕量僅用一個處理通道適度鋭化。重建結合細節和時域歷史，並啓用性能保護，仍屬實驗功能。所有預設均不改變請求的編解碼器或分辨率。"</string>
+    <string name="ui_22046fdceaf398b6" formatted="false">"強度"</string>
+    <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"調整細節增強和重建模式的時域權重。0%保留接收的細節。強度不代表GPU開銷。"</string>
+    <string name="ui_de1c6d14af7c0137" formatted="false">"在保留顏色和取景的情況下比較同一幀處理前後的效果。分屏左側顯示原始圖像。比較會暫停幀生成，直至下一次會話。半屏開銷不代表全屏開銷。"</string>
+    <string name="ui_785f6f8adbf92b77" formatted="false">"已擁有"</string>
+    <string name="ui_5024187419f3b962" formatted="false">"未擁有"</string>
+    <string name="ui_13ee7cd1ee354c13" formatted="false">"所有權未確認"</string>
 </resources>

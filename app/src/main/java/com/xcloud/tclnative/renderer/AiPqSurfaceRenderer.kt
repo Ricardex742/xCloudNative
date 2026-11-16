@@ -61,6 +61,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private var trackSink: VideoSink? = null
     private var pacedSink: FramePacedVideoSink?=null
     private var frameInterpolation: MotionFrameSink?=null
+    private var interpolationSession=false
     private var pacingMode=PresentationPacing.OFF
     fun setPresentationPacing(mode: PresentationPacing) { pacingMode=mode }
     @Volatile private var generation = 0
@@ -110,6 +111,12 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private var reconstructionSettings=ReconstructionSettings()
     private var imageLab=ImageLabSettings()
     private var imageLabLevel=0
+    private var imageComparison=ImageComparison.PROCESSED
+    fun setImageComparison(value: ImageComparison) {
+        if(imageComparison==value)return
+        imageComparison=value;aspectDrawer?.globalImageComparison=value.ordinal;fsrPerformance.reset()
+        if(value!=ImageComparison.PROCESSED)frameInterpolation?.setEnabled(false)
+    }
     private fun requestedLabLevel()=when {
         !imageLab.enabled || compatibility -> 0
         devicePolicy.constrainedMemory -> 1
@@ -169,12 +176,16 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     }
     private fun applyTreatmentBudget() {
         aspectDrawer?.let { drawer ->
-            drawer.treatment=if(compatibility || treatmentFailure!=null) ImageTreatmentSettings() else treatmentBudget.image
+            val effective=if(compatibility || treatmentFailure!=null) ImageTreatmentSettings() else treatmentBudget.image
+            // Never accumulate generated pictures as new temporal source evidence.
+            drawer.treatment=if(interpolationSession)effective.copy(temporal=0) else effective
+            drawer.motionTemporalAllowed=!devicePolicy.constrainedMemory
             drawer.fsrEnabled=fsrEnabled && fsrMode==FsrMode.FSR1
             drawer.sgsrEnabled=fsrEnabled && fsrMode==FsrMode.SGSR1
             drawer.reconstructionLevel=if(fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION) reconstructionController.level else 0
             drawer.reconstructionStrength=reconstructionSettings.strength
             drawer.imageComparison=reconstructionSettings.comparison.ordinal
+            drawer.globalImageComparison=if(compatibility)0 else imageComparison.ordinal
             drawer.imageLab=if(compatibility || treatmentFailure!=null) ImageLabSettings() else imageLab.forDevice(devicePolicy.constrainedMemory)
             drawer.imageLabLevel=imageLabLevel
         }
@@ -359,7 +370,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         val fresh=now>=sampledAtMs && now-sampledAtMs<=500
         if(fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION) {
             val eligible=foreground && fresh && requestedTreatment.autoProtect && reconstructionSettings.strength>0 &&
-                reconstructionSettings.comparison==ImageComparison.PROCESSED
+                reconstructionSettings.comparison==ImageComparison.PROCESSED && imageComparison==ImageComparison.PROCESSED
             if(reconstructionController.observe(now,allDraws.get(),metrics,eligible)) {
                 applyTreatmentBudget();fsrPerformance.reset()
             }
@@ -368,7 +379,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         frameInterpolation?.observePresentation(allDraws.get(),now)
         if((context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager)?.isPowerSaveMode==true)
             frameInterpolation?.setEnabled(false)
-        if(compatibility || (!requestedTreatment.autoProtect && imageLabLevel==0) || (!fsrEnabled && !treatmentBudget.image.active && imageLabLevel==0) ||
+        if(imageComparison!=ImageComparison.PROCESSED || compatibility || (!requestedTreatment.autoProtect && imageLabLevel==0) || (!fsrEnabled && !treatmentBudget.image.active && imageLabLevel==0) ||
             (fsrMode==FsrMode.FSR1 && aspectDrawer?.isFsrBypassed()==true && !treatmentBudget.image.active && imageLabLevel==0)) { fsrPerformance.reset();return }
         val slow=fsrPerformance.observe(now,allDraws.get(),metrics,foreground && fresh) ?: return
         val rate=String.format(java.util.Locale.US,"%.1f",slow.drawsPerSecond)
@@ -408,7 +419,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         }
         val lab=imageLab.forDevice(devicePolicy.constrainedMemory)
         val requestedGeneration=lab.enabled && lab.frameGeneration==com.xcloud.tclnative.settings.ExperimentalFrameGeneration.AUTO_30_TO_60 &&
-            lab.comparison==ImageComparison.PROCESSED && !compatibility
+            lab.comparison==ImageComparison.PROCESSED && imageComparison==ImageComparison.PROCESSED && !compatibility
         val glVersion=(context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
         val power=context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
         val motion=if(requestedGeneration) {
@@ -417,6 +428,8 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
                 eligible=glVersion>=0x30000 && !devicePolicy.constrainedMemory && power?.isPowerSaveMode!=true)
         }else null
         frameInterpolation=motion
+        interpolationSession=motion!=null && glVersion>=0x30000 && !devicePolicy.constrainedMemory && power?.isPowerSaveMode!=true
+        applyTreatmentBudget()
         val paced=if(motion==null && pacingMode==PresentationPacing.SMOOTH && !compatibility) FramePacedVideoSink(delivery,failed={ error ->
             post { if(generation==id && !released) onRenderError?.invoke(error) }
         }) else null
@@ -436,6 +449,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     fun detachTrack() {
         trackSink?.let { sink -> currentTrack?.removeSink(sink) }
         frameInterpolation?.close();frameInterpolation=null
+        interpolationSession=false
         pacedSink?.close();pacedSink=null
         trackSink = null
         currentTrack = null
@@ -456,7 +470,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         }
     }
     private fun imageDiagnostics(): String {
-        val active=if(compatibility || treatmentFailure!=null) ImageTreatmentSettings() else treatmentBudget.image.copy(
+        val active=if(compatibility || treatmentFailure!=null || imageComparison==ImageComparison.ORIGINAL) ImageTreatmentSettings() else treatmentBudget.image.copy(
             neural=aspectDrawer?.effectiveNeural() ?: 0,temporal=aspectDrawer?.effectiveTemporal() ?: 0)
         fun describe(value: ImageTreatmentSettings,applied: Boolean=false)="${if(applied && fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION) "XCLOUD_RECONSTRUCTION" else if(applied && fsrEnabled && fsrMode==FsrMode.SGSR1) "SGSR1" else value.sharpening.name}; deband=${value.deband}%; cleanup=${value.cleanup}%; chroma=${value.chroma}%; AA=${value.antialias}%; temporal=${value.temporal}%; neural=${value.neural}%"
         return UiText.join(UiText.text("Tratamento solicitado: {0}",UiText.nested(describe(requestedTreatment))),"\n",
@@ -466,6 +480,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             if(fsrMode==FsrMode.RECONSTRUCTION) "Reconstruction requested=${reconstructionSettings.quality}; applied level=${if(fsrEnabled) reconstructionController.level else 0}; ${reconstructionController.decision}\n" else "",
             pacedSink?.diagnostics() ?: "Pacing: immediate","\n",
             "Image lab requested=$imageLab | effective level=$imageLabLevel | constrainedMemory=${devicePolicy.constrainedMemory}\n",
+            "Comparison=$imageComparison | temporal history suspended for interpolation=$interpolationSession\n",
             frameInterpolation?.diagnostics() ?: "Frame generation: off (applies on next session)")
     }
     /** Android exposes surface/display geometry, but no public API reports TCL AiPQ activation. */

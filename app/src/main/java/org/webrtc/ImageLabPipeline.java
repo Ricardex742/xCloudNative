@@ -48,13 +48,13 @@ public final class ImageLabPipeline {
   public int comparison(){return comparison;}
   public boolean active(){return active;}
   public long bytes(){return base==null?0:4L*base.getWidth()*base.getHeight()+4L*stageW*stageH;}
-  public void composite(int framebuffer,int x,int y,int width,int height,int iw,int ih,int saturation,int brightness,int contrast){
+  public void composite(int framebuffer,int x,int y,int width,int height,int iw,int ih,int saturation,int brightness,int contrast,int frameComparison){
     if(shader==null)shader=new GlShader(VERTEX,TreatmentShaderDrawer.asset(context,"lab-composite.frag"));
     GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER,framebuffer);GLES20.glViewport(x,y,width,height);shader.useProgram();
     pair("frame_size",iw,ih);pair("stage_size",stageW,stageH);pair("output_size",width,height);
     GLES20.glUniform1f(u("saturation"),saturation/100f);GLES20.glUniform1f(u("brightness"),brightness/100f);
     GLES20.glUniform1f(u("contrast_adjust"),contrast/100f-1);
-    GLES20.glUniform1i(u("protection"),protection);GLES20.glUniform1i(u("comparison"),comparison);
+    GLES20.glUniform1i(u("protection"),protection);GLES20.glUniform1i(u("comparison"),frameComparison);
     GLES20.glActiveTexture(GLES20.GL_TEXTURE0);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,base.getTextureId());GLES20.glUniform1i(u("source"),0);
     GLES20.glActiveTexture(GLES20.GL_TEXTURE1);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,stage.getTextureId());GLES20.glUniform1i(u("processed"),1);
     int p=shader.getAttribLocation("pos");QUAD.position(0);GLES20.glEnableVertexAttribArray(p);GLES20.glVertexAttribPointer(p,2,GLES20.GL_FLOAT,false,0,QUAD);

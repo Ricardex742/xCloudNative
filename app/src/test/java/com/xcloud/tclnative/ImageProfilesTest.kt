@@ -1,0 +1,42 @@
+package com.xcloud.tclnative
+
+import com.xcloud.tclnative.settings.*
+import com.xcloud.tclnative.webrtc.StreamResolution
+import org.junit.Assert.*
+import org.junit.Test
+
+class ImageProfilesTest {
+    @Test fun profilesReplaceOnlyTheProcessingChainAndKeepTransportAndColors() {
+        val before=PlaybackSettings(resolution=StreamResolution.QHD_1440,videoCodec=VideoCodecMode.H264_MAIN,
+            fsr=FsrMode.FSR1,fsrOutput=FsrOutput.UHD_4K,saturation=115,brightness=5,contrast=110,
+            imageTreatment=ImageTreatmentSettings(deband=50,cleanup=50,neural=100,autoProtect=false),
+            imageLab=ImageLabSettings(enabled=true),imageComparison=ImageComparison.SPLIT)
+        for(profile in listOf(ImageProfile.ORIGINAL,ImageProfile.LIGHT,ImageProfile.RECONSTRUCTION)) {
+            val after=ImageProfiles.apply(before,profile)
+            assertEquals(profile,ImageProfiles.selected(after));assertTrue(after.imageTreatment.autoProtect)
+            assertEquals(before.resolution,after.resolution);assertEquals(before.videoCodec,after.videoCodec)
+            assertEquals(before.videoMode,after.videoMode);assertEquals(before.touchMode,after.touchMode)
+            assertEquals(before.saturation,after.saturation);assertEquals(before.brightness,after.brightness);assertEquals(before.contrast,after.contrast)
+            assertFalse(after.imageLab.enabled);assertFalse(after.imageTreatment.spatial);assertEquals(0,after.imageTreatment.neural)
+            assertEquals(ImageComparison.PROCESSED,after.imageComparison)
+        }
+        assertEquals(before,ImageProfiles.apply(before,ImageProfile.CUSTOM))
+    }
+    @Test fun oldCustomSettingsAreRecognizedWithoutMigrationAndIntensityIsBounded() {
+        val old=PlaybackSettings(fsr=FsrMode.SGSR1,imageTreatment=ImageTreatmentSettings(cleanup=50))
+        assertEquals(ImageProfile.CUSTOM,ImageProfiles.selected(old));assertEquals(old,ImageProfiles.withIntensity(old,80))
+        val recon=ImageProfiles.apply(old,ImageProfile.RECONSTRUCTION)
+        val high=ImageProfiles.withIntensity(recon,1000)
+        assertEquals(100,high.reconstruction.strength);assertEquals(50,high.imageTreatment.temporal)
+        val zero=ImageProfiles.withIntensity(recon,-100)
+        assertEquals(0,zero.reconstruction.strength);assertEquals(0,zero.imageTreatment.temporal)
+        assertEquals(ImageProfile.RECONSTRUCTION,ImageProfiles.selected(zero))
+    }
+    @Test fun comparisonUsesTheActiveLegacyMethodUntilACommonComparisonIsChosen() {
+        val old=PlaybackSettings(fsr=FsrMode.RECONSTRUCTION,reconstruction=ReconstructionSettings(comparison=ImageComparison.ORIGINAL))
+        assertEquals(ImageComparison.ORIGINAL,old.effectiveImageComparison())
+        assertEquals(ImageComparison.PROCESSED,old.copy(fsr=FsrMode.OFF).effectiveImageComparison())
+        assertEquals(ImageComparison.SPLIT,old.copy(imageComparison=ImageComparison.SPLIT).effectiveImageComparison())
+        assertEquals(ImageComparison.SPLIT,old.copy(imageLab=ImageLabSettings(enabled=true,comparison=ImageComparison.SPLIT)).effectiveImageComparison())
+    }
+}
