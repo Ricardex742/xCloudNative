@@ -7,6 +7,7 @@
   const root = document.querySelector('#screen');
   const baseRender = render, baseOpen = openView, baseClose = closeView, baseMotion = motion;
   let data = null, applying = false, opened = '', searchTimer;
+  let touchStart=null, suppressClickUntil=0;
   const send = (name, value = '') => window.NativeTheme.post(name, String(value));
   const current = () => visibleGames()[selected];
   const text = (node, value) => { if (node) node.textContent = value == null ? '' : String(value); };
@@ -33,6 +34,8 @@
     const clock = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     document.querySelectorAll('.clock,.center-time').forEach(n => text(n, clock));
     document.querySelectorAll('.center-heading span').forEach(n => text(n, ''));
+    text(document.querySelector('#hud-label'),data.inGame ? data.hudVisible ? 'Controle virtual' : 'Controle oculto' : data.settings.touch);
+    text(document.querySelector('#mic-label'),data.microphoneLabel || 'Áudio e microfone');
     const cards = document.querySelectorAll('.center-card');
     if (cards[2]) { text(cards[2].querySelector('strong'), quotaMark()); text(cards[2].querySelector('p'), `${data.profile.plan}\n${data.quota.label}`); }
     document.querySelectorAll('.demo-stats,.stats-demo').forEach(n => n.classList.remove('open', 'visible'));
@@ -91,6 +94,7 @@
     if (!ps5 || section === 'controls') add('Controles e toque', data.settings.touch, 'CONTROLS');
     if (!ps5 || section === 'audio') add('Áudio e microfone', data.settings.audio, 'AUDIO');
     if (!ps5 || section === 'account') { rows(content, 'Perfil', data.profile.name, () => openView('profile')); rows(content, 'Tempo na nuvem', data.quota.label, () => openView('profile')); rows(content, 'Amigos', '', () => send('friends')); }
+    if (!ps5 || section === 'account') [['GAME_PASS','Game Pass'],['PURCHASED','Transmita seu jogo'],['ADDED','Adições recentes']].forEach(([key,label]) => rows(content,label,'',() => { send('category',key);closeView(); }));
     if (section === 'diagnostic') add('Ajuda e diagnóstico', '', 'DIAGNOSTICS');
     backButton(); closeButton();
   }
@@ -113,6 +117,7 @@
   function paintSearch() {
     const input = container().querySelector('input'), results = container().querySelector('.search-results');
     if (!input || !results) return;
+    input.maxLength=512;
     results.replaceChildren();
     games.forEach(g => {
       const b = document.createElement('button'), im = new Image(), t = document.createElement('span'); b.className = 'search-result'; im.src = g.image; im.alt = ''; text(t, g.name); b.append(im, t); b.onclick = () => send('play', g.id); results.append(b);
@@ -121,6 +126,7 @@
   }
   openView = function (next) {
     if (!data) return;
+    if (next === 'home') { closeView();return; }
     if (next === 'friends') { send('friends'); return; }
     opened = next; baseOpen(next); send('modal', true);
     if (next === 'profile') profilePanel();
@@ -135,10 +141,10 @@
       account();
       const centerCards = document.querySelectorAll('.center-card');
       if (centerCards[0]) centerCards[0].onclick = () => data.inGame ? send('hud') : send('settings', 'CONTROLS');
-      if (centerCards[1]) centerCards[1].onclick = () => send('audio');
+      if (centerCards[1]) centerCards[1].onclick = () => send(data.inGame && data.actions.includes('microphone') ? 'microphone' : 'audio');
       const home = document.querySelector('[data-action="home"]'); if (home) home.onclick = () => data.inGame ? openView('game') : closeView();
     }
-    container().querySelector('button')?.focus();
+    (ps5 && next === 'center' ? document.querySelector('#center') : container()).querySelector('button')?.focus();
   };
   if (ps5) {
     settings = settingsPanel;
@@ -171,6 +177,14 @@
     if (!opened && (document.activeElement === document.body || !root.contains(document.activeElement))) root.querySelector('.tile.selected')?.focus();
   };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => send('category', b.dataset.tab));
+  const rail=document.querySelector(ps5 ? '#rail' : '#tiles');
+  rail.addEventListener('touchstart',event => { const t=event.touches[0];touchStart=t ? {x:t.clientX,y:t.clientY} : null; },{passive:true});
+  rail.addEventListener('touchend',event => {
+    const t=event.changedTouches[0];if(!t || !touchStart) return;
+    const dx=t.clientX-touchStart.x,dy=t.clientY-touchStart.y;touchStart=null;
+    if(Math.abs(dx)>45 && Math.abs(dx)>Math.abs(dy)*1.5) { suppressClickUntil=performance.now()+450;send('move',dx<0 ? 1 : -1); }
+  },{passive:true});
+  rail.addEventListener('click',event => { if(performance.now()<suppressClickUntil) { event.preventDefault();event.stopImmediatePropagation(); } },true);
   function spatial(key) {
     const active = document.activeElement, origin = active && active.getBoundingClientRect();
     if (!origin || !origin.width) return false;
@@ -196,7 +210,7 @@
       const buttons = [...scope.querySelectorAll('button')]; const at = buttons.indexOf(document.activeElement); buttons[(at + (key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length]?.focus(); return;
     }
     if (!opened && (key === 'ArrowUp' || key === 'ArrowDown' || !document.activeElement?.matches('.tile') && (key === 'ArrowLeft' || key === 'ArrowRight'))) { if (spatial(key)) return; }
-    if ((key === 'ArrowRight' && selected === visibleGames().length - 1 && data.hasNext) || (key === 'ArrowLeft' && selected === 0 && data.hasPrevious)) { send('move', key === 'ArrowRight' ? 1 : -1); return; }
+    if (!opened && ((key === 'ArrowRight' && selected === visibleGames().length - 1 && data.hasNext) || (key === 'ArrowLeft' && selected === 0 && data.hasPrevious))) { send('move', key === 'ArrowRight' ? 1 : -1); return; }
     document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
   };
   window.nativeAdapterReady = true;

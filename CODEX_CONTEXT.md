@@ -104,6 +104,8 @@ Manter o app leve. A solicitação posterior de copiar os HTMLs autoriza o WebVi
 - A superfície HTML do catálogo é destruída ao entrar no streaming e recriada no retorno. O menu HTML da partida não carrega outra imagem panorâmica; encerrar exige confirmação explícita. O botão Xbox permanece experimental.
 - O usuário pediu somente o link remoto do APK no fim; caminhos locais deste chat não funcionaram para ele. Usar o artefato do Actions, sem criar release nem mudar workflow.
 - Verificações: `python3 scripts/verify_html_themes.py` usa Playwright/Chromium para conferir UI e ponte; testes Android e assinatura continuam no workflow existente. Registrar o resultado do build atual antes de entregar. Os temas HTML preservam os textos dos documentos em português; os painéis nativos mantêm os idiomas existentes.
+- Os dois HTMLs foram comparados byte a byte com os anexos originais. A verificação no navegador passou para PS4 e PS5, incluindo seleção, início, favoritos, perfil, saldo, gesto horizontal sem início acidental, categorias e confirmação de encerramento. Isso não substitui teste em aparelhos reais.
+- Os testes de geometria dos botões nativos se aplicam somente aos temas nativos; nos temas HTML esses botões ficam ocultos. A restauração das capas e do foco ao retornar ao tema Verde preserva o cache nativo durante a navegação; a entrada no streaming continua destruindo a superfície HTML e pausando as capas como antes.
 
 ## Verificação e entrega em outro ambiente
 

@@ -1018,7 +1018,7 @@ class GameDashboardView(
             "play" -> card?.let { updateSelected(it);playCard(it) }
             "favorite" -> card?.let { updateSelected(it);toggleSelectedFavorite();updateHtmlTheme() }
             "shortcut" -> card?.playableGame()?.let { onGameShortcut?.invoke(it) }
-            "category" -> { searchQuery="";selectTab(when(value) { "recent","games" -> LibraryTab.RECENT;"favorites" -> LibraryTab.FAVORITES;else -> LibraryTab.ALL }) }
+            "category" -> { searchQuery="";selectTab(LibraryTab.entries.firstOrNull { it.name==value } ?: when(value) { "recent","games" -> LibraryTab.RECENT;"favorites" -> LibraryTab.FAVORITES;else -> LibraryTab.ALL }) }
             "search" -> if(value.isBlank() && htmlTheme!!.theme==com.xcloud.tclnative.settings.UiTheme.PS4) onSearch() else setSearch(value)
             "settings" -> onThemeSettings(SettingsPage.entries.firstOrNull { it.name==value } ?: SettingsPage.ROOT)
             "friends" -> onFriends?.invoke()

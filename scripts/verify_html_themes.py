@@ -32,16 +32,36 @@ with sync_playwright() as p:
   assert any(x['name']=='play' and x['value']==games[1]['id'] for x in page.evaluate('nativeCalls'))
   page.evaluate('nativeKey("y")')
   assert any(x['name']=='favorite' for x in page.evaluate('nativeCalls'))
+  # Swiping the bounded catalog must page it without also launching the touched tile.
+  plays=sum(x['name']=='play' for x in page.evaluate('nativeCalls'))
+  page.evaluate('''() => {
+    const rail=document.querySelector(window.nativeTheme==='ps5'?'#rail':'#tiles');
+    const start=new Event('touchstart',{bubbles:true});start.touches=[{clientX:300,clientY:180}];rail.dispatchEvent(start);
+    const end=new Event('touchend',{bubbles:true});end.changedTouches=[{clientX:180,clientY:185}];rail.dispatchEvent(end);
+    rail.querySelector('.tile.selected').click();
+  }''')
+  assert any(x['name']=='move' and x['value']=='1' for x in page.evaluate('nativeCalls'))
+  assert sum(x['name']=='play' for x in page.evaluate('nativeCalls'))==plays
+  page.evaluate('openView("settings")')
+  if mode=='ps5':page.get_by_role('button',name='Biblioteca e conta',exact=True).click()
+  page.get_by_role('button',name='Transmita seu jogo',exact=True).click()
+  assert any(x['name']=='category' and x['value']=='PURCHASED' for x in page.evaluate('nativeCalls'))
   page.evaluate('openView("profile")')
   assert 'Jogador real' in page.locator('#panel' if mode=='ps5' else '#dialog').inner_text()
   assert not page.locator('.infinity').filter(has_text='∞').is_visible()
   page.evaluate('closeView()')
   page.screenshot(path=str(root/'app/build/reports/themes'/('html-'+mode+'-home.png')))
-  payload['inGame']=True;page.evaluate('value=>nativeReceive(value)',payload)
+  payload['inGame']=True;payload['microphoneLabel']='Ativar microfone';payload['actions'].append('microphone')
+  page.evaluate('value=>nativeReceive(value)',payload)
   page.screenshot(path=str(root/'app/build/reports/themes'/('html-'+mode+'-game-menu.png')))
-  if mode=='ps5':page.locator('[data-action="home"]').click()
+  if mode=='ps5':
+   assert page.locator('#mic-label').inner_text()=='Ativar microfone'
+   page.locator('#mic').click()
+   assert sum(x['name']=='microphone' for x in page.evaluate('nativeCalls'))==1
+   page.locator('[data-action="home"]').click()
   page.get_by_role('button',name='Encerrar partida',exact=True).click()
   assert not any(x['name']=='end' for x in page.evaluate('nativeCalls'))
+  assert page.evaluate('document.activeElement.textContent').strip()=='Retomar partida'
   page.get_by_role('button',name='Encerrar partida',exact=True).click()
   assert sum(x['name']=='end' for x in page.evaluate('nativeCalls'))==1
   assert not errors,errors

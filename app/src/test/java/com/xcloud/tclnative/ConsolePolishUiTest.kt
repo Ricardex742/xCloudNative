@@ -187,7 +187,7 @@ class ConsolePolishUiTest {
     }
 
     @Test fun phoneSearchIsLargerAndTheSeriesNoticeCannotCoverNavigationOrSubscription() {
-        for(theme in UiTheme.entries) {
+        for(theme in UiTheme.entries.filter { it.htmlAsset==null }) {
             DashboardTheme.apply(RuntimeEnvironment.getApplication(),theme)
             val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get();val v=dashboard(a)
             try {

@@ -26,7 +26,7 @@ object GameMenuPanel {
             val cards=listOfNotNull(themeGame?.let { com.xcloud.tclnative.catalog.CatalogCard(game=it) })
             val data=HtmlConsoleData.snapshot(cards,cards.firstOrNull()?.key,com.xcloud.tclnative.catalog.LibraryTab.ALL,
                 profile ?: com.xcloud.tclnative.catalog.XboxProfile(),themeQuota,emptySet(),com.xcloud.tclnative.settings.PlaybackSettingsStore(context).read(),true)
-                .put("actions",org.json.JSONArray(callbacks.filterValues { it!=null }.keys)).put("hudVisible",hudVisible)
+                .put("actions",org.json.JSONArray(callbacks.filterValues { it!=null }.keys)).put("hudVisible",hudVisible).put("microphoneLabel",microphoneLabel)
             lateinit var web: HtmlConsoleTheme
             web=HtmlConsoleTheme(context,htmlTheme) { action,value ->
                 when(action) {
