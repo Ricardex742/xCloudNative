@@ -1217,4 +1217,20 @@
     <string name="ui_b9efe8ecfa530b65" formatted="false">"自動的に隠す：{0}"</string>
     <string name="ui_58857f93c914c32d" formatted="false">"仮想コントローラーの自動非表示"</string>
     <string name="ui_5423e8e87e381255" formatted="false">"メニューは表示されたままです。1回タップすると操作ボタンが再表示されます。押し続けているボタンは指を離すまで有効です。"</string>
+    <string name="ui_b29787a85987a3b1" formatted="false">"ヘルプと診断"</string>
+    <string name="ui_ea004de431a48442" formatted="false">"ゲームのショートカット"</string>
+    <string name="ui_dfe001c0349758ee" formatted="false">"詳細設定 — 映像と接続"</string>
+    <string name="ui_cb511e13be6742ac" formatted="false">"ゲームのビットレート、地域、言語は次のセッションから適用されます。"</string>
+    <string name="ui_bab1bbd31394bce7" formatted="false">"Xbox ボタン — 試験的"</string>
+    <string name="ui_de6cc609150213bf" formatted="false">"アカウントとフレンド"</string>
+    <string name="ui_9aaf293c14684f61" formatted="false">"ゲームを終了してカタログに戻りますか？"</string>
+    <string name="ui_9406485f39b5779e" formatted="false">"このゲーム"</string>
+    <string name="ui_05a25b0f46a09d06" formatted="false">"設定を閉じて戻る"</string>
+    <string name="ui_ffe85059ef58ade9" formatted="false">"ゲームの言語: {0}"</string>
+    <string name="ui_cb54443373726a75" formatted="false">"既定の設定を使用"</string>
+    <string name="ui_a8bb7fd2fcaee36c" formatted="false">"この端末の映像"</string>
+    <string name="ui_2bdd7284b0947bf0" formatted="false">"映像と接続"</string>
+    <string name="ui_2d7e0a796db2917d" formatted="false">"メディア音量: {0}/{1}"</string>
+    <string name="ui_a8b7d8332f3863e8" formatted="false">"メディア音量"</string>
+    <string name="ui_27964de71ae4bf19" formatted="false">"詳細設定"</string>
 </resources>

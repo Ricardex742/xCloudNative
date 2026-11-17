@@ -1217,4 +1217,20 @@
     <string name="ui_b9efe8ecfa530b65" formatted="false">"自动隐藏：{0}"</string>
     <string name="ui_58857f93c914c32d" formatted="false">"虚拟控制器自动隐藏"</string>
     <string name="ui_5423e8e87e381255" formatted="false">"菜单保持可见。轻触一次即可重新显示控件。按住的按钮会保持生效，直到松开。"</string>
+    <string name="ui_b29787a85987a3b1" formatted="false">"帮助与诊断"</string>
+    <string name="ui_ea004de431a48442" formatted="false">"游戏快捷操作"</string>
+    <string name="ui_dfe001c0349758ee" formatted="false">"高级 — 视频与连接"</string>
+    <string name="ui_cb511e13be6742ac" formatted="false">"游戏码率、区域和语言将在下一次游戏会话中生效。"</string>
+    <string name="ui_bab1bbd31394bce7" formatted="false">"Xbox 按钮 — 实验性"</string>
+    <string name="ui_de6cc609150213bf" formatted="false">"账户与好友"</string>
+    <string name="ui_9aaf293c14684f61" formatted="false">"结束游戏并返回目录？"</string>
+    <string name="ui_9406485f39b5779e" formatted="false">"此游戏"</string>
+    <string name="ui_05a25b0f46a09d06" formatted="false">"关闭设置并返回"</string>
+    <string name="ui_ffe85059ef58ade9" formatted="false">"游戏语言：{0}"</string>
+    <string name="ui_cb54443373726a75" formatted="false">"使用默认设置"</string>
+    <string name="ui_a8bb7fd2fcaee36c" formatted="false">"此设备的视频"</string>
+    <string name="ui_2bdd7284b0947bf0" formatted="false">"视频与连接"</string>
+    <string name="ui_2d7e0a796db2917d" formatted="false">"媒体音量：{0}/{1}"</string>
+    <string name="ui_a8b7d8332f3863e8" formatted="false">"媒体音量"</string>
+    <string name="ui_27964de71ae4bf19" formatted="false">"高级"</string>
 </resources>

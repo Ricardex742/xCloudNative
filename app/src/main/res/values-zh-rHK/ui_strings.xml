@@ -1217,4 +1217,20 @@
     <string name="ui_b9efe8ecfa530b65" formatted="false">"自動隱藏：{0}"</string>
     <string name="ui_58857f93c914c32d" formatted="false">"虛擬控制器自動隱藏"</string>
     <string name="ui_5423e8e87e381255" formatted="false">"菜單保持可見。輕觸一次即可重新顯示控件。按住的按鈕會保持生效，直到鬆開。"</string>
+    <string name="ui_b29787a85987a3b1" formatted="false">"說明與診斷"</string>
+    <string name="ui_ea004de431a48442" formatted="false">"遊戲快捷操作"</string>
+    <string name="ui_dfe001c0349758ee" formatted="false">"進階 — 影片與連線"</string>
+    <string name="ui_cb511e13be6742ac" formatted="false">"遊戲位元率、區域和語言將在下一次遊戲工作階段生效。"</string>
+    <string name="ui_bab1bbd31394bce7" formatted="false">"Xbox 按鈕 — 實驗性"</string>
+    <string name="ui_de6cc609150213bf" formatted="false">"帳戶與好友"</string>
+    <string name="ui_9aaf293c14684f61" formatted="false">"結束遊戲並返回目錄？"</string>
+    <string name="ui_9406485f39b5779e" formatted="false">"此遊戲"</string>
+    <string name="ui_05a25b0f46a09d06" formatted="false">"關閉設定並返回"</string>
+    <string name="ui_ffe85059ef58ade9" formatted="false">"遊戲語言：{0}"</string>
+    <string name="ui_cb54443373726a75" formatted="false">"使用預設設定"</string>
+    <string name="ui_a8bb7fd2fcaee36c" formatted="false">"此裝置的影片"</string>
+    <string name="ui_2bdd7284b0947bf0" formatted="false">"影片與連線"</string>
+    <string name="ui_2d7e0a796db2917d" formatted="false">"媒體音量：{0}/{1}"</string>
+    <string name="ui_a8b7d8332f3863e8" formatted="false">"媒體音量"</string>
+    <string name="ui_27964de71ae4bf19" formatted="false">"進階"</string>
 </resources>

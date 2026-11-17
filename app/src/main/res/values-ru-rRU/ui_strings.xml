@@ -1217,4 +1217,20 @@
     <string name="ui_b9efe8ecfa530b65" formatted="false">"Скрывать автоматически: {0}"</string>
     <string name="ui_58857f93c914c32d" formatted="false">"Автоматическое скрытие виртуального контроллера"</string>
     <string name="ui_5423e8e87e381255" formatted="false">"Меню остаётся видимым. Коснитесь один раз, чтобы снова показать управление. Удерживаемая кнопка остаётся активной, пока вы её не отпустите."</string>
+    <string name="ui_b29787a85987a3b1" formatted="false">"Помощь и диагностика"</string>
+    <string name="ui_ea004de431a48442" formatted="false">"Быстрые действия в игре"</string>
+    <string name="ui_dfe001c0349758ee" formatted="false">"Дополнительно — видео и соединение"</string>
+    <string name="ui_cb511e13be6742ac" formatted="false">"Битрейт, регион и язык игры применяются в следующем сеансе."</string>
+    <string name="ui_bab1bbd31394bce7" formatted="false">"Кнопка Xbox — экспериментально"</string>
+    <string name="ui_de6cc609150213bf" formatted="false">"Учётная запись и друзья"</string>
+    <string name="ui_9aaf293c14684f61" formatted="false">"Завершить сеанс и вернуться в каталог?"</string>
+    <string name="ui_9406485f39b5779e" formatted="false">"Эта игра"</string>
+    <string name="ui_05a25b0f46a09d06" formatted="false">"Закрыть настройки и вернуться"</string>
+    <string name="ui_ffe85059ef58ade9" formatted="false">"Язык игры: {0}"</string>
+    <string name="ui_cb54443373726a75" formatted="false">"Используются настройки по умолчанию"</string>
+    <string name="ui_a8bb7fd2fcaee36c" formatted="false">"Видео на этом устройстве"</string>
+    <string name="ui_2bdd7284b0947bf0" formatted="false">"Видео и соединение"</string>
+    <string name="ui_2d7e0a796db2917d" formatted="false">"Громкость мультимедиа: {0}/{1}"</string>
+    <string name="ui_a8b7d8332f3863e8" formatted="false">"Громкость мультимедиа"</string>
+    <string name="ui_27964de71ae4bf19" formatted="false">"Дополнительно"</string>
 </resources>

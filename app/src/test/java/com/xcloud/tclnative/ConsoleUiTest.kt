@@ -106,7 +106,7 @@ class ConsoleUiTest {
             dialog.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
             dialog.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_BUTTON_A))
         }
-        choose(dialog,"Vídeo e transmissão")
+        choose(dialog,"Vídeo e conexão")
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Modo de vídeo:")
         val video=ShadowDialog.getLatestDialog() as ConsoleDialog
         render(video,"green-video-choice")
@@ -123,7 +123,7 @@ class ConsoleUiTest {
         (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
         val imageCategory=panel.showImage()
         render(imageCategory,"image-settings-0.32.0")
-        choose(imageCategory,"Upscaling e tratamento:")
+        choose(imageCategory,"Avançado")
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Avançado — métodos e filtros")
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Upscaling nativo:")
         val upscale=ShadowDialog.getLatestDialog() as ConsoleDialog
@@ -132,8 +132,8 @@ class ConsoleUiTest {
         assertFalse(store.read().nativeUpscaling); assertEquals(3,updates.size)
         (ShadowDialog.getLatestDialog() as ConsoleDialog).dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
         shadowOf(Looper.getMainLooper()).idle()
-        (ShadowDialog.getLatestDialog() as ConsoleDialog).dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
-        shadowOf(Looper.getMainLooper()).idle()
+        choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Imagem e tela")
+
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Proporção:")
         val aspect=ShadowDialog.getLatestDialog() as ConsoleDialog
         render(aspect,"green-aspect-choice")
@@ -184,13 +184,16 @@ class ConsoleUiTest {
         var stats=0; var disconnected=0; var hudOpened=0
         val game=GameMenuPanel.show(activity,{}, {stats++}, {}, {disconnected++},hud={hudOpened++},aspect={})
         render(game,"game-menu")
-        all(game.body).filterIsInstance<TextView>().single { it.text.contains("HUD e controles") }.performClick()
+        all(game.body).filterIsInstance<TextView>().single { it.text.contains("Controles e toque") }.performClick()
+        all((ShadowDialog.getLatestDialog() as ConsoleDialog).body).filterIsInstance<TextView>().single { it.text.contains("HUD e controles") }.performClick()
         assertEquals(1,hudOpened)
         val statistics=GameMenuPanel.show(activity,{}, {stats++}, {}, {disconnected++},hud={hudOpened++})
         all(statistics.body).filterIsInstance<TextView>().single { it.text.contains("estatísticas") }.performClick()
         assertEquals(1,stats); assertEquals(0,disconnected)
         val leaving=GameMenuPanel.show(activity,{}, {}, {}, {disconnected++})
-        all(leaving.body).filterIsInstance<TextView>().single { it.text.contains("Desconectar sessão") }.performClick()
+        all(leaving.panel).filterIsInstance<TextView>().single { it.text.contains("ENCERRAR PARTIDA") }.performClick()
+        assertEquals(0,disconnected)
+        all((ShadowDialog.getLatestDialog() as ConsoleDialog).panel).filterIsInstance<TextView>().single { it.text.contains("ENCERRAR PARTIDA") }.performClick()
         assertEquals(1,disconnected)
         controller.pause().stop().destroy()
     }

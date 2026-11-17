@@ -11,7 +11,7 @@ import com.xcloud.tclnative.touch.*
 class GameHudPanel(private val context: Context,private val game: GameTitle,private val store: GameHudStore,
                    private val changed: (HudSettings) -> Unit,private val edit: () -> Unit,
                    private val hide: () -> Unit,private val page: (HudPreset) -> Unit,
-                   private val activate: (() -> Unit)?=null,private val nativeTouch: (() -> Unit)?=null) {
+                   private val activate: (() -> Unit)?=null,private val nativeTouch: (() -> Unit)?=null,private val back: () -> Unit={}) {
     fun show(): ConsoleDialog {
         val settings=store.read(game.titleId)
         val automatic=GameHud.automatic(game.titleId,game.name)
@@ -81,7 +81,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
                 listOf(ConsoleAction(UiText.text("Voltar")) { show() }),onCancel={ show() })
         }
         if(activate==null) actions+=ConsoleAction(UiText.text("Ocultar HUD"),hide)
-        return ConsoleDialogs.menu(context,"HUD • ${game.name}",actions)
+        return ConsoleDialogs.menu(context,"HUD • ${game.name}",actions,onBack=back)
     }
     private fun save(settings: HudSettings) {
         try { store.save(game.titleId,settings); changed(settings); show() }

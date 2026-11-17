@@ -23,7 +23,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 
 - Login direto na página oficial da Microsoft pelo próprio aparelho, com QR Code como alternativa e restauração da sessão salva. Celulares priorizam o login direto; TVs e boxes mantêm o QR Code em primeiro lugar.
 - Perfil Xbox com avatar e identificação da assinatura, quando informados pelo serviço.
-- **Tempo restante de nuvem** abaixo da assinatura, com selos do plano e do saldo que acompanham cada tema, consultado no serviço Xbox: horas disponíveis, ilimitado ou indisponível quando não há confirmação. Atualiza ao entrar, retornar da partida ou usar **Biblioteca e conta › Atualizar tempo restante**; não é uma contagem regressiva local. Pode ser exibido nas estatísticas durante a partida; com o painel visível, a consulta se renova a cada cinco minutos. **Detalhes do tempo restante** informa o motivo de uma consulta indisponível, sem expor dados da conta.
+- **Tempo restante de nuvem** abaixo da assinatura, com selos do plano e do saldo que acompanham cada tema, consultado no serviço Xbox: horas disponíveis, ilimitado ou indisponível quando não há confirmação. Atualiza ao entrar, retornar da partida ou usar **Conta e amigos › Atualizar tempo restante**; não é uma contagem regressiva local. Pode ser exibido nas estatísticas durante a partida; com o painel visível, a consulta se renova a cada cinco minutos. **Detalhes do tempo restante** informa o motivo de uma consulta indisponível, sem expor dados da conta.
 - **Voltar a jogar** com o histórico da conta no Xbox Cloud Gaming.
 - Favoritos separados por conta e salvos no aparelho.
 - **Game Pass**, **Transmita seu jogo**, **Adições recentes** e **Todos os jogos**.
@@ -190,7 +190,7 @@ Pesquisa e configurações acompanham a identidade de cada console:
     <td width="50%"><img src="docs/screenshots/video-modes.png" alt="Modo de vídeo — Menor atraso, adaptativo e compatibilidade." /><br /><strong>Modo de vídeo</strong> — Menor atraso, adaptativo e compatibilidade.</td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/screenshots/game-menu.png" width="70%" alt="Menu da partida — Ajustes, estatísticas e desconexão." /><br /><strong>Menu da partida</strong> — Ajustes, estatísticas e desconexão.</td>
+    <td colspan="2" align="center"><img src="docs/screenshots/game-menu.png" width="70%" alt="Menu da partida — Atalhos para controle, estatísticas, áudio, vídeo, amigos e configurações." /><br /><strong>Menu da partida</strong> — Atalhos para controle, estatísticas, áudio, vídeo, amigos e configurações.</td>
   </tr>
 </table>
 
@@ -225,7 +225,7 @@ Pesquisa e configurações acompanham a identidade de cada console:
 - **Debanding com dithering**, limpeza seletiva de compressão, reconstrução de cor nas bordas e antialiasing ajustáveis.
 - **Estabilização temporal** com alinhamento por movimento estimado da imagem em fontes de até 1080p, busca local como alternativa, descarte de histórico em mudanças de geometria e rejeição de mudanças de cena. A geração de quadros suspende esse histórico temporal durante a sessão.
 - **Reconstrução neural experimental** na luminância, com buffers half-float verificados e fonte de até 1080p; disponibilidade efetiva mostrada no diagnóstico.
-- Configuração central em **Imagem e tela › Upscaling e tratamento** com **Imagem original**, **Perfil leve** de nitidez em uma passagem e **Reconstrução xCloud** experimental com detalhe e histórico temporal. Intensidade e comparação ficam na mesma tela. **Avançado — métodos e filtros** preserva os controles individuais e os ajustes personalizados; os perfis não mudam o codec nem a resolução solicitada. Filtros desligados são retirados do shader compilado.
+- Configuração central em **Vídeo e conexão › Perfil de imagem** com **Imagem original**, **Perfil leve** de nitidez em uma passagem e **Reconstrução xCloud** experimental com detalhe e histórico temporal. Intensidade e comparação ficam na mesma tela. **Vídeo e conexão › Avançado › Avançado — métodos e filtros** preserva os controles individuais e os ajustes personalizados; os perfis não mudam o codec nem a resolução solicitada. Filtros desligados são retirados do shader compilado.
 - Proteção progressiva reduz efeitos e saída quando os desenhos ficam abaixo da cadência recebida, preservando as preferências salvas e registrando os cortes da partida.
 - **Geração de quadros experimental de 30 para até 60 quadros enviados/s**, com estimativa de movimento a partir da imagem e suspensão por custo ou atraso excessivo. O diagnóstico mostra o estado efetivo, o total gerado, os envios e os desenhos por segundo; essas medidas não são FPS físicos da tela nem do jogo. Ativar somente a geração dispensa as etapas neutras do laboratório de imagem.
 - Preferência por uma taxa de atualização compatível com a apresentação do vídeo.
@@ -351,11 +351,14 @@ As posições, tamanhos, ações e gestos podem ser ajustados por jogo. No futeb
 
 ## Rede e preferências
 
-- Configurações organizadas por categoria.
+- Seis categorias principais: **Vídeo e conexão**, **Controles e toque**, **Áudio e microfone**, **Aparência e temas**, **Conta e amigos** e **Ajuda e diagnóstico**. Resolução, modo de vídeo, proporção, perfil de imagem e preferências da sessão ficam reunidos; codec, métodos de imagem e opções de rede ficam em Avançado.
+- **X no canto superior** fecha os ajustes e retorna ao jogo ou catálogo. **Voltar/B** sobe um nível, preservando as escolhas; encerrar a partida é uma ação separada e pede confirmação.
+- Na pesquisa, **segurar X do controle** limpa o campo; o botão visível de limpar continua disponível.
 - Teto de bitrate solicitado em Automático ou entre 1 e 50 Mbps, salvo por jogo.
 - Escolha entre as regiões oferecidas à conta.
-- **Bypass de região experimental**, opcional e desativado por padrão, disponível antes do login e em **Rede e sessão**. Oferece Brasil, Estados Unidos, Japão, Coreia do Sul e Polônia como referência no login do xCloud. Não é VPN e não altera o IP real; o acesso continua sujeito à resposta do Xbox. A escolha é salva e vale ao reconectar a conta ou reabrir o app, sem apagar o login Microsoft.
-- Idioma solicitado à sessão configurável por jogo.
+- **Bypass de região experimental**, opcional e desativado por padrão, disponível antes do login e em **Vídeo e conexão › Avançado**. Oferece Brasil, Estados Unidos, Japão, Coreia do Sul e Polônia como referência no login do xCloud. Não é VPN e não altera o IP real; o acesso continua sujeito à resposta do Xbox. A escolha é salva e vale ao reconectar a conta ou reabrir o app, sem apagar o login Microsoft.
+- **Este jogo / Padrão das partidas** na aba **Vídeo e conexão › Rede e sessão** para bitrate, região e idioma do jogo. Cada campo indica se herda o padrão ou usa um valor personalizado, e pode voltar a herdar individualmente. Configurações completas já salvas continuam preservadas.
+- Idioma solicitado ao jogo configurável por partida, incluindo **Chinês simplificado (`zh-CN`)**. A escolha é independente do idioma da interface e vale na próxima sessão; o jogo pode usar suas próprias configurações.
 - Modo automático IPv4/IPv6 e opções de preferência por uma família de rede.
 
 <table>
@@ -377,8 +380,10 @@ As posições, tamanhos, ações e gestos podem ser ajustados por jogo. No futeb
 
 - Resolução e codec recebidos, FPS decodificados e bitrate.
 - RTT, jitter, perda de pacotes, buffer, descartes e tempo de decodificação.
-- Estatísticas durante a partida com ativação manual pelo menu ou INFO/F10, alternando diretamente entre mostrar e ocultar.
-- **Estatísticas personalizáveis:** escolha individual de FPS do vídeo, ping/RTT, bitrate, resolução recebida, codec, decodificação, jitter, perda, buffer, descartes e agendador de input. O padrão mostra apenas FPS, ping e bitrate; o modo completo continua disponível.
+- **Painel de atalhos da partida** com ícones e nomes para controle virtual, estatísticas, áudio, vídeo, amigos e configurações. O acesso no celular tem área de toque de pelo menos 48 dp e permanece disponível com o HUD oculto ou toque nativo.
+- **Botão Xbox — experimental** envia um pressionamento e uma soltura pelo canal de controle. A abertura do guia e os recursos sociais disponíveis dependem da sessão Xbox.
+- Estatísticas durante a partida com ativação manual pelo atalho ou INFO/F10, alternando diretamente entre mostrar e ocultar. Segure o atalho de estatísticas para abrir a personalização diretamente.
+- **Estatísticas personalizáveis:** escolha individual de FPS do vídeo, ping/RTT, bitrate, resolução recebida, codec, decodificação, jitter, perda, buffer, descartes, agendador de input e tempo restante de nuvem (incluindo ilimitado). O padrão mostra apenas FPS, ping e bitrate; o modo completo continua disponível.
 - Posição nos quatro cantos, tamanho do texto e opacidade do fundo ajustáveis. As escolhas ficam salvas e cada partida começa com o painel oculto.
 - **Recuperar imagem** pelo menu da partida: recria a exibição e solicita a recuperação do decodificador sem encerrar a sessão Xbox.
 - **Recarregar transmissão — experimental:** tenta reconstruir áudio, vídeo e controles na mesma sessão Xbox, mantendo sua manutenção ativa e sem solicitar outra partida ou nova fila. A reconexão depende da sessão ainda estar disponível e da resposta do serviço. O microfone retorna mudo; uma tentativa malsucedida oferece nova tentativa e saída explícita.

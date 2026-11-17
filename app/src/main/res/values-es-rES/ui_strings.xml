@@ -1217,4 +1217,20 @@
     <string name="ui_b9efe8ecfa530b65" formatted="false">"Ocultar automáticamente: {0}"</string>
     <string name="ui_58857f93c914c32d" formatted="false">"Ocultación automática del mando virtual"</string>
     <string name="ui_5423e8e87e381255" formatted="false">"El menú permanece visible. Toca una vez para volver a mostrar los controles. Un botón mantenido sigue activo hasta soltarlo."</string>
+    <string name="ui_b29787a85987a3b1" formatted="false">"Ayuda y diagnóstico"</string>
+    <string name="ui_ea004de431a48442" formatted="false">"Accesos de la partida"</string>
+    <string name="ui_dfe001c0349758ee" formatted="false">"Avanzado — vídeo y conexión"</string>
+    <string name="ui_cb511e13be6742ac" formatted="false">"El bitrate, la región y el idioma del juego se aplican a la próxima partida."</string>
+    <string name="ui_bab1bbd31394bce7" formatted="false">"Botón Xbox — experimental"</string>
+    <string name="ui_de6cc609150213bf" formatted="false">"Cuenta y amigos"</string>
+    <string name="ui_9aaf293c14684f61" formatted="false">"¿Finalizar la partida y volver al catálogo?"</string>
+    <string name="ui_9406485f39b5779e" formatted="false">"Este juego"</string>
+    <string name="ui_05a25b0f46a09d06" formatted="false">"Cerrar ajustes y volver"</string>
+    <string name="ui_ffe85059ef58ade9" formatted="false">"Idioma del juego: {0}"</string>
+    <string name="ui_cb54443373726a75" formatted="false">"Usando los valores predeterminados"</string>
+    <string name="ui_a8bb7fd2fcaee36c" formatted="false">"Vídeo de este dispositivo"</string>
+    <string name="ui_2bdd7284b0947bf0" formatted="false">"Vídeo y conexión"</string>
+    <string name="ui_2d7e0a796db2917d" formatted="false">"Volumen multimedia: {0}/{1}"</string>
+    <string name="ui_a8b7d8332f3863e8" formatted="false">"Volumen multimedia"</string>
+    <string name="ui_27964de71ae4bf19" formatted="false">"Avanzado"</string>
 </resources>

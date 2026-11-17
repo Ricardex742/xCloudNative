@@ -1217,4 +1217,20 @@
     <string name="ui_b9efe8ecfa530b65" formatted="false">"Masquer automatiquement : {0}"</string>
     <string name="ui_58857f93c914c32d" formatted="false">"Masquage automatique de la manette virtuelle"</string>
     <string name="ui_5423e8e87e381255" formatted="false">"Le menu reste visible. Touchez une fois pour réafficher les commandes. Un bouton maintenu reste actif jusqu’à son relâchement."</string>
+    <string name="ui_b29787a85987a3b1" formatted="false">"Aide et diagnostic"</string>
+    <string name="ui_ea004de431a48442" formatted="false">"Raccourcis de la partie"</string>
+    <string name="ui_dfe001c0349758ee" formatted="false">"Avancé — vidéo et connexion"</string>
+    <string name="ui_cb511e13be6742ac" formatted="false">"Le débit, la région et la langue du jeu s’appliquent à la prochaine partie."</string>
+    <string name="ui_bab1bbd31394bce7" formatted="false">"Bouton Xbox — expérimental"</string>
+    <string name="ui_de6cc609150213bf" formatted="false">"Compte et amis"</string>
+    <string name="ui_9aaf293c14684f61" formatted="false">"Terminer la partie et revenir au catalogue ?"</string>
+    <string name="ui_9406485f39b5779e" formatted="false">"Ce jeu"</string>
+    <string name="ui_05a25b0f46a09d06" formatted="false">"Fermer les paramètres et revenir"</string>
+    <string name="ui_ffe85059ef58ade9" formatted="false">"Langue du jeu : {0}"</string>
+    <string name="ui_cb54443373726a75" formatted="false">"Paramètres par défaut"</string>
+    <string name="ui_a8bb7fd2fcaee36c" formatted="false">"Vidéo sur cet appareil"</string>
+    <string name="ui_2bdd7284b0947bf0" formatted="false">"Vidéo et connexion"</string>
+    <string name="ui_2d7e0a796db2917d" formatted="false">"Volume multimédia : {0}/{1}"</string>
+    <string name="ui_a8b7d8332f3863e8" formatted="false">"Volume multimédia"</string>
+    <string name="ui_27964de71ae4bf19" formatted="false">"Avancé"</string>
 </resources>

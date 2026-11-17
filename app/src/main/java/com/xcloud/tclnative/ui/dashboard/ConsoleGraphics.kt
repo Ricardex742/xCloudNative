@@ -6,7 +6,19 @@ import android.graphics.drawable.Drawable
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT }
+internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX }
+
+internal class ConsoleIconDrawable(private val glyph: ConsoleGlyph,private val size: Int,private val colors: android.content.res.ColorStateList): Drawable() {
+    private val icons=ConsoleIcons()
+    override fun isStateful()=true
+    override fun onStateChange(state: IntArray): Boolean { invalidateSelf();return true }
+    override fun getIntrinsicWidth()=size
+    override fun getIntrinsicHeight()=size
+    override fun draw(canvas: Canvas) { icons.draw(canvas,glyph,bounds.left.toFloat(),bounds.top.toFloat(),minOf(bounds.width(),bounds.height()).toFloat(),colors.getColorForState(state,colors.defaultColor)) }
+    override fun setAlpha(alpha: Int) {}
+    override fun setColorFilter(filter: ColorFilter?) {}
+    @Deprecated("Deprecated in Java") override fun getOpacity()=PixelFormat.TRANSLUCENT
+}
 
 /** The solid green utility column is part of the Metro layout, distinct from Series shortcuts. */
 internal class MetroShortcutPlate(private val kind: Int): Drawable() {
@@ -46,6 +58,12 @@ internal class ConsoleIcons {
         p.shader=null;p.color=color;p.style=Paint.Style.STROKE;p.strokeWidth=1.65f;p.strokeCap=Paint.Cap.ROUND;p.strokeJoin=Paint.Join.ROUND
         path.reset()
         when(icon) {
+            ConsoleGlyph.XBOX -> {
+                c.drawCircle(12f,12f,10f,p)
+                path.moveTo(5f,5f);path.cubicTo(10f,7f,17f,14f,19f,20f)
+                path.moveTo(19f,5f);path.cubicTo(14f,7f,7f,14f,5f,20f)
+                c.drawPath(path,p)
+            }
             ConsoleGlyph.HOME -> { path.moveTo(3f,11f);path.lineTo(12f,3f);path.lineTo(21f,11f);path.moveTo(5f,9f);path.lineTo(5f,21f);path.lineTo(10f,21f);path.lineTo(10f,15f);path.lineTo(14f,15f);path.lineTo(14f,21f);path.lineTo(19f,21f);path.lineTo(19f,9f);c.drawPath(path,p) }
             ConsoleGlyph.FAVORITE -> { path.moveTo(12f,21f);path.cubicTo(9f,17f,2f,13f,2f,7f);path.cubicTo(2f,1f,10f,1f,12f,7f);path.cubicTo(14f,1f,22f,1f,22f,7f);path.cubicTo(22f,13f,15f,17f,12f,21f);c.drawPath(path,p) }
             ConsoleGlyph.GAME_PASS -> { rect.set(2f,3f,22f,21f);c.drawRoundRect(rect,2f,2f,p);p.style=Paint.Style.FILL;p.typeface=font;p.textAlign=Paint.Align.CENTER;p.textSize=6.2f;c.drawText("GAME",12f,11f,p);c.drawText("PASS",12f,18f,p) }

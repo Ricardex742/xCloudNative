@@ -90,7 +90,7 @@ private class ConsolePanelRow(private val scene: ConsoleScene,private val tile: 
     private val icons=ConsoleIcons()
     private var focused=false
     private var gradient: Shader?=null
-    private val glyphs=listOf(ConsoleGlyph.DISPLAY,ConsoleGlyph.IMAGE,ConsoleGlyph.PALETTE,ConsoleGlyph.NETWORK,ConsoleGlyph.CONTROLLER,ConsoleGlyph.AUDIO,ConsoleGlyph.DIAGNOSTICS,ConsoleGlyph.ACCOUNT)
+    private val glyphs=listOf(ConsoleGlyph.DISPLAY,ConsoleGlyph.CONTROLLER,ConsoleGlyph.AUDIO,ConsoleGlyph.PALETTE,ConsoleGlyph.ACCOUNT,ConsoleGlyph.DIAGNOSTICS)
     override fun isStateful()=true
     override fun onStateChange(s: IntArray): Boolean {
         focused=android.R.attr.state_focused in s || android.R.attr.state_pressed in s;invalidateSelf();return true

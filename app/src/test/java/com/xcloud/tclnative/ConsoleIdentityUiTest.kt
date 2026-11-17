@@ -56,7 +56,7 @@ class ConsoleIdentityUiTest {
                 DashboardTheme.apply(a,theme)
                 val settings=PlaybackSettingsPanel(a,store,{fail("Appearance must not change playback")},{},{},{})
                 val d=settings.show();val items=all(d.body).filterIsInstance<TextView>().filter { it.isClickable }
-                assertEquals(8,items.size);assertTrue(all(d.panel).any { it is ConsoleBrandView && it.isShown })
+                assertEquals(6,items.size);assertTrue(all(d.panel).any { it is ConsoleBrandView && it.isShown })
                 signatures+=render(d,"settings-${theme.name.lowercase()}")
                 if(theme.scene in listOf(ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_SERIES,ConsoleScene.XBOX_360_METRO)) {
                     assertSame(items[0].parent,items[1].parent);assertNotSame(items[1].parent,items[2].parent)

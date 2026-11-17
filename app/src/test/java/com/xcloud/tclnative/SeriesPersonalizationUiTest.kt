@@ -92,7 +92,7 @@ class SeriesPersonalizationUiTest {
                 capture(guide,"guide-${side.name.lowercase()}")
                 assertEquals(if(side==SeriesGuideSide.LEFT) Gravity.LEFT else Gravity.RIGHT,guide.window!!.attributes.gravity and Gravity.HORIZONTAL_GRAVITY_MASK)
                 assertTrue(guide.window!!.attributes.width<700)
-                click(guide,"Retomar partida");shadowOf(Looper.getMainLooper()).idle()
+                all(guide.panel).filterIsInstance<TextView>().single { it.text.toString()=="RETOMAR PARTIDA" }.performClick();shadowOf(Looper.getMainLooper()).idle()
                 assertFalse(guide.isShowing)
             }
             assertEquals(2,cleanups);assertEquals(2,resumed)

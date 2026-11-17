@@ -59,12 +59,12 @@ class LiveAspectUiTest {
         val panel=PlaybackSettingsPanel(context,store,{changes++;apply.invoke(activity,it)},{},{},{})
         fun gameMenu() {
             menus++
-            GameMenuPanel.show(context,{}, {}, {}, {},aspect={panel.chooseAspect(onBack=::gameMenu)})
+            GameMenuPanel.show(context,{}, {}, {}, {},video={panel.chooseAspect(onBack=::gameMenu)})
         }
         try {
             assertNull(renderer.touchCoordinates(0f,300f))
             down();assertEquals(listOf(1),pointers.map { it.type })
-            gameMenu();choose("Proporção da imagem")
+            gameMenu();choose("Vídeo e conexão")
             assertEquals(0,changes);assertEquals(VideoAspect.ORIGINAL,renderer.aspect)
             choose("Esticar —")
             assertEquals(1,changes);assertEquals(2,menus)
@@ -78,12 +78,12 @@ class LiveAspectUiTest {
             down();val contacts=pointers.size
             apply.invoke(activity,store.read().copy(brightness=25))
             assertEquals(contacts,pointers.size) // Image filters must not release an unchanged touch space.
-            choose("Proporção da imagem")
+            choose("Vídeo e conexão")
             (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel()
             shadowOf(Looper.getMainLooper()).idle()
             assertEquals(1,changes);assertEquals(3,menus)
             assertEquals(VideoAspect.STRETCH,renderer.aspect)
-            choose("Proporção da imagem");choose("Zoom —")
+            choose("Vídeo e conexão");choose("Zoom —")
             assertEquals(2,changes);assertEquals(VideoAspect.ZOOM,renderer.aspect)
             val top=renderer.touchCoordinates(0f,0f)!!
             assertEquals(0f,top.first,0f)

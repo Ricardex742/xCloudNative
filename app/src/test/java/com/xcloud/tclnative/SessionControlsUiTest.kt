@@ -111,8 +111,8 @@ class SessionControlsUiTest {
         val panel=PlaybackSettingsPanel(activity,store,{changes++},{},{},{},onPageEntered={pages.add(it)})
         val root=panel.show();capture(root,"categorized-settings-0.31.7")
         val rows=all(root.body).filterIsInstance<TextView>().filter { it.isClickable }.map { it.text.toString() }
-        assertEquals(listOf("Vídeo e transmissão","Imagem e tela","Aparência e temas","Rede e sessão","Controles e toque","Áudio e microfone","Diagnósticos","Biblioteca e conta"),rows)
-        choose(root,"Rede e sessão");choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"IPv4 / IPv6")
+        assertEquals(listOf("Vídeo e conexão","Controles e toque","Áudio e microfone","Aparência e temas","Conta e amigos","Ajuda e diagnóstico"),rows)
+        choose(root,"Vídeo e conexão");choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Avançado");choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"IPv4 / IPv6")
         assertEquals(0,changes);assertEquals(PlaybackSettings(),store.read())
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Preferir IPv4")
         assertEquals(IpPreference.IPV4,store.read().ipPreference);assertEquals(SettingsPage.NETWORK,pages.last())

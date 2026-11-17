@@ -151,8 +151,8 @@ class SessionToolsUiTest {
             var toggle=0;var settings=0;var repair=0
             fun menu()=GameMenuPanel.show(a,{}, {toggle++}, {}, {},statisticsOptions={settings++},recovery={repair++})
             click(menu(),"Mostrar / ocultar estatísticas");assertEquals(1,toggle)
-            click(menu(),"Personalizar estatísticas");assertEquals(1,settings)
-            val last=menu();capture(last,"game-menu");click(last,"Recuperar / recarregar transmissão");assertEquals(1,repair)
+            click(menu(),"Configurações");click(latest(),"Personalizar estatísticas");assertEquals(1,settings)
+            val last=menu();capture(last,"game-menu");click(last,"Configurações");click(latest(),"Recuperar / recarregar transmissão");assertEquals(1,repair)
         } finally { c.pause().stop().destroy() }
     }
     @Test fun largeDetailedTextStaysWithinTheAvailableHeight() {

@@ -9,12 +9,15 @@ import android.graphics.Paint
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
+import android.view.Gravity
+import android.widget.FrameLayout
+import android.widget.TextView
+import android.graphics.RectF
 import com.xcloud.tclnative.settings.TouchMode
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.touch.*
 import com.xcloud.tclnative.ui.dashboard.DashboardTheme
 import com.xcloud.tclnative.webrtc.*
-import kotlin.math.hypot
 
 /** Native HUD rendered over the stream. Its virtual controls use the cloud gamepad input channel. */
 class GameTouchView(context: Context,
@@ -22,7 +25,7 @@ class GameTouchView(context: Context,
     private val onPointers: (List<NativePointer>) -> Unit,
     private val coordinates: (Float,Float) -> Pair<Float,Float>?,
     private val onMenu: () -> Unit
-) : View(context), com.xcloud.tclnative.i18n.LocaleAwareView {
+) : FrameLayout(context), com.xcloud.tclnative.i18n.LocaleAwareView {
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface=DashboardTheme.font(context,true); textAlign=Paint.Align.CENTER }
     private val skin=HudSkin()
     private var automatic=HudPreset.GAMEPAD
@@ -73,9 +76,24 @@ class GameTouchView(context: Context,
     var onBindingRequested: (String,HudAction?) -> Unit = { _,_ -> }
     var onGesturesRequested: (String,Map<HudSwipe,HudGesture>) -> Unit = { _,_ -> }
     private val lookReset=Runnable { if(mode==TouchMode.VIRTUAL && !isEditing) publish() }
-    init { visibility=GONE; isFocusable=false; contentDescription=UiText.text("HUD de toque e menu da partida") }
+    private val menuBounds=RectF()
+    private val menuButton=TextView(context).apply {
+        text="⋯";textSize=26f;gravity=Gravity.CENTER
+        contentDescription=UiText.text("Atalhos da partida")
+        setTextColor(Color.WHITE)
+        background=android.graphics.drawable.GradientDrawable().apply {
+            setColor(0xbb101a13.toInt());cornerRadius=24*resources.displayMetrics.density
+            setStroke(resources.displayMetrics.density.toInt().coerceAtLeast(1),0xaa54de69.toInt())
+        }
+        isClickable=true;isFocusable=true
+        setOnClickListener { if(mode==TouchMode.NATIVE) nativeEvents.menu++;releaseInputs();onMenu() }
+    }
+    init {
+        visibility=GONE;isFocusable=false;setWillNotDraw(false)
+        addView(menuButton,LayoutParams((56*resources.displayMetrics.density).toInt(),(48*resources.displayMetrics.density).toInt(),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+    }
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
-        releaseInputs(); isEditing=false
+        releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE
         autoHidden=false
         if(game!=null) automatic=GameHud.automatic(game.titleId,game.name)
         if(settings!=null) configuration=settings
@@ -95,14 +113,14 @@ class GameTouchView(context: Context,
     }
     fun showPage(page: HudPreset) { releaseInputs(); model.setPage(page);scheduleAutoHide(); invalidate() }
     private fun rebuild(page: HudPreset=preset) { model=VirtualGamepad(width.coerceAtLeast(1),height.coerceAtLeast(1),page,configuration) }
-    override fun refreshLanguage() { releaseInputs();rebuild();scheduleAutoHide();invalidate() }
+    override fun refreshLanguage() { menuButton.contentDescription=UiText.text("Atalhos da partida");releaseInputs();rebuild();scheduleAutoHide();invalidate() }
     fun beginEditing() {
         if(mode!=TouchMode.VIRTUAL) return
-        releaseInputs();autoHidden=false; beforeEdit=configuration; beforeEditPreset=preset; selected=null; isEditing=true; invalidate()
+        releaseInputs();autoHidden=false; beforeEdit=configuration; beforeEditPreset=preset; selected=null; isEditing=true;menuButton.visibility=GONE; invalidate()
     }
     fun cancelEditing() {
         if(!isEditing) return
-        releaseInputs(); configuration=beforeEdit; rebuild(beforeEditPreset); isEditing=false;scheduleAutoHide(); invalidate()
+        releaseInputs(); configuration=beforeEdit; rebuild(beforeEditPreset); isEditing=false;menuButton.visibility=VISIBLE;scheduleAutoHide(); invalidate()
     }
     fun setEditedBinding(id: String,binding: HudBinding) {
         if(!isEditing) return
@@ -134,6 +152,11 @@ class GameTouchView(context: Context,
     override fun onSizeChanged(w: Int,h: Int,oldw: Int,oldh: Int) {
         val page=preset
         releaseInputs(); rebuild(page);scheduleAutoHide()
+        val density=resources.displayMetrics.density
+        val buttonWidth=56*density;val buttonHeight=48*density
+        val top=(h*.055f-buttonHeight/2).coerceAtLeast(0f)
+        menuBounds.set((w-buttonWidth)/2,top,(w+buttonWidth)/2,top+buttonHeight)
+        menuButton.layoutParams=(menuButton.layoutParams as LayoutParams).apply { topMargin=top.toInt() }
     }
     override fun onDetachedFromWindow() { releaseInputs(); super.onDetachedFromWindow() }
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
@@ -156,7 +179,7 @@ class GameTouchView(context: Context,
             listOf(state.leftX,state.leftY,state.rightX,state.rightY).any { kotlin.math.abs(it)>.15f }
         if(active && configuration.autoHide.physical) hideAutomatically()
     }
-    private fun menuHit(x: Float,y: Float)=hypot(x-width*.50f,y-height*.055f)<=height*.038f
+    private fun menuHit(x: Float,y: Float)=menuBounds.contains(x,y)
     private fun publish() {
         val now=SystemClock.uptimeMillis()
         nativeEvents.hudUpdates++;onGamepad(model.state(now)); removeCallbacks(lookReset)
@@ -314,7 +337,7 @@ class GameTouchView(context: Context,
                 when(command) {
                     "cancel" -> cancelEditing()
                     "reset" -> { configuration=HudSettings(preset=configuration.preset,footballScheme=configuration.footballScheme); rebuild(); selected=null }
-                    "save" -> if(onHudSaved(configuration)) { releaseInputs(); isEditing=false;scheduleAutoHide() }
+                    "save" -> if(onHudSaved(configuration)) { releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE;scheduleAutoHide() }
                     "smaller","larger" -> model.controls.firstOrNull { it.id==selected }?.let { control ->
                         placement(control) { it.copy(scale=(it.scale+if(command=="larger") .10f else -.10f).coerceIn(.55f,1.7f)) }
                     }
@@ -334,14 +357,8 @@ class GameTouchView(context: Context,
             for(control in model.controls) if(control.kind!=TouchKind.CAMERA) drawControl(canvas,control,state)
             if(isEditing) drawEditor(canvas)
         }
-        if(!isEditing) {
-            paint.style=Paint.Style.FILL; paint.color=0x99101a13.toInt(); canvas.drawCircle(width*.5f,height*.055f,height*.031f,paint)
-            paint.style=Paint.Style.STROKE; paint.strokeWidth=maxOf(1f,height*.002f); paint.color=0xaa54de69.toInt()
-            canvas.drawCircle(width*.5f,height*.055f,height*.031f,paint)
-            paint.style=Paint.Style.FILL; paint.color=Color.WHITE; paint.textSize=height*.040f
-            canvas.drawText("⋯",width*.5f,height*.055f-(paint.ascent()+paint.descent())/2,paint)
-        }
     }
+
     private fun drawControl(canvas: Canvas,control: TouchControl,state: GamepadState) {
         skin.draw(canvas,control,preset,state,model.held(control),isEditing && selected==control.id,
             configuration.opacity,isEditing,model.gestureLabel(control))

@@ -14,6 +14,44 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28])
 class SessionOptionsTest {
+    @Test fun changingBitrateDoesNotPinTheInheritedLanguageOrRegion() {
+        val context=RuntimeEnvironment.getApplication()
+        val store=SessionOptionsStore(context,"field-inheritance")
+        store.save(null,SessionOptions(locale="en-US",region="BrazilSouth"))
+        store.set("game",SessionOptionField.BITRATE,5000)
+        store.set(null,SessionOptionField.LOCALE,"zh-CN")
+        store.set(null,SessionOptionField.REGION,"EastUS")
+        val reopened=SessionOptionsStore(context,"field-inheritance")
+        assertEquals(SessionOptions(5000,"zh-CN","EastUS"),reopened.read("game"))
+        assertFalse(reopened.hasOverride("game",SessionOptionField.LOCALE))
+        assertTrue(reopened.hasOverride("game",SessionOptionField.BITRATE))
+        assertEquals(SessionOptions(),SessionOptionsStore(context,"other-fields-account").read("game"))
+    }
+    @Test fun legacySnapshotsRemainExplicitAndEachFieldCanBeReturnedToInheritance() {
+        val store=SessionOptionsStore(RuntimeEnvironment.getApplication(),"legacy-fields")
+        val original=SessionOptions(12000,"es-MX","BrazilSouth")
+        store.save("game",original)
+        store.set(null,SessionOptionField.LOCALE,"zh-CN")
+        store.set("game",SessionOptionField.BITRATE,8000)
+        assertEquals(original.copy(maxBitrateKbps=8000),store.read("game"))
+        store.inherit("game",SessionOptionField.LOCALE)
+        assertEquals(original.copy(maxBitrateKbps=8000,locale="zh-CN"),store.read("game"))
+        store.inherit("game",SessionOptionField.REGION)
+        store.inherit("game",SessionOptionField.BITRATE)
+        assertFalse(store.hasOverride("game"))
+        assertEquals(store.read(),store.read("game"))
+    }
+    @Test fun simplifiedChinesePersistsIndependentlyOfUiAndOtherSessionEdits() {
+        val context=RuntimeEnvironment.getApplication()
+        val store=SessionOptionsStore(context,"simplified-game")
+        store.set("game",SessionOptionField.LOCALE,"zh-CN")
+        store.set("game",SessionOptionField.BITRATE,15000)
+        store.set("game",SessionOptionField.REGION,"BrazilSouth")
+        com.xcloud.tclnative.i18n.AppLanguageStore(context).save(com.xcloud.tclnative.i18n.AppLanguage.ENGLISH)
+        assertEquals(SessionOptions(15000,"zh-CN","BrazilSouth"),SessionOptionsStore(context,"simplified-game").read("game"))
+        assertEquals("pt-BR",store.read().locale)
+        assertEquals("zh-CN",SessionOptions(locale="zh-CN").normalized().locale)
+    }
     @Test fun gameOverridesPersistAreAccountScopedAndResetToTheCurrentDefault() {
         val context=RuntimeEnvironment.getApplication()
         val first=SessionOptionsStore(context,"account-one")

@@ -95,7 +95,8 @@ class ImageTreatmentUiTest {
             val panel=PlaybackSettingsPanel(activity,store,{},{},{},{})
             val image=panel.showImage()
             val rows=all(image.body).filterIsInstance<TextView>().filter { it.isClickable }
-            assertEquals(2,rows.size);assertTrue(rows.any { it.text.contains("Upscaling e tratamento:") })
+            assertTrue(rows.any { it.text.contains("Perfil de imagem:") });assertTrue(rows.any { it.text.contains("Rede e sessão") })
+            assertFalse(rows.any { it.text.contains("Upscaling e tratamento:") })
             image.dismiss()
             for(mode in FsrMode.entries) {
                 val settings=original.copy(fsr=mode,videoMode=VideoMode.LOW_LATENCY);store.save(settings)
