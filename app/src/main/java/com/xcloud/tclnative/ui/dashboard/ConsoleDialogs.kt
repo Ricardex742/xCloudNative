@@ -32,7 +32,6 @@ enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE }
 
 /** Shared native panels for search, account menus and messages. No platform alert buttons/rows. */
 class ConsoleDialog(context: Context, private val heading: String,private val purpose: ConsolePanelPurpose=ConsolePanelPurpose.GENERAL) : Dialog(context, R.style.ConsoleDialog) {
-    private var fullScreenContent=false
     init { DashboardTheme.applyOverlay(this.context) }
     private val navigationContext=context
     private val activity = context as? Activity
@@ -44,7 +43,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     val scale = (if(skin.enabled) minOf(screenWidth/1280f,screenHeight/720f) else screenWidth/1280f).coerceAtLeast(maxOf(.5f,context.resources.displayMetrics.density*.65f))
     val panel: LinearLayout = object : LinearLayout(context) {
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-            val limit = (screenHeight*(if(fullScreenContent) 1f else .90f)).roundToInt()
+            val limit = (screenHeight*.90f).roundToInt()
             val requested = MeasureSpec.getSize(heightMeasureSpec)
             val bound = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) limit else minOf(limit, requested)
             super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(bound, MeasureSpec.AT_MOST))
@@ -82,10 +81,6 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     var shortcut: ((KeyEvent) -> Boolean)?=null
     private val cleanups=mutableListOf<() -> Unit>()
     fun addCleanup(action: () -> Unit) { cleanups+=action }
-    internal fun htmlContent(view: View) {
-        fullScreenContent=true;panel.removeAllViews();panel.setPadding(0,0,0,0);panel.setBackgroundColor(Color.TRANSPARENT)
-        panel.addView(view,LinearLayout.LayoutParams(-1,screenHeight))
-    }
     override fun onStop() {
         visiblePanels.removeAll { it.get()==null || it.get()===this }
         window?.let(AppControllerWindows::detach)
@@ -240,9 +235,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             decorView.setPadding(0,0,0,0)
             addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setDimAmount(if(skin.enabled) .48f else .72f)
-            if(fullScreenContent) {
-                setGravity(Gravity.CENTER);setDimAmount(0f);setLayout(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.MATCH_PARENT)
-            } else if(purpose==ConsolePanelPurpose.GUIDE) {
+            if(purpose==ConsolePanelPurpose.GUIDE) {
                 val side=SeriesPersonalizationStore(context).read().guide
                 setGravity(Gravity.CENTER_VERTICAL or if(side==SeriesGuideSide.RIGHT) Gravity.RIGHT else Gravity.LEFT)
                 attributes=attributes.apply { x=px(12) }

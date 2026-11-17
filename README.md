@@ -71,7 +71,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - **Troca automática de fundos** ao abrir o aplicativo, a cada hora, diariamente ou semanalmente, usando favoritos ou uma coleção. A escolha permanece salva; a troca pausa durante a partida e é atualizada no retorno ao menu.
 - **Guia lateral opcional** à esquerda ou à direita, com perfil e atalhos do aplicativo. Na partida, reúne os ajustes e diagnósticos disponíveis. O menu central continua como padrão.
 - **Biblioteca completa em grade**, opcional no Series X|S, mantendo a Home em faixa horizontal. Os selos Game Pass e Series podem ser exibidos ou ocultados separadamente nesse tema.
-- **PlayStation 4 e PlayStation 5:** interfaces em HTML com paletas clássica/imersiva e noturna, catálogo, perfil e tempo de nuvem reais. Esses temas usam o Android System WebView; vídeo e controles da sessão permanecem nativos.
+- **PlayStation 4 e PlayStation 5:** interfaces em HTML com paletas clássica/imersiva e noturna, catálogo, perfil e tempo de nuvem reais. Esses temas usam o Android System WebView no catálogo; vídeo, controles e atalhos da partida permanecem nativos.
 - Seleção em **Configurações › Aparência e temas › Tema do aplicativo**, por controle ou toque.
 - Aplicação imediata e escolha salva no aparelho, inclusive ao reabrir o app.
 - Cores dos menus, catálogo, destaques e janelas; as artes e a imagem do jogo mantêm suas cores.

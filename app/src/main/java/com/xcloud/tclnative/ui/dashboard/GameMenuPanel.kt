@@ -14,32 +14,7 @@ object GameMenuPanel {
              recovery: (() -> Unit)?=null,hudToggle: (() -> Unit)?=null,hudVisible: Boolean=false,
              nativeTouch: (() -> Unit)?=null,touchSelection: (() -> Unit)?=null,
              friends: (() -> Unit)?=null,shortcut: (() -> Unit)?=null,video: (() -> Unit)?=null,
-             settings: (() -> Unit)?=null,xbox: (() -> Unit)?=null,
-             themeGame: com.xcloud.tclnative.signaling.GameTitle?=null,
-             themeQuota: com.xcloud.tclnative.catalog.CloudPlaytime=com.xcloud.tclnative.catalog.CloudPlaytime()): ConsoleDialog {
-        val htmlTheme=com.xcloud.tclnative.settings.AppearanceSettingsStore(context).read()
-        if(htmlTheme.htmlAsset!=null) {
-            val dialog=ConsoleDialog(context,UiText.text("Atalhos da partida"))
-            val callbacks=mapOf("resume" to ({}),"end" to disconnect,"hud" to (hudToggle ?: hud ?: settings),
-                "statistics" to statistics,"audio" to audio,"video" to (video ?: image),"settings" to settings,
-                "friends" to friends,"touch" to touchSelection,"microphone" to microphone,"xbox" to xbox)
-            val cards=listOfNotNull(themeGame?.let { com.xcloud.tclnative.catalog.CatalogCard(game=it) })
-            val data=HtmlConsoleData.snapshot(cards,cards.firstOrNull()?.key,com.xcloud.tclnative.catalog.LibraryTab.ALL,
-                profile ?: com.xcloud.tclnative.catalog.XboxProfile(),themeQuota,emptySet(),com.xcloud.tclnative.settings.PlaybackSettingsStore(context).read(),true)
-                .put("actions",org.json.JSONArray(callbacks.filterValues { it!=null }.keys)).put("hudVisible",hudVisible).put("microphoneLabel",microphoneLabel)
-            lateinit var web: HtmlConsoleTheme
-            web=HtmlConsoleTheme(context,htmlTheme) { action,value ->
-                when(action) {
-                    "select" -> Unit
-                    "night" -> { com.xcloud.tclnative.settings.AppearanceSettingsStore(context).saveHtmlNight(htmlTheme,value=="true");web.update(data) }
-                    "motion" -> { com.xcloud.tclnative.settings.AppearanceSettingsStore(context).saveMotion(if(value=="true") com.xcloud.tclnative.settings.BackgroundMotion.ON else com.xcloud.tclnative.settings.BackgroundMotion.OFF);web.update(data) }
-                    "settings" -> { dialog.dismiss();when(value) { "VIDEO","IMAGE" -> (video ?: image)();"AUDIO" -> audio?.invoke();"CONTROLS" -> (hud ?: controllerProfiles ?: settings)?.invoke();"APPEARANCE" -> appearance?.invoke();else -> settings?.invoke() } }
-                    else -> callbacks[action]?.let { callback -> dialog.dismiss();callback() }
-                }
-            }
-            dialog.htmlContent(web);dialog.addCleanup { web.close() };dialog.shortcut={ web.controller(it) }
-            web.update(data);dialog.show();return dialog
-        }
+             settings: (() -> Unit)?=null,xbox: (() -> Unit)?=null): ConsoleDialog {
         fun again() { show(context,image,statistics,diagnostics,disconnect,virtualTouch,hud,sessionOptions,audio,
             microphone,microphoneLabel,mouse,controllerProfiles,aspect,language,appearance,profile,statisticsOptions,
             recovery,hudToggle,hudVisible,nativeTouch,touchSelection,friends,shortcut,video,settings,xbox) }

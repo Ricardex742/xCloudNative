@@ -999,7 +999,7 @@ open class MainActivity : Activity() {
             language={ com.xcloud.tclnative.ui.dashboard.LanguageMenu.show(this) { showGameMenu() } },
             appearance={ PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{}, {}, {},
                 backgrounds={ dashboard?.wallpaperChoices() ?: com.xcloud.tclnative.ui.dashboard.SeriesWallpaperGallery.fromGames(currentGames,listOfNotNull(activeGame)) }).showAppearance(onBack={ showGameMenu() }) },
-            profile=dashboard?.profileSnapshot(),themeGame=activeGame,themeQuota=dashboard?.cloudPlaytimeSnapshot() ?: CloudPlaytime(),
+            profile=dashboard?.profileSnapshot(),
             microphone=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ::toggleMicrophone else null,microphoneLabel=webrtcClient?.microphoneLabel() ?: UiText.text("Ativar microfone"),
             controllerProfiles={ showControllerProfiles { showGameMenu() } },
             mouse=if(sessionDesktopMode==DesktopInputMode.OFF || transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) null else ({ auxiliaryHandler.post { setDesktopCapture(!desktopCaptured) } })).also { dialog ->

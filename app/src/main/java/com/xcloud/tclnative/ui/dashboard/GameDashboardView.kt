@@ -382,10 +382,12 @@ class GameDashboardView(
         artworkPaused=false
         officialGalleries.putAll(pendingGalleries); pendingGalleries.clear()
         refresh()
-        posters.resume(); renderProfile()
-        selectedCard?.let { loadHeaderArtwork(it) }
-        adapter.notifyItemRangeChanged(0,adapter.itemCount,"artwork")
         refreshHtmlTheme()
+        if(htmlTheme==null) {
+            posters.resume();renderProfile()
+            selectedCard?.let { loadHeaderArtwork(it) }
+            adapter.notifyItemRangeChanged(0,adapter.itemCount,"artwork")
+        }
     }
     fun setGamePassProducts(products: Set<String>?, resolvedTitles: Set<String> = emptySet()) {
         gamePassProducts = products
@@ -691,6 +693,7 @@ class GameDashboardView(
     private fun updateSelected(game: CatalogCard?) {
         val previous = selectedCard
         selectedCard = game
+        if(htmlTheme!=null) { headerArtJob?.cancel();return }
         refreshSeriesSelection()
         if (previous?.key==game?.key && previous?.name==game?.name && previous?.tileUrl==game?.tileUrl &&
             previous?.posterUrl==game?.posterUrl && previous?.product?.heroUrl==game?.product?.heroUrl &&
@@ -993,11 +996,12 @@ class GameDashboardView(
         if(htmlTheme?.theme!=theme || artworkPaused) { htmlTheme?.let { removeView(it);it.close() };htmlTheme=null;restoreHtmlSiblings() }
         if(theme.htmlAsset!=null && !artworkPaused && htmlTheme==null) {
             htmlTheme=runCatching { HtmlConsoleTheme(context,theme,::htmlAction) }.getOrNull()?.also {
-                addView(it,LayoutParams(-1,-1));consoleBackdrop.setPresentationEnabled(false)
+                addView(it,LayoutParams(-1,-1));consoleBackdrop.setPresentationEnabled(false);posters.suspendPresentation();headerArtJob?.cancel()
             }
         }
         if(htmlTheme==null && !artworkPaused) { posters.resume();consoleBackdrop.setPresentationEnabled(true) }
         if(leavingHtml && !artworkPaused) {
+            val selected=selectedCard;selectedCard=null;updateSelected(selected)
             renderProfile();selectedCard?.let(::loadHeaderArtwork)
             grid.post { if(!closed && !artworkPaused && htmlTheme==null) focusCoverAt(positions[selectedCard?.key] ?: 0) }
         }

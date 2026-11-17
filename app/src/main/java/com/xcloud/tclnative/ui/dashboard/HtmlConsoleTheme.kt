@@ -16,21 +16,43 @@ import com.xcloud.tclnative.settings.*
 import org.json.JSONArray
 import org.json.JSONObject
 
+/** Keep the supplied design, but never send its embedded demo catalog to the renderer. */
+internal object HtmlConsoleDocument {
+    private val documents=mutableMapOf<UiTheme,String>()
+    @Synchronized fun load(context: Context,theme: UiTheme): String = documents.getOrPut(theme) {
+        val source=context.assets.open(requireNotNull(theme.htmlAsset)).bufferedReader().use { it.readText() }
+        val adapter=context.assets.open("themes/native-adapter.js").bufferedReader().use { it.readText() }
+        prepare(source,adapter,theme)
+    }
+    fun prepare(source: String,adapter: String,theme: UiTheme): String {
+        val start=source.indexOf("const games=")
+        require(start>=0)
+        val end=source.indexOf('\n',start)
+        require(end>start)
+        val shell=source.replaceRange(start,end,"const games=[];")
+        val bootstrap="render();scale();motion();"
+        val at=shell.lastIndexOf(bootstrap)
+        require(at>=0)
+        return shell.replaceRange(at,at+bootstrap.length,
+            "window.nativeTheme=${JSONObject.quote(theme.name.lowercase())};\n$adapter\n;scale();motion();")
+    }
+}
+
 /** Only UI data enters the local document. Auth tokens, service endpoints and session input never do. */
 internal object HtmlConsoleData {
     const val WINDOW=5
     fun snapshot(cards: List<CatalogCard>,selected: String?,tab: LibraryTab,profile: XboxProfile,
-                 quota: CloudPlaytime,favorites: Set<String>,settings: PlaybackSettings,gameMenu: Boolean=false): JSONObject {
+                 quota: CloudPlaytime,favorites: Set<String>,settings: PlaybackSettings): JSONObject {
         val index=cards.indexOfFirst { it.key==selected }.coerceAtLeast(0)
-        val start=(index-1).coerceAtLeast(0)
+        val start=index/WINDOW*WINDOW
         fun image(url: String?,w: Int,h: Int): String {
             if(url==null || !url.startsWith("https://",true)) return ""
             return ArtworkRequest.create(url,w,h).url
         }
         val items=cards.drop(start).take(WINDOW).map { card ->
             JSONObject().put("id",card.key).put("name",card.name)
-                .put("image",if(gameMenu) "" else image(card.tileUrl ?: card.posterUrl,256,256))
-                .put("hero",if(gameMenu) "" else image(card.game?.heroUrl ?: card.product?.heroUrl,1024,576))
+                .put("image",image(card.tileUrl ?: card.posterUrl,256,256))
+                .put("hero",image(card.game?.heroUrl ?: card.product?.heroUrl,1024,576))
                 .put("genre","Xbox Cloud Gaming").put("favorite",card.game?.titleId?.let(favorites::contains)==true)
         }
         return JSONObject().put("games",JSONArray(items)).put("selected",(index-start).coerceAtLeast(0))
@@ -44,11 +66,10 @@ internal object HtmlConsoleData {
             .put("settings",JSONObject().put("resolution",settings.forSession().resolution.label)
                 .put("video",settings.videoMode.label).put("touch",settings.touchMode.label)
                 .put("image",ImageProfiles.selected(settings).label).put("audio",settings.audioMode.label))
-            .put("inGame",gameMenu)
     }
 }
 
-/** The supplied HTML files are loaded verbatim; a separate adapter connects their controls to Kotlin. */
+/** Only the catalog uses WebView; gameplay and all in-game menus remain native. */
 @SuppressLint("SetJavaScriptEnabled")
 internal class HtmlConsoleTheme(context: Context,val theme: UiTheme,private val action: (String,String) -> Unit): WebView(context) {
     private var ready=false
@@ -56,8 +77,12 @@ internal class HtmlConsoleTheme(context: Context,val theme: UiTheme,private val 
     private var pending: JSONObject?=null
     private var modal=false
     private var presented=true
+    private var lastJson: String?=null
+    private var sending=false
+    private var dirty=false
+    private val constrained=DevicePerformancePolicy.read(context).constrainedMemory
     private val store=AppearanceSettingsStore(context)
-    private val asset="file:///android_asset/${requireNotNull(theme.htmlAsset)}"
+    private val asset="https://appassets.androidplatform.net/${requireNotNull(theme.htmlAsset)}"
     private val bridge=object {
         @JavascriptInterface fun post(name: String,value: String) {
             if(name !in ACTIONS || value.length>512) return
@@ -86,25 +111,30 @@ internal class HtmlConsoleTheme(context: Context,val theme: UiTheme,private val 
             @Deprecated("Deprecated in Java") override fun shouldOverrideUrlLoading(view: WebView,url: String)=true
             override fun onPageFinished(view: WebView,url: String) {
                 if(closed || url!=asset) return
-                val adapter=context.assets.open("themes/native-adapter.js").bufferedReader().use { it.readText() }
-                evaluateJavascript("window.nativeTheme=${JSONObject.quote(theme.name.lowercase())};\n$adapter\n;Boolean(window.nativeAdapterReady)") { result ->
+                evaluateJavascript("Boolean(window.nativeAdapterReady)") { result ->
                     if(!closed && result=="true") { ready=true;flush();visibility=View.VISIBLE;requestFocus() }
                 }
             }
         }
-        loadUrl(asset)
+        loadDataWithBaseURL(asset,HtmlConsoleDocument.load(context,theme),"text/html","UTF-8",null)
     }
     fun update(value: JSONObject) { pending=value;flush() }
     private fun flush() {
         if(!ready || closed) return
+        if(sending) { dirty=true;return }
         val value=pending ?: return
         value.put("night",store.htmlNight(theme))
         val power=(context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isPowerSaveMode==true
-        val constrained=DevicePerformancePolicy.read(context).constrainedMemory
         val enabled=store.motion()!=BackgroundMotion.OFF && (store.motion()==BackgroundMotion.ON || (!power && !constrained))
         value.put("motion",enabled && presented)
+        value.put("lowEffects",power || constrained)
         val json=value.toString().replace("\u2028","\\u2028").replace("\u2029","\\u2029")
-        evaluateJavascript("window.nativeReceive($json)",null)
+        if(json==lastJson) return
+        lastJson=json;sending=true
+        evaluateJavascript("window.nativeReceive($json)") {
+            sending=false
+            if(dirty && !closed) { dirty=false;flush() }
+        }
     }
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) { super.onWindowFocusChanged(hasWindowFocus);presented=hasWindowFocus;flush() }
     fun controller(event: KeyEvent): Boolean {
@@ -112,7 +142,7 @@ internal class HtmlConsoleTheme(context: Context,val theme: UiTheme,private val 
             KeyEvent.KEYCODE_DPAD_LEFT -> "ArrowLeft";KeyEvent.KEYCODE_DPAD_RIGHT -> "ArrowRight"
             KeyEvent.KEYCODE_DPAD_UP -> "ArrowUp";KeyEvent.KEYCODE_DPAD_DOWN -> "ArrowDown"
             KeyEvent.KEYCODE_BUTTON_A,KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER,KeyEvent.KEYCODE_NUMPAD_ENTER -> "Enter"
-            KeyEvent.KEYCODE_BUTTON_B,KeyEvent.KEYCODE_BACK -> if(modal || pending?.optBoolean("inGame")==true) "Escape" else return false
+            KeyEvent.KEYCODE_BUTTON_B,KeyEvent.KEYCODE_BACK -> if(modal) "Escape" else return false
             KeyEvent.KEYCODE_BUTTON_Y -> "y";KeyEvent.KEYCODE_BUTTON_X -> "x";KeyEvent.KEYCODE_BUTTON_START -> "m"
             else -> return false
         }
@@ -126,6 +156,6 @@ internal class HtmlConsoleTheme(context: Context,val theme: UiTheme,private val 
         stopLoading();removeJavascriptInterface("NativeTheme");loadUrl("about:blank");removeAllViews();destroy()
     }
     companion object {
-        private val ACTIONS=setOf("select","play","category","favorite","search","settings","friends","shortcut","night","motion","modal","move","resume","end","hud","statistics","audio","video","microphone","touch","xbox")
+        private val ACTIONS=setOf("select","play","category","favorite","search","settings","friends","shortcut","night","motion","modal","move","statistics","audio")
     }
 }
