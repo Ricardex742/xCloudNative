@@ -2,6 +2,10 @@
 
 Leia este arquivo junto com `AGENTS.md`. O usuário pediu explicitamente um resumo no repositório para continuar o trabalho em outro ambiente. Aqui estão decisões técnicas e pendências; gravações, conversas literais, dados de conta e diagnósticos pessoais completos continuam privados.
 
+## Guia adicional de temas e compilação
+
+Leia também `CODEX_THEME_BUILD_CONTEXT.md`. Ele documenta a arquitetura nativa dos Xbox, os limites dos protótipos PS4/PS5, a integração HTML posterior, a restauração da base e o processo de build/assinatura. O adiamento abaixo descreve o escopo da entrega original de navegação; consulte o pedido atual do usuário antes de iniciar outro trabalho de temas.
+
 ## Objetivo atual e limites
 
 Implementar navegação mais simples e atalhos durante a partida, usando a organização do Better xCloud como referência. Priorizar ações comuns e deixar ajustes especializados em Avançado. **Temas PS4 e PS5 estão adiados por pedido explícito do usuário.** Não adicioná-los nesta entrega.

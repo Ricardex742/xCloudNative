@@ -9,6 +9,6 @@
 
 # Contexto técnico para continuidade
 
-- Leia `CODEX_CONTEXT.md` ao iniciar trabalhos neste repositório. O usuário solicitou explicitamente esse resumo técnico no código para continuidade em outro ambiente Codex.
+- Leia `CODEX_CONTEXT.md` ao iniciar trabalhos neste repositório. Para aparência/temas ou compilação do APK, leia também `CODEX_THEME_BUILD_CONTEXT.md`. O usuário solicitou explicitamente esse resumo técnico no código para continuidade em outro ambiente Codex.
 - Essa autorização é específica para o resumo técnico: mantenha gravações, conversas literais, dados de contas e diagnósticos pessoais completos fora da árvore versionada.
 - Atualize as pendências e validações do resumo sem tratar experimentos ou testes locais como confirmação em aparelhos reais.
