@@ -18,7 +18,7 @@ import org.json.JSONObject
 
 /** Only UI data enters the local document. Auth tokens, service endpoints and session input never do. */
 internal object HtmlConsoleData {
-    const val WINDOW=8
+    const val WINDOW=5
     fun snapshot(cards: List<CatalogCard>,selected: String?,tab: LibraryTab,profile: XboxProfile,
                  quota: CloudPlaytime,favorites: Set<String>,settings: PlaybackSettings,gameMenu: Boolean=false): JSONObject {
         val index=cards.indexOfFirst { it.key==selected }.coerceAtLeast(0)
@@ -109,12 +109,12 @@ internal class HtmlConsoleTheme(context: Context,val theme: UiTheme,private val 
         val key=when(event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> "ArrowLeft";KeyEvent.KEYCODE_DPAD_RIGHT -> "ArrowRight"
             KeyEvent.KEYCODE_DPAD_UP -> "ArrowUp";KeyEvent.KEYCODE_DPAD_DOWN -> "ArrowDown"
-            KeyEvent.KEYCODE_BUTTON_A,KeyEvent.KEYCODE_DPAD_CENTER -> "Enter"
+            KeyEvent.KEYCODE_BUTTON_A,KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER,KeyEvent.KEYCODE_NUMPAD_ENTER -> "Enter"
             KeyEvent.KEYCODE_BUTTON_B,KeyEvent.KEYCODE_BACK -> if(modal || pending?.optBoolean("inGame")==true) "Escape" else return false
             KeyEvent.KEYCODE_BUTTON_Y -> "y";KeyEvent.KEYCODE_BUTTON_X -> "x";KeyEvent.KEYCODE_BUTTON_START -> "m"
             else -> return false
         }
-        if(event.action==KeyEvent.ACTION_DOWN && ready && !closed) evaluateJavascript("window.nativeKey(${JSONObject.quote(key)})",null)
+        if(event.action==KeyEvent.ACTION_DOWN && ready && !closed && (event.repeatCount==0 || key.startsWith("Arrow"))) evaluateJavascript("window.nativeKey(${JSONObject.quote(key)})",null)
         return true
     }
     override fun dispatchKeyEvent(event: KeyEvent)=controller(event) || super.dispatchKeyEvent(event)

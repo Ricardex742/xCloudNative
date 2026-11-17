@@ -439,7 +439,7 @@ class GameDashboardView(
             UiText.text("{0}, {1}. Abrir Guia",UiText.nested(profile.displayName),UiText.nested(profile.gamertag))
             else UiText.text("{0}, {1}. Abrir configurações",UiText.nested(profile.displayName),UiText.nested(profile.gamertag))
         val size=ArtworkSize.forDisplay((80*scale).roundToInt(),(80*scale).roundToInt())
-        posters.load(avatar, profile.avatarUrl, size.width, size.height) { ready -> avatarLetter.visibility = if (ready) View.GONE else View.VISIBLE }
+        if(htmlTheme==null) posters.load(avatar, profile.avatarUrl, size.width, size.height) { ready -> avatarLetter.visibility = if (ready) View.GONE else View.VISIBLE }
     }
     fun setAddedGallery(added: List<String>?) {
         this.added = added; galleriesLoaded = true; refresh()
@@ -721,6 +721,7 @@ class GameDashboardView(
         headerArtJob=scope.launch { delay(120); if(selectedCard?.key==game.key) loadHeaderArtwork(game) }
     }
     private fun loadHeaderArtwork(game: CatalogCard) {
+        if(htmlTheme!=null) return
         if(designScene==ConsoleScene.XBOX_360_NXE || designScene==ConsoleScene.XBOX_360_METRO) { posters.cancel(headerIcon);posters.cancel(heroBackdrop);return }
         if(designScene==ConsoleScene.XBOX_ORIGINAL && !originalBrowsing) { posters.cancel(headerIcon);return }
         val hero=game.product?.heroUrl ?: game.game?.heroUrl
@@ -983,18 +984,23 @@ class GameDashboardView(
     }
     private fun layoutHtmlTheme(w: Int,h: Int) {
         val html=htmlTheme ?: return
-        for(i in 0 until childCount) getChildAt(i).let { if(it!==html) { htmlHidden.putIfAbsent(it,it.visibility);it.visibility=INVISIBLE } }
+        for(i in 0 until childCount) getChildAt(i).let { if(it!==html) { htmlHidden.putIfAbsent(it,it.visibility);it.visibility=GONE } }
         place(html,0f,0f,w.toFloat(),h.toFloat())
     }
     private fun refreshHtmlTheme() {
         val theme=DashboardTheme.palette.theme
+        val leavingHtml=htmlTheme!=null && theme.htmlAsset==null
         if(htmlTheme?.theme!=theme || artworkPaused) { htmlTheme?.let { removeView(it);it.close() };htmlTheme=null;restoreHtmlSiblings() }
         if(theme.htmlAsset!=null && !artworkPaused && htmlTheme==null) {
             htmlTheme=runCatching { HtmlConsoleTheme(context,theme,::htmlAction) }.getOrNull()?.also {
-                addView(it,LayoutParams(-1,-1));posters.pause();consoleBackdrop.setPresentationEnabled(false)
+                addView(it,LayoutParams(-1,-1));consoleBackdrop.setPresentationEnabled(false)
             }
         }
         if(htmlTheme==null && !artworkPaused) { posters.resume();consoleBackdrop.setPresentationEnabled(true) }
+        if(leavingHtml && !artworkPaused) {
+            renderProfile();selectedCard?.let(::loadHeaderArtwork)
+            grid.post { if(!closed && !artworkPaused && htmlTheme==null) focusCoverAt(positions[selectedCard?.key] ?: 0) }
+        }
         updateHtmlTheme();lastGeometry=0L;requestLayout()
     }
     private fun restoreHtmlSiblings() { htmlHidden.forEach { (view,visibility) -> view.visibility=visibility };htmlHidden.clear() }

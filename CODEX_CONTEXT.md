@@ -100,7 +100,7 @@ Manter o app leve. A solicitação posterior de copiar os HTMLs autoriza o WebVi
 
 - `assets/themes/simulacao-ps4.html` e `simulacao-ps5.html` são cópias byte a byte dos arquivos enviados; os hashes estão em `HtmlConsoleDataTest`. Não copiar o redesenho nativo descartado dos commits anteriores desta branch.
 - `native-adapter.js` preserva a apresentação dos documentos e adapta somente a moldura da simulação, dados e ações. `HtmlConsoleTheme.kt` carrega os assets locais e expõe uma ponte restrita, sem tokens ou navegação externa.
-- O catálogo usa uma janela de oito cartões e continua passando pelo modelo autenticado do app; nenhum ID de jogo é inventado. Perfil e saldo são reais; Unlimited somente quando confirmado. Paletas noturnas persistem por tema.
+- O catálogo usa uma janela de cinco cartões e continua passando pelo modelo autenticado do app; nenhum ID de jogo é inventado. Perfil e saldo são reais; Unlimited somente quando confirmado. Paletas noturnas persistem por tema.
 - A superfície HTML do catálogo é destruída ao entrar no streaming e recriada no retorno. O menu HTML da partida não carrega outra imagem panorâmica; encerrar exige confirmação explícita. O botão Xbox permanece experimental.
 - O usuário pediu somente o link remoto do APK no fim; caminhos locais deste chat não funcionaram para ele. Usar o artefato do Actions, sem criar release nem mudar workflow.
 - Verificações: `python3 scripts/verify_html_themes.py` usa Playwright/Chromium para conferir UI e ponte; testes Android e assinatura continuam no workflow existente. Registrar o resultado do build atual antes de entregar. Os temas HTML preservam os textos dos documentos em português; os painéis nativos mantêm os idiomas existentes.

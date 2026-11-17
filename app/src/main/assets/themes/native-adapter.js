@@ -108,7 +108,7 @@
   function confirmEnd() {
     heading('Encerrar partida', 'Encerrar a partida e voltar ao catálogo?');
     rows(container(), 'Encerrar partida', '', () => send('end'));
-    rows(container(), 'Retomar partida', '', () => send('resume')); closeButton();
+    const resume = rows(container(), 'Retomar partida', '', () => send('resume')); closeButton();resume.focus();
   }
   function paintSearch() {
     const input = container().querySelector('input'), results = container().querySelector('.search-results');
@@ -188,7 +188,7 @@
   }
   window.nativeKey = function (key) {
     if (key === 'y') { nativeFavorite();return; }
-    if (key === 'Enter') { const node = document.activeElement; if (node && node.tagName === 'BUTTON') node.click(); else if (current()) send('play', current().id); return; }
+    if (key === 'Enter') { const node = document.activeElement; if (node && node.tagName === 'INPUT') send('search', node.value);else if (node && node.tagName === 'BUTTON') node.click(); else if (current()) send('play', current().id); return; }
     if (key === 'x') { if (ps5) openView('search'); else send('search', ''); return; }
     if (key === 'm') { openView(ps5 ? 'center' : data && data.inGame ? 'game' : 'settings'); return; }
     if ((key === 'ArrowUp' || key === 'ArrowDown') && opened) {
