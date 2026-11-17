@@ -115,7 +115,7 @@ class PlaybackSettingsPanel(
         val rows=mutableListOf(
             ConsoleAction(UiText.text("Tema do aplicativo: {0}",UiText.nested(appearance.read().label))) { chooseTheme() }
         )
-        if(appearance.read().scene!=ConsoleScene.NONE || appearance.read().htmlAsset!=null) rows+=ConsoleAction(UiText.text("Fundo dinâmico: {0}",UiText.nested(appearance.motion().label))) { chooseBackgroundMotion() }
+        if(appearance.read().scene!=ConsoleScene.NONE) rows+=ConsoleAction(UiText.text("Fundo dinâmico: {0}",UiText.nested(appearance.motion().label))) { chooseBackgroundMotion() }
         if(appearance.read().scene==ConsoleScene.XBOX_SERIES) rows+=ConsoleAction(UiText.text("Personalizar Series X|S")) {
             SeriesPersonalizationPanel(context,backgrounds) { showAppearance() }.show()
         }

@@ -6,8 +6,6 @@ import android.content.Context
 import com.xcloud.tclnative.settings.ConsoleScene
 import com.xcloud.tclnative.settings.DevicePerformancePolicy
 import com.xcloud.tclnative.settings.SeriesPersonalizationStore
-import com.xcloud.tclnative.settings.AppearanceSettingsStore
-import com.xcloud.tclnative.settings.PlaybackSettingsStore
 import android.graphics.Typeface
 import android.graphics.Color
 import android.graphics.RectF
@@ -72,8 +70,7 @@ class GameDashboardView(
     private val onPlayProduct: (GalleryProduct) -> Unit = {},
     private val onOwnershipNeeded: () -> Unit = {},
     private val onGameShortcut: ((GameTitle) -> Unit)?=null,
-    private val onFriends: (() -> Unit)?=null,
-    private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() }
+    private val onFriends: (() -> Unit)?=null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -159,8 +156,6 @@ class GameDashboardView(
     private var pendingFocus: Pair<String?, Int>? = null
     internal val isCatalogUpdating: Boolean get() = catalogJob?.isActive == true || metadataJob?.isActive == true
     private var designScene=DashboardTheme.palette.theme.scene
-    private var htmlTheme: HtmlConsoleTheme?=null
-    private val htmlHidden=mutableMapOf<View,Int>()
     private var originalBrowsing=false
     private var cardColumns=COLUMNS
     private var cardHorizontal=false
@@ -367,8 +362,6 @@ class GameDashboardView(
     }
     fun gameById(id: String): GameTitle? = games.firstOrNull { it.titleId == id }
     fun pauseArtwork() {
-        htmlTheme?.let { removeView(it);it.close() };htmlTheme=null
-        restoreHtmlSiblings()
         consoleBackdrop.setPresentationEnabled(false)
         consoleBackdrop.setArtwork(null)
         shortcutSkins.forEach { it.clear() }
@@ -382,12 +375,9 @@ class GameDashboardView(
         artworkPaused=false
         officialGalleries.putAll(pendingGalleries); pendingGalleries.clear()
         refresh()
-        refreshHtmlTheme()
-        if(htmlTheme==null) {
-            posters.resume();renderProfile()
-            selectedCard?.let { loadHeaderArtwork(it) }
-            adapter.notifyItemRangeChanged(0,adapter.itemCount,"artwork")
-        }
+        posters.resume(); renderProfile()
+        selectedCard?.let { loadHeaderArtwork(it) }
+        adapter.notifyItemRangeChanged(0,adapter.itemCount,"artwork")
     }
     fun setGamePassProducts(products: Set<String>?, resolvedTitles: Set<String> = emptySet()) {
         gamePassProducts = products
@@ -424,9 +414,9 @@ class GameDashboardView(
     }
     fun setProfile(value: XboxProfile) {
         val updated=value.copy(subscription=value.subscription ?: profile.subscription)
-        if(updated!=profile) { profile=updated; renderProfile();updateHtmlTheme() }
+        if(updated!=profile) { profile=updated; renderProfile() }
     }
-    fun setCloudPlaytime(value: CloudPlaytime) { cloudPlaytime=value;remainingTime.bindTime(value);updateHtmlTheme() }
+    fun setCloudPlaytime(value: CloudPlaytime) { cloudPlaytime=value;remainingTime.bindTime(value) }
     fun cloudPlaytimeSnapshot()=cloudPlaytime
     fun cloudPlaytimeDiagnostics()=cloudPlaytime.diagnostics()
     private fun renderProfile() {
@@ -441,7 +431,7 @@ class GameDashboardView(
             UiText.text("{0}, {1}. Abrir Guia",UiText.nested(profile.displayName),UiText.nested(profile.gamertag))
             else UiText.text("{0}, {1}. Abrir configurações",UiText.nested(profile.displayName),UiText.nested(profile.gamertag))
         val size=ArtworkSize.forDisplay((80*scale).roundToInt(),(80*scale).roundToInt())
-        if(htmlTheme==null) posters.load(avatar, profile.avatarUrl, size.width, size.height) { ready -> avatarLetter.visibility = if (ready) View.GONE else View.VISIBLE }
+        posters.load(avatar, profile.avatarUrl, size.width, size.height) { ready -> avatarLetter.visibility = if (ready) View.GONE else View.VISIBLE }
     }
     fun setAddedGallery(added: List<String>?) {
         this.added = added; galleriesLoaded = true; refresh()
@@ -510,7 +500,6 @@ class GameDashboardView(
         if(requested!=null) focusCoverNow(positions[requested.first] ?: requested.second)
         else if(changes.replace && focused) focusCoverNow(selectedPosition ?: 0)
         else if(changes.replace && anchorKey!=null) positions[anchorKey]?.let { manager.scrollToPositionWithOffset(it,anchorOffset) }
-        updateHtmlTheme()
     }
     private fun renderCatalogState(count: Int, preparing: Boolean = false) {
         val kind=when(activeTab) { LibraryTab.GAME_PASS -> OfficialGalleryKind.GAME_PASS; LibraryTab.PURCHASED -> OfficialGalleryKind.PURCHASED; else -> null }
@@ -605,7 +594,6 @@ class GameDashboardView(
         focusCoverAt(0)
     }
     private fun focusCoverAt(position: Int) {
-        htmlTheme?.let { html -> adapter.items.getOrNull(position)?.let(::updateSelected);updateHtmlTheme();html.requestFocus();return }
         if(designScene==ConsoleScene.XBOX_ORIGINAL && !originalBrowsing) {
             originalBrowsing=true;navigation.visibility=GONE;grid.visibility=VISIBLE;consoleBack.visibility=VISIBLE
             lastGeometry=0L;requestLayout();updateConsoleTitle()
@@ -682,10 +670,9 @@ class GameDashboardView(
         }
         return true
     }
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean = htmlTheme?.controller(event)==true || handleSeriesGridKey(event) || handleCarouselKey(event) || super.dispatchKeyEvent(event)
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean = handleSeriesGridKey(event) || handleCarouselKey(event) || super.dispatchKeyEvent(event)
     fun restoreFocus() {
         refresh()
-        htmlTheme?.let { updateHtmlTheme();it.requestFocus();return }
         if(designScene==ConsoleScene.XBOX_ORIGINAL && !originalBrowsing) { tabs[activeTab.ordinal].requestFocus();return }
         val position = positions[selectedCard?.key] ?: 0
         focusCoverAt(position)
@@ -693,7 +680,6 @@ class GameDashboardView(
     private fun updateSelected(game: CatalogCard?) {
         val previous = selectedCard
         selectedCard = game
-        if(htmlTheme!=null) { headerArtJob?.cancel();return }
         refreshSeriesSelection()
         if (previous?.key==game?.key && previous?.name==game?.name && previous?.tileUrl==game?.tileUrl &&
             previous?.posterUrl==game?.posterUrl && previous?.product?.heroUrl==game?.product?.heroUrl &&
@@ -724,7 +710,6 @@ class GameDashboardView(
         headerArtJob=scope.launch { delay(120); if(selectedCard?.key==game.key) loadHeaderArtwork(game) }
     }
     private fun loadHeaderArtwork(game: CatalogCard) {
-        if(htmlTheme!=null) return
         if(designScene==ConsoleScene.XBOX_360_NXE || designScene==ConsoleScene.XBOX_360_METRO) { posters.cancel(headerIcon);posters.cancel(heroBackdrop);return }
         if(designScene==ConsoleScene.XBOX_ORIGINAL && !originalBrowsing) { posters.cancel(headerIcon);return }
         val hero=game.product?.heroUrl ?: game.game?.heroUrl
@@ -785,7 +770,6 @@ class GameDashboardView(
         lastGeometry=0L;requestLayout();updateConsoleTitle();tabs[activeTab.ordinal].requestFocus()
     }
     fun back() {
-        if(htmlTheme?.controller(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BACK))==true) return
         ++focusRequest;carouselTarget=null;pendingFocus=null
         if(designScene==ConsoleScene.XBOX_ORIGINAL && originalBrowsing) { showOriginalCategories();return }
         when {
@@ -796,7 +780,6 @@ class GameDashboardView(
     }
     /** Handle gamepad keys only while the catalog is visible, before the native gameplay route. */
     fun handleKey(event: KeyEvent): Boolean {
-        if(htmlTheme?.controller(event)==true) return true
         if(handleSeriesGridKey(event)) return true
         if(handleCarouselKey(event)) return true
         val key = event.keyCode
@@ -833,7 +816,6 @@ class GameDashboardView(
     }
     private fun textSize(view: TextView, value: Float) = view.setTextSize(TypedValue.COMPLEX_UNIT_PX, value * scale)
     private fun layoutGeometry(w: Int, h: Int) {
-        if(htmlTheme!=null) { layoutHtmlTheme(w,h);return }
         if(designScene!=ConsoleScene.NONE) { layoutConsole(w,h);return }
         listOf(headerIcon,headerTitle,profilePanel,searchButton,navigation,lb,rb,grid).forEach { it.visibility=VISIBLE }
         metadataNote.visibility=GONE
@@ -983,55 +965,6 @@ class GameDashboardView(
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
         if(changed && focused) grid.post { if(!closed) focusCoverNow(position) }
         consoleBackdrop.refreshStructure()
-        refreshHtmlTheme()
-    }
-    private fun layoutHtmlTheme(w: Int,h: Int) {
-        val html=htmlTheme ?: return
-        for(i in 0 until childCount) getChildAt(i).let { if(it!==html) { htmlHidden.putIfAbsent(it,it.visibility);it.visibility=GONE } }
-        place(html,0f,0f,w.toFloat(),h.toFloat())
-    }
-    private fun refreshHtmlTheme() {
-        val theme=DashboardTheme.palette.theme
-        val leavingHtml=htmlTheme!=null && theme.htmlAsset==null
-        if(htmlTheme?.theme!=theme || artworkPaused) { htmlTheme?.let { removeView(it);it.close() };htmlTheme=null;restoreHtmlSiblings() }
-        if(theme.htmlAsset!=null && !artworkPaused && htmlTheme==null) {
-            htmlTheme=runCatching { HtmlConsoleTheme(context,theme,::htmlAction) }.getOrNull()?.also {
-                addView(it,LayoutParams(-1,-1));consoleBackdrop.setPresentationEnabled(false);posters.suspendPresentation();headerArtJob?.cancel()
-            }
-        }
-        if(htmlTheme==null && !artworkPaused) { posters.resume();consoleBackdrop.setPresentationEnabled(true) }
-        if(leavingHtml && !artworkPaused) {
-            val selected=selectedCard;selectedCard=null;updateSelected(selected)
-            renderProfile();selectedCard?.let(::loadHeaderArtwork)
-            grid.post { if(!closed && !artworkPaused && htmlTheme==null) focusCoverAt(positions[selectedCard?.key] ?: 0) }
-        }
-        updateHtmlTheme();lastGeometry=0L;requestLayout()
-    }
-    private fun restoreHtmlSiblings() { htmlHidden.forEach { (view,visibility) -> view.visibility=visibility };htmlHidden.clear() }
-    private fun updateHtmlTheme() {
-        val html=htmlTheme ?: return
-        val settings=PlaybackSettingsStore(context).read()
-        html.update(HtmlConsoleData.snapshot(adapter.items,selectedCard?.key,activeTab,profile,cloudPlaytime,library.favorites,settings)
-            .put("notice",if(adapter.itemCount==0) emptyState.text.toString() else ""))
-    }
-    private fun htmlAction(action: String,value: String) {
-        if(closed || artworkPaused || htmlTheme==null) return
-        val card=adapter.items.firstOrNull { it.key==value }
-        when(action) {
-            "select" -> card?.let(::updateSelected)
-            "play" -> card?.let { updateSelected(it);playCard(it) }
-            "favorite" -> card?.let { updateSelected(it);toggleSelectedFavorite();updateHtmlTheme() }
-            "shortcut" -> card?.playableGame()?.let { onGameShortcut?.invoke(it) }
-            "category" -> { searchQuery="";selectTab(LibraryTab.entries.firstOrNull { it.name==value } ?: when(value) { "recent","games" -> LibraryTab.RECENT;"favorites" -> LibraryTab.FAVORITES;else -> LibraryTab.ALL }) }
-            "search" -> if(value.isBlank() && htmlTheme!!.theme==com.xcloud.tclnative.settings.UiTheme.PS4) onSearch() else setSearch(value)
-            "settings" -> onThemeSettings(SettingsPage.entries.firstOrNull { it.name==value } ?: SettingsPage.ROOT)
-            "friends" -> onFriends?.invoke()
-            "audio" -> onThemeSettings(SettingsPage.AUDIO)
-            "statistics" -> onThemeSettings(SettingsPage.DIAGNOSTICS)
-            "move" -> { val position=positions[selectedCard?.key] ?: 0;adapter.items.getOrNull(position+(if(value=="1") 1 else -1))?.let { updateSelected(it);updateHtmlTheme() } }
-            "night" -> { AppearanceSettingsStore(context).saveHtmlNight(htmlTheme!!.theme,value=="true");updateHtmlTheme() }
-            "motion" -> { AppearanceSettingsStore(context).saveMotion(if(value=="true") com.xcloud.tclnative.settings.BackgroundMotion.ON else com.xcloud.tclnative.settings.BackgroundMotion.OFF);updateHtmlTheme() }
-        }
     }
     private fun configureCardLayout() {
         val manager=grid.layoutManager as GridLayoutManager
@@ -1571,8 +1504,6 @@ class GameDashboardView(
     override fun onAttachedToWindow() { super.onAttachedToWindow();appearancePrefs.registerOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=true;refreshSeriesPreferences() }
     override fun onDetachedFromWindow() { if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false };super.onDetachedFromWindow() }
     fun close() { if (!closed) {
-        htmlTheme?.let { removeView(it);it.close() };htmlTheme=null
-        restoreHtmlSiblings()
         closed = true;if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false }
         consoleBackdrop.close();shortcutSkins.forEach { it.clear() };scope.cancel(); posters.close(); grid.adapter = null
     } }

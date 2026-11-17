@@ -4,7 +4,7 @@ Leia este arquivo junto com `AGENTS.md`. O usuário pediu explicitamente um resu
 
 ## Objetivo atual e limites
 
-Implementar navegação mais simples e atalhos durante a partida, usando a organização do Better xCloud como referência. Priorizar ações comuns e deixar ajustes especializados em Avançado. Os temas PS4/PS5 foram retomados. O usuário rejeitou a recriação nativa e pediu copiar os HTMLs enviados. Os dois arquivos ficam integralmente em assets/themes; preservar o design do catálogo. Após relato de lentidão nos dois temas e falha no menu dentro do jogo, o painel da partida voltou ao caminho nativo existente, sem WebView sobre o streaming.
+Implementar navegação mais simples e atalhos durante a partida, usando a organização do Better xCloud como referência. Priorizar ações comuns e deixar ajustes especializados em Avançado. **Temas PS4 e PS5 estão adiados por pedido explícito do usuário.** Não adicioná-los nesta entrega.
 
 O usuário prefere execução autônoma, comunicação em português e conclusões baseadas em evidência. Não pedir novamente autorização para ações já incluídas no pedido. Não dizer que um problema foi resolvido em aparelho real apenas porque testes locais passaram.
 
@@ -14,7 +14,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão de teste desta branch: **0.39.2-html-fix**, versionCode **94**, usando a identidade de atualização existente.
+- Versão de teste desta branch: **0.38.2-menu-lab**, versionCode **91**, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
@@ -88,26 +88,13 @@ APK de teste anterior: `0.38.1-input-order`, versionCode 90. **A confirmação f
 - Amigos: presença e atividade, com abertura do título em **sessão própria**. Entrar na mesma partida/grupo do amigo ainda não está implementado.
 - Atalhos por jogo no launcher, pin quando suportado e APK de atalho para ambientes que exigem instalação.
 - Quinze idiomas/regiões da interface com recursos offline. Manter as traduções completas e os placeholders consistentes.
-- Temas Xbox existentes e personalização. PS4/PS5 usam os HTMLs copiados por solicitação expressa posterior do usuário. A interface desses temas usa o WebView do sistema; a transmissão e o input continuam nativos. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
+- Temas Xbox existentes e personalização; simulações PS4/PS5 eram HTMLs de estudo fora do APK e agora ficam adiadas. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
 
 ## Revisão de desempenho anterior
 
 Uma revisão de cerca de 197 arquivos de produção identificou oportunidades a medir antes de mudanças amplas: cancelamento durante leitura do corpo HTTP, limites de JSON, tamanho das bibliotecas nativas/ABIs, escrita de preferências no input, reutilização de serviços, alocações na thread de input e decomposição da Activity. Não foi autorizada uma reescrita geral indiscriminada nem foram implementadas todas essas sugestões.
 
-Manter o app leve. A solicitação posterior de copiar os HTMLs autoriza o WebView apenas nesses dois temas; não ampliar seu uso para o streaming ou outros temas, nem acrescentar bibliotecas de interface. Preservar o caminho de input separado da renderização. Testes de desempenho locais são evidência do cenário medido, não prova de latência física.
-
-## Temas HTML PS4/PS5
-
-- `assets/themes/simulacao-ps4.html` e `simulacao-ps5.html` são cópias byte a byte dos arquivos enviados; os hashes estão em `HtmlConsoleDataTest`. Não copiar o redesenho nativo descartado dos commits anteriores desta branch.
-- `native-adapter.js` mantém o design dos documentos. `HtmlConsoleDocument` prepara uma cópia de execução com o mesmo CSS original, removendo o catálogo ilustrativo e injetando o adaptador antes da primeira renderização. Os assets originais permanecem byte a byte iguais; dados e imagens de demonstração não entram no WebView. A cópia leve é reutilizada por tema. `HtmlConsoleTheme.kt` expõe uma ponte restrita, sem tokens ou navegação externa, e agrupa atualizações enquanto o renderer está ocupado.
-- O catálogo usa páginas estáveis de cinco cartões pelo modelo autenticado do app; nenhum ID de jogo é inventado. Os elementos das capas são reutilizados por ID; a imagem panorâmica espera a seleção estabilizar. Perfil e saldo são reais; Unlimited somente quando confirmado. Paletas noturnas persistem por tema. Efeitos de composição são reduzidos em economia de energia ou memória limitada. Em HTML, movimento AUTO mantém o fundo estático; ON continua disponível por escolha explícita. Os fundos nativos preservam sua política anterior.
-- A superfície HTML do catálogo é destruída ao entrar no streaming e recriada no retorno. Os atalhos da partida são nativos em todos os temas, incluindo PS4 e PS5; não criar WebView ao abrir o menu durante a sessão. Encerrar exige confirmação explícita. O botão Xbox permanece experimental.
-- O usuário pediu somente o link remoto do APK no fim; caminhos locais deste chat não funcionaram para ele. Usar o artefato do Actions, sem criar release nem mudar workflow.
-- Verificações: `python3 scripts/verify_html_themes.py` usa Playwright/Chromium para conferir inicialização sem imagens de demonstração, reaproveitamento das capas, foco após atualização real de dados, navegação nas quatro direções, paginação, toque e busca. Regressões do menu nativo da partida em PS4/PS5 são cobertas em `QuickSettingsNavigationTest`. Testes Android e assinatura continuam no workflow existente. Os temas HTML preservam os textos em português; os painéis nativos mantêm os idiomas existentes.
-- Foram reproduzidas e corrigidas perda de foco nos ajustes e tentativa indevida de iniciar o jogo com Enter após perder o foco. A atualização de saldo/preferências mantém a seção e o item focado; tocar uma capa vizinha seleciona antes de iniciar. A navegação no navegador passou com zero novos elementos de capa em 100 movimentos. Essas medições e testes não substituem confirmação nos aparelhos reais.
-- Os testes de geometria dos botões nativos se aplicam somente aos temas nativos; nos temas HTML esses botões ficam ocultos. A restauração das capas e do foco ao retornar ao tema Verde preserva o cache nativo durante a navegação; a entrada no streaming continua destruindo a superfície HTML e pausando as capas como antes.
-- Build de `d0e08e313affb0a9aacb0d06bc1b6e7d4a8512c5`: Actions `44181128925` concluído com sucesso; 809 testes JVM, zero falhas/erros/ignorados, lint e verificações dos filtros passaram. APK `0.39.1-html-ps` (93), certificado permanente `efd33d9a3122ab5df2a7f0932e80b8fb51449bb1d3206fddc300b2766db73107`; artefato de download `14372857253`. Nenhum workflow foi alterado e nenhuma release foi publicada. Validação nos aparelhos reais permanece pendente.
-- Correções de desempenho e menu da partida: build de `004621ecce94c23d63ca9485bea293f31810e724`, Actions `44189268450`, concluído com sucesso; 811 testes JVM, zero falhas/erros/ignorados, lint, filtros e assinatura permanente passaram. APK `0.39.2-html-fix` (94), artefato `14376172580`. O teste de regressão verifica atalhos nativos em PS4 e PS5, sem WebView no menu da sessão, fechamento sem encerrar e confirmação para desconectar. Os testes de navegador passaram nos dois temas. Não considerar desempenho nem acesso ao menu confirmados nos aparelhos reais sem novo teste do usuário.
+Manter o app leve: evitar WebViews novos, bibliotecas de interface adicionais ou efeitos pesados para atalhos. Preservar o caminho de input separado da renderização. Testes de desempenho locais são evidência do cenário medido, não prova de latência física.
 
 ## Verificação e entrega em outro ambiente
 

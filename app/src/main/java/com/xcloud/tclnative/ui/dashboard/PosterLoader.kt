@@ -40,8 +40,6 @@ internal class PosterLoader(context: Context, private val scope: CoroutineScope,
         bindings.clear(); deliveries?.clear(); backend.cache.evictAll()
     }
     fun resume() { paused=false }
-    /** Hide the native catalog without discarding artwork needed when its theme is restored. */
-    fun suspendPresentation() { paused=true;cancelPending();deliveries?.clear() }
     fun load(view: ImageView, originalUrl: String?, maxWidth: Int = 720, maxHeight: Int = 1080,
              notifyPlaceholder: Boolean = true, onReady: (Boolean) -> Unit = {}) {
         if(paused || originalUrl==null) { cancel(view); onReady(false); return }

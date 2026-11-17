@@ -60,25 +60,6 @@ class QuickSettingsNavigationTest {
         close(latest());assertEquals(0,ends)
         click(menu(),"ENCERRAR PARTIDA");click(latest(),"ENCERRAR PARTIDA");assertEquals(1,ends)
     }
-    @Test fun playStationThemesUseImmediateNativeInGameActionsWithoutCreatingAWebView() {
-        val appearance=AppearanceSettingsStore(activity)
-        try {
-            for(theme in listOf(UiTheme.PS4,UiTheme.PS5)) {
-                appearance.save(theme);DashboardTheme.apply(activity,theme)
-                var video=0;var settings=0;var ends=0
-                fun menu()=GameMenuPanel.show(activity,{}, {}, {}, {ends++},video={video++},settings={settings++})
-                val first=menu()
-                assertFalse(all(first.panel).any { it is android.webkit.WebView })
-                click(first,"Vídeo e conexão");assertEquals(1,video)
-                click(menu(),"Configurações");assertEquals(1,settings)
-                close(menu());assertEquals(0,ends)
-                menu().cancel();assertEquals(0,ends)
-                click(menu(),"ENCERRAR PARTIDA");assertEquals(0,ends)
-                close(latest());assertEquals(0,ends)
-                click(menu(),"ENCERRAR PARTIDA");click(latest(),"ENCERRAR PARTIDA");assertEquals(1,ends)
-            }
-        } finally { appearance.save(UiTheme.GREEN) }
-    }
     @Test fun closeLeavesAllSettingsWhileBackReturnsOneLevelAndRestoresCategoryFocus() {
         val store=PlaybackSettingsStore(activity);val before=store.read();var changes=0;var returned=0
         val panel=PlaybackSettingsPanel(activity,store,{changes++},{},{},{},back={returned++})
