@@ -242,4 +242,23 @@ class ConsoleDashboardUiTest {
             capture(view,"ps5-without-hero")
         } finally { view.close();c.pause().stop().destroy() }
     }
+    @Test fun playStationLibraryKeepsAllCategoriesAndReturnsFocusToTheVisibleLibraryTab() {
+        for(theme in listOf(UiTheme.PS4,UiTheme.PS5)) {
+            DashboardTheme.apply(RuntimeEnvironment.getApplication(),theme)
+            val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
+            val view=GameDashboardView(a,GameLibrary(a,"ps-library-${theme.name}"),{},{},{},{})
+            try {
+                a.setContentView(view);view.setGames(games());view.setGamePassProducts(setOf("PRODUCT-0"));view.selectTab(LibraryTab.ALL);layout(view)
+                val library=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.toString()==com.xcloud.tclnative.i18n.UiText.text("Biblioteca") }
+                library.performClick()
+                val chooser=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
+                val rows=all(chooser.body).filterIsInstance<TextView>().filter { it.isClickable }
+                assertEquals(LibraryTab.entries.map { it.label }.toSet(),rows.map { it.text.toString() }.toSet())
+                rows.single { it.text.toString()==LibraryTab.GAME_PASS.label }.performClick();layout(view)
+                assertEquals(LibraryTab.GAME_PASS,view.activeTab)
+                library.requestFocus();layout(view)
+                assertEquals(LibraryTab.GAME_PASS,view.activeTab);assertTrue(library.isShown && library.hasFocus())
+            } finally { view.close();c.pause().stop().destroy() }
+        }
+    }
 }

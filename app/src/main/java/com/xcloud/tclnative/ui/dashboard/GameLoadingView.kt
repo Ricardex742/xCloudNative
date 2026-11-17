@@ -104,12 +104,12 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
             lastBackdrop = hero
             if(scene==ConsoleScene.NONE) art.load(backdrop,hero,
                 if(devicePolicy.constrainedMemory) 640 else 1920,if(devicePolicy.constrainedMemory) 360 else 1080)
-            else if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES) {
+            else if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.PS5) {
                 val modest=devicePolicy.constrainedMemory
                 art.load(backdrop,hero,if(modest) 640 else 1024,if(modest) 360 else 576)
             } else art.cancel(backdrop)
         }
-        val portrait = if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.XBOX_360_NXE || scene==ConsoleScene.XBOX_360_METRO) value.tileUrl ?: value.posterUrl else value.posterUrl ?: value.tileUrl
+        val portrait = if(scene.playStation || scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.XBOX_360_NXE || scene==ConsoleScene.XBOX_360_METRO) value.tileUrl ?: value.posterUrl else value.posterUrl ?: value.tileUrl
         if (portrait != lastPoster) {
             lastPoster = portrait
             art.load(poster, portrait) { ready -> posterFallback.visibility = if (ready) View.GONE else View.VISIBLE }
@@ -234,9 +234,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         }
         cancelButton.background=ConsoleControlPlate(scene,ConsoleControl.ACTION,true)
         cancelButton.setTextColor(if(scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_ORIGINAL) 0xff142700.toInt() else Color.WHITE)
-        if(scene.playStation) cancelButton.setTextColor(android.content.res.ColorStateList(
-            arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf(android.R.attr.state_pressed),intArrayOf()),
-            intArrayOf(if(scene==ConsoleScene.PS5) 0xff15171c.toInt() else Color.WHITE,if(scene==ConsoleScene.PS5) 0xff15171c.toInt() else Color.WHITE,Color.WHITE)))
+        if(scene.playStation) cancelButton.setTextColor(if(scene==ConsoleScene.PS5) 0xff15171c.toInt() else Color.WHITE)
         steps.forEach { it.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL) }
         spinner.indeterminateTintList=ColorStateList.valueOf(if(scene.playStation) Color.WHITE else if(scene==ConsoleScene.XBOX_360) 0xff4d761e.toInt() else 0xff8bdc42.toInt())
         if(scene==ConsoleScene.XBOX_360_NXE) note.setTextColor(0xff263024.toInt())

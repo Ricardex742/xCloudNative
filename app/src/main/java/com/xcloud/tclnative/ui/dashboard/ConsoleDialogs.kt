@@ -28,7 +28,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 data class ConsoleAction(val label: String, val action: () -> Unit) { var longAction: (() -> Unit)?=null }
-enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE }
+enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER }
 
 /** Shared native panels for search, account menus and messages. No platform alert buttons/rows. */
 class ConsoleDialog(context: Context, private val heading: String,private val purpose: ConsolePanelPurpose=ConsolePanelPurpose.GENERAL) : Dialog(context, R.style.ConsoleDialog) {
@@ -91,7 +91,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         activity?.let(::setOwnerActivity)
         val headingContent=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
-        if(purpose==ConsolePanelPurpose.GUIDE) {
+        if(purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
+            headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(14) })
+            if(purpose==ConsolePanelPurpose.GUIDE) panel.minimumHeight=(screenHeight*.88f).roundToInt()
+        } else if(purpose==ConsolePanelPurpose.GUIDE) {
             val brand=ConsoleBrandView(context)
             headingContent.addView(brand,LinearLayout.LayoutParams(px(176),px(42)))
             headingContent.addView(text(heading,27,true),LinearLayout.LayoutParams(-1,-2).apply { topMargin=px(16);bottomMargin=px(16) })
@@ -147,7 +150,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }
     /** Compact shortcuts keep text labels and use real native focus/accessibility nodes. */
     internal fun addShortcuts(items: List<Pair<ConsoleGlyph,ConsoleAction>>) {
-        val columns=if(purpose==ConsolePanelPurpose.GUIDE || screenWidth<screenHeight) 2 else 3
+        val columns=if(purpose==ConsolePanelPurpose.GUIDE && skin.scene==com.xcloud.tclnative.settings.ConsoleScene.PS4) 1 else if(purpose==ConsolePanelPurpose.CONTROL_CENTER && screenWidth>screenHeight) 6 else if(purpose==ConsolePanelPurpose.GUIDE || screenWidth<screenHeight) 2 else 3
         val compact=screenWidth>screenHeight && screenHeight/context.resources.displayMetrics.density<480
         items.chunked(columns).forEach { group ->
             val row=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL;isBaselineAligned=false }
@@ -156,7 +159,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                     gravity=Gravity.CENTER
                     setPadding(px(8),px(10),px(8),px(10))
                     maxLines=2
-                    setTextSize(TypedValue.COMPLEX_UNIT_PX,21*scale)
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX,(if(purpose==ConsolePanelPurpose.CONTROL_CENTER) 17 else 21)*scale)
                     val mark=ConsoleIconDrawable(icon,px(28),if(skin.enabled) skin.textColors() else android.content.res.ColorStateList.valueOf(Color.WHITE))
                     setCompoundDrawablesWithIntrinsicBounds(if(compact) mark else null,if(compact) null else mark,null,null)
                     compoundDrawablePadding=px(7)
@@ -235,7 +238,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             decorView.setPadding(0,0,0,0)
             addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setDimAmount(if(skin.enabled) .48f else .72f)
-            if(purpose==ConsolePanelPurpose.GUIDE) {
+            if(purpose==ConsolePanelPurpose.CONTROL_CENTER) {
+                setGravity(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+                setLayout((screenWidth*.96f).roundToInt(),WindowManager.LayoutParams.WRAP_CONTENT)
+            } else if(purpose==ConsolePanelPurpose.GUIDE) {
                 val side=SeriesPersonalizationStore(context).read().guide
                 setGravity(Gravity.CENTER_VERTICAL or if(side==SeriesGuideSide.RIGHT) Gravity.RIGHT else Gravity.LEFT)
                 attributes=attributes.apply { x=px(12) }

@@ -234,7 +234,7 @@ class ConsolePolishUiTest {
                 val grid=all(v).filterIsInstance<RecyclerView>().single();val adapter=grid.adapter
                 layer.onWindowFocusChanged(true);layer.onVisibilityAggregated(true)
                 fun artworkReady(): Boolean {
-                    if(theme==UiTheme.XBOX_SERIES && !layer.hasArtwork) return false
+                    if((theme==UiTheme.XBOX_SERIES || theme==UiTheme.PS5) && !layer.hasArtwork) return false
                     val posters=(0 until grid.childCount).flatMap { all(grid.getChildAt(it)) }.filterIsInstance<FixedArtworkView>()
                     val header=all(v).filterIsInstance<FixedArtworkView>().filter { it.isShown && it.contentDescription?.startsWith("Ícone de ")==true }
                     return (posters+header).all { it.drawable is BitmapDrawable }

@@ -24,7 +24,7 @@ internal enum class UiColor(val original: Int) {
 
 internal class UiPalette(val theme: UiTheme) {
     private val consoleColors=when(theme) {
-            UiTheme.PS4 -> intArrayOf(0xff073ba4.toInt(),0xff0754c1.toInt(),0xff00256d.toInt(),0x3055cfff,0xff1265bb.toInt(),0xff12448c.toInt(),0xff10418a.toInt(),0xff08296b.toInt())
+            UiTheme.PS4 -> intArrayOf(0xff07339c.toInt(),0xff0753cf.toInt(),0xff147ae0.toInt(),0x3055cfff,0xff1265bb.toInt(),0xff12448c.toInt(),0xff10418a.toInt(),0xff08296b.toInt())
             UiTheme.PS5 -> intArrayOf(0xff141824.toInt(),0xff202431.toInt(),0xff0c1019.toInt(),0x204876a0,0xff303b51.toInt(),0xff292c33.toInt(),0xff24262d.toInt(),0xff17191f.toInt())
             UiTheme.XBOX_360 -> intArrayOf(0xff252d28.toInt(),0xff3a443c.toInt(),0xff1b3020.toInt(),0x447b995a,0xff344936.toInt(),0xff252d26.toInt(),0xff212a23.toInt(),0xff151d17.toInt())
             UiTheme.XBOX_360_NXE -> intArrayOf(0xff202822.toInt(),0xff364334.toInt(),0xff162d21.toInt(),0x44678b54,0xff344936.toInt(),0xff252d26.toInt(),0xff212a23.toInt(),0xff151d17.toInt())

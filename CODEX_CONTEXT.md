@@ -88,7 +88,7 @@ APK de teste anterior: `0.38.1-input-order`, versionCode 90. **A confirmação f
 - Amigos: presença e atividade, com abertura do título em **sessão própria**. Entrar na mesma partida/grupo do amigo ainda não está implementado.
 - Atalhos por jogo no launcher, pin quando suportado e APK de atalho para ambientes que exigem instalação.
 - Quinze idiomas/regiões da interface com recursos offline. Manter as traduções completas e os placeholders consistentes.
-- Temas Xbox existentes e personalização. PS4/PS5 agora têm opções nativas em Aparência, com cenas próprias, biblioteca horizontal, foco e painéis adaptados. As simulações HTML anteriores continuam externas ao repositório e não vieram neste workspace; não presumir que os testes nativos equivalem à revisão desses HTMLs. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
+- Temas Xbox existentes e personalização. PS4/PS5 agora têm opções nativas em Aparência, com cenas próprias, biblioteca horizontal, foco e painéis adaptados. As simulações HTML PS4/PS5 foram recebidas como referência privada; o usuário priorizou a composição dos consoles. Não incorporar HTMLs, imagens embutidas ou dados de demonstração desses arquivos ao APK. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
 
 ## Revisão de desempenho anterior
 
@@ -98,7 +98,7 @@ Manter o app leve: evitar WebViews novos, bibliotecas de interface adicionais ou
 
 ## Temas PlayStation
 
-- `ConsoleScene.PS4` e `PS5` são preferências de interface independentes do vídeo e da conta. PS4 usa ondas vetoriais e faixa horizontal com seleção ampliada; PS5 usa seletor compacto e panorama do jogo selecionado, com fundo próprio quando o panorama falta.
+- `ConsoleScene.PS4` e `PS5` são preferências de interface independentes do vídeo e da conta. PS4 usa ondas vetoriais, faixa horizontal com seleção ampliada e menu rápido lateral; PS5 usa seletor compacto no topo, panorama do jogo selecionado e centro de controle inferior, com fundo próprio quando o panorama falta. O cabeçalho e a grade do tema padrão não são usados. Três abas principais preservam as seis categorias via Biblioteca e LB/RB.
 - Reutilizam o catálogo reciclado, o carregamento limitado de artes, os painéis nativos e a política de movimento existente. Sem novas bibliotecas, WebViews, vídeos de fundo ou alterações de input/handshake.
 - `layoutPlayStation` trata paisagem e retrato; botões de pesquisa, configurações e jogar preservam alvos de toque. `ConsoleDashboardUiTest` cobre lançamento explícito, retrato e descarte do panorama ao selecionar jogo sem arte.
 - Esta etapa ainda precisa das verificações do build atual e de validação em aparelhos reais. Workflows permanecem intactos.

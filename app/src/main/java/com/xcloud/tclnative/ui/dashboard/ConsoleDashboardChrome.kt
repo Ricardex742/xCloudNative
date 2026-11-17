@@ -35,14 +35,19 @@ internal class ConsoleControlPlate(private val scene: ConsoleScene,private val c
             ConsoleScene.PS4,ConsoleScene.PS5 -> {
                 val ps5=scene==ConsoleScene.PS5
                 val radius=if(ps5) { if(control==ConsoleControl.ACTION) h/2f else 9f } else 0f
-                if(control!=ConsoleControl.TAB || focused || selected) {
-                    paint.color=if(ps5) { if(focused) 0xffe7e8eb.toInt() else 0x991c2029.toInt() }
-                        else if(focused) 0x655abaff else 0x28032d78
-                    if(control!=ConsoleControl.CARD) canvas.drawRoundRect(rect,radius,radius,paint)
+                if(control!=ConsoleControl.CARD) {
+                    paint.color=if(ps5 && control==ConsoleControl.ACTION) 0xffeff0f3.toInt()
+                        else if(control==ConsoleControl.QUICK) { if(focused) 0xc0444953.toInt() else 0x99252b35.toInt() }
+                        else if(focused) 0x24ffffff else Color.TRANSPARENT
+                    canvas.drawRoundRect(rect,radius,radius,paint)
                 }
-                if(focused || selected && control==ConsoleControl.TAB) {
+                if(focused) {
                     paint.style=Paint.Style.STROKE;paint.color=Color.WHITE;paint.strokeWidth=if(focused) 2.5f else 1f
                     canvas.drawRoundRect(rect,radius,radius,paint)
+                }
+                if(selected && control==ConsoleControl.TAB) {
+                    paint.style=Paint.Style.FILL;paint.color=Color.WHITE
+                    canvas.drawRect(rect.left+6f,rect.bottom-2f,rect.right-6f,rect.bottom,paint)
                 }
                 if(!ps5 && control==ConsoleControl.TAB) icon?.let {
                     icons.draw(canvas,it,rect.centerX()-13f,rect.top+5f,26f,Color.WHITE)
