@@ -563,7 +563,8 @@ open class MainActivity : Activity() {
                 onFavoritesChanged = { syncHomeShortcuts() },
                 onPlayProduct = { product -> playGalleryProduct(signaling,product) },
                 onOwnershipNeeded = { requestOwnership() },onGameShortcut={ showGameShortcut(it) },
-                onFriends={ showFriends { dashboard?.restoreFocus() } })
+                onFriends={ showFriends { dashboard?.restoreFocus() } },
+                onThemeSettings={ page -> showSettings(session,page) { dashboard?.restoreFocus() } })
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)
@@ -998,7 +999,7 @@ open class MainActivity : Activity() {
             language={ com.xcloud.tclnative.ui.dashboard.LanguageMenu.show(this) { showGameMenu() } },
             appearance={ PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{}, {}, {},
                 backgrounds={ dashboard?.wallpaperChoices() ?: com.xcloud.tclnative.ui.dashboard.SeriesWallpaperGallery.fromGames(currentGames,listOfNotNull(activeGame)) }).showAppearance(onBack={ showGameMenu() }) },
-            profile=dashboard?.profileSnapshot(),
+            profile=dashboard?.profileSnapshot(),themeGame=activeGame,themeQuota=dashboard?.cloudPlaytimeSnapshot() ?: CloudPlaytime(),
             microphone=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ::toggleMicrophone else null,microphoneLabel=webrtcClient?.microphoneLabel() ?: UiText.text("Ativar microfone"),
             controllerProfiles={ showControllerProfiles { showGameMenu() } },
             mouse=if(sessionDesktopMode==DesktopInputMode.OFF || transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) null else ({ auxiliaryHandler.post { setDesktopCapture(!desktopCaptured) } })).also { dialog ->

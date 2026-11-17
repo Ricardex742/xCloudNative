@@ -98,7 +98,7 @@ class ConsoleThemeTest {
             assertArrayEquals("$theme cycle must be deterministic",still,capture(0f))
             signatures.add(still.contentHashCode())
         }
-        assertEquals(8,signatures.size)
+        assertEquals(6,signatures.size)
     }
 
     @Test @Config(sdk=[24,28,34]) @GraphicsMode(GraphicsMode.Mode.LEGACY)

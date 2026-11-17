@@ -4,10 +4,7 @@ import com.xcloud.tclnative.i18n.UiText
 
 import android.content.Context
 
-enum class ConsoleScene {
-    NONE, XBOX_360, XBOX_ONE, XBOX_SERIES, XBOX_ORIGINAL, XBOX_360_NXE, XBOX_360_METRO, PS4, PS5;
-    val playStation: Boolean get()=this==PS4 || this==PS5
-}
+enum class ConsoleScene { NONE, XBOX_360, XBOX_ONE, XBOX_SERIES, XBOX_ORIGINAL, XBOX_360_NXE, XBOX_360_METRO }
 enum class BackgroundMotion(private val sourceLabel: String) {
     AUTO("Automático"), ON("Ativado"), OFF("Desativado");
     val label get()=UiText.text(sourceLabel)
@@ -27,9 +24,10 @@ enum class UiTheme(private val sourceLabel: String,val accent: Int,val hue: Floa
     XBOX_ONE("Xbox One",0xff7ddd78.toInt(),118f,.70f,ConsoleScene.XBOX_ONE),
     XBOX_SERIES("Xbox Series X|S",0xffa0efbe.toInt(),154f,.58f,ConsoleScene.XBOX_SERIES),
     XBOX_ORIGINAL("Xbox Original",0xffb6ef4b.toInt(),88f,1.10f,ConsoleScene.XBOX_ORIGINAL),
-    PS4("PlayStation 4",0xffdcefff.toInt(),216f,.8f,ConsoleScene.PS4),
-    PS5("PlayStation 5",0xffeeeeee.toInt(),220f,.12f,ConsoleScene.PS5);
+    PS4("PlayStation 4",0xff9bd5ff.toInt(),218f,.8f),
+    PS5("PlayStation 5",0xffeeeeee.toInt(),220f,.1f);
     val label: String get()=UiText.text(sourceLabel)
+    val htmlAsset: String? get()=when(this) { PS4 -> "themes/simulacao-ps4.html";PS5 -> "themes/simulacao-ps5.html";else -> null }
 }
 
 /** Interface preference only: independent of account, stream profile and video filters. */
@@ -39,4 +37,6 @@ class AppearanceSettingsStore(context: Context) {
     fun save(theme: UiTheme) { prefs.edit().putString("theme",theme.name).apply() }
     fun motion(): BackgroundMotion = BackgroundMotion.entries.firstOrNull { it.name==prefs.getString("background_motion",null) } ?: BackgroundMotion.AUTO
     fun saveMotion(mode: BackgroundMotion) { prefs.edit().putString("background_motion",mode.name).apply() }
+    fun htmlNight(theme: UiTheme)=prefs.getBoolean("html_night_${theme.name}",false)
+    fun saveHtmlNight(theme: UiTheme,value: Boolean) { if(theme.htmlAsset!=null) prefs.edit().putBoolean("html_night_${theme.name}",value).apply() }
 }

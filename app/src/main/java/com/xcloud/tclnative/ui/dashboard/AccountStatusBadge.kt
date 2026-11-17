@@ -48,8 +48,6 @@ internal class AccountStatusBadge(context: Context,private val plan: Boolean): L
         val ink=if(light) 0xff263a22.toInt() else Color.WHITE
         val foreground=if(plan) ink else if(confirmed) accent else if(light) 0xff4b5746.toInt() else 0xffb9c6bd.toInt()
         val fills=when(scene) {
-            ConsoleScene.PS4 -> intArrayOf(0xad083482.toInt(),0xad083482.toInt())
-            ConsoleScene.PS5 -> intArrayOf(0xce282a30.toInt(),0xce282a30.toInt())
             ConsoleScene.XBOX_360 -> if(plan) intArrayOf(0xfff7f8f1.toInt(),0xffdce2ce.toInt()) else intArrayOf(0xffeef3e3.toInt(),0xffeef3e3.toInt())
             ConsoleScene.XBOX_360_NXE -> if(plan) intArrayOf(0xff3a6333.toInt(),0xff203e23.toInt()) else intArrayOf(0xe91b3422.toInt(),0xe91b3422.toInt())
             ConsoleScene.XBOX_360_METRO -> if(plan) intArrayOf(0xffd8eac6.toInt(),0xffd8eac6.toInt()) else intArrayOf(0xffeff5e9.toInt(),0xffeff5e9.toInt())
@@ -68,9 +66,7 @@ internal class AccountStatusBadge(context: Context,private val plan: Boolean): L
             cornerRadius=radius
             setStroke(scale.roundToInt().coerceAtLeast(1),if(light) 0xffa6b992.toInt() else Color.argb(135,Color.red(accent),Color.green(accent),Color.blue(accent)))
         }
-        if(scene==ConsoleScene.PS5) background=null
         setTextColor(foreground)
-        if(scene==ConsoleScene.PS5) setTextColor(if(plan) 0xffe0d4b8.toInt() else 0xffc4c9d2.toInt())
         wordmark.setTintList(ColorStateList.valueOf(ink))
         setPadding((8*scale).roundToInt(),0,(8*scale).roundToInt(),0)
         if(!plan) {

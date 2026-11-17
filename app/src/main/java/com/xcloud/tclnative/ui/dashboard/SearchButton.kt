@@ -24,13 +24,6 @@ internal class SearchButton(context: Context,search: () -> Unit): View(context) 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val size=min(width,height).toFloat(); val cx=width/2f; val cy=height/2f
-        if(DashboardTheme.palette.theme.scene.playStation) {
-            paint.style=Paint.Style.STROKE;paint.color=Color.WHITE;paint.strokeWidth=size*.025f;paint.strokeCap=Paint.Cap.ROUND
-            if(isPressed || isFocused) canvas.drawCircle(cx,cy,size*.39f,paint)
-            canvas.drawCircle(cx-size*.025f,cy-size*.025f,size*.13f,paint)
-            canvas.drawLine(cx+size*.07f,cy+size*.07f,cx+size*.18f,cy+size*.18f,paint)
-            return
-        }
         val blades=DashboardTheme.palette.theme.scene==com.xcloud.tclnative.settings.ConsoleScene.XBOX_360
         val light=blades || DashboardTheme.palette.theme.scene==com.xcloud.tclnative.settings.ConsoleScene.XBOX_360_METRO
         val radius=size*(if(blades || phoneTarget) .43f else .32f)

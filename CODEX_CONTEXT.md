@@ -4,7 +4,7 @@ Leia este arquivo junto com `AGENTS.md`. O usuário pediu explicitamente um resu
 
 ## Objetivo atual e limites
 
-Implementar navegação mais simples e atalhos durante a partida, usando a organização do Better xCloud como referência. Priorizar ações comuns e deixar ajustes especializados em Avançado. O usuário retomou explicitamente os temas PS4 e PS5. Implementá-los como composições nativas, próximas das interfaces dos consoles, mantendo navegação por controle e toque e o caminho de streaming independente.
+Implementar navegação mais simples e atalhos durante a partida, usando a organização do Better xCloud como referência. Priorizar ações comuns e deixar ajustes especializados em Avançado. Os temas PS4/PS5 foram retomados. O usuário rejeitou a recriação nativa e pediu copiar os HTMLs enviados. Os dois arquivos ficam integralmente em assets/themes; não redesenhar seu CSS ou substituir por painéis nativos semelhantes.
 
 O usuário prefere execução autônoma, comunicação em português e conclusões baseadas em evidência. Não pedir novamente autorização para ações já incluídas no pedido. Não dizer que um problema foi resolvido em aparelho real apenas porque testes locais passaram.
 
@@ -14,7 +14,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão de teste desta branch: **0.39.0-ps-lab**, versionCode **92**, usando a identidade de atualização existente.
+- Versão de teste desta branch: **0.39.1-html-ps**, versionCode **93**, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
@@ -88,20 +88,22 @@ APK de teste anterior: `0.38.1-input-order`, versionCode 90. **A confirmação f
 - Amigos: presença e atividade, com abertura do título em **sessão própria**. Entrar na mesma partida/grupo do amigo ainda não está implementado.
 - Atalhos por jogo no launcher, pin quando suportado e APK de atalho para ambientes que exigem instalação.
 - Quinze idiomas/regiões da interface com recursos offline. Manter as traduções completas e os placeholders consistentes.
-- Temas Xbox existentes e personalização. PS4/PS5 agora têm opções nativas em Aparência, com cenas próprias, biblioteca horizontal, foco e painéis adaptados. As simulações HTML PS4/PS5 foram recebidas como referência privada; o usuário priorizou a composição dos consoles. Não incorporar HTMLs, imagens embutidas ou dados de demonstração desses arquivos ao APK. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
+- Temas Xbox existentes e personalização. PS4/PS5 usam os HTMLs copiados por solicitação expressa posterior do usuário. A interface desses temas usa o WebView do sistema; a transmissão e o input continuam nativos. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
 
 ## Revisão de desempenho anterior
 
 Uma revisão de cerca de 197 arquivos de produção identificou oportunidades a medir antes de mudanças amplas: cancelamento durante leitura do corpo HTTP, limites de JSON, tamanho das bibliotecas nativas/ABIs, escrita de preferências no input, reutilização de serviços, alocações na thread de input e decomposição da Activity. Não foi autorizada uma reescrita geral indiscriminada nem foram implementadas todas essas sugestões.
 
-Manter o app leve: evitar WebViews novos, bibliotecas de interface adicionais ou efeitos pesados para atalhos. Preservar o caminho de input separado da renderização. Testes de desempenho locais são evidência do cenário medido, não prova de latência física.
+Manter o app leve. A solicitação posterior de copiar os HTMLs autoriza o WebView apenas nesses dois temas; não ampliar seu uso para o streaming ou outros temas, nem acrescentar bibliotecas de interface. Preservar o caminho de input separado da renderização. Testes de desempenho locais são evidência do cenário medido, não prova de latência física.
 
-## Temas PlayStation
+## Temas HTML PS4/PS5
 
-- `ConsoleScene.PS4` e `PS5` são preferências de interface independentes do vídeo e da conta. PS4 usa ondas vetoriais, faixa horizontal com seleção ampliada e menu rápido lateral; PS5 usa seletor compacto no topo, panorama do jogo selecionado e centro de controle inferior, com fundo próprio quando o panorama falta. O cabeçalho e a grade do tema padrão não são usados. A faixa de funções do PS4 e as abas compactas do PS5 preservam as seis categorias via Biblioteca e LB/RB. Os painéis e atalhos usam símbolos PlayStation; não há cabeçalho do tema padrão nesses dashboards.
-- Reutilizam o catálogo reciclado, o carregamento limitado de artes, os painéis nativos e a política de movimento existente. Sem novas bibliotecas, WebViews, vídeos de fundo ou alterações de input/handshake.
-- `layoutPlayStation` trata paisagem e retrato; botões de pesquisa, configurações e jogar preservam alvos de toque. `ConsoleDashboardUiTest` cobre lançamento explícito, retrato e descarte do panorama ao selecionar jogo sem arte.
-- As validações do build atual e em aparelhos reais devem ser registradas separadamente. Workflows permanecem intactos; os APKs de teste são entregues por artefato do Actions, sem criar release.
+- `assets/themes/simulacao-ps4.html` e `simulacao-ps5.html` são cópias byte a byte dos arquivos enviados; os hashes estão em `HtmlConsoleDataTest`. Não copiar o redesenho nativo descartado dos commits anteriores desta branch.
+- `native-adapter.js` preserva a apresentação dos documentos e adapta somente a moldura da simulação, dados e ações. `HtmlConsoleTheme.kt` carrega os assets locais e expõe uma ponte restrita, sem tokens ou navegação externa.
+- O catálogo usa uma janela de oito cartões e continua passando pelo modelo autenticado do app; nenhum ID de jogo é inventado. Perfil e saldo são reais; Unlimited somente quando confirmado. Paletas noturnas persistem por tema.
+- A superfície HTML do catálogo é destruída ao entrar no streaming e recriada no retorno. O menu HTML da partida não carrega outra imagem panorâmica; encerrar exige confirmação explícita. O botão Xbox permanece experimental.
+- O usuário pediu somente o link remoto do APK no fim; caminhos locais deste chat não funcionaram para ele. Usar o artefato do Actions, sem criar release nem mudar workflow.
+- Verificações: `python3 scripts/verify_html_themes.py` usa Playwright/Chromium para conferir UI e ponte; testes Android e assinatura continuam no workflow existente. Registrar o resultado do build atual antes de entregar. Os temas HTML preservam os textos dos documentos em português; os painéis nativos mantêm os idiomas existentes.
 
 ## Verificação e entrega em outro ambiente
 

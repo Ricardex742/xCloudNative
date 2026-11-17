@@ -37,13 +37,6 @@ internal class ConsoleScenePainter {
         cross.cubicTo(-25f,56f,-45f,88f,-111f,108f);cross.lineTo(-22f,10f);cross.close()
         paths.forEach { it.reset() }
         when(scene) {
-            ConsoleScene.PS4,ConsoleScene.PS5 -> repeat(4) { i ->
-                val y=h*.52f+i*13f
-                paths[i].apply {
-                    moveTo(-100f,y+85f);cubicTo(180f,y-120f,530f,y+160f,1100f,y-95f)
-                    lineTo(1100f,y-61f);cubicTo(550f,y+200f,170f,y-92f,-100f,y+108f);close()
-                }
-            }
             ConsoleScene.XBOX_360 -> repeat(4) { i ->
                 val x=120f+i*140f
                 paths[i].apply {
@@ -74,25 +67,6 @@ internal class ConsoleScenePainter {
         }
         paint.style=Paint.Style.FILL;paint.shader=null;paint.alpha=255
         when(scene) {
-            ConsoleScene.PS4 -> {
-                canvas.translate(wave*22f,other*12f)
-                repeat(4) { i ->
-                    paint.color=if(i%2==0) 0x2455d8ff else 0x1260c9ff;canvas.drawPath(paths[i],paint)
-                    paint.style=Paint.Style.STROKE;paint.strokeWidth=.8f;paint.color=0x3c95eaff;canvas.drawPath(paths[i],paint);paint.style=Paint.Style.FILL
-                }
-                drawGlow(canvas,760f+wave*35f,height*.58f)
-            }
-            ConsoleScene.PS5 -> {
-                drawGlow(canvas,770f+wave*45f,height*.35f)
-                canvas.translate(wave*9f,other*7f)
-                paint.style=Paint.Style.STROKE;paint.strokeWidth=.65f
-                repeat(3) { i -> paint.color=0x126f86a1;canvas.drawPath(paths[i],paint) }
-                paint.style=Paint.Style.FILL
-                repeat(if(lowDetail) 18 else 38) { i ->
-                    paint.color=if(i%3==0) 0x45c6b486 else 0x25c5d3e2
-                    canvas.drawCircle((i*173f+47f)%1000f,(i*97f+11f)%height,if(i%4==0) 1.5f else .7f,paint)
-                }
-            }
             ConsoleScene.XBOX_360_NXE,ConsoleScene.XBOX_360_METRO -> era.draw(canvas,phase)
             ConsoleScene.XBOX_360 -> {
                 canvas.translate(wave*23f,other*9f)

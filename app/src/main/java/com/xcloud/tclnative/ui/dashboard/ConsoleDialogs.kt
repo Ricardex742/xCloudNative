@@ -28,10 +28,11 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 data class ConsoleAction(val label: String, val action: () -> Unit) { var longAction: (() -> Unit)?=null }
-enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER }
+enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE }
 
 /** Shared native panels for search, account menus and messages. No platform alert buttons/rows. */
 class ConsoleDialog(context: Context, private val heading: String,private val purpose: ConsolePanelPurpose=ConsolePanelPurpose.GENERAL) : Dialog(context, R.style.ConsoleDialog) {
+    private var fullScreenContent=false
     init { DashboardTheme.applyOverlay(this.context) }
     private val navigationContext=context
     private val activity = context as? Activity
@@ -43,7 +44,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     val scale = (if(skin.enabled) minOf(screenWidth/1280f,screenHeight/720f) else screenWidth/1280f).coerceAtLeast(maxOf(.5f,context.resources.displayMetrics.density*.65f))
     val panel: LinearLayout = object : LinearLayout(context) {
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-            val limit = (screenHeight*.90f).roundToInt()
+            val limit = (screenHeight*(if(fullScreenContent) 1f else .90f)).roundToInt()
             val requested = MeasureSpec.getSize(heightMeasureSpec)
             val bound = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) limit else minOf(limit, requested)
             super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(bound, MeasureSpec.AT_MOST))
@@ -81,6 +82,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     var shortcut: ((KeyEvent) -> Boolean)?=null
     private val cleanups=mutableListOf<() -> Unit>()
     fun addCleanup(action: () -> Unit) { cleanups+=action }
+    internal fun htmlContent(view: View) {
+        fullScreenContent=true;panel.removeAllViews();panel.setPadding(0,0,0,0);panel.setBackgroundColor(Color.TRANSPARENT)
+        panel.addView(view,LinearLayout.LayoutParams(-1,screenHeight))
+    }
     override fun onStop() {
         visiblePanels.removeAll { it.get()==null || it.get()===this }
         window?.let(AppControllerWindows::detach)
@@ -91,12 +96,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         activity?.let(::setOwnerActivity)
         val headingContent=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
-        if(purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
-            headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(14) })
-            if(purpose==ConsolePanelPurpose.GUIDE) panel.minimumHeight=(screenHeight*.88f).roundToInt()
-        } else if(skin.scene.playStation) {
-            headingContent.addView(text(heading,34),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(22) })
-        } else if(purpose==ConsolePanelPurpose.GUIDE) {
+        if(purpose==ConsolePanelPurpose.GUIDE) {
             val brand=ConsoleBrandView(context)
             headingContent.addView(brand,LinearLayout.LayoutParams(px(176),px(42)))
             headingContent.addView(text(heading,27,true),LinearLayout.LayoutParams(-1,-2).apply { topMargin=px(16);bottomMargin=px(16) })
@@ -152,9 +152,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }
     /** Compact shortcuts keep text labels and use real native focus/accessibility nodes. */
     internal fun addShortcuts(items: List<Pair<ConsoleGlyph,ConsoleAction>>) {
-        val columns=if(purpose==ConsolePanelPurpose.GUIDE && skin.scene==com.xcloud.tclnative.settings.ConsoleScene.PS4) 1 else if(purpose==ConsolePanelPurpose.CONTROL_CENTER && screenWidth>screenHeight) 6 else if(purpose==ConsolePanelPurpose.GUIDE || screenWidth<screenHeight) 2 else 3
-        val sideMenu=purpose==ConsolePanelPurpose.GUIDE && skin.scene==com.xcloud.tclnative.settings.ConsoleScene.PS4
-        val compact=sideMenu || screenWidth>screenHeight && screenHeight/context.resources.displayMetrics.density<480
+        val columns=if(purpose==ConsolePanelPurpose.GUIDE || screenWidth<screenHeight) 2 else 3
+        val compact=screenWidth>screenHeight && screenHeight/context.resources.displayMetrics.density<480
         items.chunked(columns).forEach { group ->
             val row=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL;isBaselineAligned=false }
             group.forEach { (icon,action) ->
@@ -162,7 +161,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                     gravity=Gravity.CENTER
                     setPadding(px(8),px(10),px(8),px(10))
                     maxLines=2
-                    setTextSize(TypedValue.COMPLEX_UNIT_PX,(if(purpose==ConsolePanelPurpose.CONTROL_CENTER) 17 else 21)*scale)
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX,21*scale)
                     val mark=ConsoleIconDrawable(icon,px(28),if(skin.enabled) skin.textColors() else android.content.res.ColorStateList.valueOf(Color.WHITE))
                     setCompoundDrawablesWithIntrinsicBounds(if(compact) mark else null,if(compact) null else mark,null,null)
                     compoundDrawablePadding=px(7)
@@ -173,7 +172,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                         if(android.os.Build.VERSION.SDK_INT>=26) tooltipText=UiText.text("Personalizar estatísticas")
                     }
                 }
-                row.addView(button,LinearLayout.LayoutParams(0,if(sideMenu) maxOf(touchSize(),px(64)) else if(compact) touchSize() else maxOf(touchSize(),px(100)),1f).apply { marginEnd=px(7) })
+                row.addView(button,LinearLayout.LayoutParams(0,if(compact) touchSize() else maxOf(touchSize(),px(100)),1f).apply { marginEnd=px(7) })
                 if(initialFocus==null) initialFocus=button
             }
             repeat(columns-group.size) { row.addView(View(context),LinearLayout.LayoutParams(0,1,1f)) }
@@ -241,9 +240,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             decorView.setPadding(0,0,0,0)
             addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setDimAmount(if(skin.enabled) .48f else .72f)
-            if(purpose==ConsolePanelPurpose.CONTROL_CENTER) {
-                setGravity(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
-                setLayout((screenWidth*.96f).roundToInt(),WindowManager.LayoutParams.WRAP_CONTENT)
+            if(fullScreenContent) {
+                setGravity(Gravity.CENTER);setDimAmount(0f);setLayout(WindowManager.LayoutParams.MATCH_PARENT,WindowManager.LayoutParams.MATCH_PARENT)
             } else if(purpose==ConsolePanelPurpose.GUIDE) {
                 val side=SeriesPersonalizationStore(context).read().guide
                 setGravity(Gravity.CENTER_VERTICAL or if(side==SeriesGuideSide.RIGHT) Gravity.RIGHT else Gravity.LEFT)

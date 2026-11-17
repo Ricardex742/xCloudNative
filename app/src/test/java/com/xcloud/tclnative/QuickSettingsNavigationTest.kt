@@ -165,16 +165,4 @@ class QuickSettingsNavigationTest {
         val labels=all(panel.showAccount().body).filterIsInstance<TextView>().filter { it.isClickable }.map { it.text.toString() }
         assertFalse(labels.any { it=="Trocar conta" || it=="Atualizar catálogo" })
     }
-    @Test fun playStationQuickMenusKeepResumeCloseAndExplicitEndConfirmation() {
-        for(theme in listOf(UiTheme.PS4,UiTheme.PS5)) {
-            DashboardTheme.apply(activity,theme);var ends=0;var toggles=0
-            fun menu()=GameMenuPanel.show(activity,{},{},{},{ends++},hudToggle={toggles++},audio={},friends={},settings={})
-            val first=menu();capture(first,"${theme.name.lowercase()}-quick-menu")
-            click(first,"Mostrar controle virtual");assertEquals(1,toggles);assertEquals(0,ends)
-            close(menu());assertEquals(0,ends)
-            click(menu(),"ENCERRAR PARTIDA");assertEquals(0,ends)
-            close(latest());assertEquals(0,ends)
-            click(menu(),"ENCERRAR PARTIDA");click(latest(),"ENCERRAR PARTIDA");assertEquals(1,ends)
-        }
-    }
 }

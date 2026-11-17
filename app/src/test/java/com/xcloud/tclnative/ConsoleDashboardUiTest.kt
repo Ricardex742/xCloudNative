@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit
 @LooperMode(LooperMode.Mode.PAUSED)
 class ConsoleDashboardUiTest {
     private lateinit var server: MockWebServer
-    private val themes=listOf(UiTheme.XBOX_360,UiTheme.XBOX_ONE,UiTheme.XBOX_SERIES,UiTheme.XBOX_ORIGINAL,UiTheme.XBOX_360_NXE,UiTheme.XBOX_360_METRO,UiTheme.PS4,UiTheme.PS5)
+    private val themes=listOf(UiTheme.XBOX_360,UiTheme.XBOX_ONE,UiTheme.XBOX_SERIES,UiTheme.XBOX_ORIGINAL,UiTheme.XBOX_360_NXE,UiTheme.XBOX_360_METRO)
     @Before fun setup() {
         val app=RuntimeEnvironment.getApplication()
         app.getSharedPreferences("app_appearance",0).edit().clear().commit()
@@ -120,7 +120,7 @@ class ConsoleDashboardUiTest {
                 val manager=grid.layoutManager as GridLayoutManager
                 assertEquals(6,adapter!!.itemCount)
                 assertEquals(if(theme==UiTheme.XBOX_ONE || theme==UiTheme.XBOX_360_METRO) 3 else 1,manager.spanCount)
-                assertEquals(if(theme==UiTheme.XBOX_SERIES || theme==UiTheme.XBOX_360_NXE || theme.scene.playStation) RecyclerView.HORIZONTAL else RecyclerView.VERTICAL,manager.orientation)
+                assertEquals(if(theme==UiTheme.XBOX_SERIES || theme==UiTheme.XBOX_360_NXE) RecyclerView.HORIZONTAL else RecyclerView.VERTICAL,manager.orientation)
                 if(theme==UiTheme.XBOX_ORIGINAL) {
                     assertEquals(View.GONE,grid.visibility);capture(view,"xbox_original-home")
                     click(view,LibraryTab.ALL.label);layout(view)
@@ -199,66 +199,6 @@ class ConsoleDashboardUiTest {
                     if(theme==UiTheme.XBOX_ORIGINAL) { view.back();layout(view,w,h) }
                 }
             } finally { view.close();controller.pause().stop().destroy() }
-        }
-    }
-    @Test fun playStationPortraitKeepsLaunchSearchAndCategoriesReachableWithoutLaunchingOnFocus() {
-        for(theme in listOf(UiTheme.PS4,UiTheme.PS5)) {
-            DashboardTheme.apply(RuntimeEnvironment.getApplication(),theme)
-            val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();val played=mutableListOf<String>()
-            val view=GameDashboardView(a,GameLibrary(a,"portrait-${theme.name}"),{ played+=it.titleId },{},{},{})
-            try {
-                a.setContentView(view);view.setGames(games());view.selectTab(LibraryTab.ALL);layout(view,360,780)
-                view.restoreFocus();layout(view,360,780);assertTrue(played.isEmpty())
-                val grid=all(view).filterIsInstance<RecyclerView>().single()
-                assertTrue(grid.top>0 && grid.bottom<780)
-                val launch=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.toString()=="JOGAR" }
-                val search=all(view).single { it.contentDescription=="Pesquisar jogos" }
-                val settings=all(view).filterIsInstance<TextView>().single { it.isShown && it.contentDescription=="Configurações" }
-                for(target in listOf(launch,search,settings)) {
-                    assertTrue("$theme target too small: ${target.width}x${target.height}",target.width>=48 && target.height>=48)
-                    val bounds=Rect(0,0,target.width,target.height);view.offsetDescendantRectToMyCoords(target,bounds)
-                    assertTrue("$theme target outside portrait: $bounds",Rect(0,0,360,780).contains(bounds))
-                }
-                assertFalse(Rect.intersects(Rect(search.left,search.top,search.right,search.bottom),Rect(settings.left,settings.top,settings.right,settings.bottom)))
-                capture(view,"${theme.name.lowercase()}-portrait")
-                launch.performClick();assertEquals(listOf(view.selectedGame!!.titleId),played)
-            } finally { view.close();c.pause().stop().destroy() }
-        }
-    }
-    @Test fun ps5HeroBelongsOnlyToTheSelectedGameAndClearsForAGameWithoutPanoramicArtwork() {
-        DashboardTheme.apply(RuntimeEnvironment.getApplication(),UiTheme.PS5)
-        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
-        val view=GameDashboardView(a,GameLibrary(a,"ps5-selection"),{},{},{},{})
-        try {
-            a.setContentView(view);view.setGames(games());view.selectTab(LibraryTab.ALL);layout(view);view.restoreFocus();layout(view);awaitArtwork(view)
-            val layer=all(view).filterIsInstance<ConsoleThemeBackdrop>().single()
-            val deadline=System.currentTimeMillis()+5000
-            while(!layer.hasArtwork && System.currentTimeMillis()<deadline) { Thread.sleep(15);shadowOf(Looper.getMainLooper()).idleFor(16,TimeUnit.MILLISECONDS) }
-            assertTrue(layer.hasArtwork);capture(view,"ps5-selected-hero")
-            val grid=all(view).filterIsInstance<RecyclerView>().single()
-            grid.findViewHolderForAdapterPosition(1)!!.itemView.requestFocus();layout(view)
-            shadowOf(Looper.getMainLooper()).idleFor(300,TimeUnit.MILLISECONDS)
-            assertEquals("CONSOLE-1",view.selectedGame!!.titleId);assertFalse(layer.hasArtwork)
-            capture(view,"ps5-without-hero")
-        } finally { view.close();c.pause().stop().destroy() }
-    }
-    @Test fun playStationLibraryKeepsAllCategoriesAndReturnsFocusToTheVisibleLibraryTab() {
-        for(theme in listOf(UiTheme.PS4,UiTheme.PS5)) {
-            DashboardTheme.apply(RuntimeEnvironment.getApplication(),theme)
-            val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
-            val view=GameDashboardView(a,GameLibrary(a,"ps-library-${theme.name}"),{},{},{},{})
-            try {
-                a.setContentView(view);view.setGames(games());view.setGamePassProducts(setOf("PRODUCT-0"));view.selectTab(LibraryTab.ALL);layout(view)
-                val library=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
-                library.performClick()
-                val chooser=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
-                val rows=all(chooser.body).filterIsInstance<TextView>().filter { it.isClickable }
-                assertEquals(LibraryTab.entries.map { it.label }.toSet(),rows.map { it.text.toString() }.toSet())
-                rows.single { it.text.toString()==LibraryTab.GAME_PASS.label }.performClick();layout(view)
-                assertEquals(LibraryTab.GAME_PASS,view.activeTab)
-                library.requestFocus();layout(view)
-                assertEquals(LibraryTab.GAME_PASS,view.activeTab);assertTrue(library.isShown && library.hasFocus())
-            } finally { view.close();c.pause().stop().destroy() }
         }
     }
 }

@@ -31,7 +31,6 @@ internal class ConsoleBrandView(context: Context): FrameLayout(context) {
                 mark.imageTintList=ColorStateList.valueOf(Color.WHITE);word.imageTintList=ColorStateList.valueOf(Color.WHITE)
             }
             ConsoleScene.XBOX_ORIGINAL -> mark.setImageResource(R.drawable.console_logo_original)
-            ConsoleScene.PS4,ConsoleScene.PS5 -> { mark.setImageResource(R.drawable.brand_logo);mark.imageTintList=ColorStateList.valueOf(Color.WHITE) }
             ConsoleScene.NONE -> mark.setImageResource(R.drawable.brand_logo)
         }
         geometry=0L;requestLayout();invalidate()

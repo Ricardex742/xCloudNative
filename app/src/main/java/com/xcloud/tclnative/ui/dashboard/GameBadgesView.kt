@@ -53,8 +53,6 @@ internal class GameBadgesView(context: Context) : FrameLayout(context) {
         val light=scene==ConsoleScene.XBOX_360
         val ink=if(light) 0xff35412b.toInt() else if(scene==ConsoleScene.XBOX_ORIGINAL) 0xffb6ec57.toInt() else Color.WHITE
         val colors=when(scene) {
-            ConsoleScene.PS4 -> intArrayOf(0xda073578.toInt(),0xda073578.toInt())
-            ConsoleScene.PS5 -> intArrayOf(0xde303039.toInt(),0xde202028.toInt())
             ConsoleScene.XBOX_360 -> intArrayOf(0xf4f2f5e4.toInt(),0xf4cbd3b9.toInt())
             ConsoleScene.XBOX_360_NXE -> intArrayOf(0xe14e5e43.toInt(),0xe1273620.toInt())
             ConsoleScene.XBOX_360_METRO -> intArrayOf(0xec137e0b.toInt(),0xec137e0b.toInt())

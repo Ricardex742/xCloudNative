@@ -48,8 +48,8 @@ internal object DashboardTheme {
         UiTheme.XBOX_ONE -> R.style.PaletteXboxOne
         UiTheme.XBOX_SERIES -> R.style.PaletteXboxSeries
         UiTheme.XBOX_ORIGINAL -> R.style.PaletteXboxOriginal
-        UiTheme.PS4 -> R.style.PalettePs4
-        UiTheme.PS5 -> R.style.PalettePs5
+        UiTheme.PS4 -> R.style.PaletteBlue
+        UiTheme.PS5 -> R.style.PaletteSilver
     }
     fun install(context: Context) { apply(context,AppearanceSettingsStore(context).read()) }
     fun applyOverlay(context: Context) { context.theme.applyStyle(overlay,true) }
