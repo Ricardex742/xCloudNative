@@ -106,6 +106,7 @@ Manter o app leve. A solicitação posterior de copiar os HTMLs autoriza o WebVi
 - Verificações: `python3 scripts/verify_html_themes.py` usa Playwright/Chromium para conferir UI e ponte; testes Android e assinatura continuam no workflow existente. Registrar o resultado do build atual antes de entregar. Os temas HTML preservam os textos dos documentos em português; os painéis nativos mantêm os idiomas existentes.
 - Os dois HTMLs foram comparados byte a byte com os anexos originais. A verificação no navegador passou para PS4 e PS5, incluindo seleção, início, favoritos, perfil, saldo, gesto horizontal sem início acidental, categorias e confirmação de encerramento. Isso não substitui teste em aparelhos reais.
 - Os testes de geometria dos botões nativos se aplicam somente aos temas nativos; nos temas HTML esses botões ficam ocultos. A restauração das capas e do foco ao retornar ao tema Verde preserva o cache nativo durante a navegação; a entrada no streaming continua destruindo a superfície HTML e pausando as capas como antes.
+- Build de `d0e08e313affb0a9aacb0d06bc1b6e7d4a8512c5`: Actions `44181128925` concluído com sucesso; 809 testes JVM, zero falhas/erros/ignorados, lint e verificações dos filtros passaram. APK `0.39.1-html-ps` (93), certificado permanente `efd33d9a3122ab5df2a7f0932e80b8fb51449bb1d3206fddc300b2766db73107`; artefato de download `14372857253`. Nenhum workflow foi alterado e nenhuma release foi publicada. Validação nos aparelhos reais permanece pendente.
 
 ## Verificação e entrega em outro ambiente
 
