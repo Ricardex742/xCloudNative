@@ -214,7 +214,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         consoleLogo.refresh();consoleLogo.visibility=VISIBLE;eyebrow.visibility=GONE
         background=DashboardBackground(consoleArtwork=scene!=ConsoleScene.XBOX_360)
         shade.background=ConsoleQueueChrome(scene)
-        backdrop.visibility=if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES) VISIBLE else GONE
+        backdrop.visibility=if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.PS5) VISIBLE else GONE
         val ink=if(scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_360_METRO) 0xff233415.toInt() else Color.WHITE
         listOf(eyebrow,title,posterFallback,status,estimateLabel,estimate,elapsedLabel,elapsed,explanation,heartbeat,freshness,note,cancelButton).forEach { v ->
             v.typeface=Typeface.create(if(scene==ConsoleScene.XBOX_ORIGINAL) "sans-serif-condensed" else "sans-serif-medium",Typeface.NORMAL)
@@ -224,6 +224,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         eyebrow.text=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.XBOX_360_NXE,ConsoleScene.XBOX_360_METRO -> "XBOX 360";ConsoleScene.XBOX_ONE -> "Xbox One";ConsoleScene.XBOX_SERIES -> "Xbox Series X|S";else -> "XBOX" }
         eyebrow.setTextColor(if(scene==ConsoleScene.XBOX_ORIGINAL) 0xffb8ee4c.toInt() else ink)
         panel.background=when(scene) {
+            ConsoleScene.PS4,ConsoleScene.PS5 -> ConsolePanelSkin(scene).background()
             ConsoleScene.XBOX_360 -> GradientDrawable().apply { setColor(0x70f6f8e9);cornerRadius=5f;setStroke(1,0xff8da469.toInt()) }
             ConsoleScene.XBOX_ONE -> GradientDrawable().apply { setColor(0xff161616.toInt()) }
             ConsoleScene.XBOX_360_NXE -> GradientDrawable().apply { setColor(0xdf263324.toInt());cornerRadius=5f;setStroke(1,0xffa3b39b.toInt()) }
@@ -233,8 +234,11 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         }
         cancelButton.background=ConsoleControlPlate(scene,ConsoleControl.ACTION,true)
         cancelButton.setTextColor(if(scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_ORIGINAL) 0xff142700.toInt() else Color.WHITE)
+        if(scene.playStation) cancelButton.setTextColor(android.content.res.ColorStateList(
+            arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf(android.R.attr.state_pressed),intArrayOf()),
+            intArrayOf(if(scene==ConsoleScene.PS5) 0xff15171c.toInt() else Color.WHITE,if(scene==ConsoleScene.PS5) 0xff15171c.toInt() else Color.WHITE,Color.WHITE)))
         steps.forEach { it.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL) }
-        spinner.indeterminateTintList=ColorStateList.valueOf(if(scene==ConsoleScene.XBOX_360) 0xff4d761e.toInt() else 0xff8bdc42.toInt())
+        spinner.indeterminateTintList=ColorStateList.valueOf(if(scene.playStation) Color.WHITE else if(scene==ConsoleScene.XBOX_360) 0xff4d761e.toInt() else 0xff8bdc42.toInt())
         if(scene==ConsoleScene.XBOX_360_NXE) note.setTextColor(0xff263024.toInt())
         geometry=0L;requestLayout()
         if(changed) { lastBackdrop=null;lastPoster=null;game?.let(::setGame) }
@@ -282,6 +286,13 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         title.maxLines=2;title.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)
         if(android.os.Build.VERSION.SDK_INT>=26) title.setAutoSizeTextTypeUniformWithConfiguration((25*s).roundToInt().coerceAtLeast(1),(38*s).roundToInt().coerceAtLeast(2),1,TypedValue.COMPLEX_UNIT_PX)
         when(scene) {
+            ConsoleScene.PS4,ConsoleScene.PS5 -> {
+                root(title,76,102,1128,80)
+                root(poster,76,218,274,274);root(posterFallback,88,230,250,250);root(badges,76,440,274,52)
+                root(panel,390,206,814,334)
+                steps.forEachIndexed { i,v -> root(v,390+i*277,560,261,52) }
+                root(cancelButton,76,558,274,54);root(note,390,638,814,44)
+            }
             ConsoleScene.XBOX_360_NXE -> {
                 root(eyebrow,64,38,1100,35);root(title,64,88,1100,79)
                 root(poster,76,207,294,294);root(posterFallback,88,219,270,270);root(badges,76,449,294,52)

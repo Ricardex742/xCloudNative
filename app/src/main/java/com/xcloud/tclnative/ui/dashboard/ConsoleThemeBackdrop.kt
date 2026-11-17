@@ -117,7 +117,7 @@ internal class ConsoleThemeBackdrop(context: Context): View(context) {
                 wallpaperArt?.let { it.phase=phase;it.lowDetail=lowRam || television;it.drawArtwork(canvas,picture,width,height) }
             }
             wallpaperArt?.let { it.hasArtwork=picture?.isRecycled==false;it.lowDetail=lowRam || television;it.phase=phase;it.draw(canvas) }
-        } else if(picture!=null && !picture.isRecycled && DashboardTheme.palette.theme.scene==ConsoleScene.XBOX_SERIES) {
+        } else if(picture!=null && !picture.isRecycled && (DashboardTheme.palette.theme.scene==ConsoleScene.XBOX_SERIES || DashboardTheme.palette.theme.scene==ConsoleScene.PS5)) {
             val wave=kotlin.math.sin(phase*2*Math.PI).toFloat()
             val moving=interval!=null || phase!=0f
             val fit=maxOf(width.toFloat()/picture.width,height.toFloat()/picture.height)*(if(moving) 1.05f else 1f)

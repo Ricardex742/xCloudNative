@@ -32,6 +32,22 @@ internal class ConsoleControlPlate(private val scene: ConsoleScene,private val c
         rect.set(bounds);val h=rect.height();val inset=(h*.045f).coerceAtLeast(1f)
         rect.inset(if(control==ConsoleControl.CARD) 2f else inset,if(control==ConsoleControl.CARD) 2f else inset);paint.style=Paint.Style.FILL;paint.shader=null
         when(scene) {
+            ConsoleScene.PS4,ConsoleScene.PS5 -> {
+                val ps5=scene==ConsoleScene.PS5
+                val radius=if(ps5) { if(control==ConsoleControl.ACTION) h/2f else 9f } else 0f
+                if(control!=ConsoleControl.TAB || focused || selected) {
+                    paint.color=if(ps5) { if(focused) 0xffe7e8eb.toInt() else 0x991c2029.toInt() }
+                        else if(focused) 0x655abaff else 0x28032d78
+                    if(control!=ConsoleControl.CARD) canvas.drawRoundRect(rect,radius,radius,paint)
+                }
+                if(focused || selected && control==ConsoleControl.TAB) {
+                    paint.style=Paint.Style.STROKE;paint.color=Color.WHITE;paint.strokeWidth=if(focused) 2.5f else 1f
+                    canvas.drawRoundRect(rect,radius,radius,paint)
+                }
+                if(!ps5 && control==ConsoleControl.TAB) icon?.let {
+                    icons.draw(canvas,it,rect.centerX()-13f,rect.top+5f,26f,Color.WHITE)
+                }
+            }
             ConsoleScene.XBOX_360_NXE -> {
                 if(control==ConsoleControl.TAB && (selected || focused) || control==ConsoleControl.ACTION) {
                     paint.shader=fill;canvas.drawRoundRect(rect,5f,5f,paint);paint.shader=null
@@ -139,6 +155,13 @@ internal class ConsoleDashboardChrome(private val selected: () -> Int): Drawable
         motionMatrix.setTranslate(wave*9f,0f);metal?.setLocalMatrix(motionMatrix)
         val save=canvas.save();canvas.scale(s,s);paint.shader=null;paint.style=Paint.Style.FILL;paint.alpha=255
         when(scene) {
+            ConsoleScene.PS4 -> {
+                paint.color=0x18001967;canvas.drawRect(0f,0f,w,bounds.height()/s,paint)
+            }
+            ConsoleScene.PS5 -> {
+                paint.shader=shade;canvas.drawRect(0f,0f,w,bounds.height()/s,paint)
+                paint.shader=sideShade;canvas.drawRect(0f,0f,w,bounds.height()/s,paint);paint.shader=null
+            }
             ConsoleScene.XBOX_360 -> {
                 paint.shader=metal
                 repeat(6) { i -> if(i!=index) {

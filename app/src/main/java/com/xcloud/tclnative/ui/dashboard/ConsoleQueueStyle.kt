@@ -17,6 +17,8 @@ internal class ConsoleQueueChrome(private val scene: ConsoleScene): Drawable() {
     override fun draw(c: Canvas) {
         p.style=Paint.Style.FILL;p.shader=null;p.alpha=255
         when(scene) {
+            ConsoleScene.PS4 -> { p.color=0x96032b75.toInt();c.drawRect(bounds,p) }
+            ConsoleScene.PS5 -> { p.shader=shade;c.drawRect(bounds,p);p.shader=null }
             ConsoleScene.XBOX_360 -> {
                 val s=minOf(bounds.width()/1280f,bounds.height()/720f);val ox=(bounds.width()-1280*s)/2f
                 val save=c.save();c.translate(ox,0f);c.scale(s,s)
@@ -54,6 +56,8 @@ internal class ConsoleQueueStep(private val scene: ConsoleScene,private val inde
             else { p.style=Paint.Style.FILL;p.textAlign=Paint.Align.CENTER;p.typeface=Typeface.DEFAULT_BOLD;p.textSize=radius*1.1f;c.drawText("${index+1}",x,y+radius*.38f,p) }
         } else {
             p.color=when(scene) {
+                ConsoleScene.PS4 -> if(active) 0xff3268ab.toInt() else 0xff153b76.toInt()
+                ConsoleScene.PS5 -> if(active) 0xff4a4c55.toInt() else 0xff24262d.toInt()
                 ConsoleScene.XBOX_360 -> if(active) 0xff6b8d24.toInt() else 0xffe4ead0.toInt()
                 ConsoleScene.XBOX_360_NXE -> if(active) 0xff388514.toInt() else 0xffdae0d6.toInt()
                 ConsoleScene.XBOX_360_METRO -> if(active) 0xff168d07.toInt() else 0xffc4cdc0.toInt()
@@ -61,7 +65,7 @@ internal class ConsoleQueueStep(private val scene: ConsoleScene,private val inde
                 else -> if(active) 0xff9dce32.toInt() else 0xff142a08.toInt()
             }
             val radius=if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_360_METRO) 0f else if(scene==ConsoleScene.XBOX_360_NXE) 4f else r.height()*.3f;c.drawRoundRect(r,radius,radius,p)
-            if(active) { p.style=Paint.Style.STROKE;p.strokeWidth=2f;p.color=if(scene==ConsoleScene.XBOX_360) 0xff446016.toInt() else 0xffa9df59.toInt();c.drawRoundRect(r,radius,radius,p) }
+            if(active) { p.style=Paint.Style.STROKE;p.strokeWidth=2f;p.color=if(scene.playStation) Color.WHITE else if(scene==ConsoleScene.XBOX_360) 0xff446016.toInt() else 0xffa9df59.toInt();c.drawRoundRect(r,radius,radius,p) }
         }
         p.style=Paint.Style.FILL
     }

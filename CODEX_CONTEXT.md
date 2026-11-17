@@ -4,7 +4,7 @@ Leia este arquivo junto com `AGENTS.md`. O usuário pediu explicitamente um resu
 
 ## Objetivo atual e limites
 
-Implementar navegação mais simples e atalhos durante a partida, usando a organização do Better xCloud como referência. Priorizar ações comuns e deixar ajustes especializados em Avançado. **Temas PS4 e PS5 estão adiados por pedido explícito do usuário.** Não adicioná-los nesta entrega.
+Implementar navegação mais simples e atalhos durante a partida, usando a organização do Better xCloud como referência. Priorizar ações comuns e deixar ajustes especializados em Avançado. O usuário retomou explicitamente os temas PS4 e PS5. Implementá-los como composições nativas, próximas das interfaces dos consoles, mantendo navegação por controle e toque e o caminho de streaming independente.
 
 O usuário prefere execução autônoma, comunicação em português e conclusões baseadas em evidência. Não pedir novamente autorização para ações já incluídas no pedido. Não dizer que um problema foi resolvido em aparelho real apenas porque testes locais passaram.
 
@@ -14,7 +14,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão de teste desta branch: **0.38.2-menu-lab**, versionCode **91**, usando a identidade de atualização existente.
+- Versão de teste desta branch: **0.39.0-ps-lab**, versionCode **92**, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
@@ -88,13 +88,20 @@ APK de teste anterior: `0.38.1-input-order`, versionCode 90. **A confirmação f
 - Amigos: presença e atividade, com abertura do título em **sessão própria**. Entrar na mesma partida/grupo do amigo ainda não está implementado.
 - Atalhos por jogo no launcher, pin quando suportado e APK de atalho para ambientes que exigem instalação.
 - Quinze idiomas/regiões da interface com recursos offline. Manter as traduções completas e os placeholders consistentes.
-- Temas Xbox existentes e personalização; simulações PS4/PS5 eram HTMLs de estudo fora do APK e agora ficam adiadas. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
+- Temas Xbox existentes e personalização. PS4/PS5 agora têm opções nativas em Aparência, com cenas próprias, biblioteca horizontal, foco e painéis adaptados. As simulações HTML anteriores continuam externas ao repositório e não vieram neste workspace; não presumir que os testes nativos equivalem à revisão desses HTMLs. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
 
 ## Revisão de desempenho anterior
 
 Uma revisão de cerca de 197 arquivos de produção identificou oportunidades a medir antes de mudanças amplas: cancelamento durante leitura do corpo HTTP, limites de JSON, tamanho das bibliotecas nativas/ABIs, escrita de preferências no input, reutilização de serviços, alocações na thread de input e decomposição da Activity. Não foi autorizada uma reescrita geral indiscriminada nem foram implementadas todas essas sugestões.
 
 Manter o app leve: evitar WebViews novos, bibliotecas de interface adicionais ou efeitos pesados para atalhos. Preservar o caminho de input separado da renderização. Testes de desempenho locais são evidência do cenário medido, não prova de latência física.
+
+## Temas PlayStation
+
+- `ConsoleScene.PS4` e `PS5` são preferências de interface independentes do vídeo e da conta. PS4 usa ondas vetoriais e faixa horizontal com seleção ampliada; PS5 usa seletor compacto e panorama do jogo selecionado, com fundo próprio quando o panorama falta.
+- Reutilizam o catálogo reciclado, o carregamento limitado de artes, os painéis nativos e a política de movimento existente. Sem novas bibliotecas, WebViews, vídeos de fundo ou alterações de input/handshake.
+- `layoutPlayStation` trata paisagem e retrato; botões de pesquisa, configurações e jogar preservam alvos de toque. `ConsoleDashboardUiTest` cobre lançamento explícito, retrato e descarte do panorama ao selecionar jogo sem arte.
+- Esta etapa ainda precisa das verificações do build atual e de validação em aparelhos reais. Workflows permanecem intactos.
 
 ## Verificação e entrega em outro ambiente
 

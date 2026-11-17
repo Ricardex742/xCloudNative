@@ -1233,4 +1233,6 @@
     <string name="ui_2d7e0a796db2917d" formatted="false">"Media volume: {0}/{1}"</string>
     <string name="ui_a8b7d8332f3863e8" formatted="false">"Media volume"</string>
     <string name="ui_27964de71ae4bf19" formatted="false">"Advanced"</string>
+    <string name="ui_37543789ff88ca0c">"PlayStation 4"</string>
+    <string name="ui_1e54d845b7114c54">"PlayStation 5"</string>
 </resources>
