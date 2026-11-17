@@ -49,7 +49,7 @@ class XCloudWebRtcClient(
     private val inputStarted = AtomicBoolean(false)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val gamepads = mutableMapOf<Int,GamepadState>().apply { if(!nativeTouch && !nativeKeyboardMouse) put(0,GamepadState()) }
-    private val gamepadConnections = GamepadConnections()
+    private val gamepadConnections = GamepadConnections { handshake.gamepadSync.registered }
     @Volatile private var inputDimensions: TouchInputDimensions? = null
     private val remoteInputTrace=RemoteInputTrace()
     private val channelTrace=ChannelLifecycleTrace()
@@ -425,7 +425,6 @@ class XCloudWebRtcClient(
             val input = channels.getValue("input")
             synchronized(pumpLock) {
                 if (closed.get()) return
-                gamepads.keys.forEach { if(gamepadConnections.add(it)) sendGamepadChanged(it,true) }
                 val pump = RealtimeInputPump(
                 bufferedAmount = { if (closed.get()) Long.MAX_VALUE else input.bufferedAmount() },
                 send = { bytes -> !closed.get() && input.send(DataChannel.Buffer(ByteBuffer.wrap(bytes), true)) },
@@ -475,6 +474,9 @@ class XCloudWebRtcClient(
     private fun startInputDelivery() = synchronized(pumpLock) {
         if(closed.get() || serverEnded.get()!=null || channelsReady.isCompleted || !handshake.gamepadSync.registered) return@synchronized
         val pump=inputPump ?: return@synchronized
+        // Main-game startup may already know several Android/USB devices. Reconnect discovers them
+        // later. Both paths must announce slot zero first, then secondary slots, then input states.
+        if(!gamepadConnections.registerPending(gamepads.keys) { sendGamepadChanged(it,true) }) return@synchronized
         // The pump buffers genuine events before start; registration must precede the first state report.
         pump.start()
         channelsReady.complete(Unit)
@@ -497,9 +499,12 @@ class XCloudWebRtcClient(
         return scheduled
     }
 
-    private fun sendGamepadChanged(index: Int, added: Boolean) {
+    private fun sendGamepadChanged(index: Int, added: Boolean): Boolean {
         val bytes=JSONObject().put("message","gamepadChanged").put("gamepadIndex",index).put("wasAdded",added).toString().toByteArray(Charsets.UTF_8)
-        if(channels["control"]?.send(DataChannel.Buffer(ByteBuffer.wrap(bytes),false)) != true && !closed.get()) fail("CHANNELS: falha ao atualizar controle")
+        val accepted=!closed.get() && channels["control"]?.send(DataChannel.Buffer(ByteBuffer.wrap(bytes),false))==true
+        if(accepted) channelTrace.sent(ChannelMessage("control",bytes))
+        else if(!closed.get()) fail("CHANNELS: falha ao atualizar controle")
+        return accepted
     }
     fun updateGamepad(state: GamepadState, index: Int = 0,auxiliary: Boolean=false) {
         require(index in 0..3)

@@ -16,6 +16,7 @@ class ChannelLifecycleTrace(private val nanoTime: () -> Long=System::nanoTime) {
     private var authorizationSent=false
     private var metadataSent=false
     private var handshakeAck=false
+    private val gamepadOrder=java.util.ArrayDeque<String>()
     @Synchronized fun state(channel: String,state: String) {
         if(channel !in states || state !in setOf("CONNECTING","OPEN","CLOSING","CLOSED")) return
         states[channel]=state
@@ -25,8 +26,18 @@ class ChannelLifecycleTrace(private val nanoTime: () -> Long=System::nanoTime) {
     }
     @Synchronized fun sent(message: ChannelMessage) {
         if(message.channel=="input" && message.binary) metadataSent=true
-        if(message.channel=="control" && !message.binary && message.bytes.size<=MAX_JSON &&
-            runCatching { JSONObject(String(message.bytes,Charsets.UTF_8)).optString("message") }.getOrNull()=="authorizationRequest") authorizationSent=true
+        if(message.channel=="control" && !message.binary && message.bytes.size<=MAX_JSON) {
+            val json=runCatching { JSONObject(String(message.bytes,Charsets.UTF_8)) }.getOrNull() ?: return
+            when(json.optString("message")) {
+                "authorizationRequest" -> authorizationSent=true
+                "gamepadChanged" -> {
+                    val index=json.optInt("gamepadIndex",-1)
+                    if(index !in 0..3 || json.opt("wasAdded") !is Boolean) return
+                    if(gamepadOrder.size==8) gamepadOrder.removeFirst()
+                    gamepadOrder.addLast("$index${if(json.getBoolean("wasAdded")) "+" else "-"}")
+                }
+            }
+        }
     }
     @Synchronized fun received(channel: String,binary: Boolean,data: ByteBuffer) {
         if(channel!="control" && channel!="message") return
@@ -41,7 +52,7 @@ class ChannelLifecycleTrace(private val nanoTime: () -> Long=System::nanoTime) {
     }
     @Synchronized fun diagnostics()=UiText.text("Canais: {0}; autorização enviada {1}; metadata enviada {2}; ack {3}; controle recebido {4}/{5}; mensagem recebida {6}/{7}; primeiro fechamento após {8} ms",
         UiText.nested(states.entries.joinToString(",") { "${it.key}=${it.value}" }),UiText.nested(authorizationSent),UiText.nested(metadataSent),UiText.nested(handshakeAck),
-        UiText.nested(controlReceived),UiText.nested(controlType),UiText.nested(messageReceived),UiText.nested(messageType),UiText.nested(firstCloseMs?.toString() ?: "n/d"))
+        UiText.nested(controlReceived),UiText.nested(controlType),UiText.nested(messageReceived),UiText.nested(messageType),UiText.nested(firstCloseMs?.toString() ?: "n/d"))+"\nGAMEPAD_ORDER/${gamepadOrder.joinToString(">").ifEmpty { "NONE" }}"
     companion object {
         private const val MAX_JSON=8192
         private val KNOWN_TYPES=setOf("Handshake","HandshakeAck","Message","Transaction","TransactionStart","TransactionComplete","Unhandled","ReceiverCancel","SenderCancel","Response","Error",
