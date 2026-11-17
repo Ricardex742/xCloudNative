@@ -12,11 +12,19 @@ class StreamingSessionMessagesTest {
         val orders=listOf(listOf("control","input","message"),listOf("control","message","input"),listOf("input","control","message"),
             listOf("input","message","control"),listOf("message","control","input"),listOf("message","input","control"))
         for(touch in listOf(false,true)) for(order in orders) for(ackAt in 0..3) {
-            val handshake=ChannelHandshake(touch);val messages=mutableListOf<ChannelMessage>()
+            var now=0L
+            val handshake=ChannelHandshake(touch,clockMs={ now });val messages=mutableListOf<ChannelMessage>()
             for(i in 0..3) {
                 if(i==ackAt) messages+=handshake.onHandshakeAck()
                 if(i<3) messages+=handshake.onOpen(order[i])
             }
+            assertFalse(messages.filterNot { it.binary }.any { json(it).optString("target")==StreamingSessionMessages.TITLE_CONSTRAIN })
+            messages.forEach(handshake.gamepadSync::sent)
+            now=499;assertTrue(handshake.onGamepadSyncDue().isEmpty())
+            now=500;val registered=handshake.onGamepadSyncDue()
+            assertEquals(2,registered.size)
+            assertTrue(json(registered.first()).getBoolean("wasAdded"))
+            messages+=registered
             val activation=messages.filterNot { it.binary }.single { json(it).optString("target")==StreamingSessionMessages.TITLE_CONSTRAIN }
             val body=json(activation)
             assertEquals("message",activation.channel);assertEquals("TransactionStart",body.getString("type"))
@@ -24,6 +32,7 @@ class StreamingSessionMessagesTest {
             assertTrue(body.getString("cv").matches(Regex("[A-Za-z0-9+/]{22}\\.0")))
             assertTrue(messages.indexOf(activation)>messages.indexOfFirst { it.binary })
             assertTrue(handshake.onHandshakeAck().isEmpty());assertTrue(handshake.onOpen("message").isEmpty())
+            assertTrue(handshake.onGamepadSyncDue().isEmpty())
         }
     }
     @Test fun activationTracksTheMatchingResponseWithoutTreatingAnUnsupportedOptionalMethodAsAStreamFailure() {

@@ -40,11 +40,15 @@ class ControllerPathTraceTest {
         var now=0L;val trace=SessionStartupTrace { now }
         assertTrue(trace.diagnostics().contains("NOT_STARTED"))
         trace.observe("WaitingForResources");now=180_000;trace.observe("WaitingForResources")
+        trace.estimate(com.xcloud.tclnative.signaling.QueueStatus(0,now,
+            com.xcloud.tclnative.signaling.QueueEstimate(0),now))
+        assertTrue(trace.diagnostics().contains("QUEUE_ESTIMATE/seconds=0; age=0ms; failed=false"))
         assertTrue(trace.diagnostics().contains("replies=2; age=0ms; queue=180000ms"))
         now=181_000;trace.observe("ReadyToConnect");now=182_000;trace.observe("Provisioned")
         assertTrue(trace.diagnostics().contains("Provisioned; replies=4; age=0ms; queue=181000ms"))
         trace.observe("private service payload")
         assertTrue(trace.diagnostics().contains("OTHER"));assertFalse(trace.diagnostics().contains("private"))
         trace.reset();assertTrue(trace.diagnostics().contains("NOT_STARTED; replies=0; age=n/d; queue=0ms"))
+        assertTrue(trace.diagnostics().contains("QUEUE_ESTIMATE/seconds=n/d; age=n/d; failed=false"))
     }
 }

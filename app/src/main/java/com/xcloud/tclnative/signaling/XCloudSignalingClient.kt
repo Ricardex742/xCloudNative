@@ -64,7 +64,6 @@ class XCloudSignalingClient(
     private var sessionKeepAlive=SessionKeepAlive(pause,clockMs)
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     private var activeResolution = StreamResolution.HD_1080_HQ
-    private var mobileTouchSession=false
     private val startupTrace=SessionStartupTrace(clockMs)
     fun resetStartupDiagnostics()=startupTrace.reset()
     fun startupDiagnostics()=startupTrace.diagnostics()
@@ -74,8 +73,8 @@ class XCloudSignalingClient(
         UiText.text("Bypass de região solicitado no login: {0}", UiText.nested(session.regionBypass.label))
     private fun deviceInfo() = JSONObject().put("appInfo", JSONObject().put("env", JSONObject()
         .put("clientAppId", "www.xbox.com").put("clientAppType", "browser").put("clientAppVersion", "26.1.0")))
-        .put("dev", JSONObject().put("hw", JSONObject().put("make", if(mobileTouchSession) "Android" else "Microsoft")
-                .put("model", if(mobileTouchSession) "Android phone" else "Surface Pro"))
+        // Input capability is negotiated by the transport, independently of this video profile.
+        .put("dev", JSONObject().put("hw", JSONObject().put("make", "Microsoft").put("model", "Surface Pro"))
             .put("os", JSONObject().put("name", activeOsName).put("ver", "10.0"))
             .put("displayInfo", JSONObject().put("dimensions", JSONObject().put("widthInPixels", activeResolution.width).put("heightInPixels", activeResolution.height))
                 .put("pixelDensity", JSONObject().put("dpiX", 1).put("dpiY", 1)))).toString()
@@ -206,6 +205,7 @@ class XCloudSignalingClient(
                             } catch (error: org.json.JSONException) {
                                 queue = queue.copy(estimateFailed = true)
                             }
+                            queue?.let(startupTrace::estimate)
                             onQueueStatus(queue)
                         }
                     }
@@ -252,7 +252,6 @@ class XCloudSignalingClient(
         activeLocale=options.normalized().locale
         sdpRequest=1
         activeResolution = resolution
-        mobileTouchSession=nativeTouch
         sessionKeepAlive=SessionKeepAlive(pause,clockMs)
         try {
             val play = JSONObject().put("clientSessionId", java.util.UUID.randomUUID().toString())

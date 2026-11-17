@@ -7,8 +7,11 @@ data class ChannelMessage(val channel: String, val bytes: ByteArray, val binary:
 
 /** Ordered protocol transitions; callbacks for the three channels can arrive in any order. */
 class ChannelHandshake(private val nativeTouch: Boolean = false,
-                       private val resolution: StreamResolution = StreamResolution.HD_1080_HQ) {
+                       private val resolution: StreamResolution = StreamResolution.HD_1080_HQ,
+                       private val synchronizeGamepad: Boolean = true,
+                       clockMs: () -> Long = { System.nanoTime()/1_000_000 }) {
     val sessionMessages=StreamingSessionMessages()
+    val gamepadSync=GamepadStartupSync(synchronizeGamepad,clockMs)
     private val opened = mutableSetOf<String>()
     private var acknowledged = false
     private var started = false
@@ -27,12 +30,17 @@ class ChannelHandshake(private val nativeTouch: Boolean = false,
         acknowledged = true
         return startIfReady()
     }
+    @Synchronized fun onGamepadSyncDue(): List<ChannelMessage> {
+        val registration=gamepadSync.due()
+        // Preserve registration before title activation when startup synchronization is delayed.
+        return if(registration.isEmpty()) emptyList() else registration+sessionMessages.activateTitle()
+    }
     private fun startIfReady(): List<ChannelMessage> {
         if (started || !acknowledged || !opened.containsAll(listOf("message", "control", "input"))) return emptyList()
         started = true
         return listOf(encode("control", JSONObject().put("message", "authorizationRequest").put("accessKey", "4BDB3609-C1F1-4195-9B37-FEFF45DA8B8E")),
-            // The official TAK source registers logical slot zero, including for NativeTouch.
-            encode("control", JSONObject().put("message", "gamepadChanged").put("gamepadIndex", 0).put("wasAdded", true)),
+            // Reset the logical slot before the delayed registration, independently of user input.
+            gamepadSync.begin(),
             // The server must learn maxTouchPoints before touchInputEnabled, as in the web client.
             ChannelMessage("input", GamepadPacket.metadata(0.0, if(nativeTouch) 10 else 0), true),
             config("/streaming/systemUi/configuration", JSONObject().put("version", org.json.JSONArray(listOf(0, 2, 0))).put("systemUis", org.json.JSONArray())),
@@ -40,7 +48,8 @@ class ChannelHandshake(private val nativeTouch: Boolean = false,
             config("/streaming/characteristics/orientationchanged", JSONObject().put("orientation", 0)),
             config("/streaming/characteristics/touchinputenabledchanged", JSONObject().put("touchInputEnabled", nativeTouch)),
             config("/streaming/characteristics/clientdevicecapabilities", JSONObject())
-        ) + listOfNotNull(displayDimensions?.let(::dimensions)) + sessionMessages.activateTitle() + resolutionRequest(resolution)
+        ) + listOfNotNull(displayDimensions?.let(::dimensions)) +
+            (if(synchronizeGamepad) emptyList() else listOf(sessionMessages.activateTitle())) + resolutionRequest(resolution)
     }
     private fun config(target: String, content: JSONObject) = encode("message", JSONObject()
         .put("type", "Message").put("target", target).put("id", UUID.randomUUID().toString()).put("cv", "")

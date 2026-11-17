@@ -40,14 +40,14 @@ class NativeTouchProtocolTest {
         assertTrue(text.contains("pacotes 2"));assertTrue(text.contains("metadata válida 1"));assertTrue(text.contains("ignorados 1"))
         assertFalse(text.contains("PRIVATE_PAYLOAD"));assertEquals(0,data.position())
     }
-    @Test fun logicalTouchSlotIsRegisteredOnceAndSurvivesPhysicalGamepadChanges() {
-        // The isolated official TAK bridge + source manager emits [{index:0,added:true}].
+    @Test fun logicalTouchSlotIsReservedDuringStartupAndSurvivesPhysicalGamepadChanges() {
+        // Startup resets the slot; its delayed registration is separate from physical source ownership.
         val handshake=ChannelHandshake(true)
         listOf("message","input","control").forEach(handshake::onOpen)
         val changes=handshake.onHandshakeAck().filter { !it.binary }.map { JSONObject(String(it.bytes)) }
             .filter { it.optString("message")=="gamepadChanged" }
         assertEquals(1,changes.size)
-        assertEquals(0,changes.single().getInt("gamepadIndex")); assertTrue(changes.single().getBoolean("wasAdded"))
+        assertEquals(0,changes.single().getInt("gamepadIndex")); assertFalse(changes.single().getBoolean("wasAdded"))
         val connections=GamepadConnections()
         // HUD fallback / a physical source using slot zero must reuse the existing logical slot.
         assertFalse(connections.add(0)); assertFalse(connections.remove(0)); assertFalse(connections.add(0))

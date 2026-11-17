@@ -185,6 +185,7 @@ open class MainActivity : Activity() {
     private val streamHistory = com.xcloud.tclnative.webrtc.StreamDiagnosticHistory()
     private var reportTracker: SessionReportTracker?=null
     private val reportStore by lazy { SessionReportStore(applicationContext) }
+    private val startupReportStore by lazy { StartupDiagnosticsStore(applicationContext) }
     private var lastSessionReport: SessionReport?=null
     private var postSessionDialog: Dialog?=null
     @Volatile private var activityVisible=false
@@ -748,6 +749,10 @@ open class MainActivity : Activity() {
         ConsoleDialogs.menu(this,UiText.text("Opções das partidas"),actions,onBack=onBack)
     }
     private fun showLatestReport(onBack: (() -> Unit)?=null) {
+        startupReportStore.read()?.let { startup ->
+            showCopyableErrorDialog(startup.game,startup.text,onBack)
+            return
+        }
         val report=lastSessionReport ?: reportStore.read()
         if(report==null) ConsoleDialogs.message(this,UiText.text("Último diagnóstico"),UiText.text("Ainda não há uma partida com vídeo para mostrar."),listOf(ConsoleAction(UiText.text("Voltar")) { onBack?.invoke() }),onCancel=onBack)
         else postSessionDialog=SessionReportPanel.show(this,report,onBack=onBack)
@@ -1173,6 +1178,7 @@ open class MainActivity : Activity() {
             val playbackScope=this
             var allocatedRtc: XCloudWebRtcClient?=null
             var failed=false
+            var startupFailure: String?=null
             controllerPath.clear()
             signaling.resetStartupDiagnostics()
             tracker.inputDetails={ "Upscaling=${settings.fsr}; output=${settings.fsrOutput}\n"+controllerPath.diagnostics()+"\n"+signaling.startupDiagnostics()+"\n"+surfaceRenderer.diagnostics() }
@@ -1192,6 +1198,7 @@ open class MainActivity : Activity() {
                 surfaceRenderer.onFirstFrameRendered = {
                     if (generation == playbackGeneration && recoveryState.current(0) && !firstFrame.isCompleted) {
                         tracker.begin(android.os.SystemClock.elapsedRealtime(),NetworkSnapshot.read(this@MainActivity))
+                        runCatching { startupReportStore.clear() }
                         firstFrame.complete(Unit)
                         finishLoading()
                         updateJoystickDispatch()
@@ -1421,6 +1428,7 @@ open class MainActivity : Activity() {
                 throw cancelled
             } catch (error: Exception) {
                 failed=true
+                startupFailure=SessionFailure.from(error).code
                 tracker.recordFailure(error)
                 if (generation == playbackGeneration && (!firstFrame.isCompleted || !settingsStore.read().sessionReport)) {
                     val details = (error.message ?: UiText.text("Falha na sessão"))+
@@ -1438,6 +1446,12 @@ open class MainActivity : Activity() {
                         recoverImage=null;reloadTransmission=null;transmissionReady=false;transmissionRecovery=null
                     }
                     val rtc=allocatedRtc
+                    if(!firstFrame.isCompleted) runCatching {
+                        val version=packageManager.getPackageInfo(packageName,0).versionName ?: "n/d"
+                        startupReportStore.save(gameName,"xCLOUD $version\nSTARTUP/NO_VIDEO; input=${touchMode.name}; failure=${startupFailure ?: "NONE"}\n"+
+                            "REQUESTED_PROFILE/${settings.resolution.name}; os=${settings.resolution.osName}; codec=${settings.videoCodec.name}; mode=${settings.videoMode.name}\n"+
+                            signaling.startupDiagnostics()+"\n"+(rtc?.inputDiagnostics() ?: ""))
+                    }
                     tracker.finish(android.os.SystemClock.elapsedRealtime(),if(failed) SessionEnd.FAILURE else SessionEnd.USER,rtc?.currentInputMetrics())
                     microphoneJob?.cancelAndJoin();microphoneJob=null;pendingMicrophoneGeneration=null
                     rtc?.setMicrophoneMuted(true)
@@ -1570,13 +1584,14 @@ open class MainActivity : Activity() {
         }
     }
 
-    private fun showCopyableErrorDialog(gameName: String, fullError: String) {
+    private fun showCopyableErrorDialog(gameName: String, fullError: String,onBack: (() -> Unit)?=null) {
         ConsoleDialogs.message(this,UiText.text("Diagnóstico de sessão ({0})",UiText.nested(gameName)),fullError,listOf(
             ConsoleAction(UiText.text("Copiar detalhes")) {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText(UiText.text("xCloud Error"), fullError))
                 Toast.makeText(this,UiText.text("Detalhes copiados!"),Toast.LENGTH_LONG).show()
-            }, ConsoleAction(UiText.text("Fechar")) {}))
+                onBack?.invoke()
+            }, ConsoleAction(UiText.text("Fechar")) { onBack?.invoke() }),onCancel={ onBack?.invoke() })
     }
 
     private fun gameplayInputEnabled() = controlPanel.visibility == View.GONE &&

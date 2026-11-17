@@ -42,7 +42,7 @@ class XCloudWebRtcClient(
     private val preferredProbeFailed=CompletableDeferred<Unit>()
     @Volatile private var probingPreferredFamily: Int?=null
     private val channelsReady = CompletableDeferred<Unit>()
-    private val handshake = ChannelHandshake(nativeTouch,streamResolution)
+    private val handshake = ChannelHandshake(nativeTouch,streamResolution,synchronizeGamepad=!nativeKeyboardMouse)
     private val channels = java.util.concurrent.ConcurrentHashMap<String, DataChannel>()
     private val closed = AtomicBoolean(false)
     private val serverEnded=java.util.concurrent.atomic.AtomicReference<XboxServerDisconnect?>(null)
@@ -199,9 +199,9 @@ class XCloudWebRtcClient(
     }
     fun resumeAudio() { if(synchronized(audioLock) { audioTracks.isNotEmpty() }) audioSession.requestFocus() }
     fun inputDiagnostics(): String = (if(nativeTouch)
-        UiText.text("Toque nativo: {0}; espaço de input: {1}; slot virtual 0: {2}",UiText.nested(if(touchEnabled) UiText.text("sinalizado ativo") else UiText.text("desativado para HUD")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(if(channelsReady.isCompleted) "registro enviado" else UiText.text("aguardando canal")))
+        UiText.text("Toque nativo: {0}; espaço de input: {1}; slot virtual 0: {2}",UiText.nested(if(touchEnabled) UiText.text("sinalizado ativo") else UiText.text("desativado para HUD")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(if(handshake.gamepadSync.registered) "registro enviado" else UiText.text("aguardando canal")))
         else if(nativeKeyboardMouse) UiText.text("Input Xbox: mouse/teclado nativos, versão negociada {0}",UiText.nested(negotiatedInputVersion)) else UiText.text("Input Xbox: controle/HUD"))+"\n"+
-        handshake.sessionMessages.diagnostics()+"\n"+channelTrace.diagnostics()+"\n"+controllerEventTiming.diagnostics()+
+        handshake.sessionMessages.diagnostics()+"\n"+handshake.gamepadSync.diagnostics()+"\n"+channelTrace.diagnostics()+"\n"+controllerEventTiming.diagnostics()+
         (if(nativeTouch) "\n${pendingTouch.diagnostics()}" else "")+"\n"+remoteInputTrace.diagnostics(negotiatedInputVersion)+"\n"+
         UiText.text("Input sem interação: {0} pacotes de manutenção enviados; sem comandos de jogo",UiText.nested(inputPump?.metrics?.idleReportsSent ?: 0))+(if(nativeTouch) "\nTOUCH_SLOT_INIT/${inputPump?.metrics?.initialStateReportsSent ?: 0}" else "")
     fun latencyDiagnostics(): String = (if (lowLatencyVideo) "Playout solicitado: 0–40 ms" else "Playout: adaptativo") +
@@ -350,7 +350,10 @@ class XCloudWebRtcClient(
                     if(!current()) return
                     channelTrace.state(name,channel.state().name)
                     if (channel.state() == DataChannel.State.OPEN) dispatch(handshake.onOpen(name))
-                    else if (channel.state() == DataChannel.State.CLOSED && name != "chat") fail("CHANNELS: $name fechado")
+                    else if (channel.state() == DataChannel.State.CLOSED && name != "chat") {
+                        handshake.gamepadSync.close()
+                        fail("CHANNELS: $name fechado")
+                    }
                 }
                 override fun onMessage(buffer: DataChannel.Buffer?) {
                     if (!current() || buffer == null) return
@@ -380,6 +383,7 @@ class XCloudWebRtcClient(
                         val first=notice!=null && serverEnded.compareAndSet(null,notice)
                         dispatch(result.replies)
                         if(first && notice!=null) {
+                            handshake.gamepadSync.close()
                             val error=XboxServerDisconnectException(notice)
                             connected.completeExceptionally(error);channelsReady.completeExceptionally(error)
                             if(!closed.get()) onServerDisconnect(notice)
@@ -414,6 +418,7 @@ class XCloudWebRtcClient(
             }
             channelTrace.sent(message)
             handshake.sessionMessages.sent(message)
+            handshake.gamepadSync.sent(message)
         }
         // Only the callback carrying startup metadata may start the pump; a duplicate Ack can race it.
         if (messages.any { it.channel == "input" && it.binary } && inputStarted.compareAndSet(false, true)) {
@@ -435,6 +440,18 @@ class XCloudWebRtcClient(
                 pump.start()
                 channelsReady.complete(Unit)
                 if(nativeTouch) sendTouchDimensions()
+            }
+            scope.launch {
+                // A fresh RTC instance owns this task; close() cancels it before another session starts.
+                while(isActive && !closed.get() && serverEnded.get()==null) {
+                    val remaining=handshake.gamepadSync.remainingMs() ?: return@launch
+                    if(remaining>0) { delay(remaining);continue }
+                    if(channels["control"]?.state()!=DataChannel.State.OPEN) {
+                        handshake.gamepadSync.close();return@launch
+                    }
+                    dispatch(handshake.onGamepadSyncDue())
+                    return@launch
+                }
             }
             statsJob = scope.launch {
                 while (isActive) {
@@ -574,6 +591,7 @@ class XCloudWebRtcClient(
 
     fun close() {
         if (!closed.compareAndSet(false, true)) return
+        handshake.gamepadSync.close()
         synchronized(audioLock) { audioTracks.clear() }
         mainHandler.removeCallbacksAndMessages(null)
         audioDevice.setMicrophoneMute(true);audioDevice.setAudioRecordEnabled(false)

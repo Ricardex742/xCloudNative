@@ -66,6 +66,12 @@ class RendererStartupFailureTest {
                 val text=all(dialog.panel).filterIsInstance<TextView>().joinToString("\n") { it.text }
                 assertTrue(text,text.contains("RENDERER:"));assertTrue(text,text.contains("Upscaling=$mode"))
                 assertTrue(text,text.contains("NOT_STARTED"))
+                val saved=com.xcloud.tclnative.diagnostics.StartupDiagnosticsStore(activity).read()!!
+                assertEquals(game.name,saved.game)
+                assertTrue(saved.text,saved.text.contains("STARTUP/NO_VIDEO"))
+                assertTrue(saved.text,saved.text.contains("failure=RENDERER/"))
+                assertTrue(saved.text,saved.text.contains("REQUESTED_PROFILE/"))
+                assertFalse(saved.text.contains("test-token"))
                 assertNull(ReflectionHelpers.getField<AiPqSurfaceRenderer>(activity,"surfaceRenderer")
                     .let { ReflectionHelpers.getField<Any?>(it,"renderer") })
             }

@@ -249,26 +249,29 @@ class SignalingTest {
             client.stop()
         }
     }
-    @Test fun nativeTouchKeepsEverySelectedVideoProfileAndNextControllerSessionWorks() = runBlocking {
+    @Test fun changingInputModeKeepsTheSameLaunchProfileAndClearsQueueStateForTheNextAttempt() = runBlocking {
         val client=signaling()
         for(resolution in StreamResolution.entries) {
-            connectSent=false; provisioned=false
-            assertTrue(client.startAndConnectWebRtcSession("FORTNITE",peer,resolution=resolution,nativeTouch=true) {}.isSuccess)
-            val mobile=requests.last { it.path=="/v5/sessions/cloud/play" }
-            assertEquals(resolution.osName,JSONObject(mobile.body.clone().readUtf8()).getJSONObject("settings").getString("osName"))
-            val device=JSONObject(mobile.getHeader("X-MS-Device-Info")!!).getJSONObject("dev")
-            assertEquals(resolution.osName,device.getJSONObject("os").getString("name"))
-            assertEquals(resolution.width,device.getJSONObject("displayInfo").getJSONObject("dimensions").getInt("widthInPixels"))
-            assertEquals(resolution.height,device.getJSONObject("displayInfo").getJSONObject("dimensions").getInt("heightInPixels"))
-            assertFalse(device.getJSONObject("hw").getString("model").contains("Surface"))
-            assertTrue(client.profileDiagnostics().contains(resolution.osName))
-            client.stop()
+            var expectedHeader: String?=null
+            for(touch in listOf(false,true,false)) {
+                connectSent=false;provisioned=false;queuedStates=2
+                val queue=mutableListOf<com.xcloud.tclnative.signaling.QueueStatus?>()
+                assertTrue(client.startAndConnectWebRtcSession("real-id",peer,resolution=resolution,nativeTouch=touch,
+                    onQueueStatus={ queue+=it }) {}.isSuccess)
+                val play=requests.last { it.path=="/v5/sessions/cloud/play" }
+                val header=play.getHeader("X-MS-Device-Info")!!
+                if(expectedHeader==null) expectedHeader=header else assertEquals(expectedHeader,header)
+                val device=JSONObject(header).getJSONObject("dev")
+                assertEquals(resolution.osName,JSONObject(play.body.clone().readUtf8()).getJSONObject("settings").getString("osName"))
+                assertEquals(resolution.osName,device.getJSONObject("os").getString("name"))
+                assertEquals(resolution.width,device.getJSONObject("displayInfo").getJSONObject("dimensions").getInt("widthInPixels"))
+                assertEquals(resolution.height,device.getJSONObject("displayInfo").getJSONObject("dimensions").getInt("heightInPixels"))
+                assertTrue(queue.any { it!=null });assertNull(queue.last())
+                assertTrue(client.startupDiagnostics().contains("Provisioned"))
+                val marker=requests.size;client.stop()
+                assertEquals(listOf("DELETE"),requests.drop(marker).map { it.method })
+            }
         }
-        connectSent=false; provisioned=false
-        assertTrue(client.startAndConnectWebRtcSession("real-id",peer) {}.isSuccess)
-        val tv=requests.last { it.path=="/v5/sessions/cloud/play" }
-        assertEquals("tizen",JSONObject(tv.body.clone().readUtf8()).getJSONObject("settings").getString("osName"))
-        client.stop()
     }
     @Test fun failedTransportCannotReturnAConnectedStatus() = runBlocking {
         rejectTransport = true

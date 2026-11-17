@@ -64,7 +64,7 @@ class ProtocolTest {
         assertTrue(protocol.onHandshakeAck().isEmpty()); assertFalse(protocol.ready)
         assertTrue(protocol.onOpen("input").isNotEmpty()); assertTrue(protocol.ready)
     }
-    @Test fun selectedResolutionIsRequestedOnTheOfficialControlMessageAfterRegistrationOnlyOnce() {
+    @Test fun selectedResolutionIsRequestedOnTheOfficialControlMessageAfterMetadataOnlyOnce() {
         val aliases=mapOf(StreamResolution.HD_720 to "720",StreamResolution.HD_1080 to "1080",
             StreamResolution.HD_1080_HQ to "1080HQ",StreamResolution.QHD_1440 to "1440")
         for((resolution,alias) in aliases) for(nativeTouch in listOf(false,true)) {
@@ -83,7 +83,7 @@ class ProtocolTest {
             assertTrue(protocol.onHandshakeAck().isEmpty());assertTrue(protocol.onOpen("control").isEmpty())
         }
     }
-    @Test fun nativeTouchHandshakeRegistersTheLogicalTouchSlotBeforeEnablingPointers() {
+    @Test fun nativeTouchHandshakeResetsTheLogicalTouchSlotBeforeEnablingPointers() {
         val protocol=ChannelHandshake(true).apply {
             displayDimensions=ClientDisplayDimensions.fromPixels(1280,720,1280,720,320f,320f)
         }
@@ -95,7 +95,7 @@ class ProtocolTest {
         assertTrue(actions.indexOf(metadata)<actions.indexOfFirst { !it.binary && String(it.bytes).contains("touchinputenabledchanged") })
         val messages=actions.filterNot { it.binary }.map { JSONObject(String(it.bytes,Charsets.UTF_8)) }
         val connected=messages.single { it.optString("message")=="gamepadChanged" }
-        assertEquals(0,connected.getInt("gamepadIndex")); assertTrue(connected.getBoolean("wasAdded"))
+        assertEquals(0,connected.getInt("gamepadIndex")); assertFalse(connected.getBoolean("wasAdded"))
         val touch=messages.single { it.optString("target").endsWith("touchinputenabledchanged") }
         assertTrue(JSONObject(touch.getString("content")).getBoolean("touchInputEnabled"))
         val dimensions=JSONObject(messages.single { it.optString("target").endsWith("dimensionschanged") }.getString("content"))
