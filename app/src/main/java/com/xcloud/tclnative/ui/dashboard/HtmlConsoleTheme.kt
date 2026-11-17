@@ -125,7 +125,8 @@ internal class HtmlConsoleTheme(context: Context,val theme: UiTheme,private val 
         val value=pending ?: return
         value.put("night",store.htmlNight(theme))
         val power=(context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.isPowerSaveMode==true
-        val enabled=store.motion()!=BackgroundMotion.OFF && (store.motion()==BackgroundMotion.ON || (!power && !constrained))
+        // HTML composition has a higher idle cost than the native backgrounds. AUTO stays static.
+        val enabled=store.motion()==BackgroundMotion.ON
         value.put("motion",enabled && presented)
         value.put("lowEffects",power || constrained)
         val json=value.toString().replace("\u2028","\\u2028").replace("\u2029","\\u2029")
