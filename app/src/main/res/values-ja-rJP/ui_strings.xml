@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"チャネル: {0}; 認証送信 {1}; メタデータ送信 {2}; ack {3}; 制御受信 {4}/{5}; メッセージ受信 {6}/{7}; 最初の切断まで {8} ms"</string>
     <string name="ui_671df84f68498f95" formatted="false">"クラウドの残りプレイ時間"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"統計の表示中は、クラウドの残りプレイ時間を5分ごとに確認します。"</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"ホーム画面に固定"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"ゲームのショートカットをインストール"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"ショートカット • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"クラウドでゲームを開く"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"現在のゲームを終了し、自分のセッションで{0}を開きます。"</string>
+    <string name="ui_c34568aac4009568" formatted="false">"10秒間タッチしない場合"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"物理コントローラー使用時"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"無操作または物理コントローラー使用時"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"フレンド"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"ホーム画面のショートカット"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"更新"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"フレンドを確認中…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"Xboxが報告したプレゼンスです。再確認するには更新してください。"</string>
+    <string name="ui_46339c427719dfea" formatted="false">"今回の取得では表示できるフレンドがいません。"</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"フレンドを取得できませんでした。接続とアカウントのプライバシー設定を確認してください。"</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"自分のクラウドセッションを開きます。フレンドと同じマッチへの参加にはまだ対応していません。"</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"オンライン"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"離席中"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"オフライン"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"プレゼンスを取得できません"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"仮想コントローラーを隠す"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"仮想コントローラーを表示"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"このセッションでネイティブタッチを使用"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"次のセッションのタッチモード"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"選択したゲームのショートカット"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"自動的に隠す：{0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"仮想コントローラーの自動非表示"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"メニューは表示されたままです。1回タップすると操作ボタンが再表示されます。押し続けているボタンは指を離すまで有効です。"</string>
 </resources>

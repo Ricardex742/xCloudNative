@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"Canales: {0}; autorización enviada {1}; metadatos enviados {2}; ack {3}; control recibido {4}/{5}; mensaje recibido {6}/{7}; primer cierre tras {8} ms"</string>
     <string name="ui_671df84f68498f95" formatted="false">"Tiempo restante en la nube"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"El saldo de tiempo en la nube se consulta cada cinco minutos mientras las estadísticas están visibles."</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"Fijar en la pantalla de inicio"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"Instalar acceso directo del juego"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"Acceso directo • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"Abrir juego en la nube"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"La partida actual terminará para abrir {0} en tu propia sesión."</string>
+    <string name="ui_c34568aac4009568" formatted="false">"Tras 10 s sin tocar"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"Al usar un mando físico"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"Inactividad o mando físico"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"Amigos"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"Acceso directo en la pantalla de inicio"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"Actualizar"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"Consultando amigos…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"Presencia informada por Xbox. Actualiza para consultar de nuevo."</string>
+    <string name="ui_46339c427719dfea" formatted="false">"No hay amigos disponibles en esta consulta."</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"No se pudieron consultar los amigos. Comprueba la conexión y los permisos de privacidad de la cuenta."</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"Abre tu propia sesión en la nube. Aún no está disponible unirse a la misma partida del amigo."</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"En línea"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"Ausente"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"Desconectado"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"Presencia no disponible"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"Ocultar mando virtual"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"Mostrar mando virtual"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"Usar toque nativo en esta partida"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"Modo de toque de la próxima partida"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"Acceso directo del juego seleccionado"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"Ocultar automáticamente: {0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"Ocultación automática del mando virtual"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"El menú permanece visible. Toca una vez para volver a mostrar los controles. Un botón mantenido sigue activo hasta soltarlo."</string>
 </resources>

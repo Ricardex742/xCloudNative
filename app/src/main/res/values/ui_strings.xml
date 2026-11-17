@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"Canais: {0}; autorização enviada {1}; metadata enviada {2}; ack {3}; controle recebido {4}/{5}; mensagem recebida {6}/{7}; primeiro fechamento após {8} ms"</string>
     <string name="ui_671df84f68498f95" formatted="false">"Tempo restante de nuvem"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"O saldo de nuvem é consultado a cada cinco minutos enquanto as estatísticas estão visíveis."</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"Fixar na tela inicial"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"Instalar atalho do jogo"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"Atalho • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"Abrir jogo na nuvem"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"A partida atual será encerrada para abrir {0} na sua própria sessão."</string>
+    <string name="ui_c34568aac4009568" formatted="false">"Após 10 s sem toque"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"Ao usar controle físico"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"Inatividade ou controle físico"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"Amigos"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"Atalho na tela inicial"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"Atualizar"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"Consultando amigos…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"Presença informada pelo Xbox. Atualize para consultar novamente."</string>
+    <string name="ui_46339c427719dfea" formatted="false">"Nenhum amigo disponível nesta consulta."</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"Não foi possível consultar os amigos. Verifique a conexão e as permissões de privacidade da conta."</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"Abre sua própria sessão na nuvem. O ingresso na mesma partida do amigo ainda não está disponível."</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"Online"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"Ausente"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"Offline"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"Presença indisponível"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"Ocultar controle virtual"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"Mostrar controle virtual"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"Usar toque nativo nesta partida"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"Modo de toque da próxima partida"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"Atalho do jogo selecionado"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"Ocultar automaticamente: {0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"Ocultação automática do controle virtual"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"O menu permanece visível. Toque uma vez para mostrar os controles novamente. Um botão segurado continua ativo até você soltar."</string>
 </resources>

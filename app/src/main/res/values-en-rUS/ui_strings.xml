@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"Channels: {0}; authorization sent {1}; metadata sent {2}; ack {3}; control received {4}/{5}; message received {6}/{7}; first closure after {8} ms"</string>
     <string name="ui_671df84f68498f95" formatted="false">"Remaining cloud playtime"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"The cloud playtime balance is checked every five minutes while statistics are visible."</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"Pin to home screen"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"Install game shortcut"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"Shortcut • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"Open game in the cloud"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"The current game will end to open {0} in your own session."</string>
+    <string name="ui_c34568aac4009568" formatted="false">"After 10 s without touch"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"When using a physical controller"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"Inactivity or physical controller"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"Friends"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"Home screen shortcut"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"Refresh"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"Checking friends…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"Presence reported by Xbox. Refresh to check again."</string>
+    <string name="ui_46339c427719dfea" formatted="false">"No friends available in this response."</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"Could not check friends. Check your connection and account privacy permissions."</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"Opens your own cloud session. Joining the same match as your friend is not available yet."</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"Online"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"Away"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"Offline"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"Presence unavailable"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"Hide virtual controller"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"Show virtual controller"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"Use native touch in this session"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"Touch mode for the next session"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"Shortcut for selected game"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"Auto-hide: {0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"Virtual controller auto-hide"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"The menu stays visible. Tap once to show the controls again. A held button stays active until you release it."</string>
 </resources>

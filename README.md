@@ -3,7 +3,7 @@
   <h1>xCLOUD</h1>
   <p><strong>Seus jogos. Na sua tela.</strong></p>
   <p>Cliente Android independente para Xbox Cloud Gaming, com transmissão nativa e interface para Android TV, Google TV e celulares.</p>
-  <p><a href="#conta-e-biblioteca">Biblioteca</a> · <a href="#aparência-e-temas">Temas</a> · <a href="#idiomas-do-aplicativo">Idiomas</a> · <a href="#transmissão-e-fila">Transmissão</a> · <a href="#imagem-e-tela">Imagem</a> · <a href="#controles-e-periféricos">Controles</a> · <a href="#touch-nativo">Touch nativo</a> · <a href="#controles-de-toque">HUDs</a><br /><a href="#áudio-e-microfone">Áudio</a> · <a href="#rede-e-preferências">Rede</a> · <a href="#estatísticas-e-diagnósticos">Diagnósticos</a> · <a href="#tela-inicial-da-tv">Atalhos na TV</a> · <a href="#compatibilidade">Compatibilidade</a></p>
+  <p><a href="#conta-e-biblioteca">Biblioteca e amigos</a> · <a href="#aparência-e-temas">Temas</a> · <a href="#idiomas-do-aplicativo">Idiomas</a> · <a href="#transmissão-e-fila">Transmissão</a> · <a href="#imagem-e-tela">Imagem</a> · <a href="#controles-e-periféricos">Controles</a> · <a href="#touch-nativo">Touch nativo</a> · <a href="#controles-de-toque">HUDs</a><br /><a href="#áudio-e-microfone">Áudio</a> · <a href="#rede-e-preferências">Rede</a> · <a href="#estatísticas-e-diagnósticos">Diagnósticos</a> · <a href="#atalhos-na-tela-inicial">Atalhos</a> · <a href="#compatibilidade">Compatibilidade</a></p>
 </div>
 
 ![Menu inicial do xCLOUD com a aba Voltar a jogar](docs/screenshots/home-return-to-play.jpg)
@@ -33,6 +33,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - Em **Pesquisa › Jogos**, filtro experimental por **Adquiridos**, **Não adquiridos** ou **Propriedade não confirmada**, usando as licenças da conta. O filtro se aplica ao catálogo disponível no app; acesso por assinatura não comprova propriedade. Consultas incompletas ou indisponíveis ficam sem confirmação.
 - Informações detalhadas e avisos do catálogo em **Configurações › Biblioteca e conta › Informações do catálogo**.
 - Navegação por controle ou toque e cache de imagens do catálogo.
+- **Amigos**, acessível no primeiro nível de **Configurações**, no guia Series X|S e no menu da partida: lista a presença informada pelo Xbox e a atividade atual, com atualização manual. A consulta respeita a privacidade da conta e para ao fechar o painel. Quando o jogo é identificado no catálogo, **Abrir jogo na nuvem** inicia sua própria sessão; entrar na mesma partida do amigo ainda não está disponível.
 
 <table>
   <tr>
@@ -42,6 +43,10 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
   <tr>
     <td width="50%"><img src="docs/screenshots/catalog-all-games.jpg" alt="Biblioteca do xCLOUD com a aba Todos os jogos selecionada." /><br /><strong>Biblioteca</strong> — Todos os jogos, com capas, selos e categorias.</td>
     <td width="50%"><img src="docs/screenshots/search.png" alt="Pesquisa — Busca por nome usando o teclado." /><br /><strong>Pesquisa</strong> — Busca por nome usando o teclado.</td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/friends.png" alt="Menu de amigos com presença e atividade de demonstração." /><br /><strong>Amigos</strong> — Presença e atividade, com atualização manual.</td>
+    <td width="50%"><img src="docs/screenshots/friend-game.png" alt="Detalhes de um amigo de demonstração com opção de abrir o jogo em uma sessão própria." /><br /><strong>Jogo do amigo</strong> — Acesso ao título identificado no catálogo, em sua própria sessão.</td>
   </tr>
 </table>
 
@@ -273,6 +278,7 @@ Pesquisa e configurações acompanham a identidade de cada console:
 - Os toques são enviados ao jogo, que apresenta seus próprios botões e gestos, sem o HUD virtual do aplicativo.
 - Se a sessão continuar sem os metadados necessários ao toque, o app oferece aguardar ou usar seu HUD virtual na mesma partida; a troca depende da escolha do usuário.
 - Abrir os ajustes do HUD preserva o modo de toque atual. Em uma sessão iniciada com toque nativo, é possível usar o HUD temporariamente para menus e voltar ao toque nativo pelo mesmo painel.
+- **Usar toque nativo nesta partida** fica no primeiro nível do menu quando a conexão já negociou esse suporte. **Modo de toque da próxima partida** abre diretamente a seleção entre Automático, toque nativo, controle virtual e desativado; mudar essa preferência não reinicia a sessão atual.
 - No celular, **Automático** prioriza o toque nativo quando disponível; a opção **Toque nativo Xbox — experimental** permite selecioná-lo manualmente nos títulos compatíveis.
 - Mapeamento dos toques conforme a área do vídeo, incluindo os modos Original, Esticar e Zoom.
 - Manutenção experimental do transporte de toque nativo v8 durante períodos sem interação, com relatórios vazios que não geram comandos no jogo.
@@ -291,6 +297,8 @@ O suporte depende do jogo e da sessão. Ter um layout de controle virtual na nuv
 - Aplicação do esquema de futebol com restauração dos comandos, mantendo posições e tamanhos personalizados.
 - No CoD, arrasto no botão de mira, opção de mirar ao atirar e corrida ao estender o analógico na direção de Correr.
 - Editor de posição, tamanho, opacidade, comandos combinados e gestos por jogo.
+- **Mostrar / ocultar controle virtual** no primeiro nível do menu da partida, mantendo o botão de menu acessível no celular.
+- **Ocultação automática opcional por jogo**, em **HUD e controles deste jogo › Ocultar automaticamente**: após 10 segundos sem toque, ao usar um controle físico ou nas duas situações. Vem desativada. Botões segurados permanecem ativos até serem soltos; um toque revela os controles novamente sem acionar um comando no jogo. O botão de menu permanece visível.
 
 <table>
   <tr>
@@ -311,6 +319,9 @@ O suporte depende do jogo e da sessão. Ter um layout de controle virtual na nuv
   <tr>
     <td width="50%"><img src="docs/screenshots/hud-settings.png" alt="Ajustes do HUD — Layout, opacidade e sensibilidade por jogo." /><br /><strong>Ajustes do HUD</strong> — Layout, opacidade e sensibilidade por jogo.</td>
     <td width="50%"><img src="docs/screenshots/touch-modes.png" alt="Modo de toque — Detecção automática, HUD virtual ou toque nativo." /><br /><strong>Modo de toque</strong> — Detecção automática, HUD virtual ou toque nativo.</td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/screenshots/quick-controls.png" width="70%" alt="Menu da partida com ações diretas para ocultar o controle virtual, restaurar toque nativo e escolher o modo da próxima partida." /><br /><strong>Controles rápidos</strong> — Mostrar ou ocultar o HUD e acessar o modo de toque no primeiro nível.</td>
   </tr>
   <tr>
     <td width="50%"><img src="docs/screenshots/hud-cod-options.png" alt="Opções de mira e corrida do HUD de CoD" /><br /><strong>CoD</strong> — mirar ao atirar e corrida por gesto, configuráveis por jogo.</td>
@@ -384,11 +395,12 @@ As posições, tamanhos, ações e gestos podem ser ajustados por jogo. No futeb
   </tr>
 </table>
 
-## Tela inicial da TV
+## Atalhos na tela inicial
 
-- Atalhos instaláveis para abrir jogos diretamente no xCLOUD.
+- Atalhos instaláveis para abrir jogos diretamente no xCLOUD, no celular e na TV.
+- Pressione uma capa por alguns instantes ou use **View** no catálogo para abrir as opções do atalho. Também há **Atalho do jogo selecionado** no primeiro nível de Configurações e **Atalho na tela inicial** no menu da partida e no guia Series X|S.
 - Canal de favoritos nos launchers compatíveis.
-- Solicitação de atalhos fixados quando oferecida pelo sistema.
+- **Fixar na tela inicial** quando o launcher oferecer suporte, ou **Instalar atalho do jogo** por meio da confirmação do Android. A disponibilidade e a posição do atalho dependem do launcher.
 - Restauração da sessão e entrada na fila ao abrir um atalho.
 
 <table>

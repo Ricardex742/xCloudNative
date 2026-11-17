@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 88
-        versionName = "0.37.11-image-lab"
+        versionCode = 89
+        versionName = "0.38.0"
     }
 
     signingConfigs {

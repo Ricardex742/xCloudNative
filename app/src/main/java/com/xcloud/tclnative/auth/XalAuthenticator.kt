@@ -240,6 +240,19 @@ class XalAuthenticator(
         "XBL3.0 x=$user;${response.getString("Token")}"
     }
 
+    /** Read-only social services require the Xbox Live audience, never the streaming bearer. */
+    suspend fun loadXboxSocialAuthorization(): Result<String> = result {
+        val token=profileUserToken ?: throw AuthenticationRequiredException()
+        val hash=profileUserHash ?: throw AuthenticationRequiredException()
+        val response=JSONObject(post(endpoints.xstsAuthorizeUrl,"SOCIAL_XSTS",json(JSONObject()
+            .put("RelyingParty","http://xboxlive.com").put("TokenType","JWT").put("Properties",JSONObject()
+                .put("SandboxId","RETAIL").put("UserTokens",JSONArray().put(token))))))
+        check(profileUserToken==token && profileUserHash==hash) { "SOCIAL_ACCOUNT_CHANGED" }
+        val user=response.optJSONObject("DisplayClaims")?.optJSONArray("xui")?.optJSONObject(0)
+            ?.optString("uhs")?.takeIf { it.isNotBlank() } ?: hash
+        "XBL3.0 x=$user;${response.getString("Token")}"
+    }
+
     /** Optional Xbox profile grant is separate from GSSV/console transfer and never blocks playing. */
     suspend fun loadXboxProfile(): Result<XboxProfile> = result {
         val token = profileUserToken ?: throw AuthenticationRequiredException()

@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"Canali: {0}; autorizzazione inviata {1}; metadati inviati {2}; ack {3}; controllo ricevuto {4}/{5}; messaggio ricevuto {6}/{7}; prima chiusura dopo {8} ms"</string>
     <string name="ui_671df84f68498f95" formatted="false">"Tempo di gioco cloud rimanente"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"Il saldo del tempo di gioco cloud viene controllato ogni cinque minuti mentre le statistiche sono visibili."</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"Aggiungi alla schermata iniziale"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"Installa collegamento al gioco"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"Collegamento • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"Apri gioco nel cloud"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"La partita attuale terminerà per aprire {0} nella tua sessione."</string>
+    <string name="ui_c34568aac4009568" formatted="false">"Dopo 10 s senza tocchi"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"Quando usi un controller fisico"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"Inattività o controller fisico"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"Amici"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"Collegamento nella schermata iniziale"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"Aggiorna"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"Ricerca degli amici…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"Presenza comunicata da Xbox. Aggiorna per controllare di nuovo."</string>
+    <string name="ui_46339c427719dfea" formatted="false">"Nessun amico disponibile in questa risposta."</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"Impossibile consultare gli amici. Controlla la connessione e le autorizzazioni per la privacy dell’account."</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"Apre la tua sessione cloud. L’accesso alla stessa partita dell’amico non è ancora disponibile."</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"Online"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"Assente"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"Offline"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"Presenza non disponibile"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"Nascondi controller virtuale"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"Mostra controller virtuale"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"Usa tocco nativo in questa partita"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"Modalità tocco della prossima partita"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"Collegamento al gioco selezionato"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"Nascondi automaticamente: {0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"Nascondi automaticamente il controller virtuale"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"Il menu resta visibile. Tocca una volta per mostrare di nuovo i comandi. Un pulsante tenuto premuto resta attivo fino al rilascio."</string>
 </resources>

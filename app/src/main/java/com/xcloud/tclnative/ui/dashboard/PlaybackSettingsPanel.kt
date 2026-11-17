@@ -25,7 +25,8 @@ class PlaybackSettingsPanel(
     private val catalogInformation: () -> String? = { null },
     private val backgrounds: () -> List<SeriesWallpaper> = { emptyList() },
     private val refreshPlaytime: () -> Unit = {},
-    private val playtimeInformation: () -> String = { com.xcloud.tclnative.catalog.CloudPlaytime().diagnostics() }
+    private val playtimeInformation: () -> String = { com.xcloud.tclnative.catalog.CloudPlaytime().diagnostics() },
+    private val friends: (() -> Unit)?=null,private val gameShortcut: (() -> Unit)?=null
 ) {
     private var currentPage=SettingsPage.ROOT
     private var upscalingBack: () -> Unit = { showImage() }
@@ -47,7 +48,10 @@ class PlaybackSettingsPanel(
     }
     fun show(): ConsoleDialog {
         enter(SettingsPage.ROOT)
-        return ConsoleDialogs.menu(context,UiText.text("Configurações"),listOf(
+        val quick=listOfNotNull(
+            friends?.let { ConsoleAction(UiText.text("Amigos"),it) },
+            gameShortcut?.let { ConsoleAction(UiText.text("Atalho do jogo selecionado"),it) })
+        return ConsoleDialogs.menu(context,UiText.text("Configurações"),quick+listOf(
             ConsoleAction(UiText.text("Vídeo e transmissão")) { showVideo() },
             ConsoleAction(UiText.text("Imagem e tela")) { showImage() },
             ConsoleAction(UiText.text("Aparência e temas")) { showAppearance() },
@@ -451,10 +455,12 @@ class PlaybackSettingsPanel(
             }
         ),SettingsPage.CONTROLS)
     }
-    fun chooseTouch(): ConsoleDialog {
+    fun chooseTouch(onBack: (() -> Unit)?=null): ConsoleDialog {
         enter(SettingsPage.CONTROLS);val value=store.read()
         return choices(UiText.text("Jogar com toque"),UiText.text("Na TV, o jogo usa controle físico. No celular, Automático prioriza toque nativo em jogos compatíveis e HUD nos demais. Exclusivo — controle virtual força o HUD. Vale na próxima partida."),
-            TouchMode.entries.map { it.label to (it==value.touchMode) }) { save(value.copy(touchMode=TouchMode.entries[it])) }
+            TouchMode.entries.map { it.label to (it==value.touchMode) },onBack={ if(onBack!=null) onBack() else showControls() }) {
+                save(value.copy(touchMode=TouchMode.entries[it])) { if(onBack!=null) onBack() else showControls() }
+            }
     }
     fun showMouse(): ConsoleDialog {
         val value=store.read()

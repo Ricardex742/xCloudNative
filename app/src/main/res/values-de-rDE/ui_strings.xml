@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"Kanäle: {0}; Autorisierung gesendet {1}; Metadaten gesendet {2}; ack {3}; Steuerung empfangen {4}/{5}; Nachricht empfangen {6}/{7}; erstes Schließen nach {8} ms"</string>
     <string name="ui_671df84f68498f95" formatted="false">"Verbleibende Cloud-Spielzeit"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"Das Cloud-Spielzeitguthaben wird alle fünf Minuten abgefragt, solange die Statistiken sichtbar sind."</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"An Startbildschirm anheften"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"Spielverknüpfung installieren"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"Verknüpfung • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"Spiel in der Cloud öffnen"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"Die aktuelle Partie wird beendet, um {0} in deiner eigenen Sitzung zu öffnen."</string>
+    <string name="ui_c34568aac4009568" formatted="false">"Nach 10 s ohne Berührung"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"Bei Verwendung eines physischen Controllers"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"Inaktivität oder physischer Controller"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"Freunde"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"Verknüpfung auf dem Startbildschirm"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"Aktualisieren"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"Freunde werden abgefragt…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"Von Xbox gemeldeter Status. Zum erneuten Prüfen aktualisieren."</string>
+    <string name="ui_46339c427719dfea" formatted="false">"Bei dieser Abfrage sind keine Freunde verfügbar."</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"Freunde konnten nicht abgefragt werden. Prüfe die Verbindung und die Datenschutzeinstellungen des Kontos."</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"Öffnet deine eigene Cloud-Sitzung. Der Beitritt zur selben Partie wie dein Freund ist noch nicht verfügbar."</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"Online"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"Abwesend"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"Offline"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"Status nicht verfügbar"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"Virtuellen Controller ausblenden"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"Virtuellen Controller einblenden"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"Native Touch-Steuerung in dieser Partie nutzen"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"Touch-Modus der nächsten Partie"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"Verknüpfung für ausgewähltes Spiel"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"Automatisch ausblenden: {0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"Virtuellen Controller automatisch ausblenden"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"Das Menü bleibt sichtbar. Tippe einmal, um die Steuerung wieder anzuzeigen. Eine gehaltene Taste bleibt bis zum Loslassen aktiv."</string>
 </resources>

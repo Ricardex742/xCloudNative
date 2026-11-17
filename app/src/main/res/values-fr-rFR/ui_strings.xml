@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"Canaux : {0} ; autorisation envoyée {1} ; métadonnées envoyées {2} ; ack {3} ; contrôle reçu {4}/{5} ; message reçu {6}/{7} ; première fermeture après {8} ms"</string>
     <string name="ui_671df84f68498f95" formatted="false">"Temps de jeu cloud restant"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"Le solde de temps de jeu cloud est consulté toutes les cinq minutes lorsque les statistiques sont visibles."</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"Épingler à l’écran d’accueil"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"Installer un raccourci du jeu"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"Raccourci • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"Ouvrir le jeu dans le cloud"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"La partie actuelle se terminera pour ouvrir {0} dans votre propre session."</string>
+    <string name="ui_c34568aac4009568" formatted="false">"Après 10 s sans toucher"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"Lors de l’utilisation d’une manette physique"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"Inactivité ou manette physique"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"Amis"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"Raccourci sur l’écran d’accueil"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"Actualiser"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"Recherche des amis…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"Présence indiquée par Xbox. Actualisez pour vérifier à nouveau."</string>
+    <string name="ui_46339c427719dfea" formatted="false">"Aucun ami disponible dans cette réponse."</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"Impossible de consulter les amis. Vérifiez la connexion et les autorisations de confidentialité du compte."</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"Ouvre votre propre session cloud. Rejoindre la même partie que votre ami n’est pas encore disponible."</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"En ligne"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"Absent"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"Hors ligne"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"Présence indisponible"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"Masquer la manette virtuelle"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"Afficher la manette virtuelle"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"Utiliser le tactile natif dans cette partie"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"Mode tactile de la prochaine partie"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"Raccourci du jeu sélectionné"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"Masquer automatiquement : {0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"Masquage automatique de la manette virtuelle"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"Le menu reste visible. Touchez une fois pour réafficher les commandes. Un bouton maintenu reste actif jusqu’à son relâchement."</string>
 </resources>

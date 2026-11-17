@@ -45,10 +45,20 @@ data class HudGesture(val label: String,val action: HudAction)
 
 data class HudPlacement(val x: Float,val y: Float,val scale: Float=1f,val binding: HudBinding?=null,
                         val action: HudAction?=null,val gestures: Map<HudSwipe,HudGesture>?=null)
+enum class HudAutoHide(val idle: Boolean=false,val physical: Boolean=false) {
+    OFF, IDLE(idle=true), PHYSICAL(physical=true), BOTH(idle=true,physical=true);
+    val label: String get()=when(this) {
+        OFF -> UiText.text("Desativado")
+        IDLE -> UiText.text("Após 10 s sem toque")
+        PHYSICAL -> UiText.text("Ao usar controle físico")
+        BOTH -> UiText.text("Inatividade ou controle físico")
+    }
+}
 data class HudSettings(val preset: HudPreset?=null,val opacity: Int=62,val scale: Int=100,
                        val sensitivity: Int=100,val placements: Map<String,HudPlacement> = emptyMap(),
                        val lookDeadzone: Int=12,val footballScheme: FootballScheme=FootballScheme.CLASSIC,
-                       val aimAndFire: Boolean=false,val sprintGesture: Boolean=true) {
+                       val aimAndFire: Boolean=false,val sprintGesture: Boolean=true,
+                       val autoHide: HudAutoHide=HudAutoHide.OFF) {
     /** Applying a scheme restores its commands without moving the user's buttons. */
     fun withFootballScheme(scheme: FootballScheme)=copy(footballScheme=scheme,
         placements=placements.mapValues { (id,p) ->

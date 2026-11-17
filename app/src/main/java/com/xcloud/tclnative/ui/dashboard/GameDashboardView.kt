@@ -68,7 +68,9 @@ class GameDashboardView(
     private val onExit: () -> Unit,
     private val onFavoritesChanged: () -> Unit = {},
     private val onPlayProduct: (GalleryProduct) -> Unit = {},
-    private val onOwnershipNeeded: () -> Unit = {}
+    private val onOwnershipNeeded: () -> Unit = {},
+    private val onGameShortcut: ((GameTitle) -> Unit)?=null,
+    private val onFriends: (() -> Unit)?=null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -783,7 +785,8 @@ class GameDashboardView(
         val key = event.keyCode
         val handled = key in setOf(KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1,
             KeyEvent.KEYCODE_BUTTON_Y, KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_START,
-            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B)
+            KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B) ||
+            key==KeyEvent.KEYCODE_BUTTON_SELECT && onGameShortcut!=null && selectedGame!=null
         if (!handled) return false
         if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) when (key) {
             KeyEvent.KEYCODE_BUTTON_L1 -> cycleTab(-1)
@@ -791,6 +794,7 @@ class GameDashboardView(
             KeyEvent.KEYCODE_BUTTON_Y -> toggleSelectedFavorite()
             KeyEvent.KEYCODE_BUTTON_X -> onSearch()
             KeyEvent.KEYCODE_BUTTON_START -> openGuideOrOptions()
+            KeyEvent.KEYCODE_BUTTON_SELECT -> selectedGame?.let { onGameShortcut?.invoke(it) }
             KeyEvent.KEYCODE_BUTTON_A -> findFocus()?.performClick()
             KeyEvent.KEYCODE_BUTTON_B -> back()
         }
@@ -992,7 +996,9 @@ class GameDashboardView(
     fun profileSnapshot()=profile
     private fun openGuideOrOptions() {
         if(!SeriesGuidePanel.enabled(context)) { onOptions();return }
-        SeriesGuidePanel.show(context,UiText.text("Guia"),profile,listOf(
+        val quick=listOfNotNull(onFriends?.let { ConsoleAction(UiText.text("Amigos"),it) },
+            selectedGame?.takeIf { onGameShortcut!=null }?.let { game -> ConsoleAction(UiText.text("Atalho na tela inicial")) { onGameShortcut?.invoke(game) } })
+        SeriesGuidePanel.show(context,UiText.text("Guia"),profile,quick+listOf(
             ConsoleAction(LibraryTab.RECENT.label) { selectTab(LibraryTab.RECENT);focusFirstCover() },
             ConsoleAction(LibraryTab.ALL.label) { selectTab(LibraryTab.ALL);focusFirstCover() },
             ConsoleAction(LibraryTab.FAVORITES.label) { selectTab(LibraryTab.FAVORITES);focusFirstCover() },
@@ -1240,6 +1246,10 @@ class GameDashboardView(
             // Resolve the current position/binding instead of launching the captured old card.
             card.setOnClickListener {
                 items.getOrNull(holder.bindingAdapterPosition)?.let { current -> updateSelected(current); playCard(current) }
+            }
+            card.setOnLongClickListener {
+                val game=items.getOrNull(holder.bindingAdapterPosition)?.playableGame()
+                if(game!=null && onGameShortcut!=null) { onGameShortcut.invoke(game);true } else false
             }
         }
         override fun onBindViewHolder(holder: CoverHolder, position: Int, payloads: MutableList<Any>) {

@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"Kanallar: {0}; yetkilendirme gönderildi {1}; meta veri gönderildi {2}; ack {3}; alınan kontrol {4}/{5}; alınan mesaj {6}/{7}; ilk kapanış {8} ms sonra"</string>
     <string name="ui_671df84f68498f95" formatted="false">"Kalan bulut oyun süresi"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"İstatistikler görünürken bulut oyun süresi bakiyesi beş dakikada bir kontrol edilir."</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"Ana ekrana sabitle"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"Oyun kısayolu yükle"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"Kısayol • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"Oyunu bulutta aç"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"{0} oyununu kendi oturumunuzda açmak için mevcut oyun sonlandırılacak."</string>
+    <string name="ui_c34568aac4009568" formatted="false">"10 sn dokunulmadığında"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"Fiziksel kontrolcü kullanıldığında"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"Hareketsizlik veya fiziksel kontrolcü"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"Arkadaşlar"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"Ana ekran kısayolu"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"Yenile"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"Arkadaşlar sorgulanıyor…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"Xbox tarafından bildirilen durum. Tekrar sorgulamak için yenileyin."</string>
+    <string name="ui_46339c427719dfea" formatted="false">"Bu sorguda gösterilebilecek arkadaş yok."</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"Arkadaşlar sorgulanamadı. Bağlantıyı ve hesabın gizlilik izinlerini kontrol edin."</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"Kendi bulut oturumunuzu açar. Arkadaşınızla aynı maça katılma henüz desteklenmiyor."</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"Çevrimiçi"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"Uzakta"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"Çevrimdışı"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"Durum kullanılamıyor"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"Sanal kontrolcüyü gizle"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"Sanal kontrolcüyü göster"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"Bu oturumda yerel dokunmayı kullan"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"Sonraki oturumun dokunma modu"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"Seçili oyunun kısayolu"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"Otomatik gizle: {0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"Sanal kontrolcüyü otomatik gizle"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"Menü görünür kalır. Kontrolleri tekrar göstermek için bir kez dokunun. Basılı tutulan düğme, bırakana kadar etkin kalır."</string>
 </resources>

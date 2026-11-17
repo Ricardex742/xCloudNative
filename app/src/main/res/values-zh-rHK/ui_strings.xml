@@ -1189,4 +1189,32 @@
     <string name="ui_ba143e37d17552d4" formatted="false">"通道：{0}；已傳送授權 {1}；已傳送中繼資料 {2}；ack {3}；已接收控制 {4}/{5}；已接收訊息 {6}/{7}；首次關閉發生在 {8} ms 後"</string>
     <string name="ui_671df84f68498f95" formatted="false">"剩餘雲端遊戲時間"</string>
     <string name="ui_c159db6c309b3fc0" formatted="false">"顯示統計資料時，每五分鐘查詢一次雲端遊戲時數餘額。"</string>
+    <string name="ui_a1d76f5a2d46f223" formatted="false">"固定到主屏幕"</string>
+    <string name="ui_0c9a99b485139cff" formatted="false">"安裝遊戲快捷方式"</string>
+    <string name="ui_db807dc8746fd262" formatted="false">"快捷方式 • {0}"</string>
+    <string name="ui_f0a04235adb1b756" formatted="false">"在雲端打開遊戲"</string>
+    <string name="ui_1087fcbe65d053dd" formatted="false">"將結束當前遊戲，並在你自己的會話中打開{0}。"</string>
+    <string name="ui_c34568aac4009568" formatted="false">"10秒無觸摸後"</string>
+    <string name="ui_69a701fd437faa5b" formatted="false">"使用實體控制器時"</string>
+    <string name="ui_06a013be4df2b5dd" formatted="false">"無操作或使用實體控制器時"</string>
+    <string name="ui_bead8677698a4b14" formatted="false">"好友"</string>
+    <string name="ui_1e0e1d1dfc1bac1c" formatted="false">"主屏幕快捷方式"</string>
+    <string name="ui_dafb59613e123614" formatted="false">"刷新"</string>
+    <string name="ui_a57666f0f0c1fad7" formatted="false">"正在查詢好友…"</string>
+    <string name="ui_7fab6f20ab775ee9" formatted="false">"狀態由Xbox提供。刷新可重新查詢。"</string>
+    <string name="ui_46339c427719dfea" formatted="false">"本次查詢沒有可顯示的好友。"</string>
+    <string name="ui_6abfdd503ed0d819" formatted="false">"無法查詢好友。請檢查網絡連接和賬户隱私權限。"</string>
+    <string name="ui_e4ce755d6dc61553" formatted="false">"打開你自己的雲遊戲會話。暫不支持加入好友所在的同一場對局。"</string>
+    <string name="ui_0d21bd52022ca7f7" formatted="false">"在線"</string>
+    <string name="ui_fd7f0836e8addb8c" formatted="false">"離開"</string>
+    <string name="ui_a1794783aab72d20" formatted="false">"離線"</string>
+    <string name="ui_f6cead300943b57f" formatted="false">"狀態不可用"</string>
+    <string name="ui_2f4221629b6bfa68" formatted="false">"隱藏虛擬控制器"</string>
+    <string name="ui_1ee0a14a5d5ed914" formatted="false">"顯示虛擬控制器"</string>
+    <string name="ui_ddb2a8559e86548e" formatted="false">"本次會話使用原生觸摸"</string>
+    <string name="ui_135c5a53a43d774a" formatted="false">"下次會話的觸摸模式"</string>
+    <string name="ui_74a850be4368ff15" formatted="false">"所選遊戲的快捷方式"</string>
+    <string name="ui_b9efe8ecfa530b65" formatted="false">"自動隱藏：{0}"</string>
+    <string name="ui_58857f93c914c32d" formatted="false">"虛擬控制器自動隱藏"</string>
+    <string name="ui_5423e8e87e381255" formatted="false">"菜單保持可見。輕觸一次即可重新顯示控件。按住的按鈕會保持生效，直到鬆開。"</string>
 </resources>

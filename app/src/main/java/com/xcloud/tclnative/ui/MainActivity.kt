@@ -167,6 +167,7 @@ open class MainActivity : Activity() {
     private var recentHistoryJob: Job? = null
     private var ownershipJob: Job? = null
     private var playtimeJob: Job? = null
+    private var friendsPanel: com.xcloud.tclnative.ui.dashboard.FriendsPanel?=null
     private var playtimeCheckedAt: Long?=null
     private var gameLibrary: GameLibrary? = null
     private var loginView: ConsoleLoginView? = null
@@ -385,6 +386,7 @@ open class MainActivity : Activity() {
     }
 
     private fun renderLoginMenu() {
+        friendsPanel?.close();friendsPanel=null
         playtimeJob?.cancel();playtimeJob=null;playtimeCheckedAt=null
         ownershipJob?.cancel();ownershipJob=null
         browserLogin?.close();browserLogin=null
@@ -560,7 +562,8 @@ open class MainActivity : Activity() {
                 onExit = { showExitDialog() },
                 onFavoritesChanged = { syncHomeShortcuts() },
                 onPlayProduct = { product -> playGalleryProduct(signaling,product) },
-                onOwnershipNeeded = { requestOwnership() })
+                onOwnershipNeeded = { requestOwnership() },onGameShortcut={ showGameShortcut(it) },
+                onFriends={ showFriends { dashboard?.restoreFocus() } })
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)
@@ -729,7 +732,8 @@ open class MainActivity : Activity() {
             onPageEntered={ returnPage=it },catalogInformation={ dashboard?.catalogInformation },
             backgrounds={ dashboard?.wallpaperChoices() ?: com.xcloud.tclnative.ui.dashboard.SeriesWallpaperGallery.fromGames(currentGames,listOfNotNull(activeGame)) },
             refreshPlaytime={ dashboard?.let { refreshCloudPlaytime(it,force=true) } },
-            playtimeInformation={ dashboard?.cloudPlaytimeDiagnostics() ?: CloudPlaytime().diagnostics() }).open(startPage)
+            playtimeInformation={ dashboard?.cloudPlaytimeDiagnostics() ?: CloudPlaytime().diagnostics() },
+            friends={ showFriends(::back) },gameShortcut=dashboard?.selectedGame?.let { game -> ({ showGameShortcut(game,::back) }) }).open(startPage)
     }
     private fun showControllerProfiles(back: () -> Unit) {
         com.xcloud.tclnative.ui.dashboard.ControllerProfilePanel(this,controllerProfiles,
@@ -844,6 +848,21 @@ open class MainActivity : Activity() {
         if(actions.isEmpty()) ConsoleDialogs.message(this,UiText.text("Atalhos dos favoritos"),UiText.text("Adicione jogos aos favoritos com Y para criar seus atalhos."),listOf(ConsoleAction(UiText.text("Voltar")) { onBack?.invoke() }),onCancel=onBack)
         else ConsoleDialogs.menu(this,UiText.text("Atalhos dos favoritos"),actions,onBack=onBack ?: {})
     }
+    private fun showGameShortcut(game: GameTitle,onBack: () -> Unit={}) {
+        val actions=mutableListOf<ConsoleAction>()
+        if(homeShortcuts.supportsPin) actions+=ConsoleAction(UiText.text("Fixar na tela inicial")) { pinGameShortcut(game) }
+        actions+=ConsoleAction(UiText.text("Instalar atalho do jogo")) { createInstalledShortcut(game) }
+        ConsoleDialogs.menu(this,UiText.text("Atalho • {0}",UiText.nested(game.name)),actions,onBack=onBack)
+    }
+    private fun pinGameShortcut(game: GameTitle) {
+        val snapshot=currentGames
+        mainScope.launch(Dispatchers.IO) { catalogCache.save(snapshot) }
+        val image=ImageView(this)
+        shortcutPosters.load(image,game.tileUrl ?: game.posterUrl,192,192,notifyPlaceholder=false) {
+            val accepted=homeShortcuts.pin(game,(image.drawable as? BitmapDrawable)?.bitmap)
+            Toast.makeText(this,if(accepted) UiText.text("Pedido enviado ao launcher. Confirme na tela inicial.") else UiText.text("O launcher não aceitou o pedido."),Toast.LENGTH_LONG).show()
+        }
+    }
     private fun createInstalledShortcut(game: GameTitle) {
         if(shortcutInstallJob?.isActive==true) return
         shortcutInstallJob=mainScope.launch {
@@ -956,6 +975,14 @@ open class MainActivity : Activity() {
             statistics={ toggleStatistics() },
             statisticsOptions={ com.xcloud.tclnative.ui.dashboard.StatisticsSettingsPanel(this,statisticsStore,::refreshStatisticsSettings,::showGameMenu).show() },
             recovery={ showTransmissionRecovery() },
+            hudToggle=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ({
+                if(touchView.controlsVisible) hideGameHud() else enableGameHud()
+            }) else null,hudVisible=touchView.controlsVisible,
+            nativeTouch=if(currentTouchMode!=TouchMode.NATIVE && webrtcClient?.canUseNativeTouch()==true &&
+                transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ({ enableNativeTouch() }) else null,
+            touchSelection={ PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{}, {}, {}).chooseTouch(::showGameMenu) },
+            friends={ showFriends(::showGameMenu) },
+            shortcut=activeGame?.let { game -> ({ showGameShortcut(game,::showGameMenu) }) },
             diagnostics={ showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(currentSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))+"\n"+(webrtcClient?.inputDiagnostics() ?: "")) },
             disconnect={ cancelPlayback() },
             hud=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ({ showGameHudSettings() }) else null,
@@ -983,7 +1010,13 @@ open class MainActivity : Activity() {
             touchView.configure(TouchMode.VIRTUAL,game,hudStore.read(game.titleId))
             rumble.enabled=playbackSettings.rumble
         }
+        touchView.revealControls()
         return true
+    }
+    private fun hideGameHud() {
+        val game=activeGame ?: return
+        resetController();currentTouchMode=TouchMode.OFF
+        touchView.configure(TouchMode.OFF,game);rumble.enabled=playbackSettings.rumble
     }
     private fun enableNativeTouch(): Boolean {
         val game=activeGame ?: return false
@@ -1005,13 +1038,32 @@ open class MainActivity : Activity() {
         val game=activeGame ?: return
         com.xcloud.tclnative.ui.dashboard.GameHudPanel(this,game,hudStore,
             changed={ touchView.applyHud(it) },edit={ if(enableGameHud()) touchView.beginEditing() },
-            hide={ resetController(); currentTouchMode=TouchMode.OFF; touchView.configure(TouchMode.OFF,game); rumble.enabled=playbackSettings.rumble },
+            hide=::hideGameHud,
             page={ if(enableGameHud()) touchView.showPage(it) },
             activate=if(currentTouchMode==TouchMode.VIRTUAL) null else ({ if(enableGameHud()) showGameHudSettings() }),
             nativeTouch=if(currentTouchMode==TouchMode.NATIVE || webrtcClient?.canUseNativeTouch()!=true) null else ({ enableNativeTouch() })).show()
     }
     private fun chooseLaunchMode(signaling: XCloudSignalingClient,game: GameTitle) {
         launchCloudGame(signaling,game)
+    }
+
+    private fun showFriends(onBack: () -> Unit) {
+        val account=currentSession ?: return
+        friendsPanel?.close()
+        val valid={ currentSession===account && activityVisible && !isFinishing && !isDestroyed }
+        friendsPanel=com.xcloud.tclnative.ui.dashboard.FriendsPanel(this,mainScope,
+            load={
+                val authorization=authenticator.loadXboxSocialAuthorization().getOrThrow()
+                check(currentSession===account) { "SOCIAL_ACCOUNT_CHANGED" }
+                com.xcloud.tclnative.catalog.XboxFriendsService().load(authorization,UiText.locale.toLanguageTag())
+            },games={ currentGames },valid=valid,play={ game ->
+                fun launch() { if(valid()) currentSignaling?.let { chooseLaunchMode(it,game) } }
+                if(activeGame!=null) ConsoleDialogs.message(this,UiText.text("Abrir jogo na nuvem"),
+                    UiText.text("A partida atual será encerrada para abrir {0} na sua própria sessão.",UiText.nested(game.name)),listOf(
+                        ConsoleAction(UiText.text("Continuar")) { launch() },
+                        ConsoleAction(UiText.text("Voltar")) { showFriends(onBack) }),onCancel={ showFriends(onBack) })
+                else launch()
+            },back=onBack).also { it.show() }
     }
 
     private fun openAccountPage(url: String) {
@@ -1119,6 +1171,7 @@ open class MainActivity : Activity() {
     }
 
     private fun launchCloudGame(signaling: XCloudSignalingClient, game: GameTitle, touchChoice: TouchMode? = null) {
+        friendsPanel?.close();friendsPanel=null
         playtimeJob?.cancel();playtimeJob=null
         recentHistoryJob?.cancel(); recentHistoryJob=null
         catalogReturnJob?.cancel(); catalogReturnJob=null
@@ -1684,6 +1737,7 @@ open class MainActivity : Activity() {
         val slot=controllers.slot(source) ?: return
         usbBlockedButtons=usbBlockedButtons and state.buttons
         val filtered=state.copy(buttons=state.buttons and usbBlockedButtons.inv())
+        touchView.physicalInput(filtered)
         if(slot!=0) { controllers.update(slot,filtered);publishGamepad(slot);return }
         val held=filtered.buttons and ControllerShortcut.BOTH
         val old=usbShortcutHeld;usbShortcutHeld=held
@@ -1812,6 +1866,7 @@ open class MainActivity : Activity() {
                 rightX = stick(rightX), rightY = stick(rightY),
                 leftTrigger = trigger(MotionEvent.AXIS_LTRIGGER, MotionEvent.AXIS_BRAKE),
                 rightTrigger = trigger(MotionEvent.AXIS_RTRIGGER, MotionEvent.AXIS_GAS)))
+            touchView.physicalInput(controllers.physical(slot))
             publishGamepad(slot)
             return true
         }
@@ -1885,6 +1940,7 @@ open class MainActivity : Activity() {
         val mask = gamepadButton(keyCode)
         if (mask != 0 && gameplayInputEnabled()) {
             val slot=controllerSlot(event.deviceId,event.source) ?: return true
+            touchView.physicalInput(GamepadState(buttons=mask))
             if (slot==0 && handleControllerShortcut(mask, true)) return true
             controllers.update(slot,controllers.physical(slot).copy(buttons=controllers.physical(slot).buttons or mask))
             publishGamepad(slot)
@@ -1905,6 +1961,7 @@ open class MainActivity : Activity() {
         }
     }
     override fun onStop() {
+        friendsPanel?.close();friendsPanel=null
         val heldUsb=usbDirect.currentInput().buttons
         joystickDispatch.request(false);rumble.enabled=false;rumble.stop()
         usbRumble.setForeground(false);usbDirect.setForeground(false);usbNavigation.clear();resetController()
@@ -1914,6 +1971,7 @@ open class MainActivity : Activity() {
     }
 
     override fun onDestroy() {
+        friendsPanel?.close();friendsPanel=null
         transmissionRecovery?.close()
         browserLogin?.close();browserLogin=null
         joystickDispatch.request(false)

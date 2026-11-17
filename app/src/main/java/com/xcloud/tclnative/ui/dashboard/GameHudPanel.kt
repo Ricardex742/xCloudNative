@@ -24,6 +24,15 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         )
         activate?.let { actions.add(0,ConsoleAction(UiText.text("Usar controles na tela"),it)) }
         nativeTouch?.let { actions.add(0,ConsoleAction(com.xcloud.tclnative.settings.TouchMode.NATIVE.label,it)) }
+        actions+=ConsoleAction(UiText.text("Ocultar automaticamente: {0}",UiText.nested(settings.autoHide.label))) {
+            val dialog=ConsoleDialog(context,UiText.text("Ocultação automática do controle virtual"))
+            dialog.body.addView(dialog.text(UiText.text("O menu permanece visível. Toque uma vez para mostrar os controles novamente. Um botão segurado continua ativo até você soltar."),20,color=DashboardTheme.muted))
+            HudAutoHide.entries.forEach { choice ->
+                val row=dialog.addMenuItem("${if(choice==settings.autoHide) "✓" else "○"} ${choice.label}") { save(settings.copy(autoHide=choice)) }
+                if(choice==settings.autoHide) dialog.focusFirst(row)
+            }
+            dialog.addAction(UiText.text("Voltar")) { show() };dialog.setOnCancelListener { show() };dialog.show()
+        }
         if(effective.shooter) {
             actions+=ConsoleAction(UiText.text("Sensibilidade do arrasto: {0}%",UiText.nested(settings.sensitivity))) {
                 chooseValue(UiText.text("Sensibilidade da câmera por arrasto"),listOf(40,60,100,160,220,300,450,650,900,1200),settings.sensitivity,UiText.text("Ajusta a resposta do arrasto no HUD. A velocidade máxima de giro também depende da sensibilidade de controle configurada dentro do jogo.")) { save(settings.copy(sensitivity=it)) }

@@ -51,6 +51,20 @@ class DashboardNavigationRegressionTest {
         val b=Bitmap.createBitmap(v.width,v.height,Bitmap.Config.ARGB_8888);v.draw(Canvas(b))
         File("build/reports/themes/regression-$name.png").apply { parentFile!!.mkdirs() }.outputStream().use { b.compress(Bitmap.CompressFormat.PNG,100,it) };b.recycle()
     }
+    @Test fun shortcutActionsUseTheCurrentSelectionAndRecycledCoverWithoutLaunchingTheGame() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
+        var shortcut: String?=null;var plays=0
+        val v=GameDashboardView(a,GameLibrary(a,"shortcuts"),{plays++},{},{},{},onGameShortcut={shortcut=it.titleId})
+        try {
+            a.setContentView(v);v.setGames(games());v.selectTab(LibraryTab.ALL);layout(v);v.restoreFocus();layout(v)
+            assertTrue(v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_SELECT)))
+            assertEquals("NAV-0",shortcut);assertEquals(0,plays)
+            repeat(8) { v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT)) }
+            layout(v);shortcut=null
+            val card=grid(v).findViewHolderForAdapterPosition(8)!!.itemView
+            assertTrue(card.performLongClick());assertEquals("NAV-8",shortcut);assertEquals(0,plays)
+        } finally { v.close();c.pause().stop().destroy() }
+    }
     @Test fun horizontalDpadReachesEveryGameInBothDirectionsIncludingKeyRepeatsAndSpatialSearch() {
         for(theme in listOf(UiTheme.XBOX_360_NXE,UiTheme.XBOX_SERIES)) {
             DashboardTheme.apply(RuntimeEnvironment.getApplication(),theme)

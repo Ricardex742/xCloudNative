@@ -57,6 +57,22 @@ class AuthTest {
         assertEquals(4,server.requestCount)
     }
 
+    @Test fun friendsUseXboxLiveAudienceAndDiscardGrantIfAccountChangesDuringRequest()=runBlocking {
+        store.token=fresh();exchange();val login=auth();login.authenticateToXCloud().getOrThrow()
+        repeat(3) { server.takeRequest() }
+        enqueue("""{"Token":"social-token","DisplayClaims":{"xui":[{"uhs":"social-hash"}]}}""")
+        assertEquals("XBL3.0 x=social-hash;social-token",login.loadXboxSocialAuthorization().getOrThrow())
+        val body=JSONObject(server.takeRequest().body.readUtf8())
+        assertEquals("http://xboxlive.com",body.getString("RelyingParty"))
+        server.enqueue(MockResponse().setBody("""{"Token":"stale-token"}""").setBodyDelay(200,TimeUnit.MILLISECONDS))
+        val pending=async { login.loadXboxSocialAuthorization() }
+        withContext(Dispatchers.IO) { server.takeRequest() }
+        login.clearSession()
+        assertTrue(pending.await().isFailure)
+        assertTrue(login.loadXboxSocialAuthorization().isFailure)
+        assertEquals(5,server.requestCount)
+    }
+
     @Test fun optionalProfileUsesItsOwnXboxGrantAndDoesNotTreatGamerscoreAsRewards() = runBlocking {
         store.token = fresh(); exchange()
         val authenticator = auth()

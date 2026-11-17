@@ -11,9 +11,16 @@ object GameMenuPanel {
              microphone: (() -> Unit)? = null,microphoneLabel: String=UiText.text("Ativar microfone"),mouse: (() -> Unit)? = null,controllerProfiles: (() -> Unit)?=null,
              aspect: (() -> Unit)? = null,language: (() -> Unit)? = null,appearance: (() -> Unit)? = null,
              profile: com.xcloud.tclnative.catalog.XboxProfile? = null,statisticsOptions: (() -> Unit)?=null,
-             recovery: (() -> Unit)?=null): ConsoleDialog {
+             recovery: (() -> Unit)?=null,hudToggle: (() -> Unit)?=null,hudVisible: Boolean=false,
+             nativeTouch: (() -> Unit)?=null,touchSelection: (() -> Unit)?=null,
+             friends: (() -> Unit)?=null,shortcut: (() -> Unit)?=null): ConsoleDialog {
         val actions=mutableListOf<ConsoleAction>()
         if(SeriesGuidePanel.enabled(context)) actions+=ConsoleAction(UiText.text("Retomar partida")) {}
+        hudToggle?.let { actions+=ConsoleAction(if(hudVisible) UiText.text("Ocultar controle virtual") else UiText.text("Mostrar controle virtual"),it) }
+        nativeTouch?.let { actions+=ConsoleAction(UiText.text("Usar toque nativo nesta partida"),it) }
+        touchSelection?.let { actions+=ConsoleAction(UiText.text("Modo de toque da próxima partida"),it) }
+        friends?.let { actions+=ConsoleAction(UiText.text("Amigos"),it) }
+        shortcut?.let { actions+=ConsoleAction(UiText.text("Atalho na tela inicial"),it) }
         if(aspect!=null) actions+=ConsoleAction(UiText.text("Proporção da imagem"),aspect)
         actions+=ConsoleAction(UiText.text("Upscaling e tratamento"),image)
         if(virtualTouch!=null) actions+=ConsoleAction(UiText.text("Usar controle virtual nesta partida"),virtualTouch)

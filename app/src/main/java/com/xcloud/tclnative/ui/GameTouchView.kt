@@ -31,6 +31,12 @@ class GameTouchView(context: Context,
     private var model=VirtualGamepad(1,1)
     val preset: HudPreset get()=model.preset
     private var mode=TouchMode.OFF
+    private var autoHidden=false
+    private var wakingGesture=false
+    private var overlayFocused=false
+    private val virtualPointers=mutableSetOf<Int>()
+    val controlsVisible: Boolean get()=mode==TouchMode.VIRTUAL && !autoHidden
+    private val autoHideTask=Runnable { if(canAutoHide() && configuration.autoHide.idle) hideAutomatically() }
     var immediateNativeDispatch=true
     private val native=mutableMapOf<Int,NativePointer>()
     private var nativeEvents=NativeEvents()
@@ -70,12 +76,14 @@ class GameTouchView(context: Context,
     init { visibility=GONE; isFocusable=false; contentDescription=UiText.text("HUD de toque e menu da partida") }
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
         releaseInputs(); isEditing=false
+        autoHidden=false
         if(game!=null) automatic=GameHud.automatic(game.titleId,game.name)
         if(settings!=null) configuration=settings
         this.mode=mode
         rebuild(configuration.preset ?: automatic)
         val menuOnly=game!=null && com.xcloud.tclnative.settings.InputDeviceProfile.read(context).touchDevice
         visibility=if(mode==TouchMode.OFF && !menuOnly) GONE else VISIBLE
+        scheduleAutoHide()
         invalidate()
     }
     fun applyHud(settings: HudSettings) {
@@ -83,17 +91,18 @@ class GameTouchView(context: Context,
         releaseInputs(); configuration=settings
         val resolved=settings.preset ?: automatic
         rebuild(if(resolved.family==oldPage.family) oldPage else resolved); invalidate()
+        revealControls()
     }
-    fun showPage(page: HudPreset) { releaseInputs(); model.setPage(page); invalidate() }
+    fun showPage(page: HudPreset) { releaseInputs(); model.setPage(page);scheduleAutoHide(); invalidate() }
     private fun rebuild(page: HudPreset=preset) { model=VirtualGamepad(width.coerceAtLeast(1),height.coerceAtLeast(1),page,configuration) }
-    override fun refreshLanguage() { releaseInputs();rebuild();invalidate() }
+    override fun refreshLanguage() { releaseInputs();rebuild();scheduleAutoHide();invalidate() }
     fun beginEditing() {
         if(mode!=TouchMode.VIRTUAL) return
-        releaseInputs(); beforeEdit=configuration; beforeEditPreset=preset; selected=null; isEditing=true; invalidate()
+        releaseInputs();autoHidden=false; beforeEdit=configuration; beforeEditPreset=preset; selected=null; isEditing=true; invalidate()
     }
     fun cancelEditing() {
         if(!isEditing) return
-        releaseInputs(); configuration=beforeEdit; rebuild(beforeEditPreset); isEditing=false; invalidate()
+        releaseInputs(); configuration=beforeEdit; rebuild(beforeEditPreset); isEditing=false;scheduleAutoHide(); invalidate()
     }
     fun setEditedBinding(id: String,binding: HudBinding) {
         if(!isEditing) return
@@ -117,15 +126,36 @@ class GameTouchView(context: Context,
     }
     fun releaseInputs() {
         removeCallbacks(lookReset)
+        removeCallbacks(autoHideTask);virtualPointers.clear();wakingGesture=false
         model.clear(); onGamepad(GamepadState())
         if(native.isNotEmpty()) { nativeEvents.releases++;emitNative(native.values.map { it.copy(type=2,pressure=0f) }) }
         native.clear(); menuPointer=null; editPointer=null; editAction=null; invalidate()
     }
     override fun onSizeChanged(w: Int,h: Int,oldw: Int,oldh: Int) {
         val page=preset
-        releaseInputs(); rebuild(page)
+        releaseInputs(); rebuild(page);scheduleAutoHide()
     }
     override fun onDetachedFromWindow() { releaseInputs(); super.onDetachedFromWindow() }
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus);overlayFocused=hasWindowFocus
+        if(hasWindowFocus) scheduleAutoHide() else removeCallbacks(autoHideTask)
+    }
+    private fun canAutoHide()=mode==TouchMode.VIRTUAL && !isEditing && !autoHidden && !wakingGesture &&
+        overlayFocused && visibility==VISIBLE && virtualPointers.isEmpty() && menuPointer==null
+    private fun scheduleAutoHide() {
+        removeCallbacks(autoHideTask)
+        if(canAutoHide() && configuration.autoHide.idle) postDelayed(autoHideTask,10_000)
+    }
+    private fun hideAutomatically() {
+        if(!canAutoHide()) return
+        releaseInputs();autoHidden=true;invalidate()
+    }
+    fun revealControls() { autoHidden=false;wakingGesture=false;scheduleAutoHide();invalidate() }
+    fun physicalInput(state: GamepadState) {
+        val active=state.buttons!=0 || state.leftTrigger>.1f || state.rightTrigger>.1f ||
+            listOf(state.leftX,state.leftY,state.rightX,state.rightY).any { kotlin.math.abs(it)>.15f }
+        if(active && configuration.autoHide.physical) hideAutomatically()
+    }
     private fun menuHit(x: Float,y: Float)=hypot(x-width*.50f,y-height*.055f)<=height*.038f
     private fun publish() {
         val now=SystemClock.uptimeMillis()
@@ -170,13 +200,26 @@ class GameTouchView(context: Context,
             if(mode==TouchMode.NATIVE) nativeEvents.menu++
             menuPointer=id; return true
         }
-        if(action==MotionEvent.ACTION_CANCEL) { releaseInputs(); return true }
+        if(action==MotionEvent.ACTION_CANCEL) { releaseInputs();scheduleAutoHide(); return true }
         if((action==MotionEvent.ACTION_UP || action==MotionEvent.ACTION_POINTER_UP) && id==menuPointer) {
             menuPointer=null
             if(menuHit(event.getX(index),event.getY(index))) { releaseInputs(); performClick() }
             return true
         }
         if(mode==TouchMode.OFF) return false
+        if(mode==TouchMode.VIRTUAL && (autoHidden || wakingGesture)) {
+            if(menuPointer!=null) return true
+            if(action==MotionEvent.ACTION_DOWN) { autoHidden=false;wakingGesture=true;removeCallbacks(autoHideTask);invalidate() }
+            if(action==MotionEvent.ACTION_UP) { wakingGesture=false;scheduleAutoHide() }
+            return true // The revealing gesture never presses a game control.
+        }
+        if(mode==TouchMode.VIRTUAL) {
+            when(action) {
+                MotionEvent.ACTION_DOWN -> { virtualPointers.clear();virtualPointers.add(id);removeCallbacks(autoHideTask) }
+                MotionEvent.ACTION_POINTER_DOWN -> { virtualPointers.add(id);removeCallbacks(autoHideTask) }
+                MotionEvent.ACTION_UP,MotionEvent.ACTION_POINTER_UP -> { virtualPointers.remove(id);scheduleAutoHide() }
+            }
+        }
         if(mode==TouchMode.NATIVE) {
             val events=mutableListOf<NativePointer>()
             fun pointer(i: Int,type: Int) {
@@ -271,7 +314,7 @@ class GameTouchView(context: Context,
                 when(command) {
                     "cancel" -> cancelEditing()
                     "reset" -> { configuration=HudSettings(preset=configuration.preset,footballScheme=configuration.footballScheme); rebuild(); selected=null }
-                    "save" -> if(onHudSaved(configuration)) { releaseInputs(); isEditing=false }
+                    "save" -> if(onHudSaved(configuration)) { releaseInputs(); isEditing=false;scheduleAutoHide() }
                     "smaller","larger" -> model.controls.firstOrNull { it.id==selected }?.let { control ->
                         placement(control) { it.copy(scale=(it.scale+if(command=="larger") .10f else -.10f).coerceIn(.55f,1.7f)) }
                     }
@@ -287,7 +330,7 @@ class GameTouchView(context: Context,
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val state=model.state(SystemClock.uptimeMillis())
-        if(mode==TouchMode.VIRTUAL) {
+        if(mode==TouchMode.VIRTUAL && !autoHidden) {
             for(control in model.controls) if(control.kind!=TouchKind.CAMERA) drawControl(canvas,control,state)
             if(isEditing) drawEditor(canvas)
         }
