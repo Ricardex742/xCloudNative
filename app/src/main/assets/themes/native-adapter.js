@@ -19,7 +19,7 @@
     scale();
   };
   addEventListener('resize', resize); resize();
-  const quotaMark = () => data && data.quota.unlimited ? '∞' : '—';
+  const quotaMark = () => data && data.quota.unlimited ? '∞' : data && data.quota.value || '—';
   function account() {
     if (!data) return;
     document.querySelectorAll('.profile-trigger .avatar,.utilities .avatar').forEach(n => text(n, data.profile.name.slice(0, 1).toUpperCase()));

@@ -38,7 +38,9 @@ internal object HtmlConsoleData {
             .put("tab",when(tab) { LibraryTab.RECENT -> "recent";LibraryTab.FAVORITES -> "favorites";else -> "all" })
             .put("profile",JSONObject().put("name",profile.displayName).put("gamertag",profile.gamertag)
                 .put("plan",profile.subscription?.let { if(it=="FREE") "FREE" else "GAME PASS $it" } ?: "—"))
-            .put("quota",JSONObject().put("label",quota.label).put("unlimited",quota.status==CloudPlaytimeStatus.UNLIMITED))
+            .put("quota",JSONObject().put("label",quota.label).put("unlimited",quota.status==CloudPlaytimeStatus.UNLIMITED)
+                .put("value",if(quota.status!=CloudPlaytimeStatus.LIMITED) "—" else if(quota.seconds<60) "<1m"
+                    else if(quota.seconds<3600) "${quota.seconds/60}min" else "${quota.seconds/3600}h${(quota.seconds/60%60).toString().padStart(2,'0')}"))
             .put("settings",JSONObject().put("resolution",settings.forSession().resolution.label)
                 .put("video",settings.videoMode.label).put("touch",settings.touchMode.label)
                 .put("image",ImageProfiles.selected(settings).label).put("audio",settings.audioMode.label))
