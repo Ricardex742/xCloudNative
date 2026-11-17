@@ -249,7 +249,7 @@ class ConsoleDashboardUiTest {
             val view=GameDashboardView(a,GameLibrary(a,"ps-library-${theme.name}"),{},{},{},{})
             try {
                 a.setContentView(view);view.setGames(games());view.setGamePassProducts(setOf("PRODUCT-0"));view.selectTab(LibraryTab.ALL);layout(view)
-                val library=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.toString()==com.xcloud.tclnative.i18n.UiText.text("Biblioteca") }
+                val library=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
                 library.performClick()
                 val chooser=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
                 val rows=all(chooser.body).filterIsInstance<TextView>().filter { it.isClickable }

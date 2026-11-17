@@ -45,7 +45,7 @@ internal class ConsoleControlPlate(private val scene: ConsoleScene,private val c
                     paint.style=Paint.Style.STROKE;paint.color=Color.WHITE;paint.strokeWidth=if(focused) 2.5f else 1f
                     canvas.drawRoundRect(rect,radius,radius,paint)
                 }
-                if(selected && control==ConsoleControl.TAB) {
+                if(selected && control==ConsoleControl.TAB && !ps5) {
                     paint.style=Paint.Style.FILL;paint.color=Color.WHITE
                     canvas.drawRect(rect.left+6f,rect.bottom-2f,rect.right-6f,rect.bottom,paint)
                 }

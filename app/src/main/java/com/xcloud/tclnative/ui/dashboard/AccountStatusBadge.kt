@@ -68,7 +68,9 @@ internal class AccountStatusBadge(context: Context,private val plan: Boolean): L
             cornerRadius=radius
             setStroke(scale.roundToInt().coerceAtLeast(1),if(light) 0xffa6b992.toInt() else Color.argb(135,Color.red(accent),Color.green(accent),Color.blue(accent)))
         }
+        if(scene==ConsoleScene.PS5) background=null
         setTextColor(foreground)
+        if(scene==ConsoleScene.PS5) setTextColor(if(plan) 0xffe0d4b8.toInt() else 0xffc4c9d2.toInt())
         wordmark.setTintList(ColorStateList.valueOf(ink))
         setPadding((8*scale).roundToInt(),0,(8*scale).roundToInt(),0)
         if(!plan) {

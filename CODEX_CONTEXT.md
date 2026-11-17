@@ -98,10 +98,10 @@ Manter o app leve: evitar WebViews novos, bibliotecas de interface adicionais ou
 
 ## Temas PlayStation
 
-- `ConsoleScene.PS4` e `PS5` são preferências de interface independentes do vídeo e da conta. PS4 usa ondas vetoriais, faixa horizontal com seleção ampliada e menu rápido lateral; PS5 usa seletor compacto no topo, panorama do jogo selecionado e centro de controle inferior, com fundo próprio quando o panorama falta. O cabeçalho e a grade do tema padrão não são usados. Três abas principais preservam as seis categorias via Biblioteca e LB/RB.
+- `ConsoleScene.PS4` e `PS5` são preferências de interface independentes do vídeo e da conta. PS4 usa ondas vetoriais, faixa horizontal com seleção ampliada e menu rápido lateral; PS5 usa seletor compacto no topo, panorama do jogo selecionado e centro de controle inferior, com fundo próprio quando o panorama falta. O cabeçalho e a grade do tema padrão não são usados. A faixa de funções do PS4 e as abas compactas do PS5 preservam as seis categorias via Biblioteca e LB/RB. Os painéis e atalhos usam símbolos PlayStation; não há cabeçalho do tema padrão nesses dashboards.
 - Reutilizam o catálogo reciclado, o carregamento limitado de artes, os painéis nativos e a política de movimento existente. Sem novas bibliotecas, WebViews, vídeos de fundo ou alterações de input/handshake.
 - `layoutPlayStation` trata paisagem e retrato; botões de pesquisa, configurações e jogar preservam alvos de toque. `ConsoleDashboardUiTest` cobre lançamento explícito, retrato e descarte do panorama ao selecionar jogo sem arte.
-- Esta etapa ainda precisa das verificações do build atual e de validação em aparelhos reais. Workflows permanecem intactos.
+- As validações do build atual e em aparelhos reais devem ser registradas separadamente. Workflows permanecem intactos; os APKs de teste são entregues por artefato do Actions, sem criar release.
 
 ## Verificação e entrega em outro ambiente
 

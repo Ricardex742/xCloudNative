@@ -94,6 +94,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         if(purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
             headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(14) })
             if(purpose==ConsolePanelPurpose.GUIDE) panel.minimumHeight=(screenHeight*.88f).roundToInt()
+        } else if(skin.scene.playStation) {
+            headingContent.addView(text(heading,34),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(22) })
         } else if(purpose==ConsolePanelPurpose.GUIDE) {
             val brand=ConsoleBrandView(context)
             headingContent.addView(brand,LinearLayout.LayoutParams(px(176),px(42)))
@@ -151,7 +153,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     /** Compact shortcuts keep text labels and use real native focus/accessibility nodes. */
     internal fun addShortcuts(items: List<Pair<ConsoleGlyph,ConsoleAction>>) {
         val columns=if(purpose==ConsolePanelPurpose.GUIDE && skin.scene==com.xcloud.tclnative.settings.ConsoleScene.PS4) 1 else if(purpose==ConsolePanelPurpose.CONTROL_CENTER && screenWidth>screenHeight) 6 else if(purpose==ConsolePanelPurpose.GUIDE || screenWidth<screenHeight) 2 else 3
-        val compact=screenWidth>screenHeight && screenHeight/context.resources.displayMetrics.density<480
+        val sideMenu=purpose==ConsolePanelPurpose.GUIDE && skin.scene==com.xcloud.tclnative.settings.ConsoleScene.PS4
+        val compact=sideMenu || screenWidth>screenHeight && screenHeight/context.resources.displayMetrics.density<480
         items.chunked(columns).forEach { group ->
             val row=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL;isBaselineAligned=false }
             group.forEach { (icon,action) ->
@@ -170,7 +173,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                         if(android.os.Build.VERSION.SDK_INT>=26) tooltipText=UiText.text("Personalizar estatísticas")
                     }
                 }
-                row.addView(button,LinearLayout.LayoutParams(0,if(compact) touchSize() else maxOf(touchSize(),px(100)),1f).apply { marginEnd=px(7) })
+                row.addView(button,LinearLayout.LayoutParams(0,if(sideMenu) maxOf(touchSize(),px(64)) else if(compact) touchSize() else maxOf(touchSize(),px(100)),1f).apply { marginEnd=px(7) })
                 if(initialFocus==null) initialFocus=button
             }
             repeat(columns-group.size) { row.addView(View(context),LinearLayout.LayoutParams(0,1,1f)) }
