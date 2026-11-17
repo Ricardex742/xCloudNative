@@ -4,6 +4,10 @@ import com.xcloud.tclnative.webrtc.*
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 
 class GamepadStartupSyncTest {
     private fun body(message: ChannelMessage): JSONObject {
@@ -49,5 +53,25 @@ class GamepadStartupSyncTest {
         sync.sent(message);assertTrue(sync.registered)
         assertNull(sync.remainingMs());assertTrue(sync.due().isEmpty())
         assertTrue(sync.diagnostics().contains("removed=false; added=true"))
+    }
+    @Test fun aRealGestureQueuedDuringRegistrationIsDeliveredInOrderAfterInputStarts() {
+        var now=0L;val sync=GamepadStartupSync { now };sync.sent(sync.begin())
+        val packets=LinkedBlockingQueue<ByteArray>()
+        val pump=RealtimeInputPump({0},{packets.offer(it);true},{fail("send")},initialGamepads=emptySet(),
+            initialTouchDimensions=TouchInputDimensions(1920,1080),initializeTouchSlot=true)
+        try {
+            pump.pointers(listOf(NativePointer(1,.2f,.4f,1)))
+            pump.pointers(listOf(NativePointer(1,.2f,.4f,2)))
+            assertFalse(sync.registered);assertNull(packets.poll(30,TimeUnit.MILLISECONDS))
+            now=500;sync.sent(sync.due().single());assertTrue(sync.registered)
+            pump.start()
+            val types=(1..2).map {
+                val packet=packets.poll(1500,TimeUnit.MILLISECONDS) ?: throw AssertionError("Missing gesture")
+                assertEquals(4,ByteBuffer.wrap(packet).order(ByteOrder.LITTLE_ENDIAN).short.toInt())
+                packet.last().toInt()
+            }
+            assertEquals(listOf(1,2),types)
+            assertNull(packets.poll(30,TimeUnit.MILLISECONDS))
+        } finally { pump.close() }
     }
 }

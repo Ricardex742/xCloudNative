@@ -437,9 +437,6 @@ class XCloudWebRtcClient(
             )
                 inputPump = pump
                 gamepads.forEach { (index,state) -> pump.update(state,index) }
-                pump.start()
-                channelsReady.complete(Unit)
-                if(nativeTouch) sendTouchDimensions()
             }
             scope.launch {
                 // A fresh RTC instance owns this task; close() cancels it before another session starts.
@@ -472,6 +469,16 @@ class XCloudWebRtcClient(
                 }
             }
         }
+        startInputDelivery()
+    }
+
+    private fun startInputDelivery() = synchronized(pumpLock) {
+        if(closed.get() || serverEnded.get()!=null || channelsReady.isCompleted || !handshake.gamepadSync.registered) return@synchronized
+        val pump=inputPump ?: return@synchronized
+        // The pump buffers genuine events before start; registration must precede the first state report.
+        pump.start()
+        channelsReady.complete(Unit)
+        if(nativeTouch) sendTouchDimensions()
     }
 
     /** Ask the running Xbox encoder for an IDR without allocating a new cloud session. */
