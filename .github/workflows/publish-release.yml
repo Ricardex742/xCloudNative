@@ -55,7 +55,7 @@ jobs:
           with open(os.environ['GITHUB_ENV'], 'a') as output:
               output.write('BUILD_SHA=' + run['head_sha'] + '\n')
           PY
-          gh run download "$BUILD_RUN" --repo "$GH_REPO" --name TCL-xCloud-App-Debug-Android10 --dir "$RUNNER_TEMP/apk"
+          gh run download "$BUILD_RUN" --repo "$GH_REPO" --name TCL-xCloud-App-Release-Android10 --dir "$RUNNER_TEMP/apk"
       - uses: actions/checkout@v5
         with:
           ref: ${{ env.BUILD_SHA }}
@@ -64,17 +64,17 @@ jobs:
         run: |
           set -euo pipefail
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;34.0.0'
-          python3 scripts/verify_apk_signing.py "$RUNNER_TEMP/apk/app-debug.apk"
+          python3 scripts/verify_apk_signing.py "$RUNNER_TEMP/apk/app-release.apk" --require-nondebuggable
           python3 - <<'PY'
           import hashlib, json, os, shutil
           from pathlib import Path
           source = Path(os.environ['RUNNER_TEMP']) / 'apk'
-          apk = source / 'app-debug.apk'
-          metadata = json.loads((source / 'app-debug.apk.metadata.json').read_text())
+          apk = source / 'app-release.apk'
+          metadata = json.loads((source / 'app-release.apk.metadata.json').read_text())
           version = os.environ['RELEASE_TAG'][1:]
           assert metadata['versionName'].split('-')[0] == version
           digest = hashlib.sha256(apk.read_bytes()).hexdigest()
-          assert digest == (source / 'app-debug.apk.sha256').read_text().split()[0]
+          assert digest == (source / 'app-release.apk.sha256').read_text().split()[0]
           assets = Path(os.environ['RUNNER_TEMP']) / 'release-assets'
           assets.mkdir()
           name = f'xCLOUD-{version}.apk'

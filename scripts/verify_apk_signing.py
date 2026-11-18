@@ -18,18 +18,22 @@ def signer_certificate(output, expected):
     return matches[0].lower()
 
 
-def package_metadata(output):
+def package_metadata(output, require_nondebuggable=False):
     match = re.search(r"package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'", output)
     if not match or match[1] != "com.xcloud.tclnative":
         raise SigningError("Identificador do aplicativo alterado; o APK não atualizaria a instalação existente.")
     if int(match[2]) < 16:
         raise SigningError("versionCode anterior à correção de assinatura. Publicação bloqueada.")
-    return {"package": match[1], "versionCode": int(match[2]), "versionName": match[3]}
+    debuggable = any(line.strip() == "application-debuggable" for line in output.splitlines())
+    if require_nondebuggable and debuggable:
+        raise SigningError("APK com depuração habilitada. Publicação bloqueada.")
+    return {"package": match[1], "versionCode": int(match[2]), "versionName": match[3], "debuggable": debuggable}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("apk", type=Path)
+    parser.add_argument("--require-nondebuggable", action="store_true")
     args = parser.parse_args()
     sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
     if not sdk:
@@ -43,7 +47,7 @@ def main():
         fingerprint = signer_certificate(signature.stdout, expected_certificate())
         badging = subprocess.run([str(build_tools / "aapt"), "dump", "badging", str(args.apk)],
                                  capture_output=True, text=True, check=True)
-        metadata = package_metadata(badging.stdout)
+        metadata = package_metadata(badging.stdout, require_nondebuggable=args.require_nondebuggable)
     except (SigningError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from None
     metadata.update(signingCertificateSHA256=fingerprint, sha256=hashlib.sha256(args.apk.read_bytes()).hexdigest())

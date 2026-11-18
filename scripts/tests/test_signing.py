@@ -95,6 +95,14 @@ class PersistentSigningTest(unittest.TestCase):
         with self.assertRaises(SigningError):
             package_metadata(valid.replace("versionCode='16'", "versionCode='15'"))
 
+    def test_distribution_verification_rejects_a_debuggable_manifest(self):
+        valid = "package: name='com.xcloud.tclnative' versionCode='98' versionName='0.40.3-session-stability'"
+        debug = valid + "\napplication-debuggable\nsdkVersion:'24'\n"
+        self.assertFalse(package_metadata(valid, require_nondebuggable=True)["debuggable"])
+        self.assertTrue(package_metadata(debug)["debuggable"])
+        with self.assertRaises(SigningError):
+            package_metadata(debug, require_nondebuggable=True)
+
     def test_repository_does_not_track_any_private_keystore_or_secret_export(self):
         tracked = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout.decode().split("\0")
         for name in filter(None, tracked):

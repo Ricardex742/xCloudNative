@@ -4,6 +4,12 @@ on:
   push:
     branches: [ "main", "ci/apk-android10-3cc2595", "perf/decoder-display-latency-0.31" ]
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: Variante do APK (release para distribuição, debug para diagnóstico)
+        type: choice
+        options: [release, debug]
+        default: release
 
 permissions:
   contents: read
@@ -58,10 +64,28 @@ jobs:
         run: python3 scripts/prepare_signing.py
 
       - name: Compilar APK e verificar APIs para Android 10
+        id: apk
+        env:
+          BUILD_TYPE: ${{ inputs.build_type || 'release' }}
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon --max-workers=2 --stacktrace -Pkotlin.compiler.execution.strategy=in-process :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+          signing_options=()
+          case "$BUILD_TYPE" in
+            release)
+              task=:app:assembleRelease
+              apk=app/build/outputs/apk/release/app-release.apk
+              artifact=TCL-xCloud-App-Release-Android10
+              signing_options+=(--require-nondebuggable)
+              ;;
+            debug)
+              task=:app:assembleDebug
+              apk=app/build/outputs/apk/debug/app-debug.apk
+              artifact=TCL-xCloud-App-Debug-Android10
+              ;;
+            *) exit 1 ;;
+          esac
+          gradle --no-daemon --max-workers=2 --stacktrace -Pkotlin.compiler.execution.strategy=in-process :app:testDebugUnitTest "$task" :app:lintDebug
           python3 - <<'PYTEST'
           from pathlib import Path
           import os, xml.etree.ElementTree as E
@@ -72,20 +96,20 @@ jobs:
               summary.write(f"Testes JVM: {totals}\n")
           print(totals)
           PYTEST
-          apk=app/build/outputs/apk/debug/app-debug.apk
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$apk"
-          python3 scripts/verify_apk_signing.py "$apk"
+          python3 scripts/verify_apk_signing.py "$apk" "${signing_options[@]}"
           badging=$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk")
           printf '%s\n' "$badging" | grep -F "package: name='com.xcloud.tclnative'"
           printf '%s\n' "$badging" | grep -Fx "sdkVersion:'24'"
           sha256sum "$apk" | tee "$apk.sha256"
+          printf 'path=%s\nartifact=%s\n' "$apk" "$artifact" >> "$GITHUB_OUTPUT"
           {
-            echo '### APK debug gerado'
+            echo "### APK $BUILD_TYPE gerado"
             echo "- Branch: $GITHUB_REF_NAME"
             echo '- Android mínimo: 7.0 (API 24), incluindo Android 10 (API 29).'
             echo '- Assinatura e lint NewApi/InlinedApi verificados.'
             echo '- Testes JVM de autenticação, provisionamento e protocolo executados.'
-            echo '- Baixe o artefato TCL-xCloud-App-Debug-Android10 abaixo.'
+            echo "- Baixe o artefato $artifact abaixo."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verificar filtros e reconstrução com GPU por software
@@ -124,11 +148,11 @@ jobs:
       - name: Salvar o APK gerado para download
         uses: actions/upload-artifact@v4
         with:
-          name: TCL-xCloud-App-Debug-Android10
+          name: ${{ steps.apk.outputs.artifact }}
           path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/debug/app-debug.apk.sha256
-            app/build/outputs/apk/debug/app-debug.apk.metadata.json
+            ${{ steps.apk.outputs.path }}
+            ${{ steps.apk.outputs.path }}.sha256
+            ${{ steps.apk.outputs.path }}.metadata.json
           if-no-files-found: error
 
       - name: Salvar relatório de compatibilidade de APIs

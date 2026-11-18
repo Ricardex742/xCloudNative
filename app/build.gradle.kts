@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 97
-        versionName = "0.40.2-console-layout"
+        versionCode = 98
+        versionName = "0.40.3-session-stability"
     }
 
     signingConfigs {
@@ -31,6 +31,7 @@ android {
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
         }
     }
@@ -72,7 +73,8 @@ val verifyPersistentSigning by tasks.registering {
         check(fingerprint==expected) { "Certificado diferente da assinatura fixa. APK bloqueado para preservar atualizações." }
     }
 }
-tasks.matching { it.name=="validateSigningDebug" }.configureEach { dependsOn(verifyPersistentSigning) }
+tasks.matching { it.name in setOf("validateSigningDebug", "validateSigningRelease") }
+    .configureEach { dependsOn(verifyPersistentSigning) }
 
 dependencies {
     implementation("com.android.tools.build:apksig:8.5.2")

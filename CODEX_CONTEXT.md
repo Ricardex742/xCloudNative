@@ -18,7 +18,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão no código desta branch: **0.40.2-console-layout**, versionCode **97**, superior ao 96 já distribuído, usando a identidade de atualização existente. Conferir o build efetivamente aprovado antes da entrega.
+- Versão no código desta branch: **0.40.3-session-stability**, versionCode **98**, usando a identidade de atualização existente. Conferir o build efetivamente aprovado antes da entrega.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação

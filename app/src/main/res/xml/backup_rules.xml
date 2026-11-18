@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <exclude domain="sharedpref" path="xcloud_native_auth.xml" />
+    <exclude domain="sharedpref" path="session_diagnostic.xml" />
+    <exclude domain="sharedpref" path="startup_diagnostics.xml" />
+</full-backup-content>

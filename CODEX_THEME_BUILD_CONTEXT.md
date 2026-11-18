@@ -234,23 +234,23 @@ O certificado público esperado está em `signing/certificate-sha256.txt`:
 
 Preservar essa identidade. Não gerar outra chave para contornar falha de assinatura, desativar `verifyPersistentSigning`, commitar o keystore ou imprimir seu conteúdo. A senha/alias padrão do debug não são a chave privada; não tornam intercambiáveis keystores diferentes.
 
-Na configuração atual, o APK principal distribuído é `:app:assembleDebug` com a chave permanente. `assembleRelease` não tem a mesma configuração de assinatura preparada. O `shortcut-release-unsigned.apk` produzido pelo módulo `shortcut` é um template intermediário dos atalhos; não é o aplicativo principal para o usuário.
+Desde o versionCode 98, `:app:assembleRelease` é a variante de distribuição do aplicativo principal. O Gradle verifica a chave permanente nas variantes release e debug. O APK de debug continua disponível para diagnóstico pelo parâmetro `build_type` do workflow. O `shortcut-release-unsigned.apk` do módulo `shortcut` continua sendo o template intermediário dos atalhos.
 
 ### Comandos do build local, com SDK/JDK/assinatura já preparados
 
 ```sh
 python3 -m unittest discover -s scripts/tests -v
 python3 scripts/verify_translations.py
-gradle --no-daemon --max-workers=2 --stacktrace -Pkotlin.compiler.execution.strategy=in-process :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+gradle --no-daemon --max-workers=2 --stacktrace -Pkotlin.compiler.execution.strategy=in-process :app:testDebugUnitTest :app:assembleRelease :app:lintDebug
 python3 scripts/verify_image_filter.py
 python3 scripts/verify_fsr1.py
 python3 scripts/verify_image_treatment.py
 python3 scripts/verify_reconstruction.py
 python3 scripts/verify_image_lab.py
-python3 scripts/verify_apk_signing.py app/build/outputs/apk/debug/app-debug.apk
+python3 scripts/verify_apk_signing.py app/build/outputs/apk/release/app-release.apk --require-nondebuggable
 ```
 
-Os verificadores de shaders usam EGL/Mesa e ffmpeg conforme o workflow. O APK principal sai em `app/build/outputs/apk/debug/app-debug.apk`. Os testes XML precisam ter zero falhas/erros e, no fluxo do projeto, zero ignorados. Conferir a contagem efetivamente executada, sem copiar o total de um build anterior.
+Os verificadores de shaders usam EGL/Mesa e ffmpeg conforme o workflow. O APK de distribuição sai em `app/build/outputs/apk/release/app-release.apk`. Os testes XML precisam ter zero falhas, erros e ignorados. Conferir a contagem efetivamente executada.
 
 ### CI: branch e commit precisam corresponder à entrega
 
@@ -260,8 +260,8 @@ Os verificadores de shaders usam EGL/Mesa e ffmpeg conforme o workflow. O APK pr
 4. Obter o ID correto com `gh run list --workflow build-apk.yml --branch NOME_DA_BRANCH --event workflow_dispatch`.
 5. Verificar `headSha`, status e conclusão dessa execução. O SHA deve ser o commit que se pretende testar.
 6. Aguardar todas as etapas, incluindo filtros e upload do artefato.
-7. Baixar `TCL-xCloud-App-Debug-Android10` dessa execução, preservando APK, SHA-256 e metadata.
-8. Verificar assinatura, package, versionName, versionCode e SDK do APK efetivamente baixado.
+7. Baixar `TCL-xCloud-App-Release-Android10` dessa execução, preservando APK, SHA-256 e metadata. Nos builds históricos até o código 97, o artefato era `TCL-xCloud-App-Debug-Android10`.
+8. Verificar assinatura, package, versionName, versionCode, SDK e a flag de depuração do APK efetivamente baixado.
 
 Não selecionar uma execução só porque é verde ou a mais recente no painel. Ela pode ter compilado a branch errada ou o commit anterior à correção.
 
@@ -275,7 +275,7 @@ Para distribuir uma correção baseada no visual antigo, escolher um novo `versi
 
 ### Build de teste e release pública são etapas distintas
 
-O workflow `publish-release.yml` recebe o `run_id`, a tag e as notas. Na versão examinada, exige build aprovado da **main**, verifica package/assinatura/versão e associa a release ao SHA compilado. Não apontar para um APK de feature branch para contornar essa validação.
+O workflow `publish-release.yml` recebe o `run_id`, a tag e as notas. Exige build aprovado da **main** e o artefato release. Verifica package, assinatura, versão, ausência da flag de depuração e SHA do APK antes de associar a release ao commit compilado.
 
 Quando houver autorização para publicar, revisar e incorporar a implementação à main, compilar esse commit e publicar o artefato correspondente. Notas e README descrevem recursos entregues; relatos pessoais, logs de conta e esteiras privadas de pesquisa não entram na release.
 
