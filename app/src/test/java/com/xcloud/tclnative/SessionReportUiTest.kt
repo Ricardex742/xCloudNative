@@ -93,7 +93,7 @@ class SessionReportUiTest {
             val output = ByteArrayOutputStream()
             val uri = Uri.parse("content://diagnostic-test/xcloud.json")
             shadowOf(activity.contentResolver).registerOutputStream(uri, output)
-            activity.onActivityResult(picker.requestCode, Activity.RESULT_OK, Intent().setData(uri))
+            shadowOf(activity).receiveResult(picker.intent, Activity.RESULT_OK, Intent().setData(uri))
             val deadline = System.nanoTime() + 3_000_000_000L
             while (output.size() == 0 && System.nanoTime() < deadline) {
                 shadowOf(Looper.getMainLooper()).idle()
