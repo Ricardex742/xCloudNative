@@ -83,6 +83,9 @@ class AuthTest {
         val release = java.util.concurrent.CountDownLatch(1)
         server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
             override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                if (request.body.readUtf8().contains("refresh_token=new-refresh")) {
+                    return MockResponse().setBody("""{"access_token":"new-transfer","refresh_token":"new-rotation"}""")
+                }
                 sent.countDown()
                 check(release.await(5, TimeUnit.SECONDS))
                 return MockResponse().setBody("""{"access_token":"old-transfer","refresh_token":"old-rotation"}""")
@@ -94,13 +97,14 @@ class AuthTest {
             val newAccount = auth()
             newAccount.clearSession()
             newAccount.saveTokens("new", "new-refresh", 3600, XalAuthenticator.XCLOUD_CLIENT_ID)
+            assertEquals("new-transfer", withTimeout(2_000) { newAccount.getConsoleTransferToken() })
             release.countDown()
             assertTrue(pending.await().exceptionOrNull() is AuthenticationRequiredException)
             assertEquals("t=new", store.token?.ticket)
-            assertEquals("new-refresh", store.token?.refreshToken)
+            assertEquals("new-rotation", store.token?.refreshToken)
             assertTrue(runCatching { oldAccount.getConsoleTransferToken(session.credentialGeneration) }
                 .exceptionOrNull() is AuthenticationRequiredException)
-            assertEquals(4, server.requestCount)
+            assertEquals(5, server.requestCount)
         } finally {
             release.countDown()
         }

@@ -348,18 +348,20 @@ class XCloudSignalingClient(
 
     /** Reuses the allocation. Failure/cancellation must never DELETE it or start another PLAY. */
     suspend fun reconnectExistingSession(peer: StreamingPeer,microphone: Boolean=false,
-                                        onProgress: (String) -> Unit={}): Result<String> = withContext(Dispatchers.IO) {
-        val allocation = active.get() ?: return@withContext Result.failure(IOException("RECONNECT: sessão Xbox indisponível"))
-        allocation.transportLock.withLock {
-            try {
-                sessionRequest(allocation, "${allocation.path}/keepalive", "RECONNECT_KEEPALIVE", "POST", client = keepAliveClient)
-                val ready = negotiateTransport(allocation, peer, microphone, (++allocation.sdpRequest).toString(), onProgress)
-                Result.success(ready)
-            } catch(timeout: kotlinx.coroutines.TimeoutCancellationException) {
-                kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                Result.failure(IOException("RECONNECT: tempo limite ao reconectar a transmissão"))
-            } catch(cancelled: CancellationException) { throw cancelled }
-            catch(error: Exception) { Result.failure(error) }
+                                        onProgress: (String) -> Unit={}): Result<String> {
+        val allocation = active.get() ?: return Result.failure(IOException("RECONNECT: sessão Xbox indisponível"))
+        return withContext(Dispatchers.IO) {
+            allocation.transportLock.withLock {
+                try {
+                    sessionRequest(allocation, "${allocation.path}/keepalive", "RECONNECT_KEEPALIVE", "POST", client = keepAliveClient)
+                    val ready = negotiateTransport(allocation, peer, microphone, (++allocation.sdpRequest).toString(), onProgress)
+                    Result.success(ready)
+                } catch(timeout: kotlinx.coroutines.TimeoutCancellationException) {
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                    Result.failure(IOException("RECONNECT: tempo limite ao reconectar a transmissão"))
+                } catch(cancelled: CancellationException) { throw cancelled }
+                catch(error: Exception) { Result.failure(error) }
+            }
         }
     }
 
@@ -398,31 +400,34 @@ class XCloudSignalingClient(
             return UiText.text("Transporte conectado. Aguardando o primeiro quadro de vídeo...")
     }
 
-    suspend fun renegotiateChat(offer: String): String = withContext(Dispatchers.IO) {
+    suspend fun renegotiateChat(offer: String): String {
         val allocation = active.get() ?: throw IOException("CHAT: sessão encerrada")
-        allocation.transportLock.withLock {
-            val path = allocation.path
-            val requestId = (++allocation.sdpRequest).toString()
-            sessionRequest(allocation, "$path/sdp", "CHAT_OFFER", "POST", JSONObject().put("messageType","offer")
-                .put("requestId",requestId).put("sdp",offer)
-                .put("configuration",JSONObject().put("isMediaStreamsChatRenegotiation",true)))
-            val answer = exchange(allocation, "$path/sdp", "CHAT_ANSWER", requestId) as? JSONObject
-                ?: throw IOException("CHAT: resposta inválida")
-            answer.optString("sdp").takeIf { it.isNotBlank() } ?: throw IOException("CHAT: resposta sem SDP")
+        return withContext(Dispatchers.IO) {
+            allocation.transportLock.withLock {
+                val path = allocation.path
+                val requestId = (++allocation.sdpRequest).toString()
+                sessionRequest(allocation, "$path/sdp", "CHAT_OFFER", "POST", JSONObject().put("messageType","offer")
+                    .put("requestId",requestId).put("sdp",offer)
+                    .put("configuration",JSONObject().put("isMediaStreamsChatRenegotiation",true)))
+                val answer = exchange(allocation, "$path/sdp", "CHAT_ANSWER", requestId) as? JSONObject
+                    ?: throw IOException("CHAT: resposta inválida")
+                answer.optString("sdp").takeIf { it.isNotBlank() } ?: throw IOException("CHAT: resposta sem SDP")
+            }
         }
     }
 
     suspend fun keepAlive() {
+        val allocation = active.get() ?: return
         withContext(Dispatchers.IO) {
-            active.get()?.let { sessionRequest(it, "${it.path}/keepalive", "KEEPALIVE", "POST", client = keepAliveClient) }
+            sessionRequest(allocation, "${allocation.path}/keepalive", "KEEPALIVE", "POST", client = keepAliveClient)
         }
     }
 
     fun keepAliveDiagnostics() = lastAttempt.keepAlive.diagnostics()
 
     suspend fun maintainSession() {
+        val allocation = active.get() ?: return
         withContext(Dispatchers.IO) {
-            val allocation = active.get() ?: return@withContext
             allocation.attempt.keepAlive.run {
                 if (active.get() !== allocation) throw CancellationException(UiText.text("Manutenção da sessão substituída"))
                 sessionRequest(allocation, "${allocation.path}/keepalive", "KEEPALIVE", "POST", client = keepAliveClient)
@@ -430,8 +435,13 @@ class XCloudSignalingClient(
         }
     }
 
-    suspend fun stop(): Unit = withContext(NonCancellable + Dispatchers.IO) {
-        allocationLock.withLock { active.get()?.let { deleteAllocation(it) } }
+    suspend fun stop() {
+        val attempt = lastAttempt
+        withContext(NonCancellable + Dispatchers.IO) {
+            allocationLock.withLock {
+                active.get()?.takeIf { it.attempt === attempt }?.let { deleteAllocation(it) }
+            }
+        }
     }
 
     /** Called with the allocation lock, so replacement PLAY waits for DELETE to finish. */

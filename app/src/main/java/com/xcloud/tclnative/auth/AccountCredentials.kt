@@ -10,7 +10,7 @@ internal class AccountCredentials(private val store: OAuthTokenStore) {
 
     private class State {
         var generation = 0L
-        val rotation = Mutex()
+        var rotation = Mutex()
     }
 
     private companion object {
@@ -29,18 +29,26 @@ internal class AccountCredentials(private val store: OAuthTokenStore) {
         requireCurrent(expectedGeneration)
         val replacement = token(store.read())
         store.write(replacement)
+        state.rotation = Mutex()
         Snapshot(++state.generation, replacement)
     }
 
     fun clear() = synchronized(state) {
         store.clear()
+        state.rotation = Mutex()
         state.generation += 1
     }
 
-    suspend fun <T> rotate(generation: Long?, action: suspend (Snapshot) -> T): T = state.rotation.withLock {
-        val current = snapshot()
-        if (generation != null && current.generation != generation) throw AuthenticationRequiredException()
-        action(current)
+    suspend fun <T> rotate(generation: Long?, action: suspend (Snapshot) -> T): T {
+        val (expected, rotation) = synchronized(state) {
+            requireCurrent(generation)
+            state.generation to state.rotation
+        }
+        return rotation.withLock {
+            val current = snapshot()
+            if (current.generation != expected) throw AuthenticationRequiredException()
+            action(current)
+        }
     }
 
     fun saveRotation(snapshot: Snapshot, replacement: OAuthToken) = synchronized(state) {
