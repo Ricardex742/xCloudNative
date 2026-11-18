@@ -61,7 +61,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gradle --no-daemon --max-workers=2 --stacktrace :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+          gradle --no-daemon --max-workers=2 --stacktrace -Pkotlin.compiler.execution.strategy=in-process :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
           python3 - <<'PYTEST'
           from pathlib import Path
           import os, xml.etree.ElementTree as E

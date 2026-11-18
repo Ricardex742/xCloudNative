@@ -148,3 +148,5 @@ Referência anterior da versão 0.40.0/código 95; este artefato antecede a revi
 
 - A faixa vazia do PS5 reserva largura para a mensagem de busca sem resultados. Jogar/favoritar ficam ocultos sem seleção e reaparecem quando chegam resultados; o adaptador invalida a geometria de ambas as cenas PlayStation após mudanças assíncronas de tamanho. Os testes cobrem os estados vazio, preenchido e retorno.
 - Nos celulares, os pedidos de capas usam o tamanho da capa selecionada exibida; mantêm a política compartilhada de cache e cancelamento. Os atalhos de recentes e biblioteca têm descrições acessíveis diferentes.
+
+- A execução completa no CI exige limitar a retenção dos gráficos/sandboxes do Robolectric: processo de testes único, heap de 1 GiB, renovado a cada oito classes, com liberação explícita do Canvas das capturas. Kotlin compila no processo do Gradle no workflow. São limites do processo de build/teste; a política de memória do Android não foi aumentada. Assinatura, testes, lint e verificações de filtros permanecem obrigatórios.

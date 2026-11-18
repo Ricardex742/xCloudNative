@@ -47,7 +47,15 @@ android {
     lint {
         checkOnly += setOf("NewApi", "InlinedApi")
     }
-    testOptions.unitTests.isIncludeAndroidResources = true
+    testOptions.unitTests {
+        isIncludeAndroidResources = true
+        all {
+            // Bound native graphics/SDK sandboxes across the complete Robolectric suite.
+            it.maxHeapSize = "1g"
+            it.maxParallelForks = 1
+            it.forkEvery = 8
+        }
+    }
 }
 
 val verifyPersistentSigning by tasks.registering {

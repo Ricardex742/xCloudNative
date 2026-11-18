@@ -241,7 +241,7 @@ Na configuração atual, o APK principal distribuído é `:app:assembleDebug` co
 ```sh
 python3 -m unittest discover -s scripts/tests -v
 python3 scripts/verify_translations.py
-gradle --no-daemon --max-workers=2 --stacktrace :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+gradle --no-daemon --max-workers=2 --stacktrace -Pkotlin.compiler.execution.strategy=in-process :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
 python3 scripts/verify_image_filter.py
 python3 scripts/verify_fsr1.py
 python3 scripts/verify_image_treatment.py
@@ -294,3 +294,8 @@ A implementação nativa posterior e o build de teste conferido estão descritos
 ### Revisão de geometria no celular
 
 O app permanece em paisagem, conforme o manifesto e a orientação atual do usuário. A revisão usa áreas úteis menores que a resolução total, incluindo barras e recorte simulados. Consultar a seção “Revisão nativa da área útil em celular” de `CODEX_CONTEXT.md` e `PlayStationPhoneReviewTest`. Não confundir essas capturas Android/Robolectric com inspeção ou medição em aparelho real. O próximo APK usa código 96, superior ao 95 distribuído anteriormente, com a mesma assinatura permanente e o mesmo workflow.
+
+
+### Recursos da suíte de capturas
+
+A suíte completa usa um único processo de testes por vez, heap máximo de 1 GiB e renovação a cada oito classes para limitar retenção dos sandboxes/gráficos nativos do Robolectric. As capturas liberam a superfície do Canvas antes de reciclar o bitmap. O workflow compila Kotlin no processo do Gradle, evitando outro daemon de compilação residente. Essas opções afetam a execução dos testes/build, não os limites de memória do aplicativo Android nem o cache de imagens. A assinatura permanente e as verificações continuam obrigatórias.

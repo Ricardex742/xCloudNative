@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit
 
 /** Native phone review fixtures. The surrounding bars/cutout are simulated, not device measurements. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk=[29],qualifiers="w360dp-h760dp-port-xhdpi")
+@Config(sdk=[29],qualifiers="w640dp-h360dp-land-xhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class PlayStationPhoneReviewTest {
@@ -59,7 +59,9 @@ class PlayStationPhoneReviewTest {
         if(p.safe.top>0) c.drawText("12:00",16f*p.density,17f*p.density,paint)
         if(p.safe.bottom>0) { paint.strokeWidth=4f*p.density;c.drawLine(p.w/2f-36*p.density,(p.h-10*p.density).toFloat(),p.w/2f+36*p.density,(p.h-10*p.density).toFloat(),paint) }
         val dir=File("build/reports/themes/phone-review").apply { mkdirs() }
-        File(dir,"${p.name}-$name.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG,100,it) };b.recycle()
+        try {
+            File(dir,"${p.name}-$name.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG,100,it) }
+        } finally { c.setBitmap(null);b.recycle() }
         val rows=all(v).filterIsInstance<TextView>().filter { it.isShown }.map { t ->
             val r=if(v is ViewGroup) bounds(v,t) else Rect(0,0,t.width,t.height)
             val l=t.layout
@@ -156,8 +158,9 @@ class PlayStationPhoneReviewTest {
         fits(full);assertTrue(full.height>=48*home.resources.displayMetrics.density)
         if(DashboardTheme.palette.theme.scene==ConsoleScene.PS4) {
             val bitmap=Bitmap.createBitmap(home.width,home.height,Bitmap.Config.ARGB_8888)
+            val canvas=Canvas(bitmap)
             try {
-                val canvas=Canvas(bitmap);canvas.drawColor(Color.BLACK);home.background.draw(canvas)
+                canvas.drawColor(Color.BLACK);home.background.draw(canvas)
                 all(home).filterIsInstance<ConsoleThemeBackdrop>().single().draw(canvas)
                 val tabs=all(home).filterIsInstance<TextView>().filter { it.isShown && it.isClickable && (it.text.toString()==UiText.text("Biblioteca") || LibraryTab.entries.any { tab -> it.contentDescription?.startsWith(tab.label)==true }) }
                 for(tab in tabs) {
@@ -170,7 +173,7 @@ class PlayStationPhoneReviewTest {
                         }
                     }
                 }
-            } finally { bitmap.recycle() }
+            } finally { canvas.setBitmap(null);bitmap.recycle() }
         }
         if(DashboardTheme.palette.theme.scene==ConsoleScene.PS5) {
             val grid=all(home).filterIsInstance<RecyclerView>().single()
@@ -286,14 +289,14 @@ class PlayStationPhoneReviewTest {
                 all(home).filterIsInstance<FixedArtworkView>().mapNotNull { (it.drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap }.forEach { assertTrue(it.allocationByteCount<=1024*576*4) }
                 capture(home,p,"${theme.name}-bright-artwork");assertHomeGeometry(home)
                 val backdrop=all(home).filterIsInstance<ConsoleThemeBackdrop>().single()
-                val bitmap=Bitmap.createBitmap(home.width,home.height,Bitmap.Config.ARGB_8888);backdrop.draw(Canvas(bitmap))
+                val bitmap=Bitmap.createBitmap(home.width,home.height,Bitmap.Config.ARGB_8888);val canvas=Canvas(bitmap);backdrop.draw(canvas)
                 try {
                     val title=bounds(home,assertPrimaryTitle(home))
                     for(x in listOf(title.left+4,title.centerX(),title.right-4)) {
                         val contrast=androidx.core.graphics.ColorUtils.calculateContrast(Color.WHITE,bitmap.getPixel(x,title.top+4))
                         assertTrue("Insufficient title contrast: $theme $contrast",contrast>=4.5)
                     }
-                } finally { bitmap.recycle() }
+                } finally { canvas.setBitmap(null);bitmap.recycle() }
                 home.pauseArtwork();assertFalse(backdrop.framePending)
                 home.visibility=View.GONE;shadowOf(Looper.getMainLooper()).idleFor(500,TimeUnit.MILLISECONDS);assertFalse(backdrop.framePending)
             } finally { home.close() }
