@@ -18,7 +18,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão no código desta branch: **0.40.4-performance**, versionCode **99**, usando a identidade de atualização existente. Conferir o build efetivamente aprovado antes da entrega.
+- Versão no código desta branch: **0.40.5-session-architecture**, versionCode **100**, usando a identidade de atualização existente. Conferir o build efetivamente aprovado antes da entrega.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
@@ -211,3 +211,12 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - [Build 44413085513](https://github.com/Ricardex742/xCloudNative/actions/runs/44413085513), commit de código `948321d787da0687ab562aead6eee3ee36ca6e41`. **839 testes JVM** sem falhas, erros ou ignorados. Lint, 10 testes Python, traduções e cinco validadores de GPU em software aprovados. As capturas locais de Favoritos PS4/PS5 em paisagem com barras simuladas foram abertas para inspeção.
 - [Artefato da versão 99](https://github.com/Ricardex742/xCloudNative/actions/runs/44413085513/artifacts/14479531841). O APK baixado tem pacote `com.xcloud.tclnative`, versão **0.40.4-performance**, código **99**, minSdk **24**, targetSdk **34**, ARM32/ARM64 e x86/x86_64. A depuração está desabilitada e o certificado permanente foi conferido.
 - Certificado SHA-256 `efd33d9a3122ab5df2a7f0932e80b8fb51449bb1d3206fddc300b2766db73107`. APK SHA-256 `31a0a1b34eb35914c03c08963f7eb8f9b37d412a38fdaec21f43d013b4c496be`. ZIP SHA-256 `44195b27cae62929f939721cefdd365751cbac135b20717ea48165ff9827b6ff`, igual ao digest do Actions.
+
+## Terceira etapa do plano de otimização
+
+- Cada alocação de streaming possui identidade, região, resolução, idioma e estado de negociação próprios. Pedidos e limpeza permanecem associados à tentativa de origem. Uma resposta atrasada não pode encerrar a alocação substituta, mesmo com o mesmo caminho em outra região.
+- A renovação de credenciais é serializada por conta e invalidada ao sair ou trocar de login. A nova conta pode prosseguir enquanto uma resposta da anterior ainda está pendente. O catálogo e a abertura por atalho usam o contexto da conta autenticada.
+- O coordenador de reprodução aguarda a limpeza da tentativa anterior, controla a espera do primeiro quadro e ordena a liberação do vídeo, WebRTC e alocação. As chamadas da Activity que operam sobre Views e EGL mantêm sua afinidade de thread.
+- O catálogo nativo usa regras testáveis de foco por tema, com restauração por chave do jogo. A escala de referência é compartilhada entre home, diálogos, fila e transições. A comparação em Robolectric encontrou 525 de 530 capturas de celular idênticas à versão 99. As cinco diferenças inspecionadas são destaques de foco em Favoritos e a ordem de carregamento das capas de teste. As capturas de PS4 e PS5 abertas incluíram paisagem em 1280×600, 2400×1080 com insets simulados e referência de TV de 1280×720.
+- [Build 44417706399](https://github.com/Ricardex742/xCloudNative/actions/runs/44417706399), commit `177c010d8e7c7c8c192a41301977404005409047`. **848 testes JVM** sem falhas, erros ou ignorados. Lint, traduções, verificações Python e cinco validadores gráficos em software aprovados. Controle físico, partida no serviço e desempenho em aparelho continuam pendentes.
+- [Artefato do APK 100](https://github.com/Ricardex742/xCloudNative/actions/runs/44417706399/artifacts/14480547335). O arquivo baixado foi conferido com o SHA-256 do build, depuração desabilitada, pacote `com.xcloud.tclnative` e certificado permanente. A versão é **0.40.5-session-architecture**. APK SHA-256 `b2d0fb190d3cbcdba0408ad45274b3ee9b73549ac9e6e0ef431bb579dde44771`. ZIP SHA-256 `a2b4cc725b3e74fe6777f84294cd8eb32907005d0bc0315daf4dee4ef8e71e31`.
