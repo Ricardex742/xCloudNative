@@ -38,7 +38,7 @@ internal class ConsoleControlPlate(private val scene: ConsoleScene,private val c
                 if(control!=ConsoleControl.CARD) {
                     paint.color=if(ps5 && control==ConsoleControl.ACTION) 0xffeff0f3.toInt()
                         else if(control==ConsoleControl.QUICK) { if(focused) 0xa0444953.toInt() else 0x30151920 }
-                        else if(focused) 0x24ffffff else Color.TRANSPARENT
+                        else if(focused) { if(ps5) 0x24ffffff else 0x24000000 } else Color.TRANSPARENT
                     canvas.drawRoundRect(rect,radius,radius,paint)
                 }
                 if(focused || control==ConsoleControl.QUICK) {
@@ -144,7 +144,8 @@ internal class ConsoleDashboardChrome(private val selected: () -> Int): Drawable
     private fun configure(w: Float,h: Float,scene: ConsoleScene,index: Int) {
         cachedScene=scene;cachedIndex=index;cachedTheme=DashboardTheme.palette.theme
         val ps5=scene==ConsoleScene.PS5
-        shade=LinearGradient(0f,0f,0f,h,intArrayOf(0xc9000000.toInt(),0x10000000,if(ps5) 0x77000000 else 0x35000000,0xdd000000.toInt()),floatArrayOf(0f,.25f,.55f,1f),Shader.TileMode.CLAMP)
+        shade=if(scene==ConsoleScene.PS4) LinearGradient(0f,0f,0f,h,intArrayOf(0x33000000,0x33000000,Color.TRANSPARENT,Color.TRANSPARENT),floatArrayOf(0f,.2f,.32f,1f),Shader.TileMode.CLAMP)
+            else LinearGradient(0f,0f,0f,h,intArrayOf(0xc9000000.toInt(),0x10000000,if(ps5) 0x77000000 else 0x35000000,0xdd000000.toInt()),floatArrayOf(0f,.25f,.55f,1f),Shader.TileMode.CLAMP)
         sideShade=LinearGradient(0f,0f,w*.82f,0f,intArrayOf(0xd9000000.toInt(),if(ps5) 0x99000000.toInt() else 0x35000000,0x05000000),floatArrayOf(0f,.56f,1f),Shader.TileMode.CLAMP)
         metal=LinearGradient(0f,0f,54f,0f,intArrayOf(0xff62685e.toInt(),0xffe8e9e0.toInt(),0xfff2f3eb.toInt(),0xffb5b9af.toInt(),0xff535b4c.toInt()),floatArrayOf(0f,.2f,.57f,.82f,1f),Shader.TileMode.CLAMP)
         panel.reset()
@@ -168,6 +169,7 @@ internal class ConsoleDashboardChrome(private val selected: () -> Int): Drawable
         when(scene) {
             ConsoleScene.PS4 -> {
                 paint.color=0x18001967;canvas.drawRect(0f,0f,w,bounds.height()/s,paint)
+                paint.shader=shade;canvas.drawRect(0f,0f,w,bounds.height()/s,paint);paint.shader=null
             }
             ConsoleScene.PS5 -> {
                 paint.shader=shade;canvas.drawRect(0f,0f,w,bounds.height()/s,paint)

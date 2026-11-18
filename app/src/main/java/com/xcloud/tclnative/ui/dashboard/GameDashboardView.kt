@@ -1192,7 +1192,7 @@ class GameDashboardView(
             v.nextFocusRightId=if(i<3) controls[i+1].id else settingsButton.id
             val selected=if(i==2) activeTab !in playStationTabs else activeTab==when(i) { 0 -> LibraryTab.RECENT;1 -> LibraryTab.ALL;else -> LibraryTab.FAVORITES }
             v.background=ConsoleControlPlate(designScene,ConsoleControl.TAB,selected)
-            v.setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf()),intArrayOf(Color.WHITE,if(selected) Color.WHITE else 0xffa4b5c6.toInt())))
+            v.setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf()),intArrayOf(Color.WHITE,if(selected || !ps5) Color.WHITE else 0xffa4b5c6.toInt())))
         }
         playStationBrowseTab.visibility=VISIBLE
         val rowTop=if(portrait) navTop+navHeight+24f else if(ps5) { if(compact) maxOf(92f,utilitiesY+searchSide+10f) else 92f } else maxOf(197f,navTop+navHeight+17f)
@@ -1348,7 +1348,7 @@ class GameDashboardView(
             fitConsoleText(v,(navW/4*d).toInt(),(48*d).toInt(),12*sp,14*sp,2)
             val selected=if(i==2) activeTab !in playStationTabs else activeTab==when(i) { 0 -> LibraryTab.RECENT;1 -> LibraryTab.ALL;else -> LibraryTab.FAVORITES }
             v.background=ConsoleControlPlate(designScene,ConsoleControl.TAB,selected)
-            v.setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf()),intArrayOf(Color.WHITE,if(selected) Color.WHITE else 0xffa4b5c6.toInt())))
+            v.setTextColor(android.content.res.ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf()),intArrayOf(Color.WHITE,if(selected || !ps5) Color.WHITE else 0xffa4b5c6.toInt())))
             v.nextFocusLeftId=if(i>0) controls[i-1].id else v.id;v.nextFocusRightId=if(i<3) controls[i+1].id else settingsButton.id
             v.nextFocusUpId=searchButton.id;v.nextFocusDownId=grid.id
         }

@@ -143,6 +143,24 @@ class PlayStationPhoneReviewTest {
         }
         val full=all(home).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
         fits(full);assertTrue(full.height>=48*home.resources.displayMetrics.density)
+        if(DashboardTheme.palette.theme.scene==ConsoleScene.PS4) {
+            val bitmap=Bitmap.createBitmap(home.width,home.height,Bitmap.Config.ARGB_8888)
+            try {
+                val canvas=Canvas(bitmap);canvas.drawColor(Color.BLACK);home.background.draw(canvas)
+                all(home).filterIsInstance<ConsoleThemeBackdrop>().single().draw(canvas)
+                val tabs=all(home).filterIsInstance<TextView>().filter { it.isShown && it.isClickable && (it.text.toString()==UiText.text("Biblioteca") || LibraryTab.entries.any { tab -> it.contentDescription?.startsWith(tab.label)==true }) }
+                for(tab in tabs) {
+                    val r=bounds(home,tab);val l=tab.layout
+                    for(line in 0 until l.lineCount) {
+                        for(x in listOf(l.getLineLeft(line)+2,(l.getLineLeft(line)+l.getLineRight(line))/2,l.getLineRight(line)-2)) {
+                            val color=bitmap.getPixel((r.left+tab.compoundPaddingLeft+x).toInt().coerceIn(0,home.width-1),r.centerY().coerceIn(0,home.height-1))
+                            val contrast=androidx.core.graphics.ColorUtils.calculateContrast(tab.currentTextColor,color)
+                            assertTrue("PS4 tab contrast ${tab.text}: $contrast",contrast>=4.5)
+                        }
+                    }
+                }
+            } finally { bitmap.recycle() }
+        }
         if(DashboardTheme.palette.theme.scene==ConsoleScene.PS5) {
             val grid=all(home).filterIsInstance<RecyclerView>().single()
             val cover=all(grid).filterIsInstance<FixedArtworkView>().firstOrNull()?.parent as? View
