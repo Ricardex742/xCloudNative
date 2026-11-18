@@ -4,7 +4,10 @@ import com.xcloud.tclnative.i18n.UiText
 
 import android.content.Context
 
-enum class ConsoleScene { NONE, XBOX_360, XBOX_ONE, XBOX_SERIES, XBOX_ORIGINAL, XBOX_360_NXE, XBOX_360_METRO }
+enum class ConsoleScene {
+    NONE, XBOX_360, XBOX_ONE, XBOX_SERIES, XBOX_ORIGINAL, XBOX_360_NXE, XBOX_360_METRO, PS4, PS5;
+    val playStation: Boolean get()=this==PS4 || this==PS5
+}
 enum class BackgroundMotion(private val sourceLabel: String) {
     AUTO("Automático"), ON("Ativado"), OFF("Desativado");
     val label get()=UiText.text(sourceLabel)
@@ -23,8 +26,13 @@ enum class UiTheme(private val sourceLabel: String,val accent: Int,val hue: Floa
     XBOX_360_METRO("Xbox 360 — Metro (2011)",0xff9fdb64.toInt(),95f,.45f,ConsoleScene.XBOX_360_METRO),
     XBOX_ONE("Xbox One",0xff7ddd78.toInt(),118f,.70f,ConsoleScene.XBOX_ONE),
     XBOX_SERIES("Xbox Series X|S",0xffa0efbe.toInt(),154f,.58f,ConsoleScene.XBOX_SERIES),
-    XBOX_ORIGINAL("Xbox Original",0xffb6ef4b.toInt(),88f,1.10f,ConsoleScene.XBOX_ORIGINAL);
+    XBOX_ORIGINAL("Xbox Original",0xffb6ef4b.toInt(),88f,1.10f,ConsoleScene.XBOX_ORIGINAL),
+    PS4("PlayStation 4",0xffdcefff.toInt(),216f,.8f,ConsoleScene.PS4),
+    PS5("PlayStation 5",0xffeeeeee.toInt(),220f,.12f,ConsoleScene.PS5),
+    PS4_NIGHT("PlayStation 4 — Noturno",0xffd5e8ff.toInt(),216f,.45f,ConsoleScene.PS4),
+    PS5_NIGHT("PlayStation 5 — Noturno",0xffe3e8f0.toInt(),220f,.12f,ConsoleScene.PS5);
     val label: String get()=UiText.text(sourceLabel)
+    val night: Boolean get()=this==PS4_NIGHT || this==PS5_NIGHT
 }
 
 /** Interface preference only: independent of account, stream profile and video filters. */

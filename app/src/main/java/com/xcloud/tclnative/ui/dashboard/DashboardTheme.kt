@@ -48,6 +48,8 @@ internal object DashboardTheme {
         UiTheme.XBOX_ONE -> R.style.PaletteXboxOne
         UiTheme.XBOX_SERIES -> R.style.PaletteXboxSeries
         UiTheme.XBOX_ORIGINAL -> R.style.PaletteXboxOriginal
+        UiTheme.PS4,UiTheme.PS4_NIGHT -> R.style.PalettePs4
+        UiTheme.PS5,UiTheme.PS5_NIGHT -> R.style.PalettePs5
     }
     fun install(context: Context) { apply(context,AppearanceSettingsStore(context).read()) }
     fun applyOverlay(context: Context) { context.theme.applyStyle(overlay,true) }
@@ -94,6 +96,7 @@ internal object DashboardTheme {
         if(view is ViewGroup) repeat(view.childCount) { refreshView(view.getChildAt(it),previous,next) }
         if(view is GameDashboardView) view.refreshAppearance()
         if(view is GameLoadingView) view.refreshAppearance()
+        if(view is SessionTransitionView) view.refreshAppearance()
     }
     fun customFocus(view: View) {
         if (Build.VERSION.SDK_INT >= 26) view.defaultFocusHighlightEnabled = false

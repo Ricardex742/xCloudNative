@@ -6,7 +6,7 @@ import android.graphics.drawable.Drawable
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX }
+internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID }
 
 internal class ConsoleIconDrawable(private val glyph: ConsoleGlyph,private val size: Int,private val colors: android.content.res.ColorStateList): Drawable() {
     private val icons=ConsoleIcons()
@@ -64,6 +64,11 @@ internal class ConsoleIcons {
                 path.moveTo(19f,5f);path.cubicTo(14f,7f,7f,14f,5f,20f)
                 c.drawPath(path,p)
             }
+            ConsoleGlyph.CLOUD -> {
+                path.moveTo(6f,19f);path.cubicTo(0f,19f,0f,10f,6f,10f);path.cubicTo(7f,2f,17f,2f,19f,9f)
+                path.cubicTo(25f,9f,26f,19f,20f,19f);path.close();c.drawPath(path,p)
+            }
+            ConsoleGlyph.GRID -> { c.drawRect(3f,3f,10f,10f,p);c.drawRect(14f,3f,21f,10f,p);c.drawRect(3f,14f,10f,21f,p);c.drawRect(14f,14f,21f,21f,p) }
             ConsoleGlyph.HOME -> { path.moveTo(3f,11f);path.lineTo(12f,3f);path.lineTo(21f,11f);path.moveTo(5f,9f);path.lineTo(5f,21f);path.lineTo(10f,21f);path.lineTo(10f,15f);path.lineTo(14f,15f);path.lineTo(14f,21f);path.lineTo(19f,21f);path.lineTo(19f,9f);c.drawPath(path,p) }
             ConsoleGlyph.FAVORITE -> { path.moveTo(12f,21f);path.cubicTo(9f,17f,2f,13f,2f,7f);path.cubicTo(2f,1f,10f,1f,12f,7f);path.cubicTo(14f,1f,22f,1f,22f,7f);path.cubicTo(22f,13f,15f,17f,12f,21f);c.drawPath(path,p) }
             ConsoleGlyph.GAME_PASS -> { rect.set(2f,3f,22f,21f);c.drawRoundRect(rect,2f,2f,p);p.style=Paint.Style.FILL;p.typeface=font;p.textAlign=Paint.Align.CENTER;p.textSize=6.2f;c.drawText("GAME",12f,11f,p);c.drawText("PASS",12f,18f,p) }

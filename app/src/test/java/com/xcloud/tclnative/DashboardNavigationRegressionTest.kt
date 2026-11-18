@@ -136,7 +136,7 @@ class DashboardNavigationRegressionTest {
                 assertTrue(Color.alpha(b.getPixel(48,48))>240)
                 b.recycle();capture(view,"favorite-${theme.name.lowercase()}")
                 assertFalse(view.isFocusable);assertFalse(view.isClickable)
-            };assertEquals(6,signatures.size)
+            };assertEquals(ConsoleScene.entries.count { it!=ConsoleScene.NONE },signatures.size)
         } finally { c.pause().stop().destroy() }
     }
 }

@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit
 @LooperMode(LooperMode.Mode.PAUSED)
 class ConsoleDashboardUiTest {
     private lateinit var server: MockWebServer
-    private val themes=listOf(UiTheme.XBOX_360,UiTheme.XBOX_ONE,UiTheme.XBOX_SERIES,UiTheme.XBOX_ORIGINAL,UiTheme.XBOX_360_NXE,UiTheme.XBOX_360_METRO)
+    private val themes=listOf(UiTheme.XBOX_360,UiTheme.XBOX_ONE,UiTheme.XBOX_SERIES,UiTheme.XBOX_ORIGINAL,UiTheme.XBOX_360_NXE,UiTheme.XBOX_360_METRO,UiTheme.PS4,UiTheme.PS5,UiTheme.PS4_NIGHT,UiTheme.PS5_NIGHT)
     @Before fun setup() {
         val app=RuntimeEnvironment.getApplication()
         app.getSharedPreferences("app_appearance",0).edit().clear().commit()
@@ -95,6 +95,16 @@ class ConsoleDashboardUiTest {
             for((w,h) in listOf(1280 to 720,1920 to 1080,960 to 432)) for(value in listOf(CloudPlaytime(CloudPlaytimeStatus.LIMITED,45000),
                 CloudPlaytime(CloudPlaytimeStatus.UNLIMITED),CloudPlaytime())) {
                 view.setCloudPlaytime(value);layout(view,w,h)
+                if(theme.scene.playStation) {
+                    val profile=all(view).single { it.isClickable && it.contentDescription?.toString()?.startsWith(view.profileSnapshot().displayName)==true }
+                    profile.performClick();val dialog=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
+                    repeat(3) { shadowOf(Looper.getMainLooper()).idle();dialog.panel.measure(View.MeasureSpec.makeMeasureSpec(w,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(h,View.MeasureSpec.AT_MOST));dialog.panel.layout(0,0,dialog.panel.measuredWidth,dialog.panel.measuredHeight) }
+                    val time=all(dialog.panel).filterIsInstance<TextView>().single { it.text.toString()==value.label }
+                    assertTrue("$theme quota is visible in the profile",time.isShown && time.width>0 && time.height>0)
+                    assertTrue("$theme quota fits",time.layout!=null && (0 until time.layout.lineCount).all { time.layout.getEllipsisCount(it)==0 })
+                    assertTrue(time.right<=(time.parent as View).width)
+                    capture(dialog.panel,"account-benefits-${theme.name}-${value.status}-${w}");dialog.dismiss();continue
+                }
                 val time=all(view).filterIsInstance<TextView>().single { it.text.toString()==value.label }
                 val parent=time.parent as ViewGroup
                 assertTrue("$theme width",time.left>=0 && time.right<=parent.width)
@@ -120,7 +130,7 @@ class ConsoleDashboardUiTest {
                 val manager=grid.layoutManager as GridLayoutManager
                 assertEquals(6,adapter!!.itemCount)
                 assertEquals(if(theme==UiTheme.XBOX_ONE || theme==UiTheme.XBOX_360_METRO) 3 else 1,manager.spanCount)
-                assertEquals(if(theme==UiTheme.XBOX_SERIES || theme==UiTheme.XBOX_360_NXE) RecyclerView.HORIZONTAL else RecyclerView.VERTICAL,manager.orientation)
+                assertEquals(if(theme==UiTheme.XBOX_SERIES || theme==UiTheme.XBOX_360_NXE || theme.scene.playStation) RecyclerView.HORIZONTAL else RecyclerView.VERTICAL,manager.orientation)
                 if(theme==UiTheme.XBOX_ORIGINAL) {
                     assertEquals(View.GONE,grid.visibility);capture(view,"xbox_original-home")
                     click(view,LibraryTab.ALL.label);layout(view)
@@ -190,7 +200,12 @@ class ConsoleDashboardUiTest {
                     val grid=all(view).filterIsInstance<RecyclerView>().single()
                     assertTrue("$theme grid within viewport $w/$h",grid.left>=0 && grid.top>=0 && grid.right<=w && grid.bottom<=h)
                     val footerActions=all(view).filterIsInstance<TextView>().filter { it.isShown && it.text.toString() in setOf("SELECIONAR","VOLTAR","FAVORITAR","BUSCAR","CONFIGURAÇÕES") }
-                    assertEquals(5,footerActions.size)
+                    assertEquals(if(theme.scene==ConsoleScene.PS5) 0 else 5,footerActions.size)
+                    if(theme.scene==ConsoleScene.PS5) {
+                        val primary=all(view).filterIsInstance<TextView>().filter { it.isShown && it.isClickable && (it.text.toString()=="Jogar na nuvem" || it.text.toString()=="•••") }
+                        assertEquals(2,primary.size)
+                        primary.forEach { target -> val bounds=Rect(0,0,target.width,target.height);view.offsetDescendantRectToMyCoords(target,bounds);assertTrue("$theme primary action clipped: $bounds",Rect(0,0,w,h).contains(bounds)) }
+                    }
                     footerActions.forEach { v ->
                         val r=Rect();v.getDrawingRect(r);view.offsetDescendantRectToMyCoords(v,r)
                         assertTrue("$theme footer clipped: $r",r.left>=0 && r.top>=0 && r.right<=w && r.bottom<=h)
@@ -199,6 +214,66 @@ class ConsoleDashboardUiTest {
                     if(theme==UiTheme.XBOX_ORIGINAL) { view.back();layout(view,w,h) }
                 }
             } finally { view.close();controller.pause().stop().destroy() }
+        }
+    }
+    @Test fun playStationPortraitKeepsLaunchSearchAndCategoriesReachableWithoutLaunchingOnFocus() {
+        for(theme in listOf(UiTheme.PS4,UiTheme.PS5,UiTheme.PS4_NIGHT,UiTheme.PS5_NIGHT)) {
+            DashboardTheme.apply(RuntimeEnvironment.getApplication(),theme)
+            val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();val played=mutableListOf<String>()
+            val view=GameDashboardView(a,GameLibrary(a,"portrait-${theme.name}"),{ played+=it.titleId },{},{},{})
+            try {
+                a.setContentView(view);view.setGames(games());view.selectTab(LibraryTab.ALL);layout(view,360,780)
+                view.restoreFocus();layout(view,360,780);assertTrue(played.isEmpty())
+                val grid=all(view).filterIsInstance<RecyclerView>().single()
+                assertTrue(grid.top>0 && grid.bottom<780)
+                val launch=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.toString()==if(theme.scene==ConsoleScene.PS5) "Jogar na nuvem" else "JOGAR" }
+                val search=all(view).single { it.contentDescription=="Pesquisar jogos" }
+                val settings=all(view).filterIsInstance<TextView>().single { it.isShown && it.contentDescription=="Configurações" }
+                for(target in listOf(launch,search,settings)) {
+                    assertTrue("$theme target too small: ${target.width}x${target.height}",target.width>=48 && target.height>=48)
+                    val bounds=Rect(0,0,target.width,target.height);view.offsetDescendantRectToMyCoords(target,bounds)
+                    assertTrue("$theme target outside portrait: $bounds",Rect(0,0,360,780).contains(bounds))
+                }
+                assertFalse(Rect.intersects(Rect(search.left,search.top,search.right,search.bottom),Rect(settings.left,settings.top,settings.right,settings.bottom)))
+                capture(view,"${theme.name.lowercase()}-portrait")
+                launch.performClick();assertEquals(listOf(view.selectedGame!!.titleId),played)
+            } finally { view.close();c.pause().stop().destroy() }
+        }
+    }
+    @Test fun ps5HeroBelongsOnlyToTheSelectedGameAndClearsForAGameWithoutPanoramicArtwork() {
+        DashboardTheme.apply(RuntimeEnvironment.getApplication(),UiTheme.PS5)
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
+        val view=GameDashboardView(a,GameLibrary(a,"ps5-selection"),{},{},{},{})
+        try {
+            a.setContentView(view);view.setGames(games());view.selectTab(LibraryTab.ALL);layout(view);view.restoreFocus();layout(view);awaitArtwork(view)
+            val layer=all(view).filterIsInstance<ConsoleThemeBackdrop>().single()
+            val deadline=System.currentTimeMillis()+5000
+            while(!layer.hasArtwork && System.currentTimeMillis()<deadline) { Thread.sleep(15);shadowOf(Looper.getMainLooper()).idleFor(16,TimeUnit.MILLISECONDS) }
+            assertTrue(layer.hasArtwork);capture(view,"ps5-selected-hero")
+            val grid=all(view).filterIsInstance<RecyclerView>().single()
+            grid.findViewHolderForAdapterPosition(1)!!.itemView.requestFocus();layout(view)
+            shadowOf(Looper.getMainLooper()).idleFor(300,TimeUnit.MILLISECONDS)
+            assertEquals("CONSOLE-1",view.selectedGame!!.titleId);assertFalse(layer.hasArtwork)
+            capture(view,"ps5-without-hero")
+        } finally { view.close();c.pause().stop().destroy() }
+    }
+    @Test fun playStationLibraryKeepsAllCategoriesAndReturnsFocusToTheVisibleLibraryTab() {
+        for(theme in listOf(UiTheme.PS4,UiTheme.PS5,UiTheme.PS4_NIGHT,UiTheme.PS5_NIGHT)) {
+            DashboardTheme.apply(RuntimeEnvironment.getApplication(),theme)
+            val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
+            val view=GameDashboardView(a,GameLibrary(a,"ps-library-${theme.name}"),{},{},{},{})
+            try {
+                a.setContentView(view);view.setGames(games());view.setGamePassProducts(setOf("PRODUCT-0"));view.selectTab(LibraryTab.ALL);layout(view)
+                val library=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
+                library.performClick()
+                val chooser=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
+                val rows=all(chooser.body).filterIsInstance<TextView>().filter { it.isClickable }
+                assertEquals(LibraryTab.entries.map { it.label }.toSet(),rows.map { it.text.toString() }.toSet())
+                rows.single { it.text.toString()==LibraryTab.GAME_PASS.label }.performClick();layout(view)
+                assertEquals(LibraryTab.GAME_PASS,view.activeTab)
+                library.requestFocus();layout(view)
+                assertEquals(LibraryTab.GAME_PASS,view.activeTab);assertTrue(library.isShown && library.hasFocus())
+            } finally { view.close();c.pause().stop().destroy() }
         }
     }
 }

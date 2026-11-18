@@ -563,7 +563,8 @@ open class MainActivity : Activity() {
                 onFavoritesChanged = { syncHomeShortcuts() },
                 onPlayProduct = { product -> playGalleryProduct(signaling,product) },
                 onOwnershipNeeded = { requestOwnership() },onGameShortcut={ showGameShortcut(it) },
-                onFriends={ showFriends { dashboard?.restoreFocus() } })
+                onFriends={ showFriends { dashboard?.restoreFocus() } },
+                onThemeSettings={ page -> showSettings(session,page) { dashboard?.restoreFocus() } })
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)

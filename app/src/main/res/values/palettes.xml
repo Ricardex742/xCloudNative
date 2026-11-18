@@ -64,4 +64,14 @@
         <item name="android:colorControlActivated">#B6EF4B</item>
         <item name="android:colorButtonNormal">#1C2A13</item>
     </style>
+    <style name="PalettePs4" parent="PaletteGreen">
+        <item name="android:colorAccent">#DCEFFF</item>
+        <item name="android:colorControlActivated">#DCEFFF</item>
+        <item name="android:colorButtonNormal">#12448C</item>
+    </style>
+    <style name="PalettePs5" parent="PaletteGreen">
+        <item name="android:colorAccent">#EEEEEE</item>
+        <item name="android:colorControlActivated">#EEEEEE</item>
+        <item name="android:colorButtonNormal">#292C33</item>
+    </style>
 </resources>

@@ -19,7 +19,7 @@ internal class ConsolePanelSkin(val scene: ConsoleScene=DashboardTheme.palette.t
     val muted=if(light) 0xff4e5c42.toInt() else if(scene==ConsoleScene.XBOX_ORIGINAL) 0xffa9c57d.toInt() else 0xffc4cbd0.toInt()
     val accent=if(light) 0xff3c7015.toInt() else DashboardTheme.accent
     val columns=if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_360_METRO || scene==ConsoleScene.XBOX_SERIES) 2 else 1
-    fun font(heavy: Boolean=false): Typeface=Typeface.create(if(scene==ConsoleScene.XBOX_ORIGINAL) "sans-serif-condensed" else "sans-serif",if(heavy) Typeface.BOLD else Typeface.NORMAL)
+    fun font(heavy: Boolean=false): Typeface=Typeface.create(if(scene==ConsoleScene.XBOX_ORIGINAL) "sans-serif-condensed" else if(scene==ConsoleScene.PS4) "sans-serif-light" else "sans-serif",if(heavy && !scene.playStation) Typeface.BOLD else Typeface.NORMAL)
     fun textColor(requested: Int)=when(requested) {
         Color.WHITE -> ink
         DashboardTheme.muted -> muted
@@ -34,7 +34,7 @@ internal class ConsolePanelSkin(val scene: ConsoleScene=DashboardTheme.palette.t
         return ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf(android.R.attr.state_pressed),intArrayOf()),intArrayOf(active,active,normal))
     }
     fun input(scale: Float): Drawable=GradientDrawable().apply {
-        setColor(if(light) 0xfff3f5e9.toInt() else if(scene==ConsoleScene.XBOX_ORIGINAL) 0xff0b1f03.toInt() else 0xff10171a.toInt())
+        setColor(if(scene.playStation) DashboardTheme.color(UiColor.EDIT_FILL) else if(light) 0xfff3f5e9.toInt() else if(scene==ConsoleScene.XBOX_ORIGINAL) 0xff0b1f03.toInt() else 0xff10171a.toInt())
         cornerRadius=if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_360_METRO) 0f else 6*scale
         setStroke((2*scale).toInt().coerceAtLeast(1),accent)
     }
@@ -46,8 +46,10 @@ private class ConsolePanelChrome(private val scene: ConsoleScene): Drawable() {
     private val r=RectF()
     private val path=Path()
     private var fill: Shader?=null
+    private val scenePainter=ConsoleScenePainter()
     override fun onBoundsChange(b: Rect) {
         val colors=when(scene) {
+            ConsoleScene.PS4,ConsoleScene.PS5 -> intArrayOf(DashboardTheme.color(UiColor.PANEL_TOP),DashboardTheme.color(UiColor.PANEL_BOTTOM),DashboardTheme.color(UiColor.BACKGROUND_END))
             ConsoleScene.XBOX_360 -> intArrayOf(0xffedf2d7.toInt(),0xffd3deb1.toInt(),0xffb2c57c.toInt())
             ConsoleScene.XBOX_360_NXE -> intArrayOf(0xff36553a.toInt(),0xff243b27.toInt(),0xff6c7c61.toInt())
             ConsoleScene.XBOX_360_METRO -> intArrayOf(0xffe2e6dd.toInt(),0xffd3d9ce.toInt(),0xffc4cdbd.toInt())
@@ -56,6 +58,7 @@ private class ConsolePanelChrome(private val scene: ConsoleScene): Drawable() {
             else -> intArrayOf(0xff132707.toInt(),0xff071701.toInt(),0xff102600.toInt())
         }
         fill=LinearGradient(0f,0f,b.width().toFloat(),b.height().toFloat(),colors,null,Shader.TileMode.CLAMP)
+        if(scene.playStation) scenePainter.configure(DashboardTheme.palette,b.width(),b.height())
         path.reset()
         if(scene==ConsoleScene.XBOX_360) {
             val w=b.width().toFloat();val h=b.height().toFloat()
@@ -65,9 +68,10 @@ private class ConsolePanelChrome(private val scene: ConsoleScene): Drawable() {
     }
     override fun draw(c: Canvas) {
         r.set(bounds);r.inset(2f,2f);p.style=Paint.Style.FILL;p.alpha=255;p.shader=fill // Decorative strokes must not tint the next background redraw.
-        val radius=when(scene) { ConsoleScene.XBOX_360 -> 0f;ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_360_METRO -> 0f;ConsoleScene.XBOX_ORIGINAL -> 28f;else -> 14f }
+        val radius=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.PS4,ConsoleScene.PS5 -> 0f;ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_360_METRO -> 0f;ConsoleScene.XBOX_ORIGINAL -> 28f;else -> 14f }
         if(scene==ConsoleScene.XBOX_360) c.drawPath(path,p) else c.drawRoundRect(r,radius,radius,p)
         p.shader=null
+        if(scene.playStation) scenePainter.draw(c,0f)
         when(scene) {
             ConsoleScene.XBOX_360 -> { p.style=Paint.Style.STROKE;p.color=0xfff8f9ee.toInt();p.strokeWidth=4f;c.drawPath(path,p) }
             ConsoleScene.XBOX_360_NXE -> { p.color=0x275fe241;c.drawRect(r.left,r.top,r.right,r.top+r.height()*.19f,p);p.color=0x337d9c68;c.drawRect(r.left,r.bottom-26f,r.right,r.bottom,p) }
@@ -102,6 +106,7 @@ private class ConsolePanelRow(private val scene: ConsoleScene,private val tile: 
         r.set(bounds);r.inset(3f,3f);p.style=Paint.Style.FILL;p.shader=null
         val light=scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_360_METRO
         p.color=when(scene) {
+            ConsoleScene.PS4,ConsoleScene.PS5 -> if(focused) DashboardTheme.color(UiColor.SEARCH_ACTIVE) else Color.TRANSPARENT
             ConsoleScene.XBOX_360 -> if(focused) 0xff527e20.toInt() else 0xffedf1d9.toInt()
             ConsoleScene.XBOX_360_NXE -> if(focused) 0xff288616.toInt() else 0x6822311b
             ConsoleScene.XBOX_360_METRO -> if(tile || focused) 0xff168d07.toInt() else 0xffe9ede2.toInt()
@@ -109,9 +114,12 @@ private class ConsolePanelRow(private val scene: ConsoleScene,private val tile: 
             ConsoleScene.XBOX_SERIES -> if(focused) 0xff2b414a.toInt() else 0xff1d2d35.toInt()
             else -> if(focused) 0xff91c92a.toInt() else 0xff183307.toInt()
         }
-        val radius=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.XBOX_ORIGINAL -> r.height()*.27f;ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_360_METRO -> 0f;ConsoleScene.XBOX_360_NXE -> 4f;else -> 8f }
+        val radius=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.XBOX_ORIGINAL -> r.height()*.27f;ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_360_METRO,ConsoleScene.PS4,ConsoleScene.PS5 -> 0f;ConsoleScene.XBOX_360_NXE -> 4f;else -> 8f }
         if(scene==ConsoleScene.XBOX_ORIGINAL && focused) p.shader=gradient
         c.drawRoundRect(r,radius,radius,p);p.shader=null
+        if(scene.playStation && !focused) {
+            p.color=0x24ffffff;p.strokeWidth=1f;c.drawLine(r.left,r.bottom,r.right,r.bottom,p)
+        }
         if(focused) {
             p.style=Paint.Style.STROKE;p.strokeWidth=3f;p.color=if(light) 0xff426c13.toInt() else Color.WHITE
             if(scene==ConsoleScene.XBOX_360_METRO) p.color=if(tile) Color.WHITE else 0xff387916.toInt()

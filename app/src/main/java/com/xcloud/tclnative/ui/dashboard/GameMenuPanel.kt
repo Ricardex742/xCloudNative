@@ -60,8 +60,13 @@ object GameMenuPanel {
         val width=window?.width?.takeIf { it>0 } ?: context.resources.displayMetrics.widthPixels
         val height=window?.height?.takeIf { it>0 } ?: context.resources.displayMetrics.heightPixels
         val roomy=width>=height && height/context.resources.displayMetrics.density>=480
-        val purpose=if(SeriesGuidePanel.enabled(context) && !device.touchDevice && (device.television || roomy))
-            ConsolePanelPurpose.GUIDE else ConsolePanelPurpose.GENERAL
+        val scene=DashboardTheme.palette.theme.scene
+        val purpose=when {
+            scene==com.xcloud.tclnative.settings.ConsoleScene.PS4 && width>height -> ConsolePanelPurpose.GUIDE
+            scene==com.xcloud.tclnative.settings.ConsoleScene.PS5 && width>height -> ConsolePanelPurpose.CONTROL_CENTER
+            SeriesGuidePanel.enabled(context) && !device.touchDevice && (device.television || roomy) -> ConsolePanelPurpose.GUIDE
+            else -> ConsolePanelPurpose.GENERAL
+        }
         return ConsoleDialog(context,UiText.text("Atalhos da partida"),purpose).apply {
             addShortcuts(shortcuts)
             mouse?.let { addMenuItem(UiText.text("Capturar / soltar mouse e teclado — F8"),it) }

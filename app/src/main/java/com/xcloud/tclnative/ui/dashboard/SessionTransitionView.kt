@@ -17,6 +17,7 @@ import android.widget.TextView
 import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import com.xcloud.tclnative.R
 import com.xcloud.tclnative.signaling.GameTitle
+import com.xcloud.tclnative.settings.ConsoleScene
 import kotlinx.coroutines.*
 import kotlin.math.roundToInt
 
@@ -24,7 +25,11 @@ import kotlin.math.roundToInt
 class SessionTransitionView(context: Context) : FrameLayout(context) {
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private val art=PosterLoader(context,scope)
+    private var scene=DashboardTheme.palette.theme.scene
+    private var renderedTheme=DashboardTheme.palette.theme
     private val banner=FixedArtworkView(context).apply { scaleType=ImageView.ScaleType.CENTER_CROP }
+    private val cover=FixedArtworkView(context).apply { scaleType=ImageView.ScaleType.CENTER_CROP;visibility=GONE }
+    private val consoleBrand=ConsoleBrandView(context).apply { visibility=if(scene.playStation) VISIBLE else GONE }
     private val shade=View(context).apply {
         background=DashboardTheme.gradient(GradientDrawable.Orientation.TOP_BOTTOM,
             arrayOf(UiColor.TRANSITION_SHADE_TOP,UiColor.TRANSITION_SHADE_MID,UiColor.TRANSITION_SHADE_END))
@@ -45,6 +50,7 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
         contentDescription=UiText.text("Aguarde")
     }
     private var logoJob: Job?=null
+    private val nativeFallback by lazy { ConsoleIconDrawable(ConsoleGlyph.CONTROLLER,96,ColorStateList.valueOf(Color.WHITE)) }
     private var url: String?=null
     private var game: GameTitle?=null
     private var geometry=0L
@@ -54,7 +60,11 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
     init {
         background=DashboardBackground()
         addView(banner,LayoutParams(-1,-1)); addView(shade,LayoutParams(-1,-1))
-        listOf(logo,eyebrow,title,status,detail,progress).forEach(::addView)
+        listOf(cover,logo,eyebrow,title,status,detail,progress,consoleBrand).forEach(::addView)
+        if(scene.playStation) {
+            shade.background=ConsoleQueueChrome(scene)
+            title.typeface=android.graphics.Typeface.create(if(scene==ConsoleScene.PS4) "sans-serif-light" else "sans-serif-medium",android.graphics.Typeface.NORMAL)
+        }
         isClickable=true; isFocusable=true; isFocusableInTouchMode=true
         DashboardTheme.customFocus(this)
         visibility=GONE
@@ -72,8 +82,10 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
             UiText.text("Preparando seu catálogo."))
     }
     private fun show(value: GameTitle?,message: String,description: String) {
+        refreshAppearance()
         visibility=VISIBLE; detail.text=description; setGame(value); updateStatus(message)
-        if(logo.drawable==null && logoJob?.isActive!=true) logoJob=scope.launch {
+        if(scene.playStation) logo.setImageDrawable(nativeFallback)
+        else if(logo.drawable==null && logoJob?.isActive!=true) logoJob=scope.launch {
             // A small local icon, decoded away from the UI; never retain the full 1254px source.
             val bitmap=withContext(Dispatchers.IO) {
                 BitmapFactory.decodeResource(resources,R.drawable.brand_logo,BitmapFactory.Options().apply {
@@ -87,20 +99,35 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
         }
         requestFocus()
     }
+    internal fun refreshAppearance() {
+        if(renderedTheme==DashboardTheme.palette.theme) return
+        renderedTheme=DashboardTheme.palette.theme;scene=renderedTheme.scene
+        logoJob?.cancel();logoJob=null;logo.setImageDrawable(null)
+        background=DashboardBackground();consoleBrand.refresh()
+        consoleBrand.visibility=if(scene.playStation) VISIBLE else GONE
+        shade.background=if(scene.playStation) ConsoleQueueChrome(scene) else DashboardTheme.gradient(GradientDrawable.Orientation.TOP_BOTTOM,
+            arrayOf(UiColor.TRANSITION_SHADE_TOP,UiColor.TRANSITION_SHADE_MID,UiColor.TRANSITION_SHADE_END))
+        title.typeface=if(scene.playStation) android.graphics.Typeface.create(if(scene==ConsoleScene.PS4) "sans-serif-light" else "sans-serif-medium",android.graphics.Typeface.NORMAL) else DashboardTheme.font(context,true)
+        geometry=0L;url=null
+        art.cancel(banner);art.cancel(cover);cover.visibility=GONE
+        if(visibility==VISIBLE) setGame(game)
+        requestLayout()
+    }
     fun updateStatus(message: String) { status.text=message }
     fun setGame(value: GameTitle?) {
         val changed=(game==null)!=(value==null)
         game=value; title.text=value?.name ?: "xCLOUD"
         banner.contentDescription=value?.let { UiText.text("Banner de {0}",UiText.nested(it.name)) }
-        val next=value?.let { it.heroUrl ?: it.tileUrl ?: it.posterUrl }
-        if(next!=url) { url=next; art.load(banner,next,1280,720) { updateBrandVisibility() } }
+        val next=if(scene==ConsoleScene.PS4) null else value?.let { it.heroUrl ?: it.tileUrl ?: it.posterUrl }
+        if(next!=url) { url=next; art.load(banner,next,if(scene.playStation) 1024 else 1280,if(scene.playStation) 576 else 720) { updateBrandVisibility() } }
+        if(scene.playStation) art.load(cover,value?.let { it.tileUrl ?: it.posterUrl },320,320) { ready -> cover.visibility=if(ready) VISIBLE else GONE;updateBrandVisibility() }
         updateBrandVisibility()
         if(changed) { geometry=0; requestLayout() }
     }
-    private fun updateBrandVisibility() { logo.visibility=if(game==null || banner.drawable==null) VISIBLE else GONE }
+    private fun updateBrandVisibility() { logo.visibility=if(scene.playStation) { if(cover.drawable==null) VISIBLE else GONE } else if(game==null || banner.drawable==null) VISIBLE else GONE }
     fun dismiss() {
         visibility=GONE; exiting=false; logoJob?.cancel(); logoJob=null
-        art.cancel(banner); url=null; logo.setImageDrawable(null)
+        art.cancel(banner);art.cancel(cover);cover.visibility=GONE; url=null; logo.setImageDrawable(null)
     }
     override fun onMeasure(widthMeasureSpec: Int,heightMeasureSpec: Int) {
         val w=MeasureSpec.getSize(widthMeasureSpec); val h=MeasureSpec.getSize(heightMeasureSpec)
@@ -113,6 +140,24 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
                 view.layoutParams=LayoutParams((vw*s).roundToInt(),(vh*s).roundToInt()).apply {
                     leftMargin=(ox+x*s).roundToInt(); topMargin=(oy+y*s).roundToInt()
                 }
+            }
+            if(scene.playStation) {
+                val centered=scene==ConsoleScene.PS4 || game==null || h>w
+                consoleBrand.visibility=VISIBLE;eyebrow.visibility=GONE
+                if(centered) {
+                    place(consoleBrand,80,42,180,48);place(cover,544,151,192,192);place(logo,544,151,192,192)
+                    place(title,120,377,1040,112);place(status,120,509,1040,64)
+                    place(progress,460,595,360,5);place(detail,120,638,1040,44)
+                } else {
+                    place(consoleBrand,80,42,156,42);place(cover,80,227,208,208);place(logo,80,227,208,208)
+                    place(title,332,225,852,138);place(status,332,395,852,76)
+                    place(progress,332,507,480,5);place(detail,332,557,852,66)
+                }
+                listOf(title to 44,status to 27,detail to 20).forEach { (v,size) ->
+                    v.gravity=if(centered) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START
+                    v.setTextSize(TypedValue.COMPLEX_UNIT_PX,size*s)
+                }
+                super.onMeasure(widthMeasureSpec,heightMeasureSpec);return
             }
             val branded=game==null
             updateBrandVisibility()

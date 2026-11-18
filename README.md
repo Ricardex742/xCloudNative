@@ -54,16 +54,19 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 
 - **Verde** como tema padrão, preservando a identidade original do app.
 - Seis temas opcionais: **Azul Cibernético**, **Vermelho Vulcânico**, **Dourado Prestígio**, **Laranja Industrial**, **Roxo Galáxia** e **Prata Platina**.
-- Seis dashboards opcionais, com composição e navegação próprias:
+- Dashboards nativos opcionais, com composição e navegação próprias:
   - **Xbox 360 — Blades de 2005:** lâminas metálicas curvas, abas com títulos destacados, painel claro, pesquisa acima do perfil e lista de jogos.
   - **Xbox 360 — NXE de 2008:** navegação vertical, cartões em perspectiva, horizonte e piso reflexivo.
   - **Xbox 360 — Metro de 2011:** navegação por texto, coluna verde de atalhos e mosaico assimétrico de jogos.
   - **Xbox One:** blocos retangulares, destaque grande para o jogo selecionado, catálogo em mosaico e contorno branco de seleção.
   - **Xbox Series X|S:** arte panorâmica do jogo quando disponível, navegação por ícones vetoriais, relógio, jogo selecionado ampliado na faixa horizontal e atalhos ilustrados para a biblioteca.
   - **Xbox Original:** núcleo verde luminoso, categorias em menus e biblioteca em listas. A abre a categoria; B retorna ao menu.
+  - **PlayStation 4:** fundo azul com ondas, três abas, faixa de capas quadradas, barra de início e título do jogo abaixo. Inclui variante noturna, fila e painéis azuis.
+  - **PlayStation 5:** arte panorâmica do jogo, seletor compacto, botão de jogar com opções, cartões de controles, imagem e tempo de nuvem, e centro de controle inferior durante a partida. Inclui variante noturna e painéis escuros.
+- Os temas PlayStation usam Views, Canvas e o mesmo catálogo nativo dos Xbox. A apresentação acompanha pesquisa, fila, preparação, retorno ao catálogo, configurações e atalhos da partida.
 - Logos das gerações Xbox, selos Game Pass/Series vetoriais e marcadores de favoritos com acabamento correspondente ao tema, mantendo a identificação informada pelo catálogo.
 - Pesquisa e configurações com painéis, fontes, campos e foco próprios para cada dashboard; One, Series e Metro organizam as categorias de configuração em blocos.
-- **Fundo dinâmico** opcional nesses seis temas: Automático, Ativado ou Desativado. Automático respeita economia de energia, animações do sistema, pouca memória e interfaces acima de 1440p. Ativado mantém um movimento leve e reduz a frequência em aparelhos modestos ou em economia de energia. O movimento pausa durante partidas e enquanto o catálogo não está visível. No Series, a própria arte panorâmica do jogo se move quando disponível.
+- **Fundo dinâmico** opcional nos temas de console: Automático, Ativado ou Desativado. Automático respeita economia de energia, animações do sistema, pouca memória e interfaces acima de 1440p. Ativado mantém um movimento leve e reduz a frequência em aparelhos modestos ou em economia de energia. O movimento pausa durante partidas e enquanto o catálogo não está visível. No Series e PS5, a própria arte panorâmica do jogo se move quando disponível.
 - **Personalização do Series X|S** em Aparência e temas: galeria com seis fundos vetoriais próprios, artes panorâmicas disponíveis no catálogo, categorias, prévia e favoritos de fundos independentes dos jogos favoritos.
 - **Oficiais Xbox:** artes da galeria pública do Xbox, nas versões disponibilizadas para console, com pesquisa, páginas e carregamento somente das miniaturas visíveis. A coleção participa dos favoritos e da troca automática.
 - **Recriações animadas:** efeitos próprios de partículas, luz, névoa, ondas, fogo e deformação localizada sobre as artes reais. Escolha **Animar esta arte** para testar um efeito na prévia antes de aplicar. A galeria também reúne interpretações procedurais de fundos Xbox, com núcleos orgânicos, nebulosas e outros motivos. As recriações ficam identificadas; os arquivos de animação originais do console não estão incluídos.
@@ -100,6 +103,10 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
     <td width="50%"><img src="docs/screenshots/theme-xbox-360-nxe.png" alt="Captura real do menu Xbox 360 NXE, com categorias verticais e jogos em perspectiva." /><br /><strong>Xbox 360 — NXE (2008)</strong></td>
     <td width="50%"><img src="docs/screenshots/theme-xbox-360-metro.png" alt="Captura real do menu Xbox 360 Metro, com mosaico de jogos e atalhos verdes." /><br /><strong>Xbox 360 — Metro (2011)</strong></td>
   </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/theme-ps4.png" alt="Home nativa PlayStation 4, com três abas, capas quadradas e título abaixo da seleção." /><br /><strong>PlayStation 4</strong></td>
+    <td width="50%"><img src="docs/screenshots/theme-ps5.png" alt="Home nativa PlayStation 5, com arte panorâmica, faixa de jogos e cartões de acesso rápido." /><br /><strong>PlayStation 5</strong></td>
+  </tr>
 </table>
 
 Pesquisa e configurações acompanham a identidade de cada console:
@@ -128,6 +135,10 @@ Pesquisa e configurações acompanham a identidade de cada console:
   <tr>
     <td width="50%"><img src="docs/screenshots/theme-xbox-original-search.png" alt="Pesquisa no tema Xbox Original." /><br /><strong>Pesquisa — Xbox Original</strong></td>
     <td width="50%"><img src="docs/screenshots/theme-xbox-original-settings.png" alt="Configurações no tema Xbox Original." /><br /><strong>Configurações — Xbox Original</strong></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/theme-ps4-settings.png" alt="Configurações nativas no tema PlayStation 4." /><br /><strong>Configurações — PlayStation 4</strong></td>
+    <td width="50%"><img src="docs/screenshots/theme-ps5-settings.png" alt="Configurações nativas no tema PlayStation 5." /><br /><strong>Configurações — PlayStation 5</strong></td>
   </tr>
 </table>
 

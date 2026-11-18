@@ -8,7 +8,7 @@ Leia também `CODEX_THEME_BUILD_CONTEXT.md`. Ele documenta a arquitetura nativa 
 
 ## Objetivo atual e limites
 
-Implementar navegação mais simples e atalhos durante a partida, usando a organização do Better xCloud como referência. Priorizar ações comuns e deixar ajustes especializados em Avançado. **Temas PS4 e PS5 estão adiados por pedido explícito do usuário.** Não adicioná-los nesta entrega.
+Manter a navegação simplificada e os atalhos nativos da partida. O usuário retomou PS4/PS5 e pediu seguir `CODEX_THEME_BUILD_CONTEXT.md`, usando as simulações apenas como referência visual e a arquitetura nativa dos Xbox. O pedido mais recente fornece `html-ps4-home.jpg` e `html-ps5-home.jpg` e pede aproximar a home desses prints. Eles passam a orientar a composição da home; fotos reais continuam como apoio dos painéis. Priorizar a composição dos consoles em home, fila, transições e painéis internos. Não recuperar a integração HTML/WebView descartada.
 
 O usuário prefere execução autônoma, comunicação em português e conclusões baseadas em evidência. Não pedir novamente autorização para ações já incluídas no pedido. Não dizer que um problema foi resolvido em aparelho real apenas porque testes locais passaram.
 
@@ -18,7 +18,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão de teste desta branch: **0.38.2-menu-lab**, versionCode **91**, usando a identidade de atualização existente.
+- Versão de teste desta branch: **0.40.0-native-ps**, versionCode **95**, superior ao 94 já distribuído, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
@@ -92,7 +92,19 @@ APK de teste anterior: `0.38.1-input-order`, versionCode 90. **A confirmação f
 - Amigos: presença e atividade, com abertura do título em **sessão própria**. Entrar na mesma partida/grupo do amigo ainda não está implementado.
 - Atalhos por jogo no launcher, pin quando suportado e APK de atalho para ambientes que exigem instalação.
 - Quinze idiomas/regiões da interface com recursos offline. Manter as traduções completas e os placeholders consistentes.
-- Temas Xbox existentes e personalização; simulações PS4/PS5 eram HTMLs de estudo fora do APK e agora ficam adiadas. O comentário sobre elementos/rostos sobrepostos não confirmou uma causa específica.
+- Temas Xbox e personalização preservados. PS4/PS5 usam cenas próprias, Kotlin, Views e Canvas; incluem variantes noturnas. Os protótipos HTML continuam como referências externas ao APK.
+
+## Temas PlayStation nativos
+
+- As cenas `PS4` e `PS5` são acrescentadas ao enum existente; as preferências anteriores continuam por nome. `PS4_NIGHT` e `PS5_NIGHT` reaproveitam a geometria com paletas próprias.
+- O catálogo permanece no mesmo `RecyclerView`, adaptador, IDs estáveis e serviços. A biblioteca nativa permite acessar todas as categorias. As opções ao lado de Jogar no PS5 abrem os grupos de controles e vídeo já existentes, sem outra árvore de configurações.
+- Fundos usam `ConsoleScenePainter`/`ConsoleThemeBackdrop` e a política de movimento/ciclo de vida existente. Arte usa o cache, limites e cancelamento de `PosterLoader`. Não criar WebView, cache ou decoder próprios para os temas.
+- Painéis usam `ConsolePanelSkin` em todos os níveis. A fila mantém estimativa e etapas do serviço; as transições mostram estados reais. O menu da partida segue nativo: guia lateral PS4 e centro inferior PS5; fechar não encerra e desconectar exige confirmação.
+- Corrigido um ramo inalcançável da tentativa nativa anterior: o cartão PlayStation era sobrescrito por `bindConsole` e acabava usando o cartão genérico. A rotina própria deve ser aplicada dentro do binding de console. Manter as verificações de geometria e de restauração exata do tema Verde.
+- Testes `NativePlayStationSurfacesTest` cobrem TV, celular, retrato, 48 dp, fila sem arte, transições, grupos de ajustes, níveis profundos nos 15 idiomas, foco, navegação rápida e pausa do fundo sem rebind do catálogo. Os menus da partida são exercitados em celulares de alta densidade, nas duas orientações; HUD, X, Voltar e botões de retomar/encerrar devem permanecer acessíveis. Menu/Start na home abre os ajustes; o perfil tem seu painel próprio.
+- Não há aparelho acessível por ADB neste ambiente; o usuário também não conhece um disponível. Frame time/jank, memória e interação física na TV/celular continuam pendentes. Não tratar testes JVM nem capturas nativas como essa confirmação.
+- Fotos usadas para composição: [home PS4](https://www.gamesradar.com/ps4-external-hard-drive-transfer-games/), [ajustes PS4](https://www.techsolutions.support.com/how-to/how-to-fix-video-issues-on-a-playstation-4-10745), [home e centro PS5, PlayStation Blog](https://blog.de.playstation.com/2021/01/11/playstation-5-tipps-und-tricks-zum-control-center/) e [ajustes PS5](https://www.tomsguide.com/how-to/how-to-enable-120hz-on-ps5). Após os prints enviados pelo usuário, a home PS4 usa marca à esquerda, três abas, faixa de capas e título abaixo; a PS5 usa destaque e três cartões inferiores. Os cartões abrem grupos existentes e mostram somente plano/quota reais, com indisponível/consultando/ilimitado distintos. Ajustes usam listas nativas em tela cheia, ícones e separadores. As fotos são referências externas, sem inclusão no APK. Não afirmar fidelidade pixel a pixel sem comparação equivalente de conteúdo, resolução e fonte.
+- Referências oficiais adicionais: [guia PS4, área de conteúdo e funções](https://www.playstation.com/content/dam/global_pdc/en/corporate/support/manuals/ps4-docs/cuh-2202ab-cuh-2208ab-cuh-2216a/EN_PS4_CUH-2216AB_QSG_Web.pdf) e [apresentação da interface PS5](https://blog.playstation.com/2020/10/15/first-look-playstation-5s-next-generation-user-experience/). Os temas não implementam serviços PSN.
 
 ## Revisão de desempenho anterior
 

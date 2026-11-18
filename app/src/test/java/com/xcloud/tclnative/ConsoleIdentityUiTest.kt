@@ -56,7 +56,8 @@ class ConsoleIdentityUiTest {
                 DashboardTheme.apply(a,theme)
                 val settings=PlaybackSettingsPanel(a,store,{fail("Appearance must not change playback")},{},{},{})
                 val d=settings.show();val items=all(d.body).filterIsInstance<TextView>().filter { it.isClickable }
-                assertEquals(6,items.size);assertTrue(all(d.panel).any { it is ConsoleBrandView && it.isShown })
+                assertEquals(6,items.size)
+                assertEquals(!theme.scene.playStation,all(d.panel).any { it is ConsoleBrandView && it.isShown })
                 signatures+=render(d,"settings-${theme.name.lowercase()}")
                 if(theme.scene in listOf(ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_SERIES,ConsoleScene.XBOX_360_METRO)) {
                     assertSame(items[0].parent,items[1].parent);assertNotSame(items[1].parent,items[2].parent)
@@ -71,7 +72,7 @@ class ConsoleIdentityUiTest {
                 appearance.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B));d.dismiss()
                 assertEquals(before,store.read())
             }
-            assertEquals(6,signatures.size)
+            assertEquals(themes.size,signatures.size)
         } finally { controller.pause().stop().destroy() }
     }
     @Test fun themedSearchSubmitsClearsAndCancelsWithoutChangingTheQueryOnBack() {
@@ -92,7 +93,7 @@ class ConsoleIdentityUiTest {
                 back.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B));assertFalse(back.isShowing)
                 assertEquals(2,submitted.size)
             }
-            assertEquals(6,signatures.size)
+            assertEquals(themes.size,signatures.size)
         } finally { controller.pause().stop().destroy() }
     }
     @Test fun catalogDetailsRemainAccessibleInAccountSettingsWithoutChangingPlayback() {
@@ -119,7 +120,7 @@ class ConsoleIdentityUiTest {
                 assertTrue(pass.right<series.left && series.right<=202);assertTrue(pass.height<=26 && series.height<=26)
                 signatures+=capture(badges,"badges-${theme.name.lowercase()}")
                 val b=Bitmap.createBitmap(202,52,Bitmap.Config.ARGB_8888);badges.draw(Canvas(b));assertEquals(0,Color.alpha(b.getPixel(201,51)));b.recycle()
-            };assertEquals(6,signatures.size)
+            };assertEquals(themes.map { it.scene }.distinct().size,signatures.size)
         } finally { controller.pause().stop().destroy() }
     }
 }

@@ -29,6 +29,8 @@ internal class FavoriteBadgeView(context: Context): View(context) {
         if(theme==next) return
         theme=next;scene=next.scene
         top=when(scene) {
+            ConsoleScene.PS4 -> 0xee0b4197.toInt()
+            ConsoleScene.PS5 -> 0xee303038.toInt()
             ConsoleScene.XBOX_360 -> 0xfff2f4df.toInt()
             ConsoleScene.XBOX_360_NXE -> 0xee657751.toInt()
             ConsoleScene.XBOX_360_METRO -> 0xff168d07.toInt()
@@ -44,6 +46,7 @@ internal class FavoriteBadgeView(context: Context): View(context) {
             else -> top
         }
         ink=when(scene) {
+            ConsoleScene.PS4,ConsoleScene.PS5 -> Color.WHITE
             ConsoleScene.XBOX_360 -> 0xff536e1b.toInt()
             ConsoleScene.XBOX_360_NXE -> 0xfff2ce61.toInt()
             ConsoleScene.XBOX_360_METRO,ConsoleScene.XBOX_ONE -> Color.WHITE

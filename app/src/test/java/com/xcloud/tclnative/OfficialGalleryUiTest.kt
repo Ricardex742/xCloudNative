@@ -32,6 +32,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class OfficialGalleryUiTest {
+    @org.junit.Before fun defaultAppearance() {
+        val context=org.robolectric.RuntimeEnvironment.getApplication()
+        com.xcloud.tclnative.i18n.UiText.apply(context,com.xcloud.tclnative.i18n.AppLanguage.PORTUGUESE)
+        com.xcloud.tclnative.ui.dashboard.DashboardTheme.apply(context,com.xcloud.tclnative.settings.UiTheme.GREEN)
+    }
     private fun all(v: View): List<View> = listOf(v)+if(v is ViewGroup) (0 until v.childCount).flatMap { all(v.getChildAt(it)) } else emptyList()
     private fun layout(view: View,w: Int=1280,h: Int=720) {
         (view as? GameDashboardView)?.awaitCatalog()

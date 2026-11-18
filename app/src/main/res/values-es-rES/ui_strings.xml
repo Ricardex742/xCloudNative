@@ -1233,4 +1233,19 @@
     <string name="ui_2d7e0a796db2917d" formatted="false">"Volumen multimedia: {0}/{1}"</string>
     <string name="ui_a8b7d8332f3863e8" formatted="false">"Volumen multimedia"</string>
     <string name="ui_27964de71ae4bf19" formatted="false">"Avanzado"</string>
+    <string name="ui_37543789ff88ca0c">"PlayStation 4"</string>
+    <string name="ui_1e54d845b7114c54">"PlayStation 5"</string>
+    <string name="ui_c9169c12cba9cf64">"Biblioteca"</string>
+    <string name="ui_6dfbcc6fb285566f">"Iniciar"</string>
+    <string name="ui_50375b3c35a995ce" formatted="false">"PlayStation 4 — Nocturno"</string>
+    <string name="ui_003e7c41001b30aa" formatted="false">"PlayStation 5 — Nocturno"</string>
+    <string name="ui_45c0ae120e26c1c3" formatted="false">"Tu catálogo en primer plano. Vuelve a jugar y descubre tu próxima partida."</string>
+    <string name="ui_404f4ac3e98414ff" formatted="false">"Volver a jugar"</string>
+    <string name="ui_6bf72dcac8eefbae" formatted="false">"Biblioteca en la nube"</string>
+    <string name="ui_11700bde5fe0683e" formatted="false">"Jugar en la nube"</string>
+    <string name="ui_151c33ab8248559c" formatted="false">"Acceso rápido"</string>
+    <string name="ui_1af50079266785e2" formatted="false">"Controles y partida"</string>
+    <string name="ui_2faf10b778337a96" formatted="false">"Ve cada detalle"</string>
+    <string name="ui_ca2404ad054fa6ca" formatted="false">"{0}h {1}min"</string>
+    <string name="ui_6168ae9c0ab7595c" formatted="false">"{0}min"</string>
 </resources>

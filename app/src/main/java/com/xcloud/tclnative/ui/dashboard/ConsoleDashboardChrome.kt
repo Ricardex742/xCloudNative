@@ -29,9 +29,34 @@ internal class ConsoleControlPlate(private val scene: ConsoleScene,private val c
             },null,Shader.TileMode.CLAMP)
     }
     override fun draw(canvas: Canvas) {
-        rect.set(bounds);val h=rect.height();val inset=(h*.045f).coerceAtLeast(1f)
+        rect.set(bounds);val h=rect.height();val inset=if(scene.playStation && control==ConsoleControl.QUICK) 1.5f else (h*.045f).coerceAtLeast(1f)
         rect.inset(if(control==ConsoleControl.CARD) 2f else inset,if(control==ConsoleControl.CARD) 2f else inset);paint.style=Paint.Style.FILL;paint.shader=null
         when(scene) {
+            ConsoleScene.PS4,ConsoleScene.PS5 -> {
+                val ps5=scene==ConsoleScene.PS5
+                val radius=if(ps5) { if(control==ConsoleControl.ACTION) h/2f else 9f } else 0f
+                if(control!=ConsoleControl.CARD) {
+                    paint.color=if(ps5 && control==ConsoleControl.ACTION) 0xffeff0f3.toInt()
+                        else if(control==ConsoleControl.QUICK) { if(focused) 0xa0444953.toInt() else 0x30151920 }
+                        else if(focused) 0x24ffffff else Color.TRANSPARENT
+                    canvas.drawRoundRect(rect,radius,radius,paint)
+                }
+                if(focused || control==ConsoleControl.QUICK) {
+                    paint.style=Paint.Style.STROKE;paint.color=if(focused) Color.WHITE else 0x55ffffff;paint.strokeWidth=if(focused) 2.5f else 1f
+                    canvas.drawRoundRect(rect,radius,radius,paint)
+                }
+                if(selected && control==ConsoleControl.TAB && !ps5) {
+                    paint.style=Paint.Style.FILL;paint.color=Color.WHITE
+                    canvas.drawRect(rect.left+6f,rect.bottom-2f,rect.right-6f,rect.bottom,paint)
+                }
+                if(control==ConsoleControl.QUICK) icon?.let {
+                    val size=minOf(rect.width(),rect.height())*.45f
+                    icons.draw(canvas,it,rect.centerX()-size/2,rect.centerY()-size/2,size,Color.WHITE)
+                }
+                if(!ps5 && control==ConsoleControl.TAB) icon?.let {
+                    icons.draw(canvas,it,rect.centerX()-13f,rect.top+5f,26f,Color.WHITE)
+                }
+            }
             ConsoleScene.XBOX_360_NXE -> {
                 if(control==ConsoleControl.TAB && (selected || focused) || control==ConsoleControl.ACTION) {
                     paint.shader=fill;canvas.drawRoundRect(rect,5f,5f,paint);paint.shader=null
@@ -109,6 +134,7 @@ internal class ConsoleDashboardChrome(private val selected: () -> Int): Drawable
     private val blade=Path()
     private var cachedScene=ConsoleScene.NONE
     private var cachedIndex=-1
+    private var cachedTheme=com.xcloud.tclnative.settings.UiTheme.GREEN
     private var panelFill: Shader?=null
     private var shade: Shader?=null
     private var sideShade: Shader?=null
@@ -116,7 +142,7 @@ internal class ConsoleDashboardChrome(private val selected: () -> Int): Drawable
     private val bladeColors=intArrayOf(0xffd89129.toInt(),0xff8db42a.toInt(),0xff5f941f.toInt(),0xff3b85ac.toInt(),0xff82569f.toInt(),0xff85a541.toInt())
     override fun onBoundsChange(bounds: Rect) { cachedIndex=-1 }
     private fun configure(w: Float,h: Float,scene: ConsoleScene,index: Int) {
-        cachedScene=scene;cachedIndex=index
+        cachedScene=scene;cachedIndex=index;cachedTheme=DashboardTheme.palette.theme
         shade=LinearGradient(0f,0f,0f,h,intArrayOf(0xc9000000.toInt(),0x10000000,0x35000000,0xdd000000.toInt()),floatArrayOf(0f,.25f,.55f,1f),Shader.TileMode.CLAMP)
         sideShade=LinearGradient(0f,0f,w*.82f,0f,intArrayOf(0xd9000000.toInt(),0x35000000,0x05000000),floatArrayOf(0f,.56f,1f),Shader.TileMode.CLAMP)
         metal=LinearGradient(0f,0f,54f,0f,intArrayOf(0xff62685e.toInt(),0xffe8e9e0.toInt(),0xfff2f3eb.toInt(),0xffb5b9af.toInt(),0xff535b4c.toInt()),floatArrayOf(0f,.2f,.57f,.82f,1f),Shader.TileMode.CLAMP)
@@ -133,12 +159,20 @@ internal class ConsoleDashboardChrome(private val selected: () -> Int): Drawable
         if(scene==ConsoleScene.NONE || bounds.width()==0 || bounds.height()==0) return
         val s=minOf(bounds.width()/1280f,bounds.height()/720f);val w=bounds.width()/s
         val index=selected()
-        if(scene!=cachedScene || index!=cachedIndex) configure(w,bounds.height()/s,scene,index)
+        if(scene!=cachedScene || index!=cachedIndex || cachedTheme!=DashboardTheme.palette.theme) configure(w,bounds.height()/s,scene,index)
         val wave=kotlin.math.sin(motionPhase*2*Math.PI).toFloat()
         motionMatrix.setTranslate(0f,wave*105f);panelFill?.setLocalMatrix(motionMatrix)
         motionMatrix.setTranslate(wave*9f,0f);metal?.setLocalMatrix(motionMatrix)
         val save=canvas.save();canvas.scale(s,s);paint.shader=null;paint.style=Paint.Style.FILL;paint.alpha=255
         when(scene) {
+            ConsoleScene.PS4 -> {
+                paint.color=0x18001967;canvas.drawRect(0f,0f,w,bounds.height()/s,paint)
+            }
+            ConsoleScene.PS5 -> {
+                paint.shader=shade;canvas.drawRect(0f,0f,w,bounds.height()/s,paint)
+                paint.shader=sideShade;canvas.drawRect(0f,0f,w,bounds.height()/s,paint);paint.shader=null
+                if(DashboardTheme.palette.theme.night) { paint.color=0xa20b1425.toInt();canvas.drawRect(0f,0f,w,bounds.height()/s,paint) }
+            }
             ConsoleScene.XBOX_360 -> {
                 paint.shader=metal
                 repeat(6) { i -> if(i!=index) {

@@ -1233,4 +1233,19 @@
     <string name="ui_2d7e0a796db2917d" formatted="false">"メディア音量: {0}/{1}"</string>
     <string name="ui_a8b7d8332f3863e8" formatted="false">"メディア音量"</string>
     <string name="ui_27964de71ae4bf19" formatted="false">"詳細設定"</string>
+    <string name="ui_37543789ff88ca0c">"PlayStation 4"</string>
+    <string name="ui_1e54d845b7114c54">"PlayStation 5"</string>
+    <string name="ui_c9169c12cba9cf64">"ライブラリー"</string>
+    <string name="ui_6dfbcc6fb285566f">"はじめる"</string>
+    <string name="ui_50375b3c35a995ce" formatted="false">"PlayStation 4 — ナイト"</string>
+    <string name="ui_003e7c41001b30aa" formatted="false">"PlayStation 5 — ナイト"</string>
+    <string name="ui_45c0ae120e26c1c3" formatted="false">"あなたのカタログをハイライト。ゲームを再開して、次の一作を見つけましょう。"</string>
+    <string name="ui_404f4ac3e98414ff" formatted="false">"プレイを再開"</string>
+    <string name="ui_6bf72dcac8eefbae" formatted="false">"クラウドライブラリ"</string>
+    <string name="ui_11700bde5fe0683e" formatted="false">"クラウドでプレイ"</string>
+    <string name="ui_151c33ab8248559c" formatted="false">"クイックアクセス"</string>
+    <string name="ui_1af50079266785e2" formatted="false">"操作とゲームプレイ"</string>
+    <string name="ui_2faf10b778337a96" formatted="false">"細部まで楽しむ"</string>
+    <string name="ui_ca2404ad054fa6ca" formatted="false">"{0}時間{1}分"</string>
+    <string name="ui_6168ae9c0ab7595c" formatted="false">"{0}分"</string>
 </resources>

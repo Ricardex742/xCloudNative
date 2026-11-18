@@ -6,6 +6,10 @@ import android.graphics.Color
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.TextView
+import android.graphics.Typeface
+import android.util.TypedValue
+import android.view.Gravity
 import com.xcloud.tclnative.R
 import com.xcloud.tclnative.settings.ConsoleScene
 import kotlin.math.roundToInt
@@ -14,12 +18,15 @@ import kotlin.math.roundToInt
 internal class ConsoleBrandView(context: Context): FrameLayout(context) {
     private val mark=ImageView(context).apply { scaleType=ImageView.ScaleType.FIT_CENTER;importantForAccessibility=IMPORTANT_FOR_ACCESSIBILITY_NO }
     private val word=ImageView(context).apply { scaleType=ImageView.ScaleType.FIT_CENTER;importantForAccessibility=IMPORTANT_FOR_ACCESSIBILITY_NO }
+    private val nativeWord=TextView(context).apply { text="xCLOUD";typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL);setTextColor(Color.WHITE);gravity=Gravity.CENTER_VERTICAL;includeFontPadding=false;isFocusable=false }
     private var scene=ConsoleScene.NONE
     private var geometry=0L
-    init { isFocusable=false;addView(mark);addView(word);refresh() }
+    init { isFocusable=false;addView(mark);addView(word);addView(nativeWord);refresh() }
     fun refresh() {
         scene=DashboardTheme.palette.theme.scene;contentDescription=DashboardTheme.palette.theme.label
         mark.imageTintList=null;word.imageTintList=null;word.visibility=View.GONE
+        mark.visibility=if(scene.playStation) View.GONE else View.VISIBLE
+        nativeWord.visibility=if(scene.playStation) View.VISIBLE else View.GONE
         when(scene) {
             ConsoleScene.XBOX_360,ConsoleScene.XBOX_360_NXE,ConsoleScene.XBOX_360_METRO -> {
                 mark.setImageResource(R.drawable.console_logo_360_sphere);word.setImageResource(R.drawable.console_logo_360_wordmark);word.visibility=View.VISIBLE
@@ -31,6 +38,7 @@ internal class ConsoleBrandView(context: Context): FrameLayout(context) {
                 mark.imageTintList=ColorStateList.valueOf(Color.WHITE);word.imageTintList=ColorStateList.valueOf(Color.WHITE)
             }
             ConsoleScene.XBOX_ORIGINAL -> mark.setImageResource(R.drawable.console_logo_original)
+            ConsoleScene.PS4,ConsoleScene.PS5 -> mark.setImageDrawable(null)
             ConsoleScene.NONE -> mark.setImageResource(R.drawable.brand_logo)
         }
         geometry=0L;requestLayout();invalidate()
@@ -42,6 +50,8 @@ internal class ConsoleBrandView(context: Context): FrameLayout(context) {
         super.onMeasure(widthMeasureSpec,heightMeasureSpec)
     }
     private fun layoutArtwork(w: Int,h: Int) {
+        nativeWord.setTextSize(TypedValue.COMPLEX_UNIT_PX,h*.58f)
+        nativeWord.layoutParams=LayoutParams(w,h)
         fun item(v: View,x: Float,y: Float,width: Float,height: Float) {
             v.layoutParams=LayoutParams(width.roundToInt(),height.roundToInt()).apply { leftMargin=x.roundToInt();topMargin=y.roundToInt() }
         }

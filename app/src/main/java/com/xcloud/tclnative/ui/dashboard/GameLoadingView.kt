@@ -104,12 +104,12 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
             lastBackdrop = hero
             if(scene==ConsoleScene.NONE) art.load(backdrop,hero,
                 if(devicePolicy.constrainedMemory) 640 else 1920,if(devicePolicy.constrainedMemory) 360 else 1080)
-            else if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES) {
+            else if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.PS5) {
                 val modest=devicePolicy.constrainedMemory
                 art.load(backdrop,hero,if(modest) 640 else 1024,if(modest) 360 else 576)
             } else art.cancel(backdrop)
         }
-        val portrait = if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.XBOX_360_NXE || scene==ConsoleScene.XBOX_360_METRO) value.tileUrl ?: value.posterUrl else value.posterUrl ?: value.tileUrl
+        val portrait = if(scene.playStation || scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.XBOX_360_NXE || scene==ConsoleScene.XBOX_360_METRO) value.tileUrl ?: value.posterUrl else value.posterUrl ?: value.tileUrl
         if (portrait != lastPoster) {
             lastPoster = portrait
             art.load(poster, portrait) { ready -> posterFallback.visibility = if (ready) View.GONE else View.VISIBLE }
@@ -214,16 +214,17 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         consoleLogo.refresh();consoleLogo.visibility=VISIBLE;eyebrow.visibility=GONE
         background=DashboardBackground(consoleArtwork=scene!=ConsoleScene.XBOX_360)
         shade.background=ConsoleQueueChrome(scene)
-        backdrop.visibility=if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES) VISIBLE else GONE
+        backdrop.visibility=if(scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.PS5) VISIBLE else GONE
         val ink=if(scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_360_METRO) 0xff233415.toInt() else Color.WHITE
         listOf(eyebrow,title,posterFallback,status,estimateLabel,estimate,elapsedLabel,elapsed,explanation,heartbeat,freshness,note,cancelButton).forEach { v ->
             v.typeface=Typeface.create(if(scene==ConsoleScene.XBOX_ORIGINAL) "sans-serif-condensed" else "sans-serif-medium",Typeface.NORMAL)
             v.setTextColor(ink)
         }
         listOf(estimateLabel,elapsedLabel,explanation,heartbeat,freshness,note).forEach { it.typeface=Typeface.create("sans-serif",Typeface.NORMAL);it.setTextColor(secondaryColor()) }
-        eyebrow.text=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.XBOX_360_NXE,ConsoleScene.XBOX_360_METRO -> "XBOX 360";ConsoleScene.XBOX_ONE -> "Xbox One";ConsoleScene.XBOX_SERIES -> "Xbox Series X|S";else -> "XBOX" }
+        eyebrow.text=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.XBOX_360_NXE,ConsoleScene.XBOX_360_METRO -> "XBOX 360";ConsoleScene.XBOX_ONE -> "Xbox One";ConsoleScene.XBOX_SERIES -> "Xbox Series X|S";ConsoleScene.PS4,ConsoleScene.PS5 -> "xCLOUD";else -> "XBOX" }
         eyebrow.setTextColor(if(scene==ConsoleScene.XBOX_ORIGINAL) 0xffb8ee4c.toInt() else ink)
         panel.background=when(scene) {
+            ConsoleScene.PS4,ConsoleScene.PS5 -> ConsolePanelSkin(scene).background()
             ConsoleScene.XBOX_360 -> GradientDrawable().apply { setColor(0x70f6f8e9);cornerRadius=5f;setStroke(1,0xff8da469.toInt()) }
             ConsoleScene.XBOX_ONE -> GradientDrawable().apply { setColor(0xff161616.toInt()) }
             ConsoleScene.XBOX_360_NXE -> GradientDrawable().apply { setColor(0xdf263324.toInt());cornerRadius=5f;setStroke(1,0xffa3b39b.toInt()) }
@@ -233,8 +234,9 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         }
         cancelButton.background=ConsoleControlPlate(scene,ConsoleControl.ACTION,true)
         cancelButton.setTextColor(if(scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_ORIGINAL) 0xff142700.toInt() else Color.WHITE)
+        if(scene.playStation) cancelButton.setTextColor(if(scene==ConsoleScene.PS5) 0xff15171c.toInt() else Color.WHITE)
         steps.forEach { it.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL) }
-        spinner.indeterminateTintList=ColorStateList.valueOf(if(scene==ConsoleScene.XBOX_360) 0xff4d761e.toInt() else 0xff8bdc42.toInt())
+        spinner.indeterminateTintList=ColorStateList.valueOf(if(scene.playStation) Color.WHITE else if(scene==ConsoleScene.XBOX_360) 0xff4d761e.toInt() else 0xff8bdc42.toInt())
         if(scene==ConsoleScene.XBOX_360_NXE) note.setTextColor(0xff263024.toInt())
         geometry=0L;requestLayout()
         if(changed) { lastBackdrop=null;lastPoster=null;game?.let(::setGame) }
@@ -276,12 +278,27 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
     private fun layoutConsole(w: Int,h: Int) {
+        if(scene.playStation && h>w) { layoutPlayStationPortrait(w,h);return }
         val s=minOf(w/1280f,h/720f);val ox=(w-1280*s)/2f;val oy=(h-720*s)/2f
         fun root(v: View,x: Int,y: Int,vw: Int,vh: Int)=place(v,ox+x*s,oy+y*s,vw*s,vh*s)
         fun item(v: View,x: Int,y: Int,vw: Int,vh: Int)=place(v,x*s,y*s,vw*s,vh*s)
         title.maxLines=2;title.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)
         if(android.os.Build.VERSION.SDK_INT>=26) title.setAutoSizeTextTypeUniformWithConfiguration((25*s).roundToInt().coerceAtLeast(1),(38*s).roundToInt().coerceAtLeast(2),1,TypedValue.COMPLEX_UNIT_PX)
         when(scene) {
+            ConsoleScene.PS4 -> {
+                root(title,76,102,1128,80)
+                root(poster,76,218,274,274);root(posterFallback,88,230,250,250);root(badges,76,440,274,52)
+                root(panel,390,206,814,334)
+                steps.forEachIndexed { i,v -> root(v,390+i*277,560,261,52) }
+                root(cancelButton,76,558,274,54);root(note,390,638,814,44)
+            }
+            ConsoleScene.PS5 -> {
+                root(title,78,114,1120,88)
+                root(poster,80,246,232,232);root(posterFallback,90,256,212,212);root(badges,80,426,232,52)
+                root(panel,362,227,840,334)
+                steps.forEachIndexed { i,v -> root(v,362+i*287,580,266,52) }
+                root(cancelButton,80,578,232,54);root(note,362,650,840,40)
+            }
             ConsoleScene.XBOX_360_NXE -> {
                 root(eyebrow,64,38,1100,35);root(title,64,88,1100,79)
                 root(poster,76,207,294,294);root(posterFallback,88,219,270,270);root(badges,76,449,294,52)
@@ -344,8 +361,41 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         listOf(eyebrow to if(narrow) 48 else 22,title to 38,posterFallback to 24,status to 23,estimateLabel to 16,
             estimate to if(narrow) 40 else 46,elapsedLabel to 16,elapsed to 29,explanation to 20,heartbeat to 17,
             freshness to 15,note to 16,cancelButton to 21).forEach { (v,size) ->v.setTextSize(TypedValue.COMPLEX_UNIT_PX,size*s) }
+        if(scene.playStation) {
+            val touch=(48*resources.displayMetrics.density).roundToInt()
+            val old=cancelButton.layoutParams as LayoutParams
+            place(cancelButton,old.leftMargin.toFloat(),minOf(old.topMargin.toFloat(),h-touch-8f).coerceAtLeast(0f),old.width.toFloat(),maxOf(old.height,touch).toFloat())
+            estimate.maxLines=2
+            if(android.os.Build.VERSION.SDK_INT>=26) estimate.setAutoSizeTextTypeUniformWithConfiguration((22*s).roundToInt().coerceAtLeast(1),(46*s).roundToInt().coerceAtLeast(2),1,TypedValue.COMPLEX_UNIT_PX)
+        }
         steps.forEach { it.setTextSize(TypedValue.COMPLEX_UNIT_PX,18*s) }
-        poster.background=GradientDrawable().apply { setColor(0xff151915.toInt());cornerRadius=if(scene==ConsoleScene.XBOX_SERIES) 7*s else 0f }
+        poster.background=GradientDrawable().apply { setColor(if(scene.playStation) DashboardTheme.color(UiColor.QUEUE_POSTER) else 0xff151915.toInt());cornerRadius=if(scene==ConsoleScene.PS5) 12*s else if(scene==ConsoleScene.XBOX_SERIES) 7*s else 0f }
+        game?.let { badges.bind(it.gamePass,it.seriesOptimized,s) }
+    }
+    private fun layoutPlayStationPortrait(w: Int,h: Int) {
+        val s=w/600f;val tall=h/s;val small=tall<1000f
+        fun pos(v: View,x: Float,y: Float,vw: Float,vh: Float)=place(v,x*s,y*s,vw*s,vh*s)
+        pos(consoleLogo,28f,24f,180f,48f)
+        val side=if(small) 96f else 216f;val artX=if(small) 28f else (600-side)/2f;val artY=if(small) 108f else 210f
+        pos(poster,artX,artY,side,side);pos(posterFallback,artX+8f,artY+8f,side-16f,side-16f)
+        pos(badges,artX,artY+side-45f,side,45f)
+        pos(title,if(small) 144f else 28f,104f,if(small) 428f else 544f,90f)
+        title.maxLines=2;title.setTextSize(TypedValue.COMPLEX_UNIT_PX,32*s)
+        val panelY=if(small) 232f else 450f
+        pos(panel,28f,panelY,544f,334f)
+        pos(status,20f,20f,442f,36f);pos(spinner,486f,22f,28f,28f)
+        pos(estimateLabel,20f,77f,287f,26f);pos(estimate,20f,111f,287f,67f)
+        pos(elapsedLabel,322f,77f,200f,26f);pos(elapsed,322f,117f,200f,45f)
+        pos(explanation,20f,196f,504f,53f);pos(heartbeat,20f,252f,504f,28f);pos(freshness,20f,282f,504f,38f)
+        steps.forEachIndexed { i,v -> pos(v,28f+i*186f,panelY+354f,172f,52f);v.setTextSize(TypedValue.COMPLEX_UNIT_PX,15*s) }
+        val touch=maxOf(54f,48*resources.displayMetrics.density/s)
+        pos(cancelButton,150f,minOf(panelY+426f,tall-touch-62f),300f,touch)
+        pos(note,28f,tall-50f,544f,42f)
+        listOf(posterFallback to 20,status to 23,estimateLabel to 15,estimate to 33,elapsedLabel to 15,elapsed to 26,
+            explanation to 18,heartbeat to 16,freshness to 14,note to 14,cancelButton to 21).forEach { (v,size) -> v.setTextSize(TypedValue.COMPLEX_UNIT_PX,size*s) }
+        estimate.maxLines=2
+        if(android.os.Build.VERSION.SDK_INT>=26) estimate.setAutoSizeTextTypeUniformWithConfiguration((18*s).roundToInt().coerceAtLeast(1),(33*s).roundToInt().coerceAtLeast(2),1,TypedValue.COMPLEX_UNIT_PX)
+        poster.background=GradientDrawable().apply { setColor(DashboardTheme.color(UiColor.QUEUE_POSTER));cornerRadius=if(scene==ConsoleScene.PS5) 12*s else 0f }
         game?.let { badges.bind(it.gamePass,it.seriesOptimized,s) }
     }
     fun close() { scope.cancel(); art.close() }
