@@ -5,6 +5,7 @@ import android.content.Context
 data class OAuthToken(val ticket: String, val refreshToken: String?, val expiresAtMs: Long?, val clientId: String)
 
 interface OAuthTokenStore {
+    val coordinationKey: Any get() = this
     fun read(): OAuthToken?
     fun write(token: OAuthToken)
     fun clear()
@@ -12,6 +13,7 @@ interface OAuthTokenStore {
 
 class PreferencesTokenStore(context: Context) : OAuthTokenStore {
     private val prefs = context.getSharedPreferences("xcloud_native_auth", Context.MODE_PRIVATE)
+    override val coordinationKey: Any get() = prefs
     override fun read(): OAuthToken? {
         val ticket = prefs.getString("rps_ticket", null)?.takeIf { it.isNotBlank() } ?: return null
         return OAuthToken(ticket, prefs.getString("refresh_token", null)?.takeIf { it.isNotBlank() },

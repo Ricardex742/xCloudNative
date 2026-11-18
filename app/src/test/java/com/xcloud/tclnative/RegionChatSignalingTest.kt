@@ -5,6 +5,10 @@ import com.xcloud.tclnative.auth.XCloudSession
 import com.xcloud.tclnative.settings.SessionOptions
 import com.xcloud.tclnative.signaling.XCloudSignalingClient
 import com.xcloud.tclnative.webrtc.StreamingPeer
+import com.xcloud.tclnative.webrtc.StreamResolution
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.Dispatcher
@@ -97,5 +101,49 @@ class RegionChatSignalingTest {
             assertEquals(1,endpoint.requests.count { it.path=="/session/keepalive" })
             client.stop()
         }
+    }
+
+    @Test fun aDelayedOfferCannotCloseTheReplacementInAnotherRegionWithTheSamePath() = runBlocking {
+        Endpoint().use { original -> Endpoint().use { replacement ->
+            val session = XCloudSession("token", original.uri, "hash",
+                regions = listOf(CloudRegion("second", replacement.uri)))
+            val client = XCloudSignalingClient(session, OkHttpClient.Builder().proxy(Proxy.NO_PROXY).build(), pause = {})
+            val offerStarted = CompletableDeferred<Unit>()
+            val releaseOldOffer = CompletableDeferred<Unit>()
+            val oldPeer = object : StreamingPeer by Peer() {
+                override suspend fun createOfferSdp(): Pair<String, List<IceCandidate>> {
+                    offerStarted.complete(Unit)
+                    releaseOldOffer.await()
+                    return "old offer" to emptyList()
+                }
+            }
+            val first = async {
+                client.startAndConnectWebRtcSession("first", oldPeer, resolution = StreamResolution.HD_720) {}
+            }
+            try {
+                withTimeout(5_000) { offerStarted.await() }
+                withTimeout(5_000) {
+                    client.startAndConnectWebRtcSession("second", Peer(),
+                        options = SessionOptions(locale = "en-US", region = "second")) {}.getOrThrow()
+                }
+                releaseOldOffer.complete(Unit)
+                assertTrue(withTimeout(5_000) { first.await() }.isFailure)
+                client.keepAlive()
+
+                val delete = original.requests.single { it.method == "DELETE" }
+                assertEquals("/session", delete.path)
+                val display = JSONObject(delete.getHeader("X-MS-Device-Info")!!)
+                    .getJSONObject("dev").getJSONObject("displayInfo").getJSONObject("dimensions")
+                assertEquals(1280, display.getInt("widthInPixels"))
+                assertFalse(original.requests.any { it.path == "/session/sdp" })
+                assertTrue(replacement.requests.any { it.path == "/session/keepalive" })
+                assertFalse(replacement.requests.any { it.method == "DELETE" })
+                client.stop()
+                assertEquals(1, replacement.requests.count { it.method == "DELETE" })
+            } finally {
+                releaseOldOffer.complete(Unit)
+                first.cancel()
+            }
+        } }
     }
 }

@@ -9,14 +9,16 @@ import java.security.SecureRandom
 
 /** One short-lived authorization-code grant. Credentials stay on Microsoft's own sign-in page. */
 class BrowserAuthorization private constructor(private val verifier: String,private val state: String,
-                                               private val createdAt: Long,authorizeUrl: String) {
+                                               private val createdAt: Long,authorizeUrl: String,
+                                               internal val credentialGeneration: Long?) {
     companion object {
         const val REDIRECT="https://login.microsoftonline.com/common/oauth2/nativeclient"
         private const val LIFETIME=10*60_000L
-        fun create(now: Long,authorizeUrl: String="https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize"): BrowserAuthorization {
+        fun create(now: Long,authorizeUrl: String="https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize",
+                   credentialGeneration: Long? = null): BrowserAuthorization {
             val random=SecureRandom()
             fun secret()=ByteArray(32).also(random::nextBytes).toByteString().base64Url().trimEnd('=')
-            return BrowserAuthorization(secret(),secret(),now,authorizeUrl)
+            return BrowserAuthorization(secret(),secret(),now,authorizeUrl,credentialGeneration)
         }
     }
     sealed interface Redirect {

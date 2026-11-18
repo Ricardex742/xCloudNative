@@ -73,6 +73,51 @@ class AuthTest {
         assertEquals(5,server.requestCount)
     }
 
+    @Test fun aLateConsoleGrantCannotRestoreCredentialsOrReachTheNewAccount() = runBlocking {
+        val oldAccount = auth()
+        oldAccount.saveTokens("old", "old-refresh", 3600, XalAuthenticator.XCLOUD_CLIENT_ID)
+        exchange()
+        val session = oldAccount.authenticateToXCloud().getOrThrow()
+        repeat(3) { server.takeRequest() }
+        val sent = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        server.dispatcher = object : okhttp3.mockwebserver.Dispatcher() {
+            override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
+                sent.countDown()
+                check(release.await(5, TimeUnit.SECONDS))
+                return MockResponse().setBody("""{"access_token":"old-transfer","refresh_token":"old-rotation"}""")
+            }
+        }
+        val pending = async { runCatching { oldAccount.getConsoleTransferToken(session.credentialGeneration) } }
+        try {
+            assertTrue(withContext(Dispatchers.IO) { sent.await(2, TimeUnit.SECONDS) })
+            val newAccount = auth()
+            newAccount.clearSession()
+            newAccount.saveTokens("new", "new-refresh", 3600, XalAuthenticator.XCLOUD_CLIENT_ID)
+            release.countDown()
+            assertTrue(pending.await().exceptionOrNull() is AuthenticationRequiredException)
+            assertEquals("t=new", store.token?.ticket)
+            assertEquals("new-refresh", store.token?.refreshToken)
+            assertTrue(runCatching { oldAccount.getConsoleTransferToken(session.credentialGeneration) }
+                .exceptionOrNull() is AuthenticationRequiredException)
+            assertEquals(4, server.requestCount)
+        } finally {
+            release.countDown()
+        }
+    }
+
+    @Test fun concurrentConsoleGrantsUseTheLatestRotatedRefreshToken() = runBlocking {
+        val first = auth()
+        first.saveTokens("access", "first-refresh", 3600, XalAuthenticator.XCLOUD_CLIENT_ID)
+        enqueue("""{"access_token":"first-transfer","refresh_token":"second-refresh"}""")
+        enqueue("""{"access_token":"second-transfer","refresh_token":"final-refresh"}""")
+        val requests = listOf(async { first.getConsoleTransferToken() }, async { auth().getConsoleTransferToken() })
+        assertEquals(setOf("first-transfer", "second-transfer"), requests.awaitAll().toSet())
+        assertTrue(server.takeRequest().body.readUtf8().contains("refresh_token=first-refresh"))
+        assertTrue(server.takeRequest().body.readUtf8().contains("refresh_token=second-refresh"))
+        assertEquals("final-refresh", store.token?.refreshToken)
+    }
+
     @Test fun optionalProfileUsesItsOwnXboxGrantAndDoesNotTreatGamerscoreAsRewards() = runBlocking {
         store.token = fresh(); exchange()
         val authenticator = auth()
