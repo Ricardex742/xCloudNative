@@ -81,6 +81,8 @@ class UsbControllerRumble(context: Context) : AutoCloseable {
             else finish("USB/XInput: autorização negada ou receptor desconectado.")
         }
     }
+    // The legacy branch runs below API 33. The API 33+ registration is explicitly non-exported.
+    @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag")
     fun enableAndTest(candidate: Candidate,done: () -> Unit) {
         if(closed || !foreground) { done();return }
         if(pending!=null) { done();return }

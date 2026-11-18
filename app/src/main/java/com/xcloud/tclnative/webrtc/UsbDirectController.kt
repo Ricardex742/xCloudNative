@@ -146,6 +146,8 @@ internal class UsbDirectController(context: Context,
             }
         }
     }
+    // The legacy branch runs below API 33. The API 33+ registration is explicitly non-exported.
+    @android.annotation.SuppressLint("UnspecifiedRegisterReceiverFlag")
     private fun register() {
         if(registered) return
         val filter=IntentFilter(action).apply {
