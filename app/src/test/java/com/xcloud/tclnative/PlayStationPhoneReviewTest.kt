@@ -99,6 +99,13 @@ class PlayStationPhoneReviewTest {
                         val chooser=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog;dialog(chooser,p,"${theme.name}-library");chooser.dismiss()
                         home.setSearch("Call of Duty");measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-search-results")
                         home.setSearch("Missing game");measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-empty-catalog")
+                        val empty=all(home).filterIsInstance<TextView>().single { it.isShown && it.text.contains("Missing game") };fits(empty)
+                        assertTrue(Rect(0,0,home.width,home.height).contains(bounds(home,empty)))
+                        assertFalse(all(home).filterIsInstance<TextView>().any { it.isShown && it.isEnabled && it.text.toString() in listOf("JOGAR","Jogar na nuvem") })
+                        if(theme.scene==ConsoleScene.PS5) {
+                            val libraryTile=all(home).single { it.isShown && it.isClickable && it is TextView && it.text.isBlank() && it.contentDescription==UiText.text("Biblioteca") }
+                            assertFalse("Empty result overlaps library tile",Rect.intersects(bounds(home,empty),bounds(home,libraryTile)))
+                        }
                         home.setSearch("");measure(home,p.cw,p.ch);home.selectTab(LibraryTab.FAVORITES);measure(home,p.cw,p.ch)
                         val search=ConsoleDialogs.search(a,"") {};dialog(search,p,"${theme.name}-search");search.dismiss()
                         val profile=all(home).single { it.isClickable && it.contentDescription?.toString()?.startsWith(home.profileSnapshot().displayName)==true };profile.performClick()
@@ -114,7 +121,7 @@ class PlayStationPhoneReviewTest {
                             all(queue).filterIsInstance<TextView>().filter { it.isShown && it.text.isNotEmpty() && it.text.toString()!=longName }.forEach(::fits) } finally { queue.close() }
                         val transition=SessionTransitionView(a)
                         try { transition.showStartup(data[0],"Preparando a sessão…");mount(transition);capture(transition,p,"${theme.name}-startup");assertPrimaryTitle(transition);transition.showExit(data[0]);measure(transition,p.cw,p.ch);capture(transition,p,"${theme.name}-exit") } finally { transition.close() }
-                        mount(home);home.resumeArtwork();home.restoreFocus();measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-return")
+                        mount(home);home.resumeArtwork();home.restoreFocus();measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-return");assertHomeGeometry(home)
                     } finally { home.close() }
                 }
             } finally { controller.pause().stop().destroy() }
@@ -136,6 +143,10 @@ class PlayStationPhoneReviewTest {
     }
     private fun assertHomeGeometry(home: GameDashboardView) {
         val title=assertPrimaryTitle(home)
+        val playLabel=UiText.text(if(DashboardTheme.palette.theme.scene==ConsoleScene.PS4) "JOGAR" else "Jogar na nuvem")
+        val play=all(home).filterIsInstance<TextView>().single { it.isClickable && it.text.toString()==playLabel }
+        assertTrue("Play must return when catalog results arrive",play.isShown && play.isEnabled)
+        assertTrue(Rect(0,0,home.width,home.height).contains(bounds(home,play)))
         val platform=all(home).filterIsInstance<TextView>().single { it.isShown && it.text.toString()=="XBOX CLOUD GAMING" }
         assertTrue("Game title overlaps platform",bounds(home,platform).bottom<=bounds(home,title).top)
         all(home).filterIsInstance<TextView>().filter { it.isShown && it.text.toString().equals(longName,true) && it!==title && it.parent !is RecyclerView }.forEach { other ->

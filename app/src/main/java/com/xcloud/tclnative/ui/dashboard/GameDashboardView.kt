@@ -1034,6 +1034,8 @@ class GameDashboardView(
             view.setTextColor(if(console) consoleTextColor() else if(view===gamertag || view===remainingTime || view===metadataNote || view===catalogNote) DashboardTheme.muted else if(view===emptyState) DashboardTheme.color(UiColor.CATALOG_NOTICE) else Color.WHITE)
         }
         if(android.os.Build.VERSION.SDK_INT>=26) headerTitle.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
+        if(android.os.Build.VERSION.SDK_INT>=26) emptyState.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
+        emptyState.maxLines=4;emptyState.ellipsize=null
         headerTitle.maxLines=2
         headerIcon.scaleType=if(next==ConsoleScene.XBOX_360 || next==ConsoleScene.XBOX_ORIGINAL) ImageView.ScaleType.FIT_CENTER else ImageView.ScaleType.CENTER_CROP
         headerIcon.clipToOutline=next==ConsoleScene.NONE
@@ -1358,14 +1360,17 @@ class GameDashboardView(
         coverHeight=(railH*d).roundToInt()
         val left=if(ps5) 84f else 8f
         val side=if(portrait) 56f else 48f
-        val total=carouselWidth(true)+(adapter.itemCount-1).coerceAtLeast(0)*carouselWidth(false)
+        val total=if(adapter.itemCount==0) wide else carouselWidth(true)+(adapter.itemCount-1).coerceAtLeast(0)*carouselWidth(false)
         val allX=minOf(left+total+8f,wide-16-side)
         playStationLibrary.visibility=if(ps5) VISIBLE else GONE;playStationAllGames.visibility=playStationLibrary.visibility
+        playStationLibrary.contentDescription=UiText.text("Jogos");playStationAllGames.contentDescription=UiText.text("Biblioteca")
         pos(playStationLibrary,16f,railY+8f,side,side);glyph(playStationLibrary,ConsoleGlyph.CLOUD,true)
         pos(playStationAllGames,allX,railY+8f,side,side);glyph(playStationAllGames,ConsoleGlyph.GRID,true)
         val right=if(ps5) allX-8 else wide-8
         pos(grid,left,railY,(right-left).coerceAtLeast(80f),railH)
         pos(emptyState,left+8,railY,(right-left-16).coerceAtLeast(64f),railH);label(emptyState,16f)
+        emptyState.ellipsize=android.text.TextUtils.TruncateAt.END
+        fitConsoleText(emptyState,((right-left-16).coerceAtLeast(64f)*d).toInt(),(railH*d).toInt(),12*sp,16*sp,3)
         playStationLibrary.nextFocusRightId=grid.id;playStationLibrary.nextFocusLeftId=playStationLibrary.id
         playStationAllGames.nextFocusLeftId=grid.id;playStationAllGames.nextFocusRightId=playStationAllGames.id
         playStationLibrary.nextFocusUpId=categoryFocus().id;playStationAllGames.nextFocusUpId=categoryFocus().id
@@ -1436,9 +1441,17 @@ class GameDashboardView(
             playStationBenefits.nextFocusUpId=if(showQuick) quickActions[0].id else launchButton.id
         }
         playStationLibrary.nextFocusDownId=launchButton.id;playStationAllGames.nextFocusDownId=launchButton.id
-        coverArtSize=ArtworkSize.forDisplay((128*d).toInt(),(128*d).toInt())
+        val coverPixels=((carouselWidth(true)-16)*d).roundToInt()
+        coverArtSize=ArtworkSize.forDisplay(coverPixels,coverPixels)
         selectedCard?.let(::loadHeaderArtwork);updateConsoleTitle();updatePlayStationQuota();consoleBackdrop.refreshStructure()
         emptyState.visibility=if(adapter.itemCount==0) VISIBLE else GONE
+        if(adapter.itemCount==0) {
+            launchButton.visibility=GONE;playStationFavorite.visibility=GONE
+            val target=if(showQuick) quickActions[0].id else searchButton.id
+            controls.forEach { it.nextFocusDownId=target }
+            listOf(playStationLibrary,playStationAllGames).forEach { it.nextFocusDownId=target }
+            listOf(quickActions[0],quickActions[3],playStationBenefits).forEach { it.nextFocusUpId=categoryFocus().id }
+        }
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
     }
 
@@ -1655,9 +1668,9 @@ class GameDashboardView(
         fun submit(next: List<CatalogCard>, changes: CatalogChanges) {
             val resized=items.size!=next.size
             items=next
-            // The PS5 library tile follows the real shelf. A worker result may arrive
-            // after the first measure without changing the viewport dimensions.
-            if(resized && designScene==ConsoleScene.PS5) { lastGeometry=0L;this@GameDashboardView.requestLayout() }
+            // Shelf-dependent controls and empty-state geometry must follow async data,
+            // including results arriving after the first measure at the same viewport size.
+            if(resized && designScene.playStation) { lastGeometry=0L;this@GameDashboardView.requestLayout() }
             if(changes.replace) notifyDataSetChanged()
             else changes.ranges.forEach { notifyItemRangeChanged(it.first,it.last-it.first+1,"metadata") }
         }
