@@ -134,7 +134,7 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
         val key=w.toLong() shl 32 or h.toLong()
         if(key!=geometry && w>0 && h>0) {
             geometry=key
-            val s=minOf(w/1280f,h/720f); val ox=(w-1280*s)/2; val oy=(h-720*s)/2
+            val s=consoleReferenceScale(w, h); val ox=(w-1280*s)/2; val oy=(h-720*s)/2
             (logo.background as GradientDrawable).cornerRadius=26*s
             fun place(view: View,x: Int,y: Int,vw: Int,vh: Int) {
                 view.layoutParams=LayoutParams((vw*s).roundToInt(),(vh*s).roundToInt()).apply {

@@ -157,7 +157,7 @@ class GameDashboardView(
     private var renderedTab = activeTab
     private var renderedQuery = searchQuery
     private var positions = emptyMap<String, Int>()
-    private var pendingFocus: Pair<String?, Int>? = null
+    private val catalogFocus = CatalogFocus()
     internal val isCatalogUpdating: Boolean get() = catalogJob?.isActive == true || metadataJob?.isActive == true
     private var designScene=DashboardTheme.palette.theme.scene
     private var originalBrowsing=false
@@ -170,8 +170,6 @@ class GameDashboardView(
     private var coverVerticalPadding = 8f
     private var lastGeometry = 0L
     private var closed = false
-    private var focusRequest = 0
-    private var carouselTarget: String? = null
     private val tabs = mutableListOf<TextView>()
     private val tabPlates = mutableListOf<FocusPlate>()
     private val headerIcon = FixedArtworkView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP; cropToPadding=true }
@@ -404,7 +402,7 @@ class GameDashboardView(
         consoleBackdrop.setArtwork(null)
         shortcutSkins.forEach { it.clear() }
         artworkPaused=true
-        pendingCatalog=null; pendingFocus=null; carouselTarget=null; focusRequest++
+        pendingCatalog=null; catalogFocus.cancel()
         metadataJob?.cancel(); metadataJob=null; pendingMetadata=null
         headerArtJob?.cancel(); posters.pause()
     }
@@ -543,9 +541,8 @@ class GameDashboardView(
         val selectedPosition=positions[selectedKey]
         updateSelected(selectedPosition?.let { presentation.cards[it] } ?: presentation.cards.firstOrNull())
         renderCatalogState(presentation.cards.size)
-        val requested=pendingFocus
-        pendingFocus=null
-        if(requested!=null) focusCoverNow(positions[requested.first] ?: requested.second)
+        val requested = catalogFocus.consume(positions)
+        if(requested!=null) focusCoverNow(requested)
         else if(changes.replace && focused) focusCoverNow(selectedPosition ?: 0)
         else if(changes.replace && anchorKey!=null) positions[anchorKey]?.let { manager.scrollToPositionWithOffset(it,anchorOffset) }
     }
@@ -607,7 +604,7 @@ class GameDashboardView(
     val catalogInformation: String get()=metadataNote.text.toString()
     fun selectTab(tab: LibraryTab) {
         if (activeTab != tab) {
-            pendingFocus=null; carouselTarget=null; focusRequest++
+            catalogFocus.cancel()
             activeTab = tab; selectedCard = null
             if(designScene==ConsoleScene.XBOX_SERIES) { configureCardLayout();lastGeometry=0L;requestLayout() }
             refresh(); grid.scrollToPosition(0)
@@ -656,76 +653,78 @@ class GameDashboardView(
         }
         if(isCatalogUpdating) {
             val target=adapter.items.getOrNull(position)?.key
-            pendingFocus=target to position
-            if(cardHorizontal) carouselTarget=target
+            catalogFocus.defer(target, position)
+            if(cardHorizontal) catalogFocus.targetKey=target
             return
         }
         focusCoverNow(position)
     }
     private fun focusCoverNow(position: Int) {
-        val request=++focusRequest
-        if(adapter.itemCount==0) { carouselTarget=null; if(designScene==ConsoleScene.XBOX_ORIGINAL && originalBrowsing) consoleBack.requestFocus() else categoryFocus().requestFocus();return }
+        val request = catalogFocus.beginLayout()
+        if(adapter.itemCount==0) { catalogFocus.targetKey=null; if(designScene==ConsoleScene.XBOX_ORIGINAL && originalBrowsing) consoleBack.requestFocus() else categoryFocus().requestFocus();return }
         val target=adapter.items[position.coerceIn(0,adapter.itemCount-1)].key
-        if(cardHorizontal) carouselTarget=target
+        if(cardHorizontal) catalogFocus.targetKey=target
         fun focus(attempt: Int) {
-            if(closed || request!=focusRequest) return
-            val index=positions[target] ?: run { carouselTarget=null;return }
+            if(closed || !catalogFocus.isCurrent(request)) return
+            val index=positions[target] ?: run { catalogFocus.targetKey=null;return }
             val card=grid.findViewHolderForAdapterPosition(index)?.itemView
             if(card!=null) {
                 card.requestFocus()
                 // Selection changes the tile's width; reveal it after that layout, too.
                 grid.doOnNextLayout {
-                    if(!closed && request==focusRequest && card.hasFocus())
+                    if(!closed && catalogFocus.isCurrent(request) && card.hasFocus())
                         card.requestRectangleOnScreen(Rect(0,0,card.width,card.height),true)
                 }
                 grid.requestLayout()
-                carouselTarget=null
+                catalogFocus.targetKey=null
             } else if(attempt<3) {
                 grid.doOnNextLayout { focus(attempt+1) }
                 grid.scrollToPosition(index);grid.requestLayout()
-            } else carouselTarget=null
+            } else catalogFocus.targetKey=null
         }
         focus(0)
     }
     private fun moveCarousel(step: Int) {
-        val position=positions[carouselTarget ?: selectedCard?.key] ?: return
-        val next=position+step
-        if(next<0 && designScene==ConsoleScene.XBOX_360_NXE) {
-            ++focusRequest;carouselTarget=null;pendingFocus=null;categoryFocus().requestFocus()
-        } else if(designScene==ConsoleScene.PS5 && next<0) {
-            ++focusRequest;carouselTarget=null;pendingFocus=null;playStationLibrary.requestFocus()
-        } else if(designScene==ConsoleScene.PS5 && next>=adapter.itemCount) {
-            ++focusRequest;carouselTarget=null;pendingFocus=null;playStationAllGames.requestFocus()
-        } else if(next in adapter.items.indices) focusCoverAt(next)
-        // Keep focus on the final game instead of falling into the header or shortcuts.
+        val position=positions[catalogFocus.targetKey ?: selectedCard?.key] ?: return
+        when (val destination = CatalogFocusPolicy.carousel(designScene, position, step, adapter.itemCount)) {
+            CatalogFocusDestination.Category -> { catalogFocus.cancel(); categoryFocus().requestFocus() }
+            CatalogFocusDestination.Library -> { catalogFocus.cancel(); playStationLibrary.requestFocus() }
+            CatalogFocusDestination.AllGames -> { catalogFocus.cancel(); playStationAllGames.requestFocus() }
+            is CatalogFocusDestination.Cover -> focusCoverAt(destination.position)
+            CatalogFocusDestination.Stay -> Unit
+        }
     }
     private fun handleCarouselKey(event: KeyEvent): Boolean {
-        if(!cardHorizontal || (!grid.hasFocus() && carouselTarget==null)) return false
+        if(!cardHorizontal || (!grid.hasFocus() && catalogFocus.targetKey==null)) return false
         when(event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT -> {
                 if(event.action==KeyEvent.ACTION_DOWN) moveCarousel(if(event.keyCode==KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1)
                 return true
             }
             KeyEvent.KEYCODE_DPAD_UP,KeyEvent.KEYCODE_DPAD_DOWN -> if(event.action==KeyEvent.ACTION_DOWN) {
-                ++focusRequest;carouselTarget=null;pendingFocus=null
+                catalogFocus.cancel()
             }
         }
         return false
     }
     private fun handleSeriesGridKey(event: KeyEvent): Boolean {
         if(!seriesGrid || !grid.hasFocus()) return false
-        val delta=when(event.keyCode) {
-            KeyEvent.KEYCODE_DPAD_LEFT -> -1;KeyEvent.KEYCODE_DPAD_RIGHT -> 1
-            KeyEvent.KEYCODE_DPAD_UP -> -cardColumns;KeyEvent.KEYCODE_DPAD_DOWN -> cardColumns
+        val direction = when (event.keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> CatalogDirection.LEFT
+            KeyEvent.KEYCODE_DPAD_RIGHT -> CatalogDirection.RIGHT
+            KeyEvent.KEYCODE_DPAD_UP -> CatalogDirection.UP
+            KeyEvent.KEYCODE_DPAD_DOWN -> CatalogDirection.DOWN
             else -> return false
         }
-        if(event.action==KeyEvent.ACTION_DOWN) {
-            val at=positions[carouselTarget ?: selectedCard?.key] ?: return true
-            val next=at+delta
-            when {
-                delta==-cardColumns && at<cardColumns -> { carouselTarget=null;categoryFocus().requestFocus() }
-                delta==-1 && at%cardColumns==0 || delta==1 && at%cardColumns==cardColumns-1 -> Unit
-                next in adapter.items.indices -> { carouselTarget=adapter.items[next].key;focusCoverAt(next) }
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            val position = positions[catalogFocus.targetKey ?: selectedCard?.key] ?: return true
+            when (val destination = CatalogFocusPolicy.grid(position, direction, cardColumns, adapter.itemCount)) {
+                CatalogFocusDestination.Category -> { catalogFocus.cancel(); categoryFocus().requestFocus() }
+                is CatalogFocusDestination.Cover -> {
+                    catalogFocus.targetKey = adapter.items[destination.position].key
+                    focusCoverAt(destination.position)
+                }
+                else -> Unit
             }
         }
         return true
@@ -848,12 +847,12 @@ class GameDashboardView(
     }
     private fun showOriginalCategories() {
         originalBrowsing=false;navigation.visibility=VISIBLE;consoleTabRow.visibility=VISIBLE;grid.visibility=GONE;consoleBack.visibility=GONE;emptyState.visibility=GONE
-        ++focusRequest // Cancel a grid focus request still waiting for layout.
+        catalogFocus.cancelLayout()
         post { if(!closed && !originalBrowsing) categoryFocus().requestFocus() }
         lastGeometry=0L;requestLayout();updateConsoleTitle();categoryFocus().requestFocus()
     }
     fun back() {
-        ++focusRequest;carouselTarget=null;pendingFocus=null
+        catalogFocus.cancel()
         if(designScene==ConsoleScene.XBOX_ORIGINAL && originalBrowsing) { showOriginalCategories();return }
         when {
             searchQuery.isNotBlank() -> setSearch("")
@@ -1016,7 +1015,7 @@ class GameDashboardView(
         if(!next.playStation) { playStationMobile=false;touchDelegate=null }
         val focused=grid.hasFocus();val position=positions[selectedCard?.key] ?: 0
         val changed=designScene!=next
-        if(changed) { ++focusRequest;carouselTarget=null;originalBrowsing=next==ConsoleScene.XBOX_ORIGINAL && focused }
+        if(changed) { catalogFocus.cancelLayout();originalBrowsing=next==ConsoleScene.XBOX_ORIGINAL && focused }
         designScene=next
         seriesPreferences=seriesStore.read()
         val console=next!=ConsoleScene.NONE
@@ -1119,7 +1118,7 @@ class GameDashboardView(
         if(wasGallery!=seriesPreferences.gallery) selectedCard?.let(::loadHeaderArtwork)
         renderProfile()
         if(wasGrid!=seriesGrid) {
-            val focused=grid.hasFocus();++focusRequest;carouselTarget=null
+            val focused=grid.hasFocus();catalogFocus.cancelLayout()
             configureCardLayout();lastGeometry=0L;requestLayout();adapter.notifyDataSetChanged()
             if(focused) grid.post { if(!closed) focusCoverAt(position) }
         } else adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
@@ -1167,7 +1166,7 @@ class GameDashboardView(
         playStationMobile=h>w && consolePhone(context,w,h)
         if(playStationMobile) { layoutPlayStationPhone(w,h);return }
         val portrait=h>w;val ps5=designScene==ConsoleScene.PS5
-        scale=if(portrait) w/600f else minOf(w/1280f,h/720f)
+        scale=if(portrait) w/600f else consoleReferenceScale(w, h)
         val s=scale;val wide=w/s;val tall=h/s;val edge=if(portrait) 28f else if(ps5) 54f else 60f
         val touch=48f
         val compact=false // The same console composition is used at every landscape density.
@@ -1498,7 +1497,7 @@ class GameDashboardView(
 
     private fun layoutConsole(w: Int,h: Int) {
         if(designScene.playStation) { layoutPlayStation(w,h);return }
-        scale=minOf(w/1280f,h/720f)
+        scale=consoleReferenceScale(w, h)
         val s=scale;val wide=w/s
         fun pos(v: View,x: Float,y: Float,width: Float,height: Float)=place(v,x*s,y*s,width*s,height*s)
         fun text(v: TextView,size: Float)=textSize(v,size)

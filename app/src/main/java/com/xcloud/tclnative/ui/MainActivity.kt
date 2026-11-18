@@ -97,7 +97,7 @@ open class MainActivity : Activity() {
     private lateinit var authenticator: XalAuthenticator
     private var webrtcClient: XCloudWebRtcClient? = null
     private val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var gameJob: Job? = null
+    private val playback = PlaybackCoordinator(mainScope)
     private var microphoneJob: Job?=null
     private var pendingMicrophoneGeneration: Int?=null
     private var sessionSettings: PlaybackSettings?=null
@@ -112,7 +112,7 @@ open class MainActivity : Activity() {
     private val gyro by lazy { GyroController(this,{ window.decorView.display?.rotation ?: android.view.Surface.ROTATION_0 }) {
         if(gameplayInputEnabled()) publishGamepad(0)
     } }
-    @Volatile private var playbackGeneration = 0
+    private val playbackGeneration get() = playback.generation
     private val controllers=ControllerRouter()
     private val controllerPath=ControllerPathTrace()
     private var gamepadState: GamepadState
@@ -329,7 +329,7 @@ open class MainActivity : Activity() {
         val savedTicket = authenticator.getSavedRpsTicket()
         if (!savedTicket.isNullOrEmpty() && authenticator.supportsConsoleTransfer()) {
             renderSessionRestore()
-            connectToXboxCloud(savedTicket)
+            connectToXboxCloud()
         } else {
             renderLoginMenu()
             if(!savedTicket.isNullOrEmpty()) loginView?.showError(UiText.text("Atualize seu login para conectar os jogos."))
@@ -343,7 +343,7 @@ open class MainActivity : Activity() {
         if (pendingLaunch.receive(intent)) {
             setIntent(intent)
             lastShortcutRequest=request
-            if (gameJob?.isActive != true && transitionPanel.visibility==View.VISIBLE && !transitionPanel.exiting) {
+            if (playback.job?.isActive != true && transitionPanel.visibility==View.VISIBLE && !transitionPanel.exiting) {
                 transitionPanel.showStartup(pendingLaunch.titleId?.let { GameTitle(it,UiText.text("Seu jogo")) },UiText.text("Preparando seu jogo…"))
                 loadStartupArtwork()
             }
@@ -365,7 +365,7 @@ open class MainActivity : Activity() {
         val game = pendingLaunch.consume(currentGames)
         if (game == null) {
             ConsoleDialogs.message(this,UiText.text("Atalho indisponível"),UiText.text("Este jogo não está disponível no catálogo desta conta. Atualize o catálogo nas configurações."))
-        } else if (gameJob?.isActive != true) {
+        } else if (playback.job?.isActive != true) {
             launchCloudGame(signaling, game, fromShortcut = true)
             return true
         } else if (activeGame?.titleId != game.titleId && shortcutSwitchDialog == null) {
@@ -473,8 +473,8 @@ open class MainActivity : Activity() {
             qrRes.onSuccess { info ->
                 if (loginView !== view) return@onSuccess
                 view.showQr(info)
-                authenticator.pollForDeviceCodeLogin(info).onSuccess { ticket ->
-                    if (loginView === view) connectToXboxCloud(ticket)
+                authenticator.pollForDeviceCodeLogin(info).onSuccess {
+                    if (loginView === view) connectToXboxCloud()
                 }.onFailure { error ->
                     if (loginView === view) view.showError(UiText.text("Não foi possível concluir o login. {0}",UiText.nested(error.message.orEmpty())))
                 }
@@ -495,8 +495,8 @@ open class MainActivity : Activity() {
                 if(loginView===view) {
                     view.showConnecting(UiText.text("Conectando sua conta ao Xbox…"))
                     qrPollingJob=mainScope.launch {
-                        authenticator.completeBrowserLogin(authorization,code).onSuccess { ticket ->
-                            if(loginView===view) connectToXboxCloud(ticket)
+                        authenticator.completeBrowserLogin(authorization,code).onSuccess {
+                            if(loginView===view) connectToXboxCloud()
                         }.onFailure {
                             if(loginView===view) view.showError(UiText.text("Não foi possível concluir o login. Tente novamente ou use o QR Code."))
                         }
@@ -512,17 +512,17 @@ open class MainActivity : Activity() {
         }
     }
 
-    private fun connectToXboxCloud(rpsTicket: String) {
+    private fun connectToXboxCloud() {
         accountJob?.cancel()
         val view = loginView
         accountProgress(UiText.text("Conectando sua conta ao Xbox…"))
         accountJob = mainScope.launch {
-            authenticator.authenticateToXCloud(rpsTicket).onSuccess { session ->
+            authenticator.authenticateToXCloud().onSuccess { session ->
                 try {
-                    authenticator.getConsoleTransferToken()
+                    authenticator.getConsoleTransferToken(session.credentialGeneration)
                 } catch (cancelled: CancellationException) { throw cancelled }
                 catch (error: Exception) {
-                    if (loginView === view) accountFailure(error) { connectToXboxCloud(rpsTicket) }
+                    if (loginView === view) accountFailure(error) { connectToXboxCloud() }
                     return@launch
                 }
                 if (loginView !== view) return@launch
@@ -530,7 +530,7 @@ open class MainActivity : Activity() {
                 accountProgress(if(pendingLaunch.titleId!=null) UiText.text("Preparando o jogo do atalho…") else UiText.text("Conta conectada. Carregando seu catálogo…"))
                 renderGameDashboard(session)
             }.onFailure { error ->
-                if (loginView === view) accountFailure(error) { connectToXboxCloud(rpsTicket) }
+                if (loginView === view) accountFailure(error) { connectToXboxCloud() }
             }
         }
     }
@@ -547,7 +547,9 @@ open class MainActivity : Activity() {
         galleryLaunchJob?.cancel(); galleryLaunchJob=null
         dashboardJob?.cancel()
         recentHistoryJob?.cancel(); recentHistoryJob=null
-        val signaling = XCloudSignalingClient(session, transferTokenProvider = { authenticator.getConsoleTransferToken() })
+        val signaling = XCloudSignalingClient(session, transferTokenProvider = {
+            authenticator.getConsoleTransferToken(session.credentialGeneration)
+        })
         dashboardJob = mainScope.launch {
             val allGames = try {
                 val raw=validatedGames ?: signaling.fetchCatalogGames()
@@ -1277,24 +1279,19 @@ open class MainActivity : Activity() {
         recoverImage=null;reloadTransmission=null
         refreshStatisticsSettings()
         configureVideoOutput(settings, playing = true)
-        val previous = gameJob
-        previous?.cancel()
-        val generation = ++playbackGeneration
-        controlPanel.visibility = View.GONE
-        statsView.visibility = View.GONE
-        statsView.text = UiText.text("Estatísticas: aguardando amostras WebRTC...")
-        hudTextView.visibility = View.GONE
-        beginLoading(game)
-        hudTextView.text = "PLAY: Solicitando sessão para [$gameName]. Voltar cancela."
-        hudTextView.setTextColor(Color.CYAN)
-        gameJob = mainScope.launch(start = CoroutineStart.ATOMIC) {
-            // Keep the cleanup chain intact if another request replaces this waiting launch.
-            if (previous != null) withContext(NonCancellable) { previous.join() }
-            ensureActive()
-            if (generation != playbackGeneration) return@launch
-            val firstFrame = CompletableDeferred<Unit>()
+        playback.start(prepare = {
+            controlPanel.visibility = View.GONE
+            statsView.visibility = View.GONE
+            statsView.text = UiText.text("Estatísticas: aguardando amostras WebRTC...")
+            hudTextView.visibility = View.GONE
+            beginLoading(game)
+            hudTextView.text = "PLAY: Solicitando sessão para [$gameName]. Voltar cancela."
+            hudTextView.setTextColor(Color.CYAN)
+        }) { attempt ->
+            val generation = attempt.generation
+            val firstFrame = attempt.firstFrame
             var transportFailure = CompletableDeferred<Exception>()
-            val recoveryState=TransmissionRecoveryState()
+            val recoveryState = attempt.recovery
             transmissionRecovery=recoveryState
             val playbackScope=this
             var allocatedRtc: XCloudWebRtcClient?=null
@@ -1399,15 +1396,7 @@ open class MainActivity : Activity() {
                 } }.getOrThrow()
                 if (touchMode == TouchMode.NATIVE) rtc.setNativeTouchEnabled(true)
                 if (!firstFrame.isCompleted) queuePanel.updateProgress("VIDEO:")
-                if (withTimeoutOrNull(20_000) {
-                    kotlinx.coroutines.selects.select<Unit> {
-                        firstFrame.onAwait { }
-                        transportFailure.onAwait { throw it }
-                    }
-                    true
-                } != true) {
-                    throw java.io.IOException("VIDEO: transporte conectado, mas nenhum quadro foi renderizado em 20s.")
-                }
+                attempt.awaitFirstFrame(transportFailure)
                 val recovery = VideoRecoveryPolicy(compatible)
                 var visibilityEpoch = videoVisibilityEpoch
                 val nativeReadiness=com.xcloud.tclnative.webrtc.NativeTouchReadiness()
@@ -1606,15 +1595,9 @@ open class MainActivity : Activity() {
                     resetController()
                     currentTouchMode=TouchMode.OFF
                     touchView.configure(TouchMode.OFF)
-                    try {
-                        surfaceRenderer.clearSession()
-                    } finally {
-                        try {
-                            rtc?.close()
-                        } finally {
-                            if (webrtcClient === rtc) webrtcClient = null
-                            signaling.stop()
-                        }
+                    attempt.releaseMedia(surfaceRenderer::clearSession, { rtc?.close() }) {
+                        if (webrtcClient === rtc) webrtcClient = null
+                        signaling.stop()
                     }
                     if (generation == playbackGeneration) { activeGame=null; restoreDashboard() }
                     finishSessionReport(tracker)
@@ -1708,9 +1691,7 @@ open class MainActivity : Activity() {
         if(transitionPanel.exiting) return
         showCatalogReturn(activeGame ?: pendingLoadingGame,pendingLoadingGame==null)
         reportTracker?.finish(android.os.SystemClock.elapsedRealtime(),SessionEnd.USER,webrtcClient?.currentInputMetrics())
-        val generation=++playbackGeneration
-        val closing=gameJob
-        closing?.cancel()
+        val (generation, closing) = playback.cancel()
         activeGame = null
         shortcutSwitchDialog?.dismiss()
         gameMenuDialog?.dismiss()
@@ -2081,7 +2062,7 @@ open class MainActivity : Activity() {
         playbackDisplay.restore()
         reportTracker?.finish(android.os.SystemClock.elapsedRealtime(),SessionEnd.APP_CLOSED,webrtcClient?.currentInputMetrics())
         postSessionDialog?.dismiss()
-        ++playbackGeneration
+        playback.cancel()
         gyro.stop();setDesktopCapture(false);auxiliaryHandler.removeCallbacksAndMessages(null)
         val activityJobs = mainScope.coroutineContext.job
         activityJobs.cancel()

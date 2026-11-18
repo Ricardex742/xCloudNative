@@ -10,6 +10,7 @@ import com.xcloud.tclnative.settings.*
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.signaling.XCloudSignalingClient
 import com.xcloud.tclnative.ui.MainActivity
+import com.xcloud.tclnative.ui.PlaybackCoordinator
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialog
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
 import kotlinx.coroutines.*
@@ -40,6 +41,7 @@ class RejectingRendererActivity: MainActivity() {
 class RendererStartupFailureTest {
     private fun all(view: View): List<View> = listOf(view)+if(view is ViewGroup)
         (0 until view.childCount).flatMap { all(view.getChildAt(it)) } else emptyList()
+    private fun playback(activity: MainActivity) = ReflectionHelpers.getField<PlaybackCoordinator>(activity, "playback")
     private val launch = MainActivity::class.java.getDeclaredMethod("launchCloudGame", XCloudSignalingClient::class.java,
         GameTitle::class.java, TouchMode::class.java, Boolean::class.javaPrimitiveType).apply { isAccessible = true }
 
@@ -54,10 +56,10 @@ class RendererStartupFailureTest {
                 try { awaitCancellation() } finally { withContext(NonCancellable) { cleanup.await() } }
             }
             try {
-                ReflectionHelpers.setField(activity, "gameJob", closing)
+                ReflectionHelpers.setField(playback(activity), "job", closing)
                 launch.invoke(activity, signaling, GameTitle("second", "Second"), TouchMode.OFF, false)
                 launch.invoke(activity, signaling, GameTitle("third", "Third"), TouchMode.OFF, false)
-                val latest = ReflectionHelpers.getField<Job>(activity, "gameJob")
+                val latest = checkNotNull(playback(activity).job)
                 shadowOf(Looper.getMainLooper()).idle()
                 assertTrue(closing.isCancelled)
                 assertFalse(latest.isCompleted)
@@ -94,9 +96,9 @@ class RendererStartupFailureTest {
                 val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5)
                 do {
                     shadowOf(Looper.getMainLooper()).idle();Thread.sleep(5)
-                    val job=ReflectionHelpers.getField<Job?>(activity,"gameJob")
+                    val job=playback(activity).job
                 } while(job?.isCompleted==false && System.nanoTime()<deadline)
-                val job=ReflectionHelpers.getField<Job?>(activity,"gameJob")
+                val job=playback(activity).job
                 assertTrue("Renderer preparation must finish via the session error path",job?.isCompleted==true)
                 val queue=ReflectionHelpers.getField<GameLoadingView>(activity,"queuePanel")
                 assertEquals(View.GONE,queue.visibility)

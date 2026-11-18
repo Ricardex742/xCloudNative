@@ -9,6 +9,9 @@ import android.widget.TextView
 import com.xcloud.tclnative.settings.InputDeviceProfile
 
 /** Phone geometry uses Android dp/sp; the television scenes keep their console reference canvas. */
+/** Scale a 1280×720 console composition to the window's measured content area. */
+internal fun consoleReferenceScale(width: Int, height: Int): Float = minOf(width / 1280f, height / 720f)
+
 internal fun consolePhone(context: Context,width: Int,height: Int): Boolean =
     minOf(width,height)/context.resources.displayMetrics.density<600f && !InputDeviceProfile.read(context).television
 

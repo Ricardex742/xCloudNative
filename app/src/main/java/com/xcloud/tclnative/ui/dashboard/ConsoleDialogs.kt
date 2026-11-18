@@ -42,7 +42,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val screenHeight = activity?.window?.decorView?.height?.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
     private val phone=skin.scene.playStation && consolePhone(context,screenWidth,screenHeight)
-    val scale = (if(skin.enabled) minOf(screenWidth/1280f,screenHeight/720f) else screenWidth/1280f).coerceAtLeast(if(skin.scene.playStation) .5f else maxOf(.5f,context.resources.displayMetrics.density*.65f))
+    val scale = (if(skin.enabled) consoleReferenceScale(screenWidth, screenHeight) else screenWidth/1280f).coerceAtLeast(if(skin.scene.playStation) .5f else maxOf(.5f,context.resources.displayMetrics.density*.65f))
     val panel: LinearLayout = object : LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {

@@ -244,7 +244,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         if(changed) { lastBackdrop=null;lastPoster=null;game?.let(::setGame) }
         if(game!=null) render(lastRenderedAt)
     }
-    private fun currentScale() = minOf(width/1280f, height/720f).takeIf { it > 0 } ?: 1f
+    private fun currentScale() = consoleReferenceScale(width, height).takeIf { it > 0 } ?: 1f
     private fun place(view: View, x: Float, y: Float, w: Float, h: Float) {
         view.layoutParams = LayoutParams(w.roundToInt(), h.roundToInt()).apply { leftMargin=x.roundToInt(); topMargin=y.roundToInt() }
     }
@@ -254,7 +254,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         if (key != geometry && w > 0 && h > 0) {
             geometry = key
             if(scene!=ConsoleScene.NONE) { layoutConsole(w,h);super.onMeasure(widthMeasureSpec,heightMeasureSpec);return }
-            val s = minOf(w/1280f, h/720f); val ox = (w-1280*s)/2; val oy = (h-720*s)/2
+            val s = consoleReferenceScale(w, h); val ox = (w-1280*s)/2; val oy = (h-720*s)/2
             fun root(view: View, x: Int, y: Int, vw: Int, vh: Int) = place(view, ox+x*s, oy+y*s, vw*s, vh*s)
             fun item(view: View, x: Int, y: Int, vw: Int, vh: Int) = place(view, x*s, y*s, vw*s, vh*s)
             root(eyebrow, 80, 42, 1110, 28); root(title, 80, 79, 1120, 104)
@@ -283,7 +283,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         if(scene.playStation && h>w && consolePhone(context,w,h)) { layoutPlayStationPhone(w,h);return }
         if(scene.playStation && h>w) { layoutPlayStationPortrait(w,h);return }
         if(scene.playStation) { layoutPlayStationQueue(w,h);return }
-        val s=minOf(w/1280f,h/720f);val ox=(w-1280*s)/2f;val oy=(h-720*s)/2f
+        val s=consoleReferenceScale(w, h);val ox=(w-1280*s)/2f;val oy=(h-720*s)/2f
         fun root(v: View,x: Int,y: Int,vw: Int,vh: Int)=place(v,ox+x*s,oy+y*s,vw*s,vh*s)
         fun item(v: View,x: Int,y: Int,vw: Int,vh: Int)=place(v,x*s,y*s,vw*s,vh*s)
         title.maxLines=2;title.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)
@@ -378,7 +378,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
     }
     /** Same reference canvas as the Xbox scenes; density does not move or enlarge the composition. */
     private fun layoutPlayStationQueue(w: Int,h: Int) {
-        val s=minOf(w/1280f,h/720f);val wide=w/s
+        val s=consoleReferenceScale(w, h);val wide=w/s
         fun pos(v: View,x: Float,y: Float,vw: Float,vh: Float)=place(v,x*s,y*s,vw*s,vh*s)
         fun fit(v: TextView,x: Float,y: Float,vw: Float,vh: Float,size: Float,lines: Int=1) {
             pos(v,x,y,vw,vh);v.typeface=Typeface.create(if(v===title && scene==ConsoleScene.PS4) "sans-serif-light" else "sans-serif",Typeface.NORMAL)
