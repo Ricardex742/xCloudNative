@@ -40,7 +40,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         scaleType = ImageView.ScaleType.CENTER_CROP
         background = rounded(UiColor.QUEUE_POSTER); clipToOutline = true
     }
-    private val posterFallback = text(26f).apply { gravity = Gravity.CENTER; maxLines = 4 }
+    private val posterFallback = text(26f).apply { gravity = Gravity.CENTER; maxLines = 4;ellipsize=android.text.TextUtils.TruncateAt.END }
     private val badges = GameBadgesView(context)
     private val panel = FrameLayout(context).apply { background = rounded(UiColor.QUEUE_PANEL) }
     private val status = text(25f)
@@ -278,6 +278,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
     private fun layoutConsole(w: Int,h: Int) {
+        if(scene.playStation && consolePhone(context,w,h)) { layoutPlayStationPhone(w,h);return }
         if(scene.playStation && h>w) { layoutPlayStationPortrait(w,h);return }
         val s=minOf(w/1280f,h/720f);val ox=(w-1280*s)/2f;val oy=(h-720*s)/2f
         fun root(v: View,x: Int,y: Int,vw: Int,vh: Int)=place(v,ox+x*s,oy+y*s,vw*s,vh*s)
@@ -372,6 +373,57 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         poster.background=GradientDrawable().apply { setColor(if(scene.playStation) DashboardTheme.color(UiColor.QUEUE_POSTER) else 0xff151915.toInt());cornerRadius=if(scene==ConsoleScene.PS5) 12*s else if(scene==ConsoleScene.XBOX_SERIES) 7*s else 0f }
         game?.let { badges.bind(it.gamePass,it.seriesOptimized,s) }
     }
+    private fun layoutPlayStationPhone(w: Int,h: Int) {
+        val d=resources.displayMetrics.density;val sp=resources.displayMetrics.scaledDensity
+        val wide=w/d;val high=h/d;val portrait=h>w
+        fun pos(v: View,x: Float,y: Float,vw: Float,vh: Float)=place(v,x*d,y*d,vw*d,vh*d)
+        fun label(v: TextView,size: Float) { v.typeface=Typeface.create("sans-serif",Typeface.NORMAL);v.setTextSize(TypedValue.COMPLEX_UNIT_PX,size*sp) }
+        fun fit(v: TextView,x: Float,y: Float,vw: Float,vh: Float,size: Float,lines: Int=1,min: Float=12f) {
+            pos(v,x,y,vw,vh);label(v,size);fitConsoleText(v,(vw*d).toInt(),(vh*d).toInt(),min*sp,size*sp,lines)
+        }
+        pos(consoleLogo,16f,8f,100f,28f);eyebrow.visibility=GONE
+        val titleH=if(portrait) (high-616).coerceIn(72f,96f) else 48f
+        fit(title,16f,if(portrait) 56f else 52f,wide-32,titleH,22f,4,18f)
+        val side=if(portrait) { if(high>=680) 80f else 64f } else 104f
+        val artY=if(portrait) 56+titleH+12 else 112f
+        val artX=if(portrait) (wide-side)/2 else 16f
+        pos(poster,artX,artY,side,side);fit(posterFallback,artX+4,artY+4,side-8,side-8,14f,3,10f);badges.visibility=GONE
+        val panelX=if(portrait) 16f else 136f
+        val panelY=if(portrait) artY+side+16 else 104f
+        val pw=if(portrait) wide-32 else wide-152
+        val ph=if(portrait) { if(high>=680) 280f else 252f } else high-panelY-48
+        pos(panel,panelX,panelY,pw,ph)
+        val compact=!portrait
+        fit(status,12f,if(compact) 0f else 12f,pw-52,if(compact) 28f else 40f,16f,2,12f)
+        pos(spinner,pw-36,if(compact) 2f else 16f,24f,24f)
+        val split=if(portrait) pw*.64f else pw*.66f
+        val labelY=if(compact) 28f else if(ph<280) 52f else 56f
+        fit(estimateLabel,12f,labelY,split-20,if(compact) 20f else 28f,12f,2,11f)
+        fit(elapsedLabel,split,labelY,pw-split-12,if(compact) 20f else 28f,12f,2,11f)
+        val valueY=if(compact) 52f else labelY+32
+        fit(estimate,12f,valueY,split-20,if(compact) 34f else 64f,28f,2,18f)
+        fit(elapsed,split,valueY,pw-split-12,if(compact) 34f else 64f,22f,2,16f)
+        val infoY=if(compact) 88f else valueY+72
+        fit(explanation,12f,infoY,pw-24,if(compact) 32f else 40f,14f,2,12f)
+        if(compact) {
+            fit(heartbeat,12f,ph-36,pw*.44f-16,32f,12f,2,11f)
+            fit(freshness,pw*.44f,ph-36,pw*.56f-12,32f,12f,2,11f)
+        } else {
+            fit(heartbeat,12f,infoY+46,pw-24,20f,12f,1,11f)
+            fit(freshness,12f,infoY+70,pw-24,36f,12f,2,11f)
+        }
+        val stepY=if(portrait) panelY+ph+12 else high-36
+        steps.forEachIndexed { i,v -> fit(v,16+i*(wide-32)/3,stepY,(wide-40)/3,if(portrait) 40f else 28f,12f,2,11f) }
+        if(portrait) {
+            pos(cancelButton,16f,stepY+52,wide-32,48f);label(cancelButton,16f)
+            fit(note,16f,stepY+108,wide-32,36f,12f,2,11f)
+        } else {
+            pos(cancelButton,wide-136,4f,120f,48f);label(cancelButton,16f)
+            fit(note,16f,artY+side+12,104f,high-artY-side-56,12f,4,11f)
+        }
+        poster.background=GradientDrawable().apply { setColor(DashboardTheme.color(UiColor.QUEUE_POSTER));cornerRadius=if(scene==ConsoleScene.PS5) 8*d else 0f }
+    }
+
     private fun layoutPlayStationPortrait(w: Int,h: Int) {
         val s=w/600f;val tall=h/s;val small=tall<1000f
         fun pos(v: View,x: Float,y: Float,vw: Float,vh: Float)=place(v,x*s,y*s,vw*s,vh*s)

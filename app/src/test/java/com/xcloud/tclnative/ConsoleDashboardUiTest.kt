@@ -13,6 +13,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.xcloud.tclnative.catalog.*
+import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.settings.*
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.ui.dashboard.*
@@ -264,14 +265,14 @@ class ConsoleDashboardUiTest {
             val view=GameDashboardView(a,GameLibrary(a,"ps-library-${theme.name}"),{},{},{},{})
             try {
                 a.setContentView(view);view.setGames(games());view.setGamePassProducts(setOf("PRODUCT-0"));view.selectTab(LibraryTab.ALL);layout(view)
-                val library=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
+                val library=all(view).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.toString()==UiText.text("Biblioteca") }
                 library.performClick()
                 val chooser=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
                 val rows=all(chooser.body).filterIsInstance<TextView>().filter { it.isClickable }
                 assertEquals(LibraryTab.entries.map { it.label }.toSet(),rows.map { it.text.toString() }.toSet())
                 rows.single { it.text.toString()==LibraryTab.GAME_PASS.label }.performClick();layout(view)
                 assertEquals(LibraryTab.GAME_PASS,view.activeTab)
-                library.requestFocus();layout(view)
+                view.back();layout(view)
                 assertEquals(LibraryTab.GAME_PASS,view.activeTab);assertTrue(library.isShown && library.hasFocus())
             } finally { view.close();c.pause().stop().destroy() }
         }

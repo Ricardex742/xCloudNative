@@ -71,7 +71,9 @@ private class ConsolePanelChrome(private val scene: ConsoleScene): Drawable() {
         val radius=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.PS4,ConsoleScene.PS5 -> 0f;ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_360_METRO -> 0f;ConsoleScene.XBOX_ORIGINAL -> 28f;else -> 14f }
         if(scene==ConsoleScene.XBOX_360) c.drawPath(path,p) else c.drawRoundRect(r,radius,radius,p)
         p.shader=null
-        if(scene.playStation) scenePainter.draw(c,0f)
+        if(scene.playStation) {
+            val save=c.save();c.clipRect(bounds);scenePainter.draw(c,0f);c.restoreToCount(save)
+        }
         when(scene) {
             ConsoleScene.XBOX_360 -> { p.style=Paint.Style.STROKE;p.color=0xfff8f9ee.toInt();p.strokeWidth=4f;c.drawPath(path,p) }
             ConsoleScene.XBOX_360_NXE -> { p.color=0x275fe241;c.drawRect(r.left,r.top,r.right,r.top+r.height()*.19f,p);p.color=0x337d9c68;c.drawRect(r.left,r.bottom-26f,r.right,r.bottom,p) }

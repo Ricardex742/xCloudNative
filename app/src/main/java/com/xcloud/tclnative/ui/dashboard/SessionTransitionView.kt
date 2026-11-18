@@ -141,6 +141,9 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
                     leftMargin=(ox+x*s).roundToInt(); topMargin=(oy+y*s).roundToInt()
                 }
             }
+            if(scene.playStation && consolePhone(context,w,h)) {
+                layoutPhone(w,h);super.onMeasure(widthMeasureSpec,heightMeasureSpec);return
+            }
             if(scene.playStation) {
                 val centered=scene==ConsoleScene.PS4 || game==null || h>w
                 consoleBrand.visibility=VISIBLE;eyebrow.visibility=GONE
@@ -157,6 +160,7 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
                     v.gravity=if(centered) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START
                     v.setTextSize(TypedValue.COMPLEX_UNIT_PX,size*s)
                 }
+                fitConsoleText(title,title.layoutParams.width,title.layoutParams.height,24*s,44*s,3)
                 super.onMeasure(widthMeasureSpec,heightMeasureSpec);return
             }
             val branded=game==null
@@ -179,5 +183,31 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
         }
         super.onMeasure(widthMeasureSpec,heightMeasureSpec)
     }
+    private fun layoutPhone(w: Int,h: Int) {
+        val d=resources.displayMetrics.density;val sp=resources.displayMetrics.scaledDensity
+        val wide=w/d;val high=h/d;val portrait=h>w
+        fun pos(v: View,x: Float,y: Float,vw: Float,vh: Float) {
+            v.layoutParams=LayoutParams((vw*d).roundToInt(),(vh*d).roundToInt()).apply { leftMargin=(x*d).roundToInt();topMargin=(y*d).roundToInt() }
+        }
+        fun fit(v: TextView,x: Float,y: Float,vw: Float,vh: Float,min: Float,max: Float,lines: Int) {
+            pos(v,x,y,vw,vh);v.typeface=android.graphics.Typeface.create("sans-serif",android.graphics.Typeface.NORMAL)
+            fitConsoleText(v,(vw*d).toInt(),(vh*d).toInt(),min*sp,max*sp,lines)
+            v.gravity=if(portrait) Gravity.CENTER else Gravity.CENTER_VERTICAL or Gravity.START
+        }
+        consoleBrand.visibility=VISIBLE;eyebrow.visibility=GONE
+        pos(consoleBrand,16f,12f,100f,28f)
+        val side=if(portrait) 112f else 104f
+        val blockTop=if(portrait) maxOf(88f,(high-360f)/2) else 92f
+        pos(cover,if(portrait) (wide-side)/2 else 24f,blockTop,side,side)
+        pos(logo,if(portrait) (wide-side)/2 else 24f,blockTop,side,side)
+        val x=if(portrait) 16f else 156f;val width=if(portrait) wide-32 else wide-180
+        val y=if(portrait) blockTop+side+20 else 80f
+        fit(title,x,y,width,if(portrait) 120f else 104f,18f,26f,4)
+        fit(status,x,y+if(portrait) 128 else 112,width,if(portrait) 48f else 40f,14f,18f,2)
+        pos(progress,x,y+if(portrait) 188 else 164,width,4f)
+        val detailY=y+if(portrait) 208 else 184
+        fit(detail,x,detailY,width,minOf(48f,high-detailY-8),12f,14f,2)
+    }
+
     fun close() { dismiss(); scope.cancel(); art.close() }
 }

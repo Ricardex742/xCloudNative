@@ -41,6 +41,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         ?: context.resources.displayMetrics.widthPixels
     private val screenHeight = activity?.window?.decorView?.height?.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
+    private val phone=skin.scene.playStation && consolePhone(context,screenWidth,screenHeight)
     val scale = (if(skin.enabled) minOf(screenWidth/1280f,screenHeight/720f) else screenWidth/1280f).coerceAtLeast(maxOf(.5f,context.resources.displayMetrics.density*.65f))
     val panel: LinearLayout = object : LinearLayout(context) {
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -52,7 +53,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }.apply {
         orientation = LinearLayout.VERTICAL
         background = if(skin.enabled) skin.background() else DashboardTheme.panel(16*scale)
-        setPadding(px(if(fullScreen) 64 else 32), px(if(fullScreen) 32 else 26), px(if(fullScreen) 64 else 32), px(26))
+        setPadding(px(if(phone) 24 else if(fullScreen) 64 else 32), px(if(phone) 20 else if(fullScreen) 32 else 26), px(if(phone) 24 else if(fullScreen) 64 else 32), px(if(phone) 20 else 26))
     }
     val body = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -138,6 +139,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         setContentView(panel)
         setOnKeyListener { _, key, event ->
             if(shortcut?.invoke(event)==true) true else when (key) {
+                KeyEvent.KEYCODE_BUTTON_X -> {
+                    if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0) closePanels()
+                    true
+                }
                 KeyEvent.KEYCODE_BUTTON_B, KeyEvent.KEYCODE_BACK -> {
                     if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) cancel()
                     true
@@ -208,8 +213,12 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         if(skin.enabled) button.apply { background=skin.row();setTextColor(skin.textColors());typeface=skin.font(true) }
         val ps4Guide=purpose==ConsolePanelPurpose.GUIDE && skin.scene==ConsoleScene.PS4
         if(ps4Guide) button.setTextSize(TypedValue.COMPLEX_UNIT_PX,21*scale)
+        if(phone) {
+            button.setTextSize(TypedValue.COMPLEX_UNIT_SP,16f)
+            button.setPadding(px(15),px(8),px(15),px(8));button.minimumHeight=touchSize()
+        }
         val compactBack=fullScreen && label==UiText.text("Voltar")
-        actions.addView(button, LinearLayout.LayoutParams(if(compactBack) px(170) else 0, maxOf(px(if(ps4Guide) 80 else 58),touchSize()), if(compactBack) 0f else 1f).apply {
+        actions.addView(button, LinearLayout.LayoutParams(if(compactBack) px(170) else 0, if(phone) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(if(ps4Guide) 80 else 58),touchSize()), if(compactBack) 0f else 1f).apply {
             if (actions.childCount > 1) marginStart = px(10)
         })
         if (initialFocus == null) initialFocus = button
@@ -245,7 +254,12 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 body.addView(tileRow,LinearLayout.LayoutParams(-1,px(88)).apply { bottomMargin=px(7) })
             }
             tileRow!!.addView(item,LinearLayout.LayoutParams(0,-1,1f).apply { if(menuItems%skin.columns!=0) marginStart=px(10) })
-        } else body.addView(item, LinearLayout.LayoutParams(-1, maxOf(px(62),touchSize())).apply { bottomMargin = px(if(skin.scene.playStation) 0 else 7) })
+        } else body.addView(item, LinearLayout.LayoutParams(-1, if(phone) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(62),touchSize())).apply { bottomMargin = px(if(skin.scene.playStation) 0 else 7) })
+        if(phone) {
+            item.minimumHeight=touchSize();item.maxLines=3
+            if(android.os.Build.VERSION.SDK_INT>=26) item.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
+            item.setTextSize(TypedValue.COMPLEX_UNIT_SP,16f)
+        }
         if(stableLabel==focusKey) returningFocus=item
         menuItems++
         if (initialFocus == null) initialFocus = item

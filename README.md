@@ -61,9 +61,9 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
   - **Xbox One:** blocos retangulares, destaque grande para o jogo selecionado, catálogo em mosaico e contorno branco de seleção.
   - **Xbox Series X|S:** arte panorâmica do jogo quando disponível, navegação por ícones vetoriais, relógio, jogo selecionado ampliado na faixa horizontal e atalhos ilustrados para a biblioteca.
   - **Xbox Original:** núcleo verde luminoso, categorias em menus e biblioteca em listas. A abre a categoria; B retorna ao menu.
-  - **PlayStation 4:** fundo azul com ondas, três abas, faixa de capas quadradas, barra de início e título do jogo abaixo. Inclui variante noturna, fila e painéis azuis.
+  - **PlayStation 4:** fundo azul com ondas, abas de jogos recentes, Todos os jogos, Biblioteca e Favoritos, faixa de capas quadradas, barra de início e título do jogo abaixo. Inclui variante noturna, fila e painéis azuis.
   - **PlayStation 5:** arte panorâmica do jogo, seletor compacto, botão de jogar com opções, cartões de controles, imagem e tempo de nuvem, e centro de controle inferior durante a partida. Inclui variante noturna e painéis escuros.
-- Os temas PlayStation usam Views, Canvas e o mesmo catálogo nativo dos Xbox. A apresentação acompanha pesquisa, fila, preparação, retorno ao catálogo, configurações e atalhos da partida.
+- Os temas PlayStation usam Views, Canvas e o mesmo catálogo nativo dos Xbox. O app funciona em paisagem; os temas adaptam tamanhos e textos à área útil do celular. A apresentação acompanha pesquisa, fila, preparação, retorno ao catálogo, configurações e atalhos da partida.
 - Logos das gerações Xbox, selos Game Pass/Series vetoriais e marcadores de favoritos com acabamento correspondente ao tema, mantendo a identificação informada pelo catálogo.
 - Pesquisa e configurações com painéis, fontes, campos e foco próprios para cada dashboard; One, Series e Metro organizam as categorias de configuração em blocos.
 - **Fundo dinâmico** opcional nos temas de console: Automático, Ativado ou Desativado. Automático respeita economia de energia, animações do sistema, pouca memória e interfaces acima de 1440p. Ativado mantém um movimento leve e reduz a frequência em aparelhos modestos ou em economia de energia. O movimento pausa durante partidas e enquanto o catálogo não está visível. No Series e PS5, a própria arte panorâmica do jogo se move quando disponível.
@@ -104,7 +104,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
     <td width="50%"><img src="docs/screenshots/theme-xbox-360-metro.png" alt="Captura real do menu Xbox 360 Metro, com mosaico de jogos e atalhos verdes." /><br /><strong>Xbox 360 — Metro (2011)</strong></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/theme-ps4.png" alt="Home nativa PlayStation 4, com três abas, capas quadradas e título abaixo da seleção." /><br /><strong>PlayStation 4</strong></td>
+    <td width="50%"><img src="docs/screenshots/theme-ps4.png" alt="Home nativa PlayStation 4, com abas de catálogo, capas quadradas e título abaixo da seleção." /><br /><strong>PlayStation 4</strong></td>
     <td width="50%"><img src="docs/screenshots/theme-ps5.png" alt="Home nativa PlayStation 5, com arte panorâmica, faixa de jogos e cartões de acesso rápido." /><br /><strong>PlayStation 5</strong></td>
   </tr>
 </table>
