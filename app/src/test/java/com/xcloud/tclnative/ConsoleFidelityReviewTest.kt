@@ -111,7 +111,7 @@ class ConsoleFidelityReviewTest {
                             capture(q, "${theme.name}-$h-queue")
                             q.updateProgress("ICE:Connecting", nowMs = 5000)
                             layout(q, w, h)
-                            assertTrue(all(q).filterIsInstance<TextView>().any { it.isShown && it.text == QueueStatus.duration(5) })
+                            assertTrue(all(q).filterIsInstance<TextView>().any { it.visibility == View.VISIBLE && it.text.toString() == QueueStatus.duration(5) })
                             capture(q, "${theme.name}-$h-connecting")
                         } finally { q.close() }
                         val d=GameMenuPanel.show(a,{},{},{},{},hudToggle={},audio={},friends={},settings={});try { layout(d.panel,d.window!!.attributes.width,h,false);capture(d.panel,"${theme.name}-$h-game-menu");assertImmersive(d.window!!) } finally { d.dismiss() }

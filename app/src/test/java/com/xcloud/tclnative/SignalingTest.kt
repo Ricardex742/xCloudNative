@@ -275,6 +275,7 @@ class SignalingTest {
         }
     }
     @Test fun failedTransportCannotReturnAConnectedStatus() = runBlocking {
+        queuedStates = 2
         rejectTransport = true
         val stages = mutableListOf<PlaybackStage>()
         assertTrue(signaling().startAndConnectWebRtcSession("real-id", peer, onStage={ stages.add(it) }) {}.isFailure)
