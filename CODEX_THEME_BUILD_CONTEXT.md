@@ -299,3 +299,6 @@ O app permanece em paisagem, conforme o manifesto e a orientação atual do usu�
 ### Recursos da suíte de capturas
 
 A suíte completa usa um único processo de testes por vez, heap máximo de 1 GiB e renovação a cada oito classes para limitar retenção dos sandboxes/gráficos nativos do Robolectric. As capturas liberam a superfície do Canvas antes de reciclar o bitmap. O workflow compila Kotlin no processo do Gradle, evitando outro daemon de compilação residente. Essas opções afetam a execução dos testes/build, não os limites de memória do aplicativo Android nem o cache de imagens. A assinatura permanente e as verificações continuam obrigatórias.
+
+
+As dependências EGL/Mesa/ffmpeg do CI usam uma lista temporária dos mirrors HTTPS oficiais do Ubuntu, com a chave de arquivo padrão preservada. Atualização e download têm limites de tempo; a instalação usa somente os pacotes já baixados. Isso evita esperas prolongadas de um espelho regional sem desativar verificações de pacotes ou de shaders.

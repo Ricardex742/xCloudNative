@@ -89,11 +89,28 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Verificar filtros e reconstrução com GPU por software
+        timeout-minutes: 8
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri ffmpeg
+          apt_sources="$RUNNER_TEMP/xcloud-gpu.sources"
+          cat > "$apt_sources" <<'APT_SOURCES'
+          Types: deb
+          URIs: https://archive.ubuntu.com/ubuntu
+          Suites: noble noble-updates
+          Components: main universe
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+          Types: deb
+          URIs: https://security.ubuntu.com/ubuntu
+          Suites: noble-security
+          Components: main universe
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          APT_SOURCES
+          apt_options=(-o "Dir::Etc::sourcelist=$apt_sources" -o "Dir::Etc::sourceparts=-" -o Acquire::Retries=2 -o Acquire::https::Timeout=30)
+          timeout --kill-after=10s 90s sudo apt-get "${apt_options[@]}" update -qq
+          timeout --kill-after=10s 180s sudo apt-get "${apt_options[@]}" install -y --download-only --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri ffmpeg
+          sudo apt-get "${apt_options[@]}" install -y --no-download --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri ffmpeg
           python3 scripts/verify_image_filter.py
           python3 scripts/verify_fsr1.py
           python3 scripts/verify_image_treatment.py
