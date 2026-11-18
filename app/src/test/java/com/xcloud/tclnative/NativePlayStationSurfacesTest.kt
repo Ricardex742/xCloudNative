@@ -222,7 +222,8 @@ class NativePlayStationSurfacesTest {
                 val hud=all(first.panel).filterIsInstance<TextView>().single { it.isClickable && it.text.toString()=="Mostrar controle virtual" }
                 val close=all(first.panel).single { it.tag=="close-settings" }
                 for(target in listOf(hud,close)) {
-                    assertTrue("$theme touch target",target.width>=48*metrics.density && target.height>=48*metrics.density)
+                    val hit=ConsoleHitTargets.bounds(first.panel,target)
+                    assertTrue("$theme touch target",hit.width()>=48*metrics.density && hit.height()>=48*metrics.density)
                     inside(first.panel,target)
                 }
                 all(first.panel).filterIsInstance<TextView>().filter { it.isClickable && it.text.toString() in listOf("RETOMAR PARTIDA","ENCERRAR PARTIDA") }.forEach { action ->
@@ -252,7 +253,8 @@ class NativePlayStationSurfacesTest {
                     val touch=48*a.resources.displayMetrics.density
                     for(label in listOf("Pesquisar jogos","Configurações",if(theme.scene==ConsoleScene.PS5) "Opções:" else "FAVORITAR")) {
                         val target=all(view).single { it.isShown && it.contentDescription?.toString()?.startsWith(label)==true }
-                        assertTrue("$theme $label ${target.width}x${target.height} < $touch",target.width>=touch && target.height>=touch);inside(view,target)
+                        val hit=ConsoleHitTargets.bounds(view,target)
+                        assertTrue("$theme $label touch area $hit < $touch",hit.width()>=touch && hit.height()>=touch);inside(view,target)
                     }
                     val grid=all(view).filterIsInstance<RecyclerView>().single();val adapter=grid.adapter
                     assertNotNull(view.selectedGame);val selected=view.selectedGame!!.titleId

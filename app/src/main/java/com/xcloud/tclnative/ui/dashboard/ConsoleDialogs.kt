@@ -42,8 +42,9 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val screenHeight = activity?.window?.decorView?.height?.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
     private val phone=skin.scene.playStation && consolePhone(context,screenWidth,screenHeight)
-    val scale = (if(skin.enabled) minOf(screenWidth/1280f,screenHeight/720f) else screenWidth/1280f).coerceAtLeast(maxOf(.5f,context.resources.displayMetrics.density*.65f))
+    val scale = (if(skin.enabled) minOf(screenWidth/1280f,screenHeight/720f) else screenWidth/1280f).coerceAtLeast(if(skin.scene.playStation) .5f else maxOf(.5f,context.resources.displayMetrics.density*.65f))
     val panel: LinearLayout = object : LinearLayout(context) {
+        override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
             val limit = (screenHeight*if(fullScreen) 1f else .90f).roundToInt()
             val requested = MeasureSpec.getSize(heightMeasureSpec)
@@ -53,15 +54,19 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }.apply {
         orientation = LinearLayout.VERTICAL
         background = if(skin.enabled) skin.background() else DashboardTheme.panel(16*scale)
-        setPadding(px(if(phone) 24 else if(fullScreen) 64 else 32), px(if(phone) 20 else if(fullScreen) 32 else 26), px(if(phone) 24 else if(fullScreen) 64 else 32), px(if(phone) 20 else 26))
+        setPadding(px(if(fullScreen) 64 else 32), px(if(fullScreen) 32 else 26), px(if(fullScreen) 64 else 32), px(if(phone) 20 else 26))
     }
-    val body = LinearLayout(context).apply {
+    val body = object: LinearLayout(context) {
+        override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
+    }.apply {
         orientation = LinearLayout.VERTICAL
-        if(fullScreen && screenWidth/context.resources.displayMetrics.density>=900) setPadding(px(116),0,px(82),0)
+        if(fullScreen) setPadding(px(100),0,px(100),0)
     }
-    private val actions = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL;isBaselineAligned=false }
+    private val actions = object: LinearLayout(context) {
+        override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
+    }.apply { orientation = LinearLayout.HORIZONTAL;isBaselineAligned=false }
     private val scroll = ScrollView(context).apply {
-        isVerticalScrollBarEnabled = false
+        isVerticalScrollBarEnabled = skin.scene.playStation
         overScrollMode = View.OVER_SCROLL_NEVER
         DashboardTheme.customFocus(this)
         addView(body, ViewGroup.LayoutParams(-1, -2))
@@ -100,7 +105,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(14) })
             if(purpose==ConsolePanelPurpose.GUIDE) panel.minimumHeight=(screenHeight*.88f).roundToInt()
         } else if(skin.scene.playStation) {
-            headingContent.addView(text(heading,40),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(22) })
+            headingContent.addView(text(heading,34),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(22) })
         } else if(purpose==ConsolePanelPurpose.GUIDE) {
             val brand=ConsoleBrandView(context)
             headingContent.addView(brand,LinearLayout.LayoutParams(px(176),px(42)))
@@ -128,14 +133,17 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         header.addView(headingContent,LinearLayout.LayoutParams(0,-2,1f))
         val close=keyButton("×") { closePanels() }.apply {
             tag="close-settings"
+            if(skin.scene.playStation) background=ConsoleControlPlate(skin.scene,ConsoleControl.TAB)
             contentDescription=UiText.text("Fechar ajustes e voltar")
-            setTextSize(TypedValue.COMPLEX_UNIT_SP,28f)
+            if(skin.scene.playStation) setTextSize(TypedValue.COMPLEX_UNIT_PX,28*scale) else setTextSize(TypedValue.COMPLEX_UNIT_SP,28f)
             setPadding(0,0,0,0)
         }
-        header.addView(close,LinearLayout.LayoutParams(touchSize(),touchSize()).apply { marginStart=px(10) })
+        val closeSize=if(skin.scene.playStation) px(48) else touchSize()
+        header.addView(close,LinearLayout.LayoutParams(closeSize,closeSize).apply { marginStart=px(10) })
         panel.addView(header,LinearLayout.LayoutParams(-1,-2))
         panel.addView(scroll, LinearLayout.LayoutParams(-1, -2, 1f))
         panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(22) })
+        if(skin.scene.playStation) ConsoleHitTargets.install(panel,listOf(close))
         setContentView(panel)
         setOnKeyListener { _, key, event ->
             if(shortcut?.invoke(event)==true) true else when (key) {
@@ -164,6 +172,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         val sideMenu=purpose==ConsolePanelPurpose.GUIDE && skin.scene==ConsoleScene.PS4
         val center=purpose==ConsolePanelPurpose.CONTROL_CENTER && screenWidth>screenHeight
         val compact=sideMenu || screenWidth>screenHeight && screenHeight/context.resources.displayMetrics.density<480
+        val hitTargets=mutableListOf<View>()
         fun addGroup(groupItems: List<Pair<ConsoleGlyph,ConsoleAction>>,columns: Int,verticalIcon: Boolean,height: Int,small: Boolean=false) {
             groupItems.chunked(columns).forEach { group ->
                 val row=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL;isBaselineAligned=false }
@@ -175,13 +184,14 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                         setTextSize(TypedValue.COMPLEX_UNIT_PX,(if(small) 17 else 21)*scale)
                         val mark=ConsoleIconDrawable(icon,px(28),if(skin.enabled) skin.textColors() else android.content.res.ColorStateList.valueOf(Color.WHITE))
                         setCompoundDrawablesWithIntrinsicBounds(if(verticalIcon) null else mark,if(verticalIcon) mark else null,null,null)
-                        compoundDrawablePadding=px(7);minimumHeight=touchSize();contentDescription=action.label
+                        compoundDrawablePadding=px(7);minimumHeight=if(sideMenu) px(64) else touchSize();contentDescription=action.label
                         action.longAction?.let { longAction ->
                             setOnLongClickListener { dismiss();longAction();true }
                             if(android.os.Build.VERSION.SDK_INT>=26) tooltipText=UiText.text("Personalizar estatísticas")
                         }
                     }
-                    row.addView(button,LinearLayout.LayoutParams(0,maxOf(touchSize(),px(height)),1f).apply { marginEnd=px(7) })
+                    hitTargets+=button
+                    row.addView(button,LinearLayout.LayoutParams(0,if(sideMenu) px(height) else maxOf(touchSize(),px(height)),1f).apply { marginEnd=px(7) })
                     if(initialFocus==null) initialFocus=button
                 }
                 repeat(columns-group.size) { row.addView(View(context),LinearLayout.LayoutParams(0,1,1f)) }
@@ -196,6 +206,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             val columns=if(sideMenu) 1 else if(purpose==ConsolePanelPurpose.GUIDE || screenWidth<screenHeight) 2 else 3
             addGroup(items,columns,!compact,if(sideMenu) 64 else if(compact) 0 else 100)
         }
+        if(sideMenu) ConsoleHitTargets.install(body,hitTargets)
     }
     fun px(value: Int) = (value*scale).roundToInt()
     fun text(value: String, size: Int = 22, heavy: Boolean = false, color: Int = Color.WHITE) = com.xcloud.tclnative.i18n.LocalizedTextView(context).apply {
@@ -210,18 +221,19 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     fun addPersistentAction(label: String, action: () -> Unit): TextView = actionButton(label,false,action)
     private fun actionButton(label: String,dismissOnClick: Boolean,action: () -> Unit): TextView {
         val button = DashboardTheme.button(context, UiText.uppercase(label), scale) { if(dismissOnClick) dismiss(); action() }
-        if(skin.enabled) button.apply { background=skin.row();setTextColor(skin.textColors());typeface=skin.font(true) }
+        if(skin.enabled) button.apply { background=if(skin.scene.playStation) ConsoleControlPlate(skin.scene,ConsoleControl.TAB) else skin.row();setTextColor(skin.textColors());typeface=skin.font(true) }
         val ps4Guide=purpose==ConsolePanelPurpose.GUIDE && skin.scene==ConsoleScene.PS4
         if(ps4Guide) button.setTextSize(TypedValue.COMPLEX_UNIT_PX,21*scale)
         if(phone) {
-            button.setTextSize(TypedValue.COMPLEX_UNIT_SP,16f)
-            button.setPadding(px(15),px(8),px(15),px(8));button.minimumHeight=touchSize()
+            button.setTextSize(TypedValue.COMPLEX_UNIT_PX,21*scale)
+            button.setPadding(px(15),px(8),px(15),px(8));button.minimumHeight=px(58)
         }
         val compactBack=fullScreen && label==UiText.text("Voltar")
         actions.addView(button, LinearLayout.LayoutParams(if(compactBack) px(170) else 0, if(phone) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(if(ps4Guide) 80 else 58),touchSize()), if(compactBack) 0f else 1f).apply {
             if (actions.childCount > 1) marginStart = px(10)
         })
         if (initialFocus == null) initialFocus = button
+        if(phone) ConsoleHitTargets.install(actions,(0 until actions.childCount).map { actions.getChildAt(it) })
         return button
     }
     fun addMenuItem(label: String, action: () -> Unit): TextView {
@@ -256,16 +268,18 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             tileRow!!.addView(item,LinearLayout.LayoutParams(0,-1,1f).apply { if(menuItems%skin.columns!=0) marginStart=px(10) })
         } else body.addView(item, LinearLayout.LayoutParams(-1, if(phone) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(62),touchSize())).apply { bottomMargin = px(if(skin.scene.playStation) 0 else 7) })
         if(phone) {
-            item.minimumHeight=touchSize();item.maxLines=3
+            item.minimumHeight=px(62);item.maxLines=3
             if(android.os.Build.VERSION.SDK_INT>=26) item.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
-            item.setTextSize(TypedValue.COMPLEX_UNIT_SP,16f)
+            item.setTextSize(TypedValue.COMPLEX_UNIT_PX,23*scale)
         }
         if(stableLabel==focusKey) returningFocus=item
         menuItems++
+        if(phone) ConsoleHitTargets.install(body,(0 until body.childCount).map { body.getChildAt(it) }.filter { it.isClickable })
         if (initialFocus == null) initialFocus = item
         return item
     }
     override fun show() {
+        window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
         super.show()
         visiblePanels.removeAll { it.get()==null || it.get()===this }
         visiblePanels.add(java.lang.ref.WeakReference(this))
@@ -296,10 +310,15 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 setLayout((screenWidth*(if(skin.enabled) .90f else .82f)).roundToInt(), WindowManager.LayoutParams.WRAP_CONTENT)
             }
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
+            com.xcloud.tclnative.ui.ImmersiveWindow.apply(this)
         }
         val target=if(explicitFocus) initialFocus else returningFocus ?: initialFocus
         target?.requestFocus()
         target?.post { if(isShowing) target.requestRectangleOnScreen(android.graphics.Rect(0,0,target.width,target.height)) }
+    }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if(hasFocus) window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
     }
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         com.xcloud.tclnative.webrtc.AndroidControllerMonitor.key(event)

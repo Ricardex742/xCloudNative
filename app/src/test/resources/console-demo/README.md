@@ -1,0 +1,1 @@
+These catalog illustrations come from the Microsoft Store image references in the supplied PS4/PS5 visual prototypes. They are test fixtures for comparing native composition with those prototypes. They are not app assets, accounts or gameplay captures and are not packaged in the APK.

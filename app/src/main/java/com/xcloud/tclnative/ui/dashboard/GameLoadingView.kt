@@ -224,7 +224,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         eyebrow.text=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.XBOX_360_NXE,ConsoleScene.XBOX_360_METRO -> "XBOX 360";ConsoleScene.XBOX_ONE -> "Xbox One";ConsoleScene.XBOX_SERIES -> "Xbox Series X|S";ConsoleScene.PS4,ConsoleScene.PS5 -> "xCLOUD";else -> "XBOX" }
         eyebrow.setTextColor(if(scene==ConsoleScene.XBOX_ORIGINAL) 0xffb8ee4c.toInt() else ink)
         panel.background=when(scene) {
-            ConsoleScene.PS4,ConsoleScene.PS5 -> ConsolePanelSkin(scene).background()
+            ConsoleScene.PS4,ConsoleScene.PS5 -> null
             ConsoleScene.XBOX_360 -> GradientDrawable().apply { setColor(0x70f6f8e9);cornerRadius=5f;setStroke(1,0xff8da469.toInt()) }
             ConsoleScene.XBOX_ONE -> GradientDrawable().apply { setColor(0xff161616.toInt()) }
             ConsoleScene.XBOX_360_NXE -> GradientDrawable().apply { setColor(0xdf263324.toInt());cornerRadius=5f;setStroke(1,0xffa3b39b.toInt()) }
@@ -278,8 +278,9 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }
     private fun layoutConsole(w: Int,h: Int) {
-        if(scene.playStation && consolePhone(context,w,h)) { layoutPlayStationPhone(w,h);return }
+        if(scene.playStation && h>w && consolePhone(context,w,h)) { layoutPlayStationPhone(w,h);return }
         if(scene.playStation && h>w) { layoutPlayStationPortrait(w,h);return }
+        if(scene.playStation) { layoutPlayStationQueue(w,h);return }
         val s=minOf(w/1280f,h/720f);val ox=(w-1280*s)/2f;val oy=(h-720*s)/2f
         fun root(v: View,x: Int,y: Int,vw: Int,vh: Int)=place(v,ox+x*s,oy+y*s,vw*s,vh*s)
         fun item(v: View,x: Int,y: Int,vw: Int,vh: Int)=place(v,x*s,y*s,vw*s,vh*s)
@@ -373,6 +374,38 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         poster.background=GradientDrawable().apply { setColor(if(scene.playStation) DashboardTheme.color(UiColor.QUEUE_POSTER) else 0xff151915.toInt());cornerRadius=if(scene==ConsoleScene.PS5) 12*s else if(scene==ConsoleScene.XBOX_SERIES) 7*s else 0f }
         game?.let { badges.bind(it.gamePass,it.seriesOptimized,s) }
     }
+    /** Same reference canvas as the Xbox scenes; density does not move or enlarge the composition. */
+    private fun layoutPlayStationQueue(w: Int,h: Int) {
+        val s=minOf(w/1280f,h/720f);val wide=w/s
+        fun pos(v: View,x: Float,y: Float,vw: Float,vh: Float)=place(v,x*s,y*s,vw*s,vh*s)
+        fun fit(v: TextView,x: Float,y: Float,vw: Float,vh: Float,size: Float,lines: Int=1) {
+            pos(v,x,y,vw,vh);v.typeface=Typeface.create(if(v===title && scene==ConsoleScene.PS4) "sans-serif-light" else "sans-serif",Typeface.NORMAL)
+            fitConsoleText(v,(vw*s).roundToInt(),(vh*s).roundToInt(),minOf(15f,size)*s,size*s,lines)
+        }
+        pos(consoleLogo,60f,32f,156f,42f);eyebrow.visibility=GONE
+        fit(title,60f,106f,wide-120f,82f,38f,3)
+        pos(poster,60f,232f,228f,228f);pos(posterFallback,68f,240f,212f,212f);badges.visibility=GONE
+        fit(posterFallback,68f,240f,212f,212f,22f,4)
+        val pw=wide-412f
+        pos(panel,352f,216f,pw,342f)
+        fit(status,0f,0f,pw-60f,42f,23f,2);pos(spinner,pw-36f,6f,28f,28f)
+        fit(estimateLabel,0f,72f,pw*.64f-24f,28f,16f,2)
+        fit(estimate,0f,108f,pw*.64f-24f,72f,44f,2)
+        fit(elapsedLabel,pw*.66f,72f,pw*.34f,28f,16f,2)
+        fit(elapsed,pw*.66f,112f,pw*.34f,60f,30f,2)
+        fit(explanation,0f,194f,pw,54f,20f,2)
+        fit(heartbeat,0f,258f,pw,28f,17f,1)
+        fit(freshness,0f,292f,pw,46f,15f,2)
+        val touch=48*resources.displayMetrics.density/s
+        pos(cancelButton,60f,530f,maxOf(228f,touch),maxOf(54f,touch))
+        val inset=((maxOf(54f,touch)-54f)*s/2f).roundToInt()
+        cancelButton.background=android.graphics.drawable.InsetDrawable(ConsoleControlPlate(scene,ConsoleControl.ACTION,true),0,inset,0,inset)
+        cancelButton.setTextSize(TypedValue.COMPLEX_UNIT_PX,21*s)
+        steps.forEachIndexed { i,v -> fit(v,352f+i*pw/3f,570f,pw/3f-12f,48f,18f,2) }
+        fit(note,352f,642f,pw,48f,16f,2)
+        poster.background=GradientDrawable().apply { setColor(DashboardTheme.color(UiColor.QUEUE_POSTER));cornerRadius=if(scene==ConsoleScene.PS5) 12*s else 0f }
+    }
+
     private fun layoutPlayStationPhone(w: Int,h: Int) {
         val d=resources.displayMetrics.density;val sp=resources.displayMetrics.scaledDensity
         val wide=w/d;val high=h/d;val portrait=h>w

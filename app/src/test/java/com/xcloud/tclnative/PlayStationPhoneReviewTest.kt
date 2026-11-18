@@ -33,6 +33,7 @@ class PlayStationPhoneReviewTest {
     }
     private val phones=listOf(
         Phone("720-bars",1280,720,2,Rect(0,48,0,48)),
+        Phone("phone-immersive",1280,600,2,Rect(44,0,0,0)),
         Phone("720-landscape",1520,720,2,Rect(34,0,34,31)),
         Phone("1080-bars",2400,1080,3,Rect(72,72,72,72)),
         Phone("1080-landscape",2400,1080,3,Rect(72,0,72,72))
@@ -101,7 +102,7 @@ class PlayStationPhoneReviewTest {
                         val chooser=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog;dialog(chooser,p,"${theme.name}-library");chooser.dismiss()
                         home.setSearch("Call of Duty");measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-search-results")
                         home.setSearch("Missing game");measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-empty-catalog")
-                        val empty=all(home).filterIsInstance<TextView>().single { it.isShown && it.text.contains("Missing game") };fits(empty)
+                        val empty=all(home).filterIsInstance<TextView>().single { it.isShown && it.text.startsWith("Nenhum jogo encontrado") };fits(empty)
                         assertTrue(Rect(0,0,home.width,home.height).contains(bounds(home,empty)))
                         assertFalse(all(home).filterIsInstance<TextView>().any { it.isShown && it.isEnabled && it.text.toString() in listOf("JOGAR","Jogar na nuvem") })
                         if(theme.scene==ConsoleScene.PS5) {
@@ -139,7 +140,7 @@ class PlayStationPhoneReviewTest {
         assertTrue("Clipped/ellipsized text: ${t.text}",(0 until l.lineCount).all { l.getEllipsisCount(it)==0 } && l.getLineEnd(l.lineCount-1)>=t.text.length)
     }
     private fun assertPrimaryTitle(root: ViewGroup): TextView {
-        val t=all(root).filterIsInstance<TextView>().filter { it.isShown && it.text.toString().equals(longName,true) }.maxBy { it.textSize }
+        val t=all(root).filterIsInstance<TextView>().filter { it.isShown && it.parent===root && it.text.toString().equals(longName,true) }.maxBy { it.textSize }
         fits(t);assertTrue("Primary title outside usable area",Rect(0,0,root.width,root.height).contains(bounds(root,t)))
         return t
     }
@@ -147,15 +148,20 @@ class PlayStationPhoneReviewTest {
         val title=assertPrimaryTitle(home)
         val playLabel=UiText.text(if(DashboardTheme.palette.theme.scene==ConsoleScene.PS4) "JOGAR" else "Jogar na nuvem")
         val play=all(home).filterIsInstance<TextView>().single { it.isClickable && it.text.toString()==playLabel }
-        assertTrue("Play must return when catalog results arrive",play.isShown && play.isEnabled)
-        assertTrue(Rect(0,0,home.width,home.height).contains(bounds(home,play)))
-        val platform=all(home).filterIsInstance<TextView>().single { it.isShown && it.text.toString()=="XBOX CLOUD GAMING" }
-        assertTrue("Game title overlaps platform",bounds(home,platform).bottom<=bounds(home,title).top)
-        all(home).filterIsInstance<TextView>().filter { it.isShown && it.text.toString().equals(longName,true) && it!==title && it.parent !is RecyclerView }.forEach { other ->
+        if(DashboardTheme.palette.theme.scene==ConsoleScene.PS5) {
+            assertTrue("Play must return when catalog results arrive",play.isShown && play.isEnabled)
+            assertTrue(Rect(0,0,home.width,home.height).contains(bounds(home,play)))
+        } else {
+            val start=all(home).filterIsInstance<TextView>().single { it.isShown && it.text==UiText.text("Iniciar") }
+            assertTrue("PS4 starts from its selected cover",(start.parent as View).isShown)
+        }
+        val platform=all(home).filterIsInstance<TextView>().single { it.isShown && it.text.toString().equals("Xbox Cloud Gaming",true) }
+        assertFalse("Game title overlaps platform",Rect.intersects(bounds(home,platform),bounds(home,title)))
+        all(home).filterIsInstance<TextView>().filter { it.isShown && it.parent===home && it.text.toString().equals(longName,true) && it!==title && it.parent !is RecyclerView }.forEach { other ->
             assertFalse("Cover caption overlaps platform",Rect.intersects(bounds(home,other),bounds(home,platform)))
         }
         val full=all(home).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
-        fits(full);assertTrue(full.height>=48*home.resources.displayMetrics.density)
+        fits(full);assertTrue(ConsoleHitTargets.bounds(home,full).height()>=48*home.resources.displayMetrics.density)
         if(DashboardTheme.palette.theme.scene==ConsoleScene.PS4) {
             val bitmap=Bitmap.createBitmap(home.width,home.height,Bitmap.Config.ARGB_8888)
             val canvas=Canvas(bitmap)

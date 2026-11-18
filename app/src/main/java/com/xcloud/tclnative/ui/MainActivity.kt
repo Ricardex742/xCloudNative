@@ -223,8 +223,7 @@ open class MainActivity : Activity() {
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.navigationBarColor = Color.BLACK
-        window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-            View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+        ImmersiveWindow.apply(window)
         authenticator = createAuthenticator()
         settingsStore = PlaybackSettingsStore(this)
         playbackSettings = settingsStore.read()
@@ -1938,8 +1937,7 @@ open class MainActivity : Activity() {
         else {
             rumble.enabled=playbackSettings.rumble && webrtcClient!=null
             resumeAuxiliaryInput();resynchronizeUsbInput()
-            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-                View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            ImmersiveWindow.apply(window)
         }
     }
 

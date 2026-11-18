@@ -73,10 +73,16 @@ internal class MicrosoftLoginDialog(activity: Activity,private val authorization
     }
     private fun finishError(message: String) { finished=true;dismiss();failed(message) }
     override fun show() {
+        window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
         super.show();window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT)
         ownerActivity?.let { owner -> window?.let { AppControllerWindows.attach(owner,it) } }
         window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+        window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
         browser.loadUrl(authorization.url)
+    }
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if(hasFocus) window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
     }
     fun close() { finished=true;dismiss() }
     override fun onStop() { window?.let(AppControllerWindows::detach);super.onStop() }

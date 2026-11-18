@@ -49,7 +49,8 @@ private class ConsolePanelChrome(private val scene: ConsoleScene): Drawable() {
     private val scenePainter=ConsoleScenePainter()
     override fun onBoundsChange(b: Rect) {
         val colors=when(scene) {
-            ConsoleScene.PS4,ConsoleScene.PS5 -> intArrayOf(DashboardTheme.color(UiColor.PANEL_TOP),DashboardTheme.color(UiColor.PANEL_BOTTOM),DashboardTheme.color(UiColor.BACKGROUND_END))
+            ConsoleScene.PS4 -> if(DashboardTheme.palette.theme.night) intArrayOf(DashboardTheme.color(UiColor.PANEL_TOP),DashboardTheme.color(UiColor.PANEL_BOTTOM),DashboardTheme.color(UiColor.BACKGROUND_END)) else intArrayOf(0xff0642bd.toInt(),0xff1159cc.toInt(),0xff1265ca.toInt())
+            ConsoleScene.PS5 -> if(DashboardTheme.palette.theme.night) intArrayOf(0xff11151c.toInt(),0xff0d1016.toInt(),0xff090c11.toInt()) else intArrayOf(0xff202126.toInt(),0xff16171b.toInt(),0xff0e1014.toInt())
             ConsoleScene.XBOX_360 -> intArrayOf(0xffedf2d7.toInt(),0xffd3deb1.toInt(),0xffb2c57c.toInt())
             ConsoleScene.XBOX_360_NXE -> intArrayOf(0xff36553a.toInt(),0xff243b27.toInt(),0xff6c7c61.toInt())
             ConsoleScene.XBOX_360_METRO -> intArrayOf(0xffe2e6dd.toInt(),0xffd3d9ce.toInt(),0xffc4cdbd.toInt())
@@ -71,7 +72,7 @@ private class ConsolePanelChrome(private val scene: ConsoleScene): Drawable() {
         val radius=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.PS4,ConsoleScene.PS5 -> 0f;ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_360_METRO -> 0f;ConsoleScene.XBOX_ORIGINAL -> 28f;else -> 14f }
         if(scene==ConsoleScene.XBOX_360) c.drawPath(path,p) else c.drawRoundRect(r,radius,radius,p)
         p.shader=null
-        if(scene.playStation) {
+        if(scene==ConsoleScene.PS4) {
             val save=c.save();c.clipRect(bounds);scenePainter.draw(c,0f);c.restoreToCount(save)
         }
         when(scene) {

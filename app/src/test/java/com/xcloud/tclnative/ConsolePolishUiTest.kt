@@ -193,7 +193,8 @@ class ConsolePolishUiTest {
             try {
                 v.setMetadataProgress(CatalogService.Progress(2,8,true,false));layout(v,1452,689)
                 val search=all(v).single { it.contentDescription=="Pesquisar jogos" }
-                assertTrue("$theme phone search must have a larger target",search.width>=72 && search.height>=72)
+                val hit=if(theme.scene.playStation) ConsoleHitTargets.bounds(v,search) else Rect(0,0,search.width,search.height)
+                assertTrue("$theme phone search must have a larger target",hit.width()>=72 && hit.height()>=72)
                 if(theme==UiTheme.XBOX_SERIES) {
                     fun area(child: View)=Rect(0,0,child.width,child.height).also { v.offsetDescendantRectToMyCoords(child,it) }
                     val notice=all(v).filterIsInstance<TextView>().single { it.text.startsWith("ALGUMAS CAPAS INDISPONÍVEIS") }

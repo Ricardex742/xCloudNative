@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 96
-        versionName = "0.40.1-theme-review"
+        versionCode = 97
+        versionName = "0.40.2-console-layout"
     }
 
     signingConfigs {

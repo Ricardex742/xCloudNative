@@ -295,6 +295,8 @@ A implementação nativa posterior e os builds de teste conferidos estão descri
 
 O app permanece em paisagem, conforme o manifesto e a orientação atual do usuário. A revisão usa áreas úteis menores que a resolução total, incluindo barras e recorte simulados. Consultar a seção “Revisão nativa da área útil em celular” de `CODEX_CONTEXT.md` e `PlayStationPhoneReviewTest`. Não confundir essas capturas Android/Robolectric com inspeção ou medição em aparelho real. O APK conferido usa código 96, superior ao 95 distribuído anteriormente, com a mesma assinatura permanente; build e hashes estão na seção “Build da revisão de celular conferido”.
 
+A revisão seguinte, no código 97, está descrita em “Composição dos consoles e janelas imersivas” de `CODEX_CONTEXT.md`. Ela retoma a composição de referência dos Xbox em paisagem, corrige também filas e painéis e mantém a imersão nas janelas próprias. Não recuperar a disposição separada de celular do código 96 como referência visual atual. Resultados e identidade do próximo artefato precisam ser conferidos na execução correspondente.
+
 
 ### Recursos da suíte de capturas
 

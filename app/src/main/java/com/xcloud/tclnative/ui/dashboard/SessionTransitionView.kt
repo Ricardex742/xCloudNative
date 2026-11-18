@@ -141,7 +141,7 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
                     leftMargin=(ox+x*s).roundToInt(); topMargin=(oy+y*s).roundToInt()
                 }
             }
-            if(scene.playStation && consolePhone(context,w,h)) {
+            if(scene.playStation && h>w && consolePhone(context,w,h)) {
                 layoutPhone(w,h);super.onMeasure(widthMeasureSpec,heightMeasureSpec);return
             }
             if(scene.playStation) {

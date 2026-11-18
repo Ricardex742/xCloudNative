@@ -76,21 +76,34 @@ class GameTouchView(context: Context,
     var onBindingRequested: (String,HudAction?) -> Unit = { _,_ -> }
     var onGesturesRequested: (String,Map<HudSwipe,HudGesture>) -> Unit = { _,_ -> }
     private val lookReset=Runnable { if(mode==TouchMode.VIRTUAL && !isEditing) publish() }
+    private var menuButtonFocused=false
     private val menuBounds=RectF()
     private val menuButton=TextView(context).apply {
-        text="⋯";textSize=26f;gravity=Gravity.CENTER
+        text="⋯";gravity=Gravity.CENTER;includeFontPadding=false
+        setPadding(0,0,0,0)
         contentDescription=UiText.text("Atalhos da partida")
         setTextColor(Color.WHITE)
-        background=android.graphics.drawable.GradientDrawable().apply {
-            setColor(0xbb101a13.toInt());cornerRadius=24*resources.displayMetrics.density
-            setStroke(resources.displayMetrics.density.toInt().coerceAtLeast(1),0xaa54de69.toInt())
+        background=object: android.graphics.drawable.Drawable() {
+            private val brush=Paint(Paint.ANTI_ALIAS_FLAG)
+            override fun draw(canvas: Canvas) {
+                val radius=this@GameTouchView.height*.031f
+                brush.style=Paint.Style.FILL;brush.color=0x99101a13.toInt()
+                canvas.drawCircle(bounds.exactCenterX(),bounds.exactCenterY(),radius,brush)
+                brush.style=Paint.Style.STROKE;brush.strokeWidth=maxOf(1f,this@GameTouchView.height*.002f)
+                brush.color=if(menuButtonFocused) Color.WHITE else 0xaa54de69.toInt()
+                canvas.drawCircle(bounds.exactCenterX(),bounds.exactCenterY(),radius,brush)
+            }
+            override fun setAlpha(alpha: Int) {}
+            override fun setColorFilter(filter: android.graphics.ColorFilter?) {}
+            @Deprecated("Deprecated in Java") override fun getOpacity()=android.graphics.PixelFormat.TRANSLUCENT
         }
+        setOnFocusChangeListener { _,focused -> menuButtonFocused=focused;invalidate() }
         isClickable=true;isFocusable=true
         setOnClickListener { if(mode==TouchMode.NATIVE) nativeEvents.menu++;releaseInputs();onMenu() }
     }
     init {
         visibility=GONE;isFocusable=false;setWillNotDraw(false)
-        addView(menuButton,LayoutParams((56*resources.displayMetrics.density).toInt(),(48*resources.displayMetrics.density).toInt(),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+        addView(menuButton,LayoutParams((48*resources.displayMetrics.density).toInt(),(48*resources.displayMetrics.density).toInt(),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
     }
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
         releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE
@@ -153,7 +166,8 @@ class GameTouchView(context: Context,
         val page=preset
         releaseInputs(); rebuild(page);scheduleAutoHide()
         val density=resources.displayMetrics.density
-        val buttonWidth=56*density;val buttonHeight=48*density
+        val buttonWidth=48*density;val buttonHeight=48*density
+        menuButton.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,h*.040f)
         val top=(h*.055f-buttonHeight/2).coerceAtLeast(0f)
         menuBounds.set((w-buttonWidth)/2,top,(w+buttonWidth)/2,top+buttonHeight)
         menuButton.layoutParams=(menuButton.layoutParams as LayoutParams).apply { topMargin=top.toInt() }

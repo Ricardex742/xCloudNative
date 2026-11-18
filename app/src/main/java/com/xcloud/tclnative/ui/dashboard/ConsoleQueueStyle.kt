@@ -48,7 +48,10 @@ internal class ConsoleQueueStep(private val scene: ConsoleScene,private val inde
     private val check=Path()
     override fun draw(c: Canvas) {
         r.set(bounds);r.inset(2f,2f);p.style=Paint.Style.FILL;p.alpha=255;p.shader=null
-        if(scene==ConsoleScene.XBOX_SERIES) {
+        if(scene.playStation) {
+            p.color=if(active) Color.WHITE else if(complete) 0x99ffffff.toInt() else 0x35ffffff
+            c.drawRect(r.left,r.bottom-if(active) 3f else 1f,r.right,r.bottom,p)
+        } else if(scene==ConsoleScene.XBOX_SERIES) {
             val radius=r.height()*.28f;val x=r.left+radius+4f;val y=r.centerY()
             p.color=if(active || complete) 0xff7bdb3b.toInt() else 0xff5b656b.toInt();p.style=Paint.Style.STROKE;p.strokeWidth=2f
             c.drawCircle(x,y,radius,p)
