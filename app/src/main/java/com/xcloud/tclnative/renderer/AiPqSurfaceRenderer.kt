@@ -4,6 +4,7 @@ import com.xcloud.tclnative.i18n.UiText
 
 import android.content.Context
 import android.graphics.Color
+import android.os.SystemClock
 import android.view.Gravity
 import android.widget.FrameLayout
 import com.xcloud.tclnative.settings.VideoAspect
@@ -22,13 +23,12 @@ import org.webrtc.VideoTrack
 import org.webrtc.VideoSink
 import com.xcloud.tclnative.webrtc.StreamMetrics
 import java.util.concurrent.atomic.AtomicLong
-import java.util.concurrent.atomic.AtomicBoolean
 
 class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val egl = lazy { EglBase.create() }
     val eglBase: EglBase get()=egl.value
-    var onFirstFrameSubmitted: (() -> Unit)? = null
+    var onFirstFrameSubmitted: ((Long) -> Unit)? = null
     var onRenderError: ((Exception) -> Unit)? = null
     var onDisplayDimensionsChanged: ((ClientDisplayDimensions) -> Unit)? = null
     private var lastDisplayDimensions: ClientDisplayDimensions? = null
@@ -65,7 +65,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private var pacingMode=PresentationPacing.OFF
     fun setPresentationPacing(mode: PresentationPacing) { pacingMode=mode }
     @Volatile private var generation = 0
-    private val lastDeliveryMs = AtomicLong(Long.MIN_VALUE)
+    @Volatile private var lastDeliveryMs = AtomicLong(Long.MIN_VALUE)
     private val submittedToken = AtomicLong()
     private val fsrDraws=AtomicLong()
     private val allDraws=AtomicLong()
@@ -83,8 +83,9 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     fun rebuildSurface() {
         if (released) return
         val track = currentTrack
+        val firstDelivery = trackFirstDelivery
         replaceRenderer()
-        if (track != null) attachTrackNow(track)
+        if (track != null && firstDelivery != null) attachTrackNow(track, firstDelivery)
     }
     @Volatile private var released = false
     var minimalPostProcessingRequested = false
@@ -215,7 +216,6 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         check(!released)
         fsrFailure=null;treatmentFailure=null;resetTreatmentBudget()
         videoWidth = expectedWidth; videoHeight = expectedHeight
-        lastDeliveryMs.set(Long.MIN_VALUE)
         submittedToken.set(0)
         replaceRenderer()
     }
@@ -252,8 +252,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         renderer=newView
         try {
             val view=newView
-            val surfaceEpoch = AtomicLong()
-            val firstSubmissionPending = AtomicBoolean(true)
+            val firstSubmission = FirstSurfaceSubmission()
             view.onBufferFailure={ post { if(!released && generation==id) fallbackFsr("Surface recusou o tamanho solicitado") } }
             view.init(eglBase.eglBaseContext, object : RendererCommon.RendererEvents {
                 override fun onFirstFrameRendered() = Unit // WebRTC emits this on delivery, before EGL draws.
@@ -268,13 +267,11 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             view.addFrameSubmissionListener {
                 if (!released && generation == id) {
                     submittedToken.incrementAndGet()
-                    if (firstSubmissionPending.compareAndSet(true, false)) {
-                        val epoch = surfaceEpoch.get()
+                    firstSubmission.begin()?.let { epoch ->
+                        val submittedAt = SystemClock.elapsedRealtime()
                         post {
-                            if (!released && generation == id && epoch == surfaceEpoch.get() && view.holder.surface.isValid) {
-                                onFirstFrameSubmitted?.invoke()
-                            } else {
-                                firstSubmissionPending.set(true)
+                            if (!released && generation == id && firstSubmission.confirm(epoch, view.holder.surface.isValid)) {
+                                onFirstFrameSubmitted?.invoke(submittedAt)
                             }
                         }
                     }
@@ -292,7 +289,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
                     }
                 }
                 override fun surfaceCreated(holder: android.view.SurfaceHolder) {
-                    surfaceEpoch.incrementAndGet()
+                    firstSubmission.surfaceChanged()
                     frameRate(holder)
                     if(!released && generation==id) updateOutputBuffer()
                 }
@@ -301,7 +298,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
                     if(!released && generation==id) updateOutputBuffer()
                 }
                 override fun surfaceDestroyed(holder: android.view.SurfaceHolder) {
-                    surfaceEpoch.incrementAndGet()
+                    firstSubmission.surfaceChanged()
                     if (generation == id) { frameRateHintRequested = false;cancelBufferVerification() }
                 }
             })
@@ -408,13 +405,15 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             applyTreatmentBudget();updateOutputBuffer();fsrPerformance.reset()
         } else fallbackFsr(UiText.text("proteção de fluidez: {0} desenhos FSR/s por {1}s; escala padrão nesta partida",UiText.nested(rate),UiText.nested(slow.durationMs/1000)))
     }
-    fun attachVideoTrack(track: VideoTrack) {
+    private var trackFirstDelivery: ((Long) -> Unit)? = null
+
+    fun attachVideoTrack(track: VideoTrack, firstDelivery: (Long) -> Unit) {
         val id = generation
         post {
-            if (!released && generation == id) attachTrackNow(track)
+            if (!released && generation == id) attachTrackNow(track, firstDelivery)
         }
     }
-    private fun attachTrackNow(track: VideoTrack) {
+    private fun attachTrackNow(track: VideoTrack, firstDelivery: (Long) -> Unit) {
         if (currentTrack === track) return
         detachTrack()
         val view = renderer ?: return
@@ -444,9 +443,12 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             post { if(generation==id && !released) onRenderError?.invoke(error) }
         }) else null
         pacedSink=paced
+        val deliveryClock = AtomicLong(Long.MIN_VALUE)
+        lastDeliveryMs = deliveryClock
         val sink = VideoSink { frame ->
             if(generation==id && !released) {
-                lastDeliveryMs.set(android.os.SystemClock.elapsedRealtime())
+                val now = SystemClock.elapsedRealtime()
+                if (deliveryClock.getAndSet(now) == Long.MIN_VALUE) firstDelivery(now)
                 (motion ?: paced ?: delivery).onFrame(frame)
             }
         }
@@ -454,6 +456,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             track.addSink(sink)
             trackSink = sink
             currentTrack = track
+            trackFirstDelivery = firstDelivery
         } catch (e: Exception) { motion?.close();frameInterpolation=null;paced?.close();pacedSink=null;onRenderError?.invoke(e) }
     }
     fun detachTrack() {
@@ -463,6 +466,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         pacedSink?.close();pacedSink=null
         trackSink = null
         currentTrack = null
+        trackFirstDelivery = null
     }
     fun clearSession() {
         if (released) return

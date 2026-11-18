@@ -97,7 +97,7 @@ open class MainActivity : Activity() {
     private lateinit var authenticator: XalAuthenticator
     private var webrtcClient: XCloudWebRtcClient? = null
     private val mainScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private val playback = PlaybackCoordinator(mainScope)
+    private val playback = PlaybackCoordinator(mainScope, android.os.SystemClock::elapsedRealtime)
     private var microphoneJob: Job?=null
     private var pendingMicrophoneGeneration: Int?=null
     private var sessionSettings: PlaybackSettings?=null
@@ -189,6 +189,7 @@ open class MainActivity : Activity() {
     private val reportStore by lazy { SessionReportStore(applicationContext) }
     private val startupReportStore by lazy { StartupDiagnosticsStore(applicationContext) }
     private var lastSessionReport: SessionReport?=null
+    private var pendingDiagnosticExport: String?=null
     private var postSessionDialog: Dialog?=null
     @Volatile private var activityVisible=false
     private var videoVisibilityEpoch = 0
@@ -204,6 +205,7 @@ open class MainActivity : Activity() {
     private companion object {
         const val REQUEST_HOME_CHANNEL=4101
         const val REQUEST_SHORTCUT_INSTALL_PERMISSION=4102
+        const val REQUEST_DIAGNOSTIC_EXPORT=4103
     }
     private var gameMenuDialog: Dialog? = null
     private var shortcutSwitchDialog: Dialog? = null
@@ -212,6 +214,7 @@ open class MainActivity : Activity() {
         com.xcloud.tclnative.i18n.UiText.install(this)
         com.xcloud.tclnative.ui.dashboard.DashboardTheme.install(this)
         super.onCreate(savedInstanceState)
+        pendingDiagnosticExport = savedInstanceState?.getString("diagnostic_export")
         AndroidControllerMonitor.clear()
         volumeControlStream=android.media.AudioManager.STREAM_MUSIC
         pendingLaunch = PendingGameLaunch(savedInstanceState?.getString("pending_game"))
@@ -356,6 +359,7 @@ open class MainActivity : Activity() {
         outState.putString("last_shortcut_request",lastShortcutRequest)
         outState.putString("pending_shortcut_apk",pendingShortcutApk?.name)
         outState.putLong("pending_home_channel",pendingHomeChannel ?: -1)
+        outState.putString("diagnostic_export", pendingDiagnosticExport)
         super.onSaveInstanceState(outState)
     }
 
@@ -775,12 +779,17 @@ open class MainActivity : Activity() {
     }
     private fun showLatestReport(onBack: (() -> Unit)?=null) {
         startupReportStore.read()?.let { startup ->
-            showCopyableErrorDialog(startup.game,startup.text,onBack)
+            val timeline = startup.timeline
+            showCopyableErrorDialog(startup.game,startup.text,onBack,export = timeline?.let {
+                { exportDiagnostic(it.json().toString(2)) }
+            })
             return
         }
         val report=lastSessionReport ?: reportStore.read()
         if(report==null) ConsoleDialogs.message(this,UiText.text("Último diagnóstico"),UiText.text("Ainda não há uma partida com vídeo para mostrar."),listOf(ConsoleAction(UiText.text("Voltar")) { onBack?.invoke() }),onCancel=onBack)
-        else postSessionDialog=SessionReportPanel.show(this,report,onBack=onBack)
+        else postSessionDialog=SessionReportPanel.show(this,report,onBack=onBack,export=report.exportJson()?.let {
+            { exportDiagnostic(it.toString(2)) }
+        })
     }
     private suspend fun finishSessionReport(tracker: SessionReportTracker) {
         val report=tracker.takeReport()
@@ -946,8 +955,42 @@ open class MainActivity : Activity() {
             }
         }
     }
+    private fun exportDiagnostic(payload: String) {
+        if (pendingDiagnosticExport != null) return
+        pendingDiagnosticExport = payload
+        val request = Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
+            .setType("application/json").putExtra(Intent.EXTRA_TITLE, "xcloud-diagnostics.json")
+        try {
+            startActivityForResult(request, REQUEST_DIAGNOSTIC_EXPORT)
+        } catch (_: android.content.ActivityNotFoundException) {
+            pendingDiagnosticExport = null
+            showDiagnosticExportError()
+        }
+    }
+
+    private fun showDiagnosticExportError() {
+        Toast.makeText(this, UiText.text("Não foi possível salvar o diagnóstico neste aparelho."), Toast.LENGTH_LONG).show()
+    }
+
     override fun onActivityResult(requestCode: Int,resultCode: Int,data: Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
+        if (requestCode == REQUEST_DIAGNOSTIC_EXPORT) {
+            val payload = pendingDiagnosticExport
+            pendingDiagnosticExport = null
+            val uri = data?.data
+            if (resultCode == RESULT_OK && payload != null && uri != null) {
+                mainScope.launch {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            val stream = contentResolver.openOutputStream(uri, "wt") ?: throw java.io.IOException()
+                            stream.bufferedWriter(Charsets.UTF_8).use { it.write(payload) }
+                        }
+                    } catch (cancelled: CancellationException) { throw cancelled }
+                    catch (_: Exception) { showDiagnosticExportError() }
+                }
+            }
+            return
+        }
         if(requestCode==REQUEST_HOME_CHANNEL) pendingHomeChannel?.let(::verifyHomeChannel)
         if(requestCode==REQUEST_SHORTCUT_INSTALL_PERMISSION) {
             if(Build.VERSION.SDK_INT<26 || packageManager.canRequestPackageInstalls()) installPendingShortcut()
@@ -1279,7 +1322,8 @@ open class MainActivity : Activity() {
         recoverImage=null;reloadTransmission=null
         refreshStatisticsSettings()
         configureVideoOutput(settings, playing = true)
-        playback.start(prepare = {
+        val origin = if (fromShortcut) PlaybackOrigin.SHORTCUT else PlaybackOrigin.CATALOG
+        playback.start(origin, prepare = {
             controlPanel.visibility = View.GONE
             statsView.visibility = View.GONE
             statsView.text = UiText.text("Estatísticas: aguardando amostras WebRTC...")
@@ -1290,6 +1334,8 @@ open class MainActivity : Activity() {
         }) { attempt ->
             val generation = attempt.generation
             val firstFrame = attempt.firstFrame
+            val timeline = attempt.timeline
+            tracker.timeline = timeline
             var transportFailure = CompletableDeferred<Exception>()
             val recoveryState = attempt.recovery
             transmissionRecovery=recoveryState
@@ -1321,8 +1367,10 @@ open class MainActivity : Activity() {
                     if(error is CancellationException) throw error
                     throw RenderFailureException(error)
                 }
-                surfaceRenderer.onFirstFrameSubmitted = {
+                timeline.mark(0, PlaybackStage.RENDERER_READY)
+                surfaceRenderer.onFirstFrameSubmitted = { submittedAt ->
                     if (generation == playbackGeneration && recoveryState.current(0) && !firstFrame.isCompleted) {
+                        timeline.mark(0, PlaybackStage.FIRST_EGL_SUBMISSION, submittedAt)
                         tracker.begin(android.os.SystemClock.elapsedRealtime(),NetworkSnapshot.read(this@MainActivity))
                         runCatching { startupReportStore.clear() }
                         firstFrame.complete(Unit)
@@ -1347,7 +1395,11 @@ open class MainActivity : Activity() {
                     fun current()=generation==playbackGeneration && recoveryState.current(token)
                     return withContext(Dispatchers.Default) { XCloudWebRtcClient(this@MainActivity, playbackEgl,
                     onVideoTrackReady = { track ->
-                        runOnUiThread { if (current()) surfaceRenderer.attachVideoTrack(track) }
+                        runOnUiThread {
+                            if (current()) surfaceRenderer.attachVideoTrack(track) { deliveredAt ->
+                                if (current()) timeline.mark(token, PlaybackStage.FIRST_TRACK_FRAME, deliveredAt)
+                            }
+                        }
                     },
                     onConnectionStateChanged = { state -> runOnUiThread {
                         if (current()) {
@@ -1360,6 +1412,7 @@ open class MainActivity : Activity() {
                     onStatistics = stats@ { metrics, input ->
                         if(current()) {
                             val now=android.os.SystemClock.elapsedRealtime()
+                            timeline.observe(token, metrics.codec, metrics.width, metrics.height)
                             streamHistory.add(now,metrics,input); tracker.add(now,metrics,input)
                             runOnUiThread {
                                 if (current()) {
@@ -1385,7 +1438,7 @@ open class MainActivity : Activity() {
                 tracker.inputDetails = { "$startupInput\n"+(dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" } ?: "")+UiText.join(UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())),"\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}","\nUSB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}","\n${inputDevice.diagnostics()}",(when(touchMode) { TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}";TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}";else -> "" }),UiText.text("\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10} | Mouse/teclado: {11} | Entrada MKB ativa: {12} | Captura Android: {13}",UiText.nested(joystickDispatch.diagnostics()),UiText.nested(signaling.profileDiagnostics()),UiText.nested(signaling.keepAliveDiagnostics()),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(playbackDisplay.diagnostics(window.decorView.display)),UiText.nested(rtc.audioDiagnostics()),UiText.nested(rtc.latencyDiagnostics()),UiText.nested(rtc.iceDiagnostics()),UiText.nested(rtc.codecDiagnostics()),UiText.nested(rumble.diagnostics()),UiText.nested(gyro.status),UiText.nested(sessionDesktopMode.label),UiText.nested(desktopCaptured),UiText.nested(if(Build.VERSION.SDK_INT>=26) window.decorView.hasPointerCapture() else false)))+"\n"+recoveryState.diagnostics() }
                 surfaceRenderer.displayDimensions()?.let(rtc::updateDisplayDimensions)
                 if(touchMode!=TouchMode.NATIVE) (0..3).filter { controllers.sourceFor(it)!=null }.forEach { publishGamepad(it) }
-                signaling.startAndConnectWebRtcSession(titleId, rtc, resolution = settings.resolution, nativeTouch=touchMode==TouchMode.NATIVE,options=sessionOptions,microphone=settings.microphone, onQueueStatus = { status -> runOnUiThread {
+                signaling.startAndConnectWebRtcSession(titleId, rtc, resolution = settings.resolution, nativeTouch=touchMode==TouchMode.NATIVE,options=sessionOptions,microphone=settings.microphone, onStage={ timeline.mark(0, it) }, onQueueStatus = { status -> runOnUiThread {
                     if (generation == playbackGeneration) showQueue(status)
                 } }) { progress -> runOnUiThread {
                     if (generation == playbackGeneration && !firstFrame.isCompleted) {
@@ -1422,6 +1475,7 @@ open class MainActivity : Activity() {
                 }
                 reloadTransmission=reload@ {
                     val token=recoveryState.begin() ?: return@reload
+                    timeline.beginReconnect(token)
                     val previousInput=rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics()
                     val savedTouch=pendingRecoveryTouch ?: currentTouchMode
                     pendingRecoveryTouch=savedTouch
@@ -1440,15 +1494,22 @@ open class MainActivity : Activity() {
                                 if(webrtcClient===previousRtc) webrtcClient=null
                                 previousRtc?.close();allocatedRtc=null
                                 surfaceRenderer.rebuildSurface()
+                                timeline.mark(token, PlaybackStage.RENDERER_READY)
                                 transportFailure=CompletableDeferred()
                                 val failure=transportFailure
                                 val frame=CompletableDeferred<Unit>()
-                                surfaceRenderer.onFirstFrameSubmitted={ if(generation==playbackGeneration && recoveryState.current(token)) frame.complete(Unit) }
+                                surfaceRenderer.onFirstFrameSubmitted={ submittedAt ->
+                                    if (generation == playbackGeneration && recoveryState.current(token)) {
+                                        timeline.mark(token, PlaybackStage.FIRST_EGL_SUBMISSION, submittedAt)
+                                        frame.complete(Unit)
+                                    }
+                                }
                                 surfaceRenderer.onRenderError={ if(generation==playbackGeneration && recoveryState.current(token)) failure.complete(RenderFailureException(it)) }
                                 rtc=buildRtc();webrtcClient=rtc
                                 rtc.setAudioForeground(activityVisible)
                                 surfaceRenderer.displayDimensions()?.let(rtc::updateDisplayDimensions)
-                                signaling.reconnectExistingSession(rtc,microphone=settings.microphone).getOrThrow()
+                                signaling.reconnectExistingSession(rtc,microphone=settings.microphone,
+                                    onStage={ timeline.mark(token, it) }).getOrThrow()
                                 rtc.setNativeTouchEnabled(savedTouch==TouchMode.NATIVE)
                                 awaitTransmissionFrame(frame,failure)
                                 true
@@ -1576,9 +1637,10 @@ open class MainActivity : Activity() {
                     val rtc=allocatedRtc
                     if(!firstFrame.isCompleted) runCatching {
                         val version=packageManager.getPackageInfo(packageName,0).versionName ?: "n/d"
+                        val snapshot = timeline.snapshot()
                         startupReportStore.save(gameName,"xCLOUD $version\nSTARTUP/NO_VIDEO; input=${touchMode.name}; failure=${startupFailure ?: "NONE"}\n"+
                             "$startupInput\nREQUESTED_PROFILE/${settings.resolution.name}; os=${settings.resolution.osName}; codec=${settings.videoCodec.name}; mode=${settings.videoMode.name}\n"+
-                            signaling.startupDiagnostics()+"\n"+(rtc?.inputDiagnostics() ?: ""))
+                            snapshot.text()+"\n"+signaling.startupDiagnostics()+"\n"+(rtc?.inputDiagnostics() ?: ""),snapshot)
                     }
                     tracker.finish(android.os.SystemClock.elapsedRealtime(),if(failed) SessionEnd.FAILURE else SessionEnd.USER,rtc?.currentInputMetrics())
                     microphoneJob?.cancelAndJoin();microphoneJob=null;pendingMicrophoneGeneration=null
@@ -1711,7 +1773,8 @@ open class MainActivity : Activity() {
         }
     }
 
-    private fun showCopyableErrorDialog(gameName: String, fullError: String,onBack: (() -> Unit)?=null) {
+    private fun showCopyableErrorDialog(gameName: String, fullError: String,onBack: (() -> Unit)?=null,
+                                        export: (() -> Unit)?=null) {
         ConsoleDialogs.message(this,UiText.text("Diagnóstico de sessão ({0})",UiText.nested(gameName)),fullError,listOf(
             ConsoleAction(UiText.text("Copiar detalhes")) {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -1719,6 +1782,7 @@ open class MainActivity : Activity() {
                 Toast.makeText(this,UiText.text("Detalhes copiados!"),Toast.LENGTH_LONG).show()
                 onBack?.invoke()
             }, ConsoleAction(UiText.text("Fechar")) { onBack?.invoke() }),onCancel={ onBack?.invoke() })
+            .also { dialog -> if (export != null) dialog.addPersistentAction(UiText.text("Exportar diagnóstico"), export) }
     }
 
     private fun gameplayInputEnabled() = controlPanel.visibility == View.GONE &&

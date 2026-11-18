@@ -1250,4 +1250,5 @@
     <string name="ui_6168ae9c0ab7595c" formatted="false">"{0}분"</string>
     <string name="ui_73d1dd504499ea34" formatted="false">"게임 전환"</string>
     <string name="ui_d69d87868f85df52" formatted="false">"현재 세션을 종료하고 {0}을(를) 열까요?"</string>
+    <string name="ui_fefc0b4a78d70f6c" formatted="false">"진단 정보 내보내기"</string>
 </resources>

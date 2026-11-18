@@ -4,6 +4,7 @@ import com.xcloud.tclnative.i18n.UiText
 
 import com.xcloud.tclnative.webrtc.*
 import java.util.Locale
+import org.json.JSONObject
 import kotlin.math.roundToInt
 
 enum class ReportMetric(private val sourceLabel: String,private val sourceUnit: String) {
@@ -14,7 +15,29 @@ enum class ReportMetric(private val sourceLabel: String,private val sourceUnit: 
     val label: String get()=UiText.text(sourceLabel)
     val unit: String get()=UiText.text(sourceUnit)
 }
-data class MetricSummary(val average: Double,val minimum: Double,val peak: Double,val samples: Long)
+data class MetricSummary(
+    val average: Double, val minimum: Double, val peak: Double, val samples: Long,
+    val percentiles: SamplePercentiles? = null
+)
+
+data class SamplePercentiles(val p50: Double, val p95: Double, val p99: Double, val samples: Int) {
+    internal fun json() = JSONObject().put("p50", p50).put("p95", p95).put("p99", p99).put("samples", samples)
+
+    internal companion object {
+        const val WINDOW = 120
+
+        fun read(json: JSONObject?): SamplePercentiles? {
+            if (json == null) return null
+            val count = json.optInt("samples")
+            val p50 = json.optDouble("p50")
+            val p95 = json.optDouble("p95")
+            val p99 = json.optDouble("p99")
+            if (count !in 1..WINDOW || !p50.isFinite() || !p95.isFinite() || !p99.isFinite() ||
+                p50 < 0 || p95 < p50 || p99 < p95) return null
+            return SamplePercentiles(p50, p95, p99, count)
+        }
+    }
+}
 enum class SessionEnd(private val sourceLabel: String) { USER("Encerrada pelo usuário"),FAILURE("Falha na transmissão"),REPLACED("Outra partida iniciada"),APP_CLOSED("Aplicativo fechado") ;
     val label: String get()=UiText.text(sourceLabel)
 }
@@ -26,7 +49,8 @@ data class SessionReport(
     val droppedFrames: Long?,val pointerEvents: Long,val inputWaits: Long,val inputCoalesced: Long,
     val stalledMs: Long,val stalledEvents: Long,val stalledWithoutDataMs: Long,val stalledWithDataMs: Long,
     val recovery: Map<VideoRecoveryAction,Int>,val score: Int?,val inputDetails: String? = null,val failure: SessionFailure? = null,
-    val interruption: SessionFailure? = null,val interruptionDetails: String?=null
+    val interruption: SessionFailure? = null,val interruptionDetails: String?=null,
+    val timeline: PlaybackTimeline.Snapshot? = null
 ) {
     val quality: String get()=when { interruption!=null || end==SessionEnd.FAILURE -> UiText.text("Atenção"); score==null -> UiText.text("Dados parciais"); score>=90 -> UiText.text("Excelente"); score>=75 -> UiText.text("Boa"); score>=60 -> UiText.text("Regular"); else -> UiText.text("Atenção") }
     fun findings(): List<String> = buildList {
@@ -47,6 +71,15 @@ data class SessionReport(
         if(score==null) add(UiText.text("Amostras insuficientes para calcular o índice completo. Campos não medidos aparecem como n/d."))
         if(isEmpty()) add(UiText.text("Os indicadores disponíveis não apresentaram um alerta importante nesta coleta."))
     }
+    fun exportJson(): JSONObject? = timeline?.json()?.apply {
+        put("end", end.name)
+        put("lastIntervalSamples", JSONObject().apply {
+            metrics.forEach { (metric, summary) ->
+                summary.percentiles?.let { put(metric.name, it.json()) }
+            }
+        })
+    }
+
     fun text(): String = buildString {
         append(UiText.text("xCLOUD • Diagnóstico pós-partida\n{0}\n{1}\n{2}\n",UiText.nested(game),UiText.nested(device),UiText.nested(network)))
         append(UiText.text("Tempo conectado: {0} | Observado: {1} | {2} amostras\n",UiText.nested(duration(durationMs)),UiText.nested(duration(observedMs)),UiText.nested(samples)))
@@ -54,12 +87,17 @@ data class SessionReport(
         if(end==SessionEnd.FAILURE) append(UiText.text("Motivo do encerramento: {0}\n",UiText.nested(failure?.description ?: UiText.text("não registrado nesta versão do relatório"))))
         interruption?.let { append(UiText.text("Primeira interrupção observada: {0}\n",UiText.nested(it.description))) }
         interruptionDetails?.let { append(UiText.text("Estado anterior da transmissão: {0}\n",UiText.nested(it))) }
+        timeline?.let { append(it.text()).append('\n') }
         inputDetails?.let { append("$it\n") }
         append(UiText.text("Recebido: {0} | {1} | {2}\n",UiText.nested(resolution ?: "n/d"),UiText.nested(codec ?: "n/d"),UiText.nested(decoder ?: "n/d")))
         append(UiText.text("Índice estimado: {0}/100 • {1}\n\n",UiText.nested(score?.toString() ?: "n/d"),UiText.nested(quality)))
         ReportMetric.entries.forEach { key ->
             val m=metrics[key]
             append(UiText.text("{0}: média {1} | mín. {2} | pico {3} {4}\n",UiText.nested(key.label),UiText.nested(number(m?.average)),UiText.nested(number(m?.minimum)),UiText.nested(number(m?.peak)),UiText.nested(key.unit)))
+            m?.percentiles?.let {
+                append("  p50 ").append(number(it.p50)).append(" | p95 ").append(number(it.p95))
+                append(" | p99 ").append(number(it.p99)).append(" ").append(key.unit).append(" (n=").append(it.samples).append(")\n")
+            }
         }
         append(UiText.text("\nRecebido WebRTC: {0} | Enviado WebRTC: {1}\n",UiText.nested(bytes(receivedBytes)),UiText.nested(bytes(uploadedBytes))))
         append(UiText.text("Vídeo RTP: {0} | Input aceito pelo canal: {1}\n",UiText.nested(bytes(videoBytes)),UiText.nested(bytes(inputBytes))))
@@ -87,6 +125,7 @@ data class SessionReport(
 /** Constant memory per session: aggregates, counters and watchdog observations, not per-second lists. */
 class SessionReportTracker(private val game: String,private val device: String,private val profile: String,
                            private val fpsTarget: Int,private val wallClock: () -> Long = System::currentTimeMillis) {
+    var timeline: PlaybackTimeline? = null
     @Volatile var inputDetails: (() -> String)? = null
     private var failure: SessionFailure?=null
     private var interruption: SessionFailure?=null
@@ -99,11 +138,22 @@ class SessionReportTracker(private val game: String,private val device: String,p
     @Synchronized fun recordFailure(error: Throwable) {
         if(!frozen && failure==null && error !is kotlinx.coroutines.CancellationException) failure=SessionFailure.from(error)
     }
-    private class Aggregate {
+    private class Aggregate(retainSamples: Boolean) {
+        private val recent = if (retainSamples) DoubleArray(SamplePercentiles.WINDOW) else null
         var sum=0.0; var weight=0.0; var low=Double.POSITIVE_INFINITY; var high=0.0; var count=0L
         fun add(v: Double?,w: Double) { if(v==null || !v.isFinite() || v<0 || !w.isFinite() || w<=0) return
+            if (recent != null) recent[(count % recent.size).toInt()] = v
             sum+=v*w; weight+=w; low=minOf(low,v); high=maxOf(high,v); count++ }
-        fun snapshot()=if(count==0L) null else MetricSummary(sum/weight,low,high,count)
+        fun snapshot(): MetricSummary? {
+            if (count == 0L) return null
+            val percentiles = recent?.let {
+                val n = minOf(count, it.size.toLong()).toInt()
+                val sorted = it.copyOf(n).apply { sort() }
+                fun at(percent: Int) = sorted[(n * percent + 99) / 100 - 1]
+                SamplePercentiles(at(50), at(95), at(99), n)
+            }
+            return MetricSummary(sum / weight, low, high, count, percentiles)
+        }
     }
     private class Counter {
         var total=0L; var last=0L; var source: String?=null; var known=false
@@ -112,7 +162,9 @@ class SessionReportTracker(private val game: String,private val device: String,p
             source=key; last=v; known=true }
         fun value()=if(known) total else null
     }
-    private val values=ReportMetric.entries.associateWith { Aggregate() }
+    private val values = ReportMetric.entries.associateWith {
+        Aggregate(it == ReportMetric.RTT || it == ReportMetric.DECODE || it == ReportMetric.JITTER || it == ReportMetric.BUFFER)
+    }
     private val video=Counter(); private val down=Counter(); private val up=Counter()
     private var start: Long?=null; private var frozen=false; private var delivered=false; private var report: SessionReport?=null
     private var visible=true; private var network=UiText.text("Rede não informada"); private var resumed=false
@@ -190,7 +242,7 @@ class SessionReportTracker(private val game: String,private val device: String,p
             (observed*1000).toLong(),samples,wallClock(),end,metrics,resolution,codec,decoder,efficient,video.value(),down.value(),up.value(),
             input.sentBytes,dropped.takeIf { droppedKnown },input.pointerEventsSent,input.backpressureSkips,input.coalescedEdges,
             stallMs,stallEvents,noDataMs,withDataMs,recovery.toMap(),score,inputDetails?.invoke()?.take(SessionReport.MAX_INPUT_DETAILS),
-            failure.takeIf { end==SessionEnd.FAILURE },interruption,interruptionDetails)
+            failure.takeIf { end==SessionEnd.FAILURE },interruption,interruptionDetails,timeline?.snapshot())
         return report
     }
     @Synchronized fun takeReport(): SessionReport? { val ready=report ?: return null; if(delivered) return null; delivered=true; return ready }

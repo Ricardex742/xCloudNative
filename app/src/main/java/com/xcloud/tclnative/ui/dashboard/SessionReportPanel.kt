@@ -15,7 +15,8 @@ import com.xcloud.tclnative.diagnostics.*
 
 /** Native post-match view, built only after playback ends. */
 object SessionReportPanel {
-    fun show(context: Context,report: SessionReport,onBack: (() -> Unit)?=null,disableAutomatic: (() -> Unit)?=null): ConsoleDialog {
+    fun show(context: Context,report: SessionReport,onBack: (() -> Unit)?=null,
+             export: (() -> Unit)?=null,disableAutomatic: (() -> Unit)?=null): ConsoleDialog {
         val dialog=ConsoleDialog(context,UiText.text("Diagnóstico pós-partida"))
         val accent=when { report.interruption!=null || report.end==SessionEnd.FAILURE -> 0xffff826d.toInt(); report.score==null -> DashboardTheme.muted; report.score>=75 -> 0xff54de69.toInt(); report.score>=60 -> 0xffffcd66.toInt(); else -> 0xffff826d.toInt() }
         val hero=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL; gravity=Gravity.CENTER_VERTICAL }
@@ -65,6 +66,9 @@ object SessionReportPanel {
             dialog.body.addView(line,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=dialog.px(9) })
         }
         dialog.body.addView(dialog.text(UiText.join(UiText.text("Recebido WebRTC: {0} • Enviado: {1}\n",UiText.nested(SessionReport.bytes(report.receivedBytes)),UiText.nested(SessionReport.bytes(report.uploadedBytes))),UiText.text("Vídeo RTP: {0} • Input: {1}\n",UiText.nested(SessionReport.bytes(report.videoBytes)),UiText.nested(SessionReport.bytes(report.inputBytes))),UiText.text("Descartes observados: {0} • Sem progresso: {1} ({2} episódios)\n",UiText.nested(report.droppedFrames ?: "n/d"),UiText.nested(SessionReport.duration(report.stalledMs)),UiText.nested(report.stalledEvents)),UiText.text("Apresentação solicitada: {0} FPS • Decoder: {1}",UiText.nested(report.presentationFps),UiText.nested(report.decoder ?: "n/d")),(report.inputDetails?.let { "\n$it" } ?: "")),19,color=DashboardTheme.muted).apply { isFocusable=true; isFocusableInTouchMode=true; DashboardTheme.customFocus(this) })
+        report.timeline?.let { timeline ->
+            dialog.body.addView(dialog.text(timeline.text(),19,color=DashboardTheme.muted))
+        }
         report.findings().forEach { finding -> dialog.body.addView(dialog.text("• $finding",20).apply { isFocusable=true; isFocusableInTouchMode=true; DashboardTheme.customFocus(this) },LinearLayout.LayoutParams(-1,-2).apply { topMargin=dialog.px(8) }) }
         dialog.body.addView(dialog.text(UiText.text("Índice estimado. FPS decodificados não são FPS do jogo ou da tela. Rede e pausas refletem as amostras disponíveis; enlace Wi-Fi não mede velocidade de internet."),17,color=DashboardTheme.muted),
             LinearLayout.LayoutParams(-1,-2).apply { topMargin=dialog.px(12) })
@@ -72,6 +76,7 @@ object SessionReportPanel {
             (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText(UiText.text("Diagnóstico xCLOUD"),report.text()))
             Toast.makeText(context,UiText.text("Diagnóstico copiado."),Toast.LENGTH_SHORT).show()
         }
+        if(export!=null) dialog.addPersistentAction(UiText.text("Exportar diagnóstico"),export)
         if(disableAutomatic!=null) dialog.addAction(UiText.text("Não abrir automaticamente")) { disableAutomatic() }
         val done=dialog.addAction(if(onBack==null) UiText.text("Concluir") else UiText.text("Voltar")) { onBack?.invoke() }
         if(onBack!=null) dialog.setOnCancelListener { onBack() }

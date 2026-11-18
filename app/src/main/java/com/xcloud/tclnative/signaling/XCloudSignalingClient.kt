@@ -4,6 +4,7 @@ import com.xcloud.tclnative.i18n.UiText
 
 import com.xcloud.tclnative.auth.AuthenticationRequiredException
 import com.xcloud.tclnative.auth.XCloudSession
+import com.xcloud.tclnative.diagnostics.PlaybackStage
 import com.xcloud.tclnative.settings.SessionOptions
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -197,7 +198,7 @@ class XCloudSignalingClient(
     }
 
     private suspend fun awaitProvisioned(allocation: Allocation, titleId: String, onQueueStatus: (QueueStatus?) -> Unit,
-                                         onProgress: (String) -> Unit) = coroutineScope {
+                                         onProgress: (String) -> Unit, onStage: (PlaybackStage) -> Unit) = coroutineScope {
         val started = clockMs()
         val path = allocation.path
         val startupTrace = allocation.attempt.startupTrace
@@ -217,7 +218,10 @@ class XCloudSignalingClient(
                     onQueueStatus(null)
                 }
                 when (name) {
-                    "Provisioned" -> return@coroutineScope
+                    "Provisioned" -> {
+                        onStage(PlaybackStage.PROVISIONED)
+                        return@coroutineScope
+                    }
                     "ReadyToConnect" -> {
                         if (connectSentAt == null) {
                             onProgress("CONSOLE_CONNECT: Autenticando a sessão Xbox...")
@@ -231,6 +235,7 @@ class XCloudSignalingClient(
                     }
                     "WaitingForResources" -> {
                         val confirmedAt = clockMs()
+                        if (queue == null) onStage(PlaybackStage.QUEUE_CONFIRMED)
                         queue = (queue ?: QueueStatus(confirmedAt, confirmedAt, limitMs = queueTimeoutMs))
                             .copy(confirmedAtMs = confirmedAt)
                         pendingEstimate?.takeIf { it.isCompleted }?.let {
@@ -293,7 +298,8 @@ class XCloudSignalingClient(
     suspend fun startAndConnectWebRtcSession(
         titleId: String, peer: StreamingPeer, onQueueStatus: (QueueStatus?) -> Unit = {},
         resolution: StreamResolution = StreamResolution.HD_1080_HQ, nativeTouch: Boolean=false,
-        options: SessionOptions=SessionOptions(),microphone: Boolean=false,onProgress: (String) -> Unit
+        options: SessionOptions=SessionOptions(),microphone: Boolean=false,
+        onStage: (PlaybackStage) -> Unit = {}, onProgress: (String) -> Unit
     ): Result<String> = withContext(Dispatchers.IO) {
         val selected = session.regions.firstOrNull { it.name == options.region && options.region.isNotEmpty() }
         val region = selected?.name ?: if (options.region.isBlank()) UiText.text("Automático")
@@ -314,6 +320,7 @@ class XCloudSignalingClient(
                         .put("enableTextToSpeech", false).put("highContrast", 0).put("locale", profile.locale)
                         .put("useIceConnection", false).put("timezoneOffsetMinutes", -180).put("sdkType", "web")
                         .put("osName", profile.resolution.osName))
+                onStage(PlaybackStage.PLAY_REQUEST)
                 val response = JSONObject(request("/v5/sessions/cloud/play", "PLAY", "POST", play,
                     base = profile.baseUri, resolution = profile.resolution))
                 val path = CloudProtocol.sessionUrl(profile.baseUri, response.getString("sessionPath")).encodedPath.trimEnd('/')
@@ -322,11 +329,11 @@ class XCloudSignalingClient(
                     active.set(it)
                 }
             }
-            awaitProvisioned(allocation, titleId, onQueueStatus, onProgress)
+            awaitProvisioned(allocation, titleId, onQueueStatus, onProgress, onStage)
 
             onProgress("SDP: Sessão provisionada. Negociando vídeo nativo...")
             val ready = allocation.transportLock.withLock {
-                negotiateTransport(allocation, peer, microphone, allocation.sdpRequest.toString(), onProgress)
+                negotiateTransport(allocation, peer, microphone, allocation.sdpRequest.toString(), onProgress, onStage)
             }
             connected = true
             Result.success(ready)
@@ -348,13 +355,14 @@ class XCloudSignalingClient(
 
     /** Reuses the allocation. Failure/cancellation must never DELETE it or start another PLAY. */
     suspend fun reconnectExistingSession(peer: StreamingPeer,microphone: Boolean=false,
-                                        onProgress: (String) -> Unit={}): Result<String> {
+                                        onStage: (PlaybackStage) -> Unit = {},
+                                         onProgress: (String) -> Unit={}): Result<String> {
         val allocation = active.get() ?: return Result.failure(IOException("RECONNECT: sessão Xbox indisponível"))
         return withContext(Dispatchers.IO) {
             allocation.transportLock.withLock {
                 try {
                     sessionRequest(allocation, "${allocation.path}/keepalive", "RECONNECT_KEEPALIVE", "POST", client = keepAliveClient)
-                    val ready = negotiateTransport(allocation, peer, microphone, (++allocation.sdpRequest).toString(), onProgress)
+                    val ready = negotiateTransport(allocation, peer, microphone, (++allocation.sdpRequest).toString(), onProgress, onStage)
                     Result.success(ready)
                 } catch(timeout: kotlinx.coroutines.TimeoutCancellationException) {
                     kotlinx.coroutines.currentCoroutineContext().ensureActive()
@@ -366,7 +374,7 @@ class XCloudSignalingClient(
     }
 
     private suspend fun negotiateTransport(allocation: Allocation,peer: StreamingPeer,microphone: Boolean,requestId: String,
-                                          onProgress: (String) -> Unit): String {
+                                          onProgress: (String) -> Unit, onStage: (PlaybackStage) -> Unit): String {
             requireActive(allocation)
             val path = allocation.path
             val (offer, candidates) = peer.createOfferSdp()
@@ -381,6 +389,7 @@ class XCloudSignalingClient(
             sessionRequest(allocation, "$path/sdp", "SDP_OFFER", "POST", JSONObject().put("messageType", "offer")
                 .put("requestId", requestId).put("sdp", offer).put("configuration", configuration))
             peer.onOfferPosted()
+            onStage(PlaybackStage.OFFER_POSTED)
             val answerObject=exchange(allocation, "$path/sdp", "SDP_ANSWER",requestId) as? JSONObject
             peer.configureInput(answerObject?.optInt("input",0) ?: 0)
             peer.configureChat(microphone && (answerObject?.optInt("chatStream",0) ?: 0)>0)
@@ -388,6 +397,8 @@ class XCloudSignalingClient(
                 ?.takeIf { it.isNotBlank() } ?: throw IOException("SDP_ANSWER: resposta sem SDP")
             requireActive(allocation)
             peer.setRemoteAnswer(answer)
+            requireActive(allocation)
+            onStage(PlaybackStage.ANSWER_APPLIED)
             onProgress("ICE: Negociando conectividade com o Xbox...")
             sessionRequest(allocation, "$path/ice", "ICE_LOCAL", "POST", CloudProtocol.icePayload(candidates))
             val remote = CloudProtocol.remoteCandidates(exchange(allocation, "$path/ice", "ICE_REMOTE"))
@@ -397,6 +408,7 @@ class XCloudSignalingClient(
             onProgress("TRANSPORT: Aguardando ICE e canais de controle...")
             peer.awaitReady()
             requireActive(allocation)
+            onStage(PlaybackStage.TRANSPORT_READY)
             return UiText.text("Transporte conectado. Aguardando o primeiro quadro de vídeo...")
     }
 

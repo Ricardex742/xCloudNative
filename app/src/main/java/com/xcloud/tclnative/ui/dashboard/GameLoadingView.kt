@@ -122,14 +122,14 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         phase = if (value != null) LoadingPhase.QUEUED else LoadingPhase.PREPARING
         render(nowMs)
     }
-    fun updateProgress(progress: String) {
+    fun updateProgress(progress: String, nowMs: Long = System.nanoTime() / 1_000_000) {
         phase = when {
             progress.startsWith("QUEUE:") -> LoadingPhase.QUEUED
             progress.startsWith("VIDEO:") -> LoadingPhase.VIDEO
             progress.startsWith("SDP:") || progress.startsWith("ICE:") || progress.startsWith("TRANSPORT:") -> LoadingPhase.CONNECTING
             else -> LoadingPhase.PREPARING
         }
-        render(System.nanoTime()/1_000_000)
+        render(nowMs)
     }
     fun render(nowMs: Long) {
         lastRenderedAt=nowMs

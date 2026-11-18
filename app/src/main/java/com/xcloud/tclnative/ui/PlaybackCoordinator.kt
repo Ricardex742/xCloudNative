@@ -1,6 +1,8 @@
 package com.xcloud.tclnative.ui
 
 import androidx.annotation.MainThread
+import com.xcloud.tclnative.diagnostics.PlaybackOrigin
+import com.xcloud.tclnative.diagnostics.PlaybackTimeline
 import com.xcloud.tclnative.webrtc.TransmissionRecoveryState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CompletableDeferred
@@ -17,8 +19,12 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
 
 /** Queues playback behind the previous owner's cleanup. Mutations are confined to the UI thread. */
-internal class PlaybackCoordinator(private val scope: CoroutineScope) {
-    class Attempt(val generation: Int) {
+internal class PlaybackCoordinator(
+    private val scope: CoroutineScope,
+    private val clockMs: () -> Long = { System.nanoTime() / 1_000_000 }
+) {
+    class Attempt(val generation: Int, val timeline: PlaybackTimeline =
+        PlaybackTimeline(generation, PlaybackOrigin.CATALOG) { System.nanoTime() / 1_000_000 }) {
         val firstFrame = CompletableDeferred<Unit>()
         val recovery = TransmissionRecoveryState()
 
@@ -57,16 +63,17 @@ internal class PlaybackCoordinator(private val scope: CoroutineScope) {
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @MainThread
-    fun start(prepare: () -> Unit, play: suspend CoroutineScope.(Attempt) -> Unit) {
+    fun start(origin: PlaybackOrigin = PlaybackOrigin.CATALOG, prepare: () -> Unit, play: suspend CoroutineScope.(Attempt) -> Unit) {
         val previous = job
         previous?.cancel()
         val next = ++generation
+        val timeline = PlaybackTimeline(next, origin, clockMs)
         prepare()
         // A cancelled waiting launch must still join its predecessor before completing.
         job = scope.launch(start = CoroutineStart.ATOMIC) {
             if (previous != null) withContext(NonCancellable) { previous.join() }
             ensureActive()
-            if (generation == next) play(Attempt(next))
+            if (generation == next) play(Attempt(next, timeline))
         }
     }
 

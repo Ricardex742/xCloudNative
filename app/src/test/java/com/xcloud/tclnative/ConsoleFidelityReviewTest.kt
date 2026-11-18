@@ -103,7 +103,17 @@ class ConsoleFidelityReviewTest {
                     }
                     if(theme.scene.playStation) {
                         seed(a,data,minOf(w/1280f,h/720f))
-                        val q=GameLoadingView(a) {};try { q.begin(data.last(),0);q.updateQueue(QueueStatus(0,0,QueueEstimate(73),0),0);layout(q,w,h);capture(q,"${theme.name}-$h-queue");q.updateProgress("ICE:Connecting");layout(q,w,h);capture(q,"${theme.name}-$h-connecting") } finally { q.close() }
+                        val q = GameLoadingView(a) {}
+                        try {
+                            q.begin(data.last(), 0)
+                            q.updateQueue(QueueStatus(0, 1000, QueueEstimate(73), 1000), 1000)
+                            layout(q, w, h)
+                            capture(q, "${theme.name}-$h-queue")
+                            q.updateProgress("ICE:Connecting", nowMs = 5000)
+                            layout(q, w, h)
+                            assertTrue(all(q).filterIsInstance<TextView>().any { it.isShown && it.text == QueueStatus.duration(5) })
+                            capture(q, "${theme.name}-$h-connecting")
+                        } finally { q.close() }
                         val d=GameMenuPanel.show(a,{},{},{},{},hudToggle={},audio={},friends={},settings={});try { layout(d.panel,d.window!!.attributes.width,h,false);capture(d.panel,"${theme.name}-$h-game-menu");assertImmersive(d.window!!) } finally { d.dismiss() }
                     }
                 }

@@ -40,11 +40,13 @@ class SessionReportStore(context: Context) {
             .put("inputBytes",r.inputBytes).put("inputDetails",r.inputDetails?.take(SessionReport.MAX_INPUT_DETAILS)).put("dropped",r.droppedFrames).put("pointers",r.pointerEvents)
             .put("waits",r.inputWaits).put("coalesced",r.inputCoalesced).put("stallMs",r.stalledMs)
             .put("stalls",r.stalledEvents).put("noData",r.stalledWithoutDataMs).put("withData",r.stalledWithDataMs).put("score",r.score)
+        r.timeline?.let { data.put("timeline", it.json()) }
         r.failure?.let { data.put("failure",it.json()) }
         r.interruption?.let { data.put("interruption",it.json()) }
         r.interruptionDetails?.let { data.put("interruptionDetails",it.take(SessionReportTracker.MAX_INTERRUPTION_DETAILS)) }
         val metrics=JSONObject()
-        r.metrics.forEach { (key,m) -> metrics.put(key.name,JSONObject().put("avg",m.average).put("min",m.minimum).put("peak",m.peak).put("samples",m.samples)) }
+        r.metrics.forEach { (key,m) -> metrics.put(key.name,JSONObject().put("avg",m.average).put("min",m.minimum)
+            .put("peak",m.peak).put("samples",m.samples).put("percentiles",m.percentiles?.json())) }
         data.put("metrics",metrics)
         data.put("recovery",JSONObject().apply { r.recovery.forEach { (k,v) -> put(k.name,v) } })
         if(!prefs.edit().putString("last",data.toString()).commit()) throw IOException(UiText.text("Não foi possível salvar o diagnóstico neste aparelho."))
@@ -61,7 +63,8 @@ class SessionReportStore(context: Context) {
                     val m=d.optJSONObject("metrics")?.optJSONObject(key.name) ?: return@mapNotNull null
                     val avg=m.optDouble("avg",Double.NaN); val low=m.optDouble("min",Double.NaN); val high=m.optDouble("peak",Double.NaN)
                     if(!avg.isFinite() || !low.isFinite() || !high.isFinite() || low<0 || avg<0 || high<low) null
-                    else key to MetricSummary(avg,low,high,m.optLong("samples").coerceAtLeast(0))
+                    else key to MetricSummary(avg,low,high,m.optLong("samples").coerceAtLeast(0),
+                        SamplePercentiles.read(m.optJSONObject("percentiles")))
                 }.toMap()
                 val recovery=VideoRecoveryValues.read(d.optJSONObject("recovery"))
                 SessionReport(s("game",256) ?: UiText.text("Jogo"),s("device") ?: UiText.text("Dispositivo não informado"),s("network") ?: UiText.text("Rede não informada"),
@@ -69,7 +72,7 @@ class SessionReportStore(context: Context) {
                     SessionEnd.entries.firstOrNull { it.name==d.optString("end") } ?: return null,metrics,s("resolution",48),s("codec",80),s("decoder",160),
                     if(d.has("efficient")) d.optBoolean("efficient") else null,l("videoBytes"),l("receivedBytes"),l("uploadedBytes"),n("inputBytes"),
                     l("dropped"),n("pointers"),n("waits"),n("coalesced"),n("stallMs"),n("stalls"),n("noData"),n("withData"),recovery,
-                    if(d.has("score")) d.optInt("score").takeIf { it in 0..100 } else null,s("inputDetails",SessionReport.MAX_INPUT_DETAILS),SessionFailure.read(d.optJSONObject("failure")),SessionFailure.read(d.optJSONObject("interruption")),s("interruptionDetails",SessionReportTracker.MAX_INTERRUPTION_DETAILS))
+                    if(d.has("score")) d.optInt("score").takeIf { it in 0..100 } else null,s("inputDetails",SessionReport.MAX_INPUT_DETAILS),SessionFailure.read(d.optJSONObject("failure")),SessionFailure.read(d.optJSONObject("interruption")),s("interruptionDetails",SessionReportTracker.MAX_INTERRUPTION_DETAILS),PlaybackTimeline.read(d.optJSONObject("timeline")))
             }
         }
     } catch(_: Exception) { null } }

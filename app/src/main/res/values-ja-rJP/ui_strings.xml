@@ -1250,4 +1250,5 @@
     <string name="ui_6168ae9c0ab7595c" formatted="false">"{0}分"</string>
     <string name="ui_73d1dd504499ea34" formatted="false">"ゲームを切り替える"</string>
     <string name="ui_d69d87868f85df52" formatted="false">"現在のセッションを終了して{0}を開きますか？"</string>
+    <string name="ui_fefc0b4a78d70f6c" formatted="false">"診断情報をエクスポート"</string>
 </resources>

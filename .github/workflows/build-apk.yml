@@ -107,7 +107,7 @@ jobs:
             echo "### APK $BUILD_TYPE gerado"
             echo "- Branch: $GITHUB_REF_NAME"
             echo '- Android mínimo: 7.0 (API 24), incluindo Android 10 (API 29).'
-            echo '- Assinatura e lint NewApi/InlinedApi verificados.'
+            echo '- Assinatura e lint de APIs, permissões e receptores verificados.'
             echo '- Testes JVM de autenticação, provisionamento e protocolo executados.'
             echo "- Baixe o artefato $artifact abaixo."
           } >> "$GITHUB_STEP_SUMMARY"

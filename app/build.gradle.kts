@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 100
-        versionName = "0.40.5-session-architecture"
+        versionCode = 101
+        versionName = "0.40.6-playback-diagnostics"
     }
 
     signingConfigs {
@@ -46,7 +46,13 @@ android {
     }
 
     lint {
-        checkOnly += setOf("NewApi", "InlinedApi")
+        if (project.providers.gradleProperty("xcloud.lintAudit").isPresent) {
+            abortOnError = false
+            xmlOutput = file("${layout.buildDirectory.get()}/reports/lint-audit-debug.xml")
+            htmlOutput = file("${layout.buildDirectory.get()}/reports/lint-audit-debug.html")
+        } else {
+            checkOnly += setOf("NewApi", "InlinedApi", "MissingPermission", "UnspecifiedRegisterReceiverFlag")
+        }
     }
     testOptions.unitTests {
         isIncludeAndroidResources = true

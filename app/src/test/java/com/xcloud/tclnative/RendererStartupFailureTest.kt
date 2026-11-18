@@ -112,6 +112,9 @@ class RendererStartupFailureTest {
                 assertTrue(saved.text,saved.text.contains("failure=RENDERER/"))
                 assertTrue(saved.text,saved.text.contains("REQUESTED_PROFILE/"))
                 assertFalse(saved.text.contains("test-token"))
+                val timeline = checkNotNull(saved.timeline)
+                assertEquals(com.xcloud.tclnative.diagnostics.PlaybackOrigin.CATALOG, timeline.origin)
+                assertTrue(timeline.transports.single().stages.isEmpty())
                 assertNull(ReflectionHelpers.getField<AiPqSurfaceRenderer>(activity,"surfaceRenderer")
                     .let { ReflectionHelpers.getField<Any?>(it,"renderer") })
             }

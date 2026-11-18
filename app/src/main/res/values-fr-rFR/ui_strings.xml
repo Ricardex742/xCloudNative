@@ -1250,4 +1250,5 @@
     <string name="ui_6168ae9c0ab7595c" formatted="false">"{0}min"</string>
     <string name="ui_73d1dd504499ea34" formatted="false">"Changer de jeu"</string>
     <string name="ui_d69d87868f85df52" formatted="false">"Terminer la session actuelle et ouvrir {0} ?"</string>
+    <string name="ui_fefc0b4a78d70f6c" formatted="false">"Exporter le diagnostic"</string>
 </resources>

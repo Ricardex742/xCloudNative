@@ -1,6 +1,7 @@
 package com.xcloud.tclnative
 
 import com.xcloud.tclnative.auth.XCloudSession
+import com.xcloud.tclnative.diagnostics.PlaybackStage
 import com.xcloud.tclnative.signaling.XCloudSignalingClient
 import com.xcloud.tclnative.webrtc.StreamingPeer
 import com.xcloud.tclnative.webrtc.StreamResolution
@@ -275,7 +276,10 @@ class SignalingTest {
     }
     @Test fun failedTransportCannotReturnAConnectedStatus() = runBlocking {
         rejectTransport = true
-        assertTrue(signaling().startAndConnectWebRtcSession("real-id", peer) {}.isFailure)
+        val stages = mutableListOf<PlaybackStage>()
+        assertTrue(signaling().startAndConnectWebRtcSession("real-id", peer, onStage={ stages.add(it) }) {}.isFailure)
+        assertEquals(listOf(PlaybackStage.PLAY_REQUEST, PlaybackStage.QUEUE_CONFIRMED, PlaybackStage.PROVISIONED,
+            PlaybackStage.OFFER_POSTED, PlaybackStage.ANSWER_APPLIED), stages)
         assertEquals(1, requests.count { it.method == "DELETE" })
     }
     @Test fun realCatalogContainsNoHardcodedVerifiedGames() = runBlocking {

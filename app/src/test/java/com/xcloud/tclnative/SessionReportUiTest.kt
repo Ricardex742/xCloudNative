@@ -3,6 +3,8 @@ package com.xcloud.tclnative
 import android.app.Activity
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -12,6 +14,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import com.xcloud.tclnative.diagnostics.*
 import com.xcloud.tclnative.settings.*
+import com.xcloud.tclnative.ui.MainActivity
 import com.xcloud.tclnative.ui.dashboard.*
 import com.xcloud.tclnative.webrtc.*
 import org.junit.Assert.*
@@ -25,6 +28,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
 import java.io.File
+import java.io.ByteArrayOutputStream
+import org.json.JSONObject
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28],qualifiers="w1280dp-h720dp-land-mdpi")
@@ -36,6 +41,7 @@ class SessionReportUiTest {
     private fun demo(): SessionReport {
         val t=SessionReportTracker("PARTIDA DE DEMONSTRAÇÃO","Android TV • exemplo","720p • Compatibilidade",30) { 10000 }
         t.begin(0,"Ethernet • dados de demonstração")
+        t.timeline = PlaybackTimeline(2, PlaybackOrigin.CATALOG) { 0 }
         repeat(10) { i -> t.add((i+1)*1000L,StreamMetrics(width=1280,height=720,codec="H264",decoder="MediaCodec",
             rttMs=42.0,jitterMs=4.0,packetLossPercent=.2,fps=30.0,bitrateMbps=5.0,decodeMs=7.0,intervalSeconds=1.0,
             totalReceivedVideoBytes=(i+1)*625000L,videoStreamId="v",transportId="t",transportReceivedBytes=(i+1)*650000L,
@@ -69,6 +75,39 @@ class SessionReportUiTest {
         }
         c.pause().stop().destroy()
     }
+    @Test fun exportRequestsAFileAndWritesOnlyTheStructuredStartupDiagnostic() {
+        val c = Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity = c.get()
+        try {
+            val recorder = PlaybackTimeline(8, PlaybackOrigin.SHORTCUT) { 42 }
+            recorder.mark(0, PlaybackStage.PLAY_REQUEST)
+            StartupDiagnosticsStore(activity).save("private title", "private detail", recorder.snapshot())
+            MainActivity::class.java.getDeclaredMethod("showLatestReport", Function0::class.java).apply {
+                isAccessible = true
+            }.invoke(activity, null)
+            val dialog = ShadowDialog.getLatestDialog() as ConsoleDialog
+            label(dialog.panel, "EXPORTAR DIAGNÓSTICO").performClick()
+            val picker = checkNotNull(shadowOf(activity).nextStartedActivityForResult)
+            assertEquals(Intent.ACTION_CREATE_DOCUMENT, picker.intent.action)
+            assertEquals("application/json", picker.intent.type)
+            val output = ByteArrayOutputStream()
+            val uri = Uri.parse("content://diagnostic-test/xcloud.json")
+            shadowOf(activity.contentResolver).registerOutputStream(uri, output)
+            activity.onActivityResult(picker.requestCode, Activity.RESULT_OK, Intent().setData(uri))
+            val deadline = System.nanoTime() + 3_000_000_000L
+            while (output.size() == 0 && System.nanoTime() < deadline) {
+                shadowOf(Looper.getMainLooper()).idle()
+                Thread.sleep(5)
+            }
+            val text = output.toString(Charsets.UTF_8.name())
+            assertFalse(text.contains("private"))
+            assertEquals("SHORTCUT", JSONObject(text).getString("origin"))
+            dialog.dismiss()
+        } finally {
+            c.pause().stop().destroy()
+        }
+    }
+
     @Test fun reportCanBeCopiedAndAutoDisplayDisabledWithoutChangingOtherSettings() {
         val c=Robolectric.buildActivity(Activity::class.java).setup(); val a=c.get()
         val r=demo().copy(inputDetails="Toque nativo: desativado para HUD; espaço de input: 1280×720")
