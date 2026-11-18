@@ -117,6 +117,14 @@ class RealtimeInputPump(
                 var maxDelay = 0.0
                 var windowStarted = started
                 var backpressured = false
+                val states = HashMap<Int, GamepadState>(4)
+                val retirementRevisions = LongArray(4)
+                val neutral = GamepadState()
+                var sentState = neutral
+                var pointerEventsSent = 0L
+                var sentBytes = 0L
+                var idleReportsSent = 0L
+                var initialStateReportsSent = 0L
                 while (running.get()) {
                     val now = System.nanoTime()
                     val dimensions = touchDimensions
@@ -136,8 +144,14 @@ class RealtimeInputPump(
                         synchronized(lock) { active.forEach { buffers[it].discardBacklog() } }
                     } else {
                         backpressured=false
-                        val (states,retiring)=synchronized(lock) {
-                            active.associateWith { buffers[it].next() } to retireAfterNeutral.toMap()
+                        var retiringMask = 0
+                        synchronized(lock) {
+                            for (index in buffers.indices) {
+                                if (index in active) states[index] = buffers[index].next() else states.remove(index)
+                                val revision = retireAfterNeutral[index] ?: continue
+                                retirementRevisions[index] = revision
+                                retiringMask = retiringMask or (1 shl index)
+                            }
                         }
                         // Coordinates have no meaning until ServerMetadata establishes their scale.
                         val pointers=if(dimensions == null) emptyList() else touch.next()
@@ -158,19 +172,25 @@ class RealtimeInputPump(
                         }
                         if(packet!=null) { lastReportAt=now;if(initial || hasInput) initialStatePending=false }
                         if(pointers.isNotEmpty()) touch.accepted(pointers)
-                        synchronized(lock) {
-                            retiring.forEach { (index,revision) ->
-                                // A sensor update racing the send keeps the new aim active.
-                                if(retireAfterNeutral[index]==revision) {
-                                    active.remove(index);retireAfterNeutral.remove(index)
+                        if (retiringMask != 0) synchronized(lock) {
+                            for (index in buffers.indices) {
+                                if (retiringMask and (1 shl index) != 0 && retireAfterNeutral[index] == retirementRevisions[index]) {
+                                    // A sensor update racing the send keeps the new aim active.
+                                    active.remove(index)
+                                    retireAfterNeutral.remove(index)
                                 }
                             }
                         }
-                        metrics = metrics.copy(sentState = states[0] ?: GamepadState(),pointerEventsSent=metrics.pointerEventsSent+pointers.size,
-                            sentBytes=metrics.sentBytes+(packet?.size ?: 0),idleReportsSent=metrics.idleReportsSent+(if(idle) 1 else 0),initialStateReportsSent=metrics.initialStateReportsSent+(if(initial) 1 else 0))
+                        sentState = states[0] ?: neutral
+                        pointerEventsSent += pointers.size
+                        sentBytes += packet?.size ?: 0
+                        if (idle) idleReportsSent++
+                        if (initial) initialStateReportsSent++
                     }
-                    metrics = metrics.copy(bufferedBytes = queued, maxSchedulerDelayMs = maxDelay,
-                        backpressureSkips = skipped, coalescedEdges = synchronized(lock) { buffers.sumOf { it.coalescedEdges } })
+                    metrics = InputMetrics(bufferedBytes = queued, maxSchedulerDelayMs = maxDelay,
+                        backpressureSkips = skipped, coalescedEdges = synchronized(lock) { buffers.sumOf { it.coalescedEdges } },
+                        sentState = sentState, pointerEventsSent = pointerEventsSent, sentBytes = sentBytes,
+                        idleReportsSent = idleReportsSent, initialStateReportsSent = initialStateReportsSent)
                     if (now - windowStarted >= 1_000_000_000) { maxDelay = 0.0; windowStarted = now }
                     // Button edges can wake this thread early; regular reports remain at 250Hz.
                     deadline = if (now >= deadline) now + period else deadline

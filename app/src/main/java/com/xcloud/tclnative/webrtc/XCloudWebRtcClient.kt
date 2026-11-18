@@ -218,7 +218,8 @@ class XCloudWebRtcClient(
             { decoderLatency.set(it) },effectiveCodec.name,streamResolution.width,streamResolution.height)
         val audio=AudioPlaybackPolicy.configure(JavaAudioDeviceModule.builder(context.applicationContext), audioMode)
             .setPlaybackSamplesReadyCallback { samples ->
-                if(!closed.get() && peakGuard.observe(samples.data,samples.audioFormat,android.os.SystemClock.elapsedRealtime()))
+                if(!closed.get() && peakGuard.requested > 100 &&
+                    peakGuard.observe(samples.data,samples.audioFormat,android.os.SystemClock.elapsedRealtime()))
                     mainHandler.post { applyAudioGain() }
             }
             .setAudioRecordStateCallback(object: JavaAudioDeviceModule.AudioRecordStateCallback {

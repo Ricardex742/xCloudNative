@@ -31,14 +31,15 @@ object GamepadPacket {
             (if(mice.isEmpty()) 0 else 1+18*mice.size)+(if(keys.isEmpty()) 0 else 1+3*keys.size),type,sequence,timestampMs)
         if(states.isNotEmpty()) {
             out.put(states.size.toByte())
-            states.toSortedMap().forEach { (index,state) ->
+            for (index in 0..3) {
+                val state = states[index] ?: continue
                 out.put(index.toByte()).putShort(state.buttons.toShort())
-        out.putShort(axis(state.leftX)).putShort(axis(-state.leftY))
-            .putShort(axis(state.rightX)).putShort(axis(-state.rightY))
-            .putShort(trigger(state.leftTrigger)).putShort(trigger(state.rightTrigger))
-            .putInt(1)
-        // VirtualPhysicality is the sole big-endian uint32 in this report.
-        out.order(ByteOrder.BIG_ENDIAN).putInt(1)
+                    .putShort(axis(state.leftX)).putShort(axis(-state.leftY))
+                    .putShort(axis(state.rightX)).putShort(axis(-state.rightY))
+                    .putShort(trigger(state.leftTrigger)).putShort(trigger(state.rightTrigger))
+                    .putInt(1)
+                // VirtualPhysicality is the sole big-endian uint32 in this report.
+                out.order(ByteOrder.BIG_ENDIAN).putInt(1)
                 out.order(ByteOrder.LITTLE_ENDIAN)
             }
         }
