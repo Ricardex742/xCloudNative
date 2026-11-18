@@ -284,3 +284,8 @@ Quando houver autorização para publicar, revisar e incorporar a implementaçã
 A entrega de temas estará pronta para revisão quando existir uma implementação Android conectada às ações reais, com identidade própria em home, fila e configurações, navegação e foco corretos, política de animação/ciclo de vida preservada, capturas nativas e evidência de desempenho no aparelho-alvo.
 
 Entregar também commit, branch, ID do build, versão/código, certificado e SHA do APK. Distinguir o que foi validado no CI do que foi observado na TV/celular. Não declarar um tema pronto apenas porque compila ou porque o HTML parece bom no navegador.
+
+
+## Continuação na feature branch
+
+A implementação nativa posterior e o build de teste conferido estão descritos em `CODEX_CONTEXT.md`, na seção “Build de teste nativo conferido”. O exame histórico deste guia continua servindo de referência. Para a home, o pedido mais recente usa os prints `html-ps4-home.jpg` e `html-ps5-home.jpg`; as simulações orientam a composição, com Views/Canvas, catálogo e estados reais. O fluxo de assinatura e o workflow foram preservados. A validação física em TV/celular permanece pendente.

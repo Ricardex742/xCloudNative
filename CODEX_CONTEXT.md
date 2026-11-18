@@ -121,3 +121,14 @@ Manter o app leve: evitar WebViews novos, bibliotecas de interface adicionais ou
 - Para APK instalável como atualização, usar a assinatura permanente preparada por `scripts/prepare_signing.py`, com o segredo autorizado do ambiente/CI. O SHA-256 esperado do certificado está em `signing/certificate-sha256.txt`. **Não gerar uma chave temporária nem remover a validação para contornar falta de acesso.**
 - Não publicar gravações, diagnósticos pessoais ou esteiras privadas de pesquisa. README documenta funções e caminhos atuais, não conversas pessoais.
 - Conferir ao final os testes realmente executados e o estado da branch. Este arquivo não substitui os resultados atuais nem confirma publicação remota.
+
+## Build de teste nativo conferido
+
+- Branch: `feat/quick-settings-navigation`; código compilado: `1921c6df4e7c6810b72f0860b5ba4a8b9883a93c`. As atualizações posteriores de contexto/prévias não alteram esse código do aplicativo.
+- [Build 44229022903](https://github.com/Ricardex742/xCloudNative/actions/runs/44229022903): concluído com sucesso e `headSha` conferido. **817 testes JVM**, zero falhas/erros/ignorados; lint, traduções, proteção da assinatura e verificações de filtros/reconstrução/laboratório aprovados no workflow existente, sem alterações nele.
+- APK efetivamente baixado e verificado: `com.xcloud.tclnative`, **0.40.0-native-ps**, código **95**, mínimo Android API **24**. A identidade de atualização permanente foi confirmada criptograficamente.
+- Certificado SHA-256: `efd33d9a3122ab5df2a7f0932e80b8fb51449bb1d3206fddc300b2766db73107`.
+- APK SHA-256: `eb4f4a57cb47890831c9a8fe0ac98108f6dc2b94edcf694d0ac34cf073cc6ce0`.
+- [Download do artefato](https://github.com/Ricardex742/xCloudNative/actions/runs/44229022903/artifacts/14395265788): ZIP com APK, SHA-256 e metadata. O digest do ZIP também foi comparado ao informado pelo GitHub.
+- As quatro prévias PlayStation do README foram extraídas das capturas Android nativas desse build, com catálogo/perfil de demonstração; não são os prints HTML enviados como referência.
+- Validação em TV/celular real continua **pendente**: não há dispositivo conectado por ADB. Testes JVM, capturas e contadores de invalidação/rebind não medem jank, memória nem latência física no aparelho. Este APK é de teste na feature branch; não foi incorporado à main nem publicado como release.
