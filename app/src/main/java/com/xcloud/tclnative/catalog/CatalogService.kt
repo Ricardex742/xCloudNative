@@ -1,6 +1,6 @@
 package com.xcloud.tclnative.catalog
 
-import com.xcloud.tclnative.net.awaitResponse
+import com.xcloud.tclnative.net.readResponse
 import com.xcloud.tclnative.net.checkedBody
 import com.xcloud.tclnative.signaling.GameTitle
 import kotlinx.coroutines.*
@@ -51,7 +51,7 @@ class CatalogService(
                             .addQueryParameter("market", "BR").addQueryParameter("languages", "pt-br,en-us")
                             .addQueryParameter("fieldsTemplate", "details").addQueryParameter("actionFilter", "Browse").build()
                         val data = client.newCall(Request.Builder().url(url).header("Accept", "application/json").build())
-                            .awaitResponse().use { JSONObject(it.checkedBody("STORE_ART")) }
+                            .readResponse { JSONObject(it.checkedBody("STORE_ART")) }
                         enriched = merge(enriched, data)
                     } catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { /* Retry missing art using the older Game Pass provider. */ }
@@ -63,7 +63,7 @@ class CatalogService(
                             .toRequestBody("application/json".toMediaType())
                         val request = Request.Builder().url(url).header("calling-app-name", "Xbox Cloud Gaming Web")
                             .header("calling-app-version", "26.1.0").post(body).build()
-                        val data = client.newCall(request).awaitResponse().use { JSONObject(it.checkedBody("CATALOG_ART")) }
+                        val data = client.newCall(request).readResponse { JSONObject(it.checkedBody("CATALOG_ART")) }
                         enriched = merge(enriched, data)
                     } catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { }
@@ -96,7 +96,7 @@ class CatalogService(
                             .addQueryParameter("alternateId", "XboxTitleId").addQueryParameter("value", game.xboxTitleId)
                             .addQueryParameter("market", "BR").addQueryParameter("languages", "pt-br,en-us")
                             .addQueryParameter("fieldsTemplate", "details").addQueryParameter("top", "1").build()
-                        val data = client.newCall(Request.Builder().url(url).build()).awaitResponse().use {
+                        val data = client.newCall(Request.Builder().url(url).build()).readResponse {
                             JSONObject(it.checkedBody("STORE_LOOKUP"))
                         }
                         StoreMetadata.products(data).firstOrNull()?.let { product -> mutex.withLock {
@@ -118,8 +118,8 @@ class CatalogService(
         try {
             val url = "$baseUrl/sigls/v2".toHttpUrl().newBuilder().addQueryParameter("id", id)
                 .addQueryParameter("market", "BR").addQueryParameter("language", "pt-BR").build()
-            client.newCall(Request.Builder().url(url).build()).awaitResponse().use {
-                galleryIds(JSONArray(it.checkedBody("CATALOG_GALLERY")))
+            client.newCall(Request.Builder().url(url).build()).readResponse {
+                galleryIds(JSONArray(it.checkedBody("CATALOG_GALLERY", maxBytes = 16L * 1024 * 1024)))
             }
         } catch (cancelled: CancellationException) { throw cancelled }
         catch (_: Exception) { null }
@@ -130,8 +130,8 @@ class CatalogService(
         val url = "$baseUrl/sigls/v3".toHttpUrl().newBuilder().addQueryParameter("id", kind.id)
             .addQueryParameter("market", "BR").addQueryParameter("language", "pt-BR")
             .addQueryParameter("subscriptionContext", "none").addQueryParameter("platformContext", "Cloud:XGPUWEB").build()
-        client.newCall(Request.Builder().url(url).build()).awaitResponse().use {
-            OfficialGallery.parse(kind, JSONArray(it.checkedBody("OFFICIAL_GALLERY")))
+        client.newCall(Request.Builder().url(url).build()).readResponse {
+            OfficialGallery.parse(kind, JSONArray(it.checkedBody("OFFICIAL_GALLERY", maxBytes = 16L * 1024 * 1024)))
         }
     }
 
@@ -152,7 +152,7 @@ class CatalogService(
                     .array().toByteString().base64().trimEnd('=')+".0"
                 val body=JSONObject().put("Products",JSONArray(batch.map { it.productId })).toString().toRequestBody("application/json".toMediaType())
                 val data = client.newCall(Request.Builder().url(url).header("MS-CV",cv)
-                    .header("Calling-App-Name","Xbox Cloud Gaming Web").header("Calling-App-Version","26.1.0").post(body).build()).awaitResponse().use {
+                    .header("Calling-App-Name","Xbox Cloud Gaming Web").header("Calling-App-Version","26.1.0").post(body).build()).readResponse {
                     JSONObject(it.checkedBody("GALLERY_ART"))
                 }
                 val wanted = batch.map { it.productId }.toSet()

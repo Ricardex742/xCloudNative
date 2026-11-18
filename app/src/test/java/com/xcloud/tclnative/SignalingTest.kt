@@ -562,4 +562,26 @@ class SignalingTest {
         assertFalse(events.contains("offer"))
         assertNull(snapshots.last())
     }
+
+    @Test fun provisionedStateDoesNotWaitForAStalledForecast() = runBlocking {
+        queuedStates = 2
+        stallEstimate = true
+        val client = signaling()
+        val snapshots = mutableListOf<com.xcloud.tclnative.signaling.QueueStatus?>()
+        val job = async {
+            client.startAndConnectWebRtcSession("real-id", peer, onQueueStatus = { snapshots.add(it) }) {}
+        }
+        try {
+            withTimeout(2_500) {
+                estimateEntered.await()
+                job.await().getOrThrow()
+            }
+            assertTrue(events.contains("ready"))
+            assertEquals(1, requests.count { it.path == "/v1/waittime/real-id" })
+            assertNull(snapshots.last())
+        } finally {
+            job.cancelAndJoin()
+            client.stop()
+        }
+    }
 }

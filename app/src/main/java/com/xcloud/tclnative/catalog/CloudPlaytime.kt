@@ -1,7 +1,7 @@
 package com.xcloud.tclnative.catalog
 
 import com.xcloud.tclnative.i18n.UiText
-import com.xcloud.tclnative.net.awaitResponse
+import com.xcloud.tclnative.net.readResponse
 import com.xcloud.tclnative.net.CloudHttpException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -90,15 +90,15 @@ class CloudPlaytimeService(
                 .header("Calling-App-Name","xCloudNative").header("Calling-App-Version",CloudPlaytimeContract.version(appVersion))
                 .header("MS-CV",CloudPlaytimeContract.correlationVector())
                 .get().build()
-            client.newCall(request).awaitResponse().use { response ->
+            client.newCall(request).readResponse { response ->
                 if(!response.isSuccessful) {
                     val rejection=runCatching { CloudPlaytimeContract.rejection(response.peekBody(8192).string(),response.header("x-ms-error-code")) }
                         .getOrDefault(CloudPlaytimeContract.Rejection())
-                    return@withContext CloudPlaytime(failure=PlaytimeFailure.HTTP,httpStatus=response.code,
+                    return@readResponse CloudPlaytime(failure=PlaytimeFailure.HTTP,httpStatus=response.code,
                         serviceCode=rejection.code,rejectedField=rejection.field)
                 }
-                val source=response.body?.source() ?: return@withContext CloudPlaytime(failure=PlaytimeFailure.INVALID_RESPONSE)
-                if(source.request(ContentAccessPlaytime.MAX_BYTES+1L)) return@withContext CloudPlaytime(failure=PlaytimeFailure.TOO_LARGE)
+                val source=response.body?.source() ?: return@readResponse CloudPlaytime(failure=PlaytimeFailure.INVALID_RESPONSE)
+                if(source.request(ContentAccessPlaytime.MAX_BYTES+1L)) return@readResponse CloudPlaytime(failure=PlaytimeFailure.TOO_LARGE)
                 ContentAccessPlaytime.decode(source.readByteArray())
             }
         } catch(cancelled: CancellationException) { throw cancelled }

@@ -1,7 +1,7 @@
 package com.xcloud.tclnative.catalog
 
 import com.xcloud.tclnative.i18n.UiText
-import com.xcloud.tclnative.net.awaitResponse
+import com.xcloud.tclnative.net.readResponse
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -62,7 +62,7 @@ class GameOwnershipService(
                     .header("Authorization",auth).header("Accept","application/json")
                     .header("X-MS-Api-Version","1.0")
                     .post(body.toRequestBody("application/json; charset=utf-8".toMediaType())).build()
-                client.newCall(request).awaitResponse().use { response ->
+                client.newCall(request).readResponse { response ->
                     check(response.isSuccessful) { "OWNERSHIP_HTTP_${response.code}" }
                     val source=response.body?.source() ?: error("OWNERSHIP_EMPTY")
                     check(!source.request(1_048_577)) { "OWNERSHIP_TOO_LARGE" }

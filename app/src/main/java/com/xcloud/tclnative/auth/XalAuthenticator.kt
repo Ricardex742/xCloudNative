@@ -8,7 +8,7 @@ import android.graphics.Color
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 import com.xcloud.tclnative.net.CloudHttpException
-import com.xcloud.tclnative.net.awaitResponse
+import com.xcloud.tclnative.net.readResponse
 import com.xcloud.tclnative.net.checkedBody
 import com.xcloud.tclnative.catalog.XboxProfile
 import com.xcloud.tclnative.settings.RegionBypass
@@ -85,7 +85,7 @@ class XalAuthenticator(
         (if (forwardedFor == null) httpClient else bypassLoginClient).newCall(Request.Builder().url(url).header("Accept", "application/json")
             .header("x-xbl-contract-version", "1").header("X-Gssv-Client", "XboxComBrowser")
             .apply { forwardedFor?.let { header("X-Forwarded-For", it) } }
-            .post(body).build()).awaitResponse().use { it.checkedBody(stage) }
+            .post(body).build()).readResponse { it.checkedBody(stage) }
 
     private suspend fun <T> result(block: suspend () -> T): Result<T> = withContext(Dispatchers.IO) {
         try { Result.success(block()) }
@@ -266,7 +266,7 @@ class XalAuthenticator(
             .header("Authorization", "XBL3.0 x=$webHash;${web.getString("Token")}")
             .header("x-xbl-contract-version", "2").header("Accept-Language", "pt-BR")
             .header("Accept", "application/json").build()
-        httpClient.newCall(request).awaitResponse().use { XboxProfile.parse(JSONObject(it.checkedBody("PROFILE"))) }
+        httpClient.newCall(request).readResponse { XboxProfile.parse(JSONObject(it.checkedBody("PROFILE"))) }
     }
 
     /** Requested only when a ReadyToConnect session needs /connect; never use the GSSV token here. */

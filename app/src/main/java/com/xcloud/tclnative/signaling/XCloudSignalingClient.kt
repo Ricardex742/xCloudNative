@@ -7,7 +7,7 @@ import com.xcloud.tclnative.auth.XCloudSession
 import com.xcloud.tclnative.settings.SessionOptions
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import com.xcloud.tclnative.net.awaitResponse
+import com.xcloud.tclnative.net.readResponse
 import com.xcloud.tclnative.net.checkedBody
 import com.xcloud.tclnative.net.CloudHttpException
 import com.xcloud.tclnative.net.CloudRequestException
@@ -16,6 +16,8 @@ import com.xcloud.tclnative.webrtc.StreamResolution
 import com.xcloud.tclnative.catalog.XboxProfile
 import com.xcloud.tclnative.catalog.CloudPlayHistory
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -94,7 +96,10 @@ class XCloudSignalingClient(
             "DELETE" -> builder.delete()
         }
         return try {
-            client.newCall(builder.build()).awaitResponse().use { it.checkedBody(stage) }
+            client.newCall(builder.build()).readResponse {
+                if (stage == "CATALOG") it.checkedBody(stage, maxBytes = 16L * 1024 * 1024)
+                else it.checkedBody(stage)
+            }
         } catch(error: CloudHttpException) {
             throw error
         } catch(error: IOException) {
@@ -161,20 +166,25 @@ class XCloudSignalingClient(
     }
 
     private suspend fun awaitProvisioned(path: String, titleId: String, onQueueStatus: (QueueStatus?) -> Unit,
-                                         onProgress: (String) -> Unit) {
+                                         onProgress: (String) -> Unit) = coroutineScope {
         val started = clockMs()
         var connectSentAt: Long? = null
         var queue: QueueStatus? = null
         var estimateAttemptAt: Long? = null
+        var pendingEstimate: Deferred<Pair<QueueEstimate?, Long>>? = null
         try {
             while (true) {
                 val state = JSONObject(request("$path/state", "SESSION_STATE"))
                 val name = state.optString("state")
                 startupTrace.observe(name)
                 val elapsed = (clockMs() - started) / 1000
-                if (name != "WaitingForResources") onQueueStatus(null)
+                if (name != "WaitingForResources") {
+                    pendingEstimate?.cancel()
+                    pendingEstimate = null
+                    onQueueStatus(null)
+                }
                 when (name) {
-                    "Provisioned" -> return
+                    "Provisioned" -> return@coroutineScope
                     "ReadyToConnect" -> {
                         if (connectSentAt == null) {
                             onProgress("CONSOLE_CONNECT: Autenticando a sessão Xbox...")
@@ -190,23 +200,30 @@ class XCloudSignalingClient(
                         val confirmedAt = clockMs()
                         queue = (queue ?: QueueStatus(confirmedAt, confirmedAt, limitMs = queueTimeoutMs))
                             .copy(confirmedAtMs = confirmedAt)
+                        pendingEstimate?.takeIf { it.isCompleted }?.let {
+                            val (estimate, estimatedAt) = it.await()
+                            val status = checkNotNull(queue)
+                            queue = if (estimate != null) status.copy(estimate = estimate, estimateAtMs = estimatedAt, estimateFailed = false)
+                                else status.copy(estimateFailed = true)
+                            startupTrace.estimate(checkNotNull(queue))
+                            pendingEstimate = null
+                        }
                         onQueueStatus(queue)
                         onProgress("QUEUE: Aguardando vaga no Xbox Cloud (${QueueStatus.duration(elapsed)}). Voltar cancela.")
-                        if (estimateAttemptAt == null || confirmedAt - estimateAttemptAt >= 30_000) {
+                        if (pendingEstimate == null && (estimateAttemptAt == null || confirmedAt - estimateAttemptAt >= 30_000)) {
                             estimateAttemptAt = confirmedAt
                             val url = CloudProtocol.sessionUrl(activeBaseUri, "/v1/waittime/")
                                 .newBuilder().addPathSegment(titleId).build().encodedPath
-                            try {
-                                val estimate = QueueEstimate.parse(request(url, "QUEUE_ESTIMATE", client = waitTimeClient))
-                                queue = if (estimate != null) queue.copy(estimate = estimate, estimateAtMs = clockMs(), estimateFailed = false)
-                                    else queue.copy(estimateFailed = true)
-                            } catch (error: IOException) {
-                                queue = queue.copy(estimateFailed = true)
-                            } catch (error: org.json.JSONException) {
-                                queue = queue.copy(estimateFailed = true)
+                            pendingEstimate = async(start = CoroutineStart.UNDISPATCHED) {
+                                val estimate = try {
+                                    QueueEstimate.parse(request(url, "QUEUE_ESTIMATE", client = waitTimeClient))
+                                } catch (_: IOException) {
+                                    null
+                                } catch (_: org.json.JSONException) {
+                                    null
+                                }
+                                estimate to clockMs()
                             }
-                            queue?.let(startupTrace::estimate)
-                            onQueueStatus(queue)
                         }
                     }
                     "Provisioning", "New" -> onProgress("PROVISIONING: Preparando o jogo (${elapsed}s). Voltar cancela.")
@@ -225,6 +242,7 @@ class XCloudSignalingClient(
                 pause(1500)
             }
         } finally {
+            pendingEstimate?.cancel()
             onQueueStatus(null)
         }
     }
@@ -357,7 +375,6 @@ class XCloudSignalingClient(
     fun keepAliveDiagnostics()=sessionKeepAlive.diagnostics()
 
     suspend fun maintainSession() {
-        // Reading an HTTP error body can block even after awaitResponse resumes.
         withContext(Dispatchers.IO) {
             val path=activePath.get() ?: return@withContext
             sessionKeepAlive.run {

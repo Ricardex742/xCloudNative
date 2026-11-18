@@ -11,6 +11,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** Cancel the socket along with the coroutine, and close responses arriving after cancellation. */
@@ -26,6 +27,31 @@ suspend fun Call.awaitResponse(): Response = suspendCancellableCoroutine { conti
         }
     })
 }
+
+/** Keep the call cancellable until the response body has been consumed and closed. */
+internal suspend fun <T> Call.readResponse(read: (Response) -> T): T =
+    suspendCancellableCoroutine { continuation ->
+        continuation.invokeOnCancellation { cancel() }
+        enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                if (continuation.isActive) continuation.resumeWithException(e)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!continuation.isActive) {
+                    response.close()
+                    return
+                }
+                val value = try {
+                    response.use(read)
+                } catch (e: Exception) {
+                    if (continuation.isActive) continuation.resumeWithException(e)
+                    return
+                }
+                continuation.resume(value)
+            }
+        })
+    }
 
 class CloudHttpException(val stage: String, val status: Int, val serviceCode: String?, requestId: String?,
                          val retryAfterMs: Long?=null) :
@@ -49,9 +75,9 @@ internal fun retryAfterDelayMs(value: String?,nowMs: Long=System.currentTimeMill
 }
 
 /** Report diagnostic codes, never a response body, credential or signed URL. */
-fun Response.checkedBody(stage: String): String {
-    val text = body?.string().orEmpty()
+fun Response.checkedBody(stage: String, maxBytes: Long = 4L * 1024 * 1024): String {
     if (!isSuccessful) {
+        val text = peekBody(16L * 1024).string()
         val json = runCatching { JSONObject(text) }.getOrNull()
         val error = listOf("error", "XErr", "code").firstNotNullOfOrNull { key ->
             json?.opt(key)?.toString()?.takeIf { it.matches(Regex("[A-Za-z0-9_.-]{1,80}")) }
@@ -60,5 +86,9 @@ fun Response.checkedBody(stage: String): String {
             ?.takeIf { it.matches(Regex("[A-Za-z0-9_.:-]{1,100}")) }
         throw CloudHttpException(stage, code, error, id,retryAfterDelayMs(header("Retry-After")))
     }
-    return text
+    val content = body ?: return ""
+    if (content.contentLength() > maxBytes || content.source().request(maxBytes + 1)) {
+        throw IOException("$stage: RESPONSE_TOO_LARGE")
+    }
+    return content.string()
 }

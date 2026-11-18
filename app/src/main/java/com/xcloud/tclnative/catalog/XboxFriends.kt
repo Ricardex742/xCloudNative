@@ -1,7 +1,7 @@
 package com.xcloud.tclnative.catalog
 
 import com.xcloud.tclnative.net.CloudHttpException
-import com.xcloud.tclnative.net.awaitResponse
+import com.xcloud.tclnative.net.readResponse
 import com.xcloud.tclnative.signaling.GameTitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -65,7 +65,7 @@ class XboxFriendsService(client: OkHttpClient=OkHttpClient.Builder().callTimeout
         val request=Request.Builder().url(endpoint).header("Authorization",authorization)
             .header("x-xbl-contract-version","3").header("Accept","application/json")
             .header("Accept-Language",language).build()
-        http.newCall(request).awaitResponse().use { response ->
+        http.newCall(request).readResponse { response ->
             if(!response.isSuccessful) throw CloudHttpException("FRIENDS",response.code,null,null)
             val body=response.body ?: throw IOException("FRIENDS_EMPTY_RESPONSE")
             val limit=4L*1024*1024
