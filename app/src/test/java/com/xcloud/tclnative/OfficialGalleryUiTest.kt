@@ -191,12 +191,12 @@ class OfficialGalleryUiTest {
             grid.getChildAt(0).requestFocus();grid.getChildAt(0).performClick()
             assertEquals("BATTLEFIELD",launched!!.titleId);assertEquals("Battlefield™ 6",launched!!.name)
             assertEquals(authenticated.supportedInputTypes,launched!!.supportedInputTypes);assertNull(lookedUp)
-            view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));layout(view)
+            view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));view.awaitFavoriteWrites();layout(view)
             assertTrue(library.isFavorite("BATTLEFIELD"))
             assertTrue(GameLibrary(activity,"battlefield-alias").isFavorite("BATTLEFIELD"))
             view.setSearch("");view.selectTab(LibraryTab.FAVORITES);layout(view)
             assertEquals(1,grid.adapter!!.itemCount);assertEquals("Battlefield™ 6",view.selectedGame!!.name)
-            grid.getChildAt(0).requestFocus();view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));layout(view)
+            grid.getChildAt(0).requestFocus();view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));view.awaitFavoriteWrites();layout(view)
             assertFalse(library.isFavorite("BATTLEFIELD"));assertEquals(0,grid.adapter!!.itemCount)
         } finally { view.close();controller.pause().stop().destroy() }
     }

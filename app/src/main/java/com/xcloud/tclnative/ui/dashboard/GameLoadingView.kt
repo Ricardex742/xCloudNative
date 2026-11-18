@@ -29,7 +29,8 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
     private var scene=DashboardTheme.palette.theme.scene
     private var lastRenderedAt=0L
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val art = PosterLoader(context, scope)
+    private val artworkBackend = ArtworkBackend.get(context)
+    private val art = PosterLoader(context, scope, artworkBackend)
     private val backdrop = FixedArtworkView(context).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
     private val shade = View(context).apply { background = DashboardTheme.gradient(GradientDrawable.Orientation.LEFT_RIGHT,
         arrayOf(UiColor.QUEUE_SHADE_TOP, UiColor.QUEUE_SHADE_MID, UiColor.QUEUE_SHADE_END)) }
@@ -184,9 +185,10 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
             else UiText.text("A partida será exibida assim que o vídeo estiver pronto.")
     }
     fun cancelFromController() { cancelButton.performClick() }
-    fun dismiss() {
+    fun dismiss(forPlayback: Boolean = false) {
         visibility = View.GONE; queue = null
         art.pause(); lastBackdrop=null; lastPoster=null
+        if (forPlayback) artworkBackend.trimForPlayback()
     }
     private fun secondaryColor()=if(scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_360_METRO) 0xff42532d.toInt() else if(scene==ConsoleScene.XBOX_ORIGINAL) 0xffb9df85.toInt() else 0xffd0d5d9.toInt()
     internal fun refreshAppearance() {

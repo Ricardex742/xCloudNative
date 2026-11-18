@@ -142,6 +142,7 @@ class ConsoleDashboardUiTest {
                 val holder=grid.findViewHolderForAdapterPosition(1)!!;holder.itemView.requestFocus();layout(view)
                 assertEquals(data[1].titleId,view.selectedGame!!.titleId)
                 view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y))
+                view.awaitFavoriteWrites()
                 assertTrue(library.isFavorite(data[1].titleId))
                 view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
                 assertEquals(listOf(data[1].titleId),played)

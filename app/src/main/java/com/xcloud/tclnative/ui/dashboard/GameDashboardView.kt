@@ -54,6 +54,8 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -75,6 +77,7 @@ class GameDashboardView(
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val favoriteWrites = Mutex()
     private val posters = PosterLoader(context, scope,frameBound=true)
     private val consoleBackdrop = ConsoleThemeBackdrop(context)
     private val seriesStore=SeriesPersonalizationStore(context)
@@ -818,15 +821,26 @@ class GameDashboardView(
             if(selectedCard?.product!=null) android.widget.Toast.makeText(context,UiText.text("Selecione o jogo para verificar sua disponibilidade antes de favoritar."),android.widget.Toast.LENGTH_LONG).show()
             return
         }
-        val added = try { library.toggleFavorite(game.titleId) } catch (error: java.io.IOException) {
-            android.widget.Toast.makeText(context,error.message,android.widget.Toast.LENGTH_LONG).show()
-            return
+        scope.launch {
+            favoriteWrites.withLock {
+                val added = try {
+                    withContext(Dispatchers.IO) { library.toggleFavorite(game.titleId) }
+                } catch (error: java.io.IOException) {
+                    if (!closed && !artworkPaused) {
+                        android.widget.Toast.makeText(context, error.message, android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    return@withLock
+                }
+                if (closed) return@withLock
+                onFavoritesChanged()
+                if (artworkPaused) return@withLock
+                announceForAccessibility(if (added) UiText.text("{0} adicionado aos favoritos", UiText.nested(game.name))
+                    else UiText.text("{0} removido dos favoritos", UiText.nested(game.name)))
+                if (activeTab == LibraryTab.FAVORITES) { refresh(); focusFirstCover() }
+                else adapter.items.indices.filter { adapter.items[it].game?.titleId == game.titleId }
+                    .forEach { adapter.notifyItemChanged(it, "favorite") }
+            }
         }
-        onFavoritesChanged()
-        announceForAccessibility(if (added) UiText.text("{0} adicionado aos favoritos",UiText.nested(game.name)) else UiText.text("{0} removido dos favoritos",UiText.nested(game.name)))
-        if (activeTab == LibraryTab.FAVORITES) { refresh(); focusFirstCover() }
-        else adapter.items.indices.filter { adapter.items[it].game?.titleId==game.titleId }
-            .forEach { adapter.notifyItemChanged(it,"favorite") }
     }
     private fun playCard(card: CatalogCard) {
         val game=card.playableGame()

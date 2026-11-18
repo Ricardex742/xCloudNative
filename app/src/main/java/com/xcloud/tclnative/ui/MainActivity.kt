@@ -53,6 +53,7 @@ import com.xcloud.tclnative.catalog.CloudPlaytime
 import com.xcloud.tclnative.catalog.CloudPlaytimeStatus
 import com.xcloud.tclnative.catalog.OwnershipFilter
 import com.xcloud.tclnative.home.GameLaunchLink
+import com.xcloud.tclnative.home.GameShortcutInstaller
 import com.xcloud.tclnative.home.PendingGameLaunch
 import com.xcloud.tclnative.home.HomeShortcuts
 import com.xcloud.tclnative.ui.dashboard.PosterLoader
@@ -219,9 +220,8 @@ open class MainActivity : Activity() {
         if (savedInstanceState == null || (shortcutRequest!=null && shortcutRequest!=lastShortcutRequest)) pendingLaunch.receive(intent)
         lastShortcutRequest=shortcutRequest ?: lastShortcutRequest
         pendingHomeChannel=savedInstanceState?.getLong("pending_home_channel",-1)?.takeIf { it>=0 }
-        savedInstanceState?.getString("pending_shortcut_apk")?.takeIf {
-            it.matches(Regex("com[.]xcloud[.]game[.]g[0-9a-f]{24}(?:-[0-9a-f]{32})?[.]apk"))
-        }?.let { pendingShortcutApk=File(cacheDir,"game-shortcuts/$it").takeIf(File::isFile) }
+        savedInstanceState?.getString("pending_shortcut_apk")?.takeIf { GameShortcutInstaller.isShortcutApkName(it) }
+            ?.let { pendingShortcutApk=File(cacheDir,"game-shortcuts/$it").takeIf(File::isFile) }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.navigationBarColor = Color.BLACK
@@ -890,23 +890,38 @@ open class MainActivity : Activity() {
             val image=ImageView(this@MainActivity)
             val waiting=ConsoleDialogs.message(this@MainActivity,UiText.text("Criando atalho"),game.name,
                 listOf(ConsoleAction(UiText.text("Cancelar")) { shortcutInstallJob?.cancel() }),onCancel={ shortcutInstallJob?.cancel() })
+            var unclaimedApk: File? = null
             try {
                 val artwork=CompletableDeferred<android.graphics.Bitmap?>()
                 shortcutPosters.load(image,game.tileUrl ?: game.posterUrl,256,256,notifyPlaceholder=false) {
                     artwork.complete((image.drawable as? BitmapDrawable)?.bitmap)
                 }
                 val bitmap=artwork.await()
-                val apk=withContext(Dispatchers.IO) { com.xcloud.tclnative.home.GameShortcutInstaller(this@MainActivity).create(game,bitmap) }
+                val previous = pendingShortcutApk
+                val apk = withContext(Dispatchers.IO) {
+                    GameShortcutInstaller(this@MainActivity).create(game, bitmap, previous).also { unclaimedApk = it }
+                }
                 waiting.dismiss()
                 pendingShortcutApk=apk
+                unclaimedApk=null
                 ConsoleDialogs.message(this@MainActivity,UiText.text("Instalar atalho: {0}",UiText.nested(game.name)),
                     UiText.text("Será instalado um pequeno aplicativo que abre este jogo no xCLOUD. Depois, procure o jogo em Aplicativos. No Google TV, adicione-o à fileira de apps favoritos pela própria tela inicial."),
-                    listOf(ConsoleAction(UiText.text("Instalar atalho")) { installPendingShortcut() },ConsoleAction(UiText.text("Cancelar")) { pendingShortcutApk=null }),
-                    onCancel={ pendingShortcutApk=null })
+                    listOf(ConsoleAction(UiText.text("Instalar atalho")) { if (pendingShortcutApk == apk) installPendingShortcut() },
+                        ConsoleAction(UiText.text("Cancelar")) { discardPendingShortcut(apk) }),
+                    onCancel={ discardPendingShortcut(apk) })
             } catch(cancelled: CancellationException) { throw cancelled }
             catch(error: Exception) { showCopyableErrorDialog(UiText.text("Atalho do jogo"),error.message ?: UiText.text("Não foi possível criar o atalho neste aparelho.")) }
-            finally { shortcutPosters.cancel(image); waiting.dismiss() }
+            finally {
+                shortcutPosters.cancel(image)
+                waiting.dismiss()
+                unclaimedApk?.let { apk -> withContext(NonCancellable + Dispatchers.IO) { apk.delete() } }
+            }
         }
+    }
+    private fun discardPendingShortcut(apk: File) {
+        if (pendingShortcutApk != apk) return
+        pendingShortcutApk = null
+        mainScope.launch(Dispatchers.IO) { apk.delete() }
     }
     private fun installPendingShortcut() {
         val apk=pendingShortcutApk?.takeIf(File::isFile) ?: return
@@ -916,10 +931,18 @@ open class MainActivity : Activity() {
             catch(_: android.content.ActivityNotFoundException) { ConsoleDialogs.message(this,UiText.text("Permitir instalação"),UiText.text("Nas configurações da TV, permita que o xCLOUD instale os atalhos dos jogos.")) }
             return
         }
-        val uri=androidx.core.content.FileProvider.getUriForFile(this,"$packageName.shortcuts",apk)
-        try { startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/vnd.android.package-archive")
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
-        catch(_: android.content.ActivityNotFoundException) { ConsoleDialogs.message(this,UiText.text("Instalador indisponível"),UiText.text("A TV não disponibilizou um instalador de aplicativos para o atalho.")) }
+        mainScope.launch {
+            val renewed = withContext(Dispatchers.IO) { apk.setLastModified(System.currentTimeMillis()) }
+            if (pendingShortcutApk != apk) return@launch
+            val uri=androidx.core.content.FileProvider.getUriForFile(this@MainActivity,"$packageName.shortcuts",apk)
+            try {
+                startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(uri,"application/vnd.android.package-archive")
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION))
+                if (renewed) pendingShortcutApk = null
+            } catch(_: android.content.ActivityNotFoundException) {
+                ConsoleDialogs.message(this@MainActivity,UiText.text("Instalador indisponível"),UiText.text("A TV não disponibilizou um instalador de aplicativos para o atalho."))
+            }
+        }
     }
     override fun onActivityResult(requestCode: Int,resultCode: Int,data: Intent?) {
         super.onActivityResult(requestCode,resultCode,data)
@@ -1306,7 +1329,7 @@ open class MainActivity : Activity() {
                         tracker.begin(android.os.SystemClock.elapsedRealtime(),NetworkSnapshot.read(this@MainActivity))
                         runCatching { startupReportStore.clear() }
                         firstFrame.complete(Unit)
-                        finishLoading()
+                        finishLoading(forPlayback = true)
                         updateJoystickDispatch()
                         currentTouchMode=touchMode
                         touchView.configure(touchMode,game,hudStore.read(titleId))
@@ -1347,7 +1370,7 @@ open class MainActivity : Activity() {
                                         firstFrame.isCompleted && activityVisible && gameplayInputEnabled())
                                     latestMetrics = metrics
                                     latestInput = input
-                                    renderStatistics()
+                                    if (activityVisible) renderStatistics()
                                 }
                             }
                         }
@@ -1629,11 +1652,11 @@ open class MainActivity : Activity() {
         val pending = pendingLoadingGame ?: return
         currentGames.firstOrNull { it.titleId==pending.titleId }?.let { game -> pendingLoadingGame = game; queuePanel.setGame(game) }
     }
-    private fun finishLoading() {
+    private fun finishLoading(forPlayback: Boolean = false) {
         pendingLoadingGame = null
         loadingArtJob?.cancel(); loadingArtJob=null
         queueTicker?.cancel(); queueTicker = null
-        queuePanel.dismiss()
+        queuePanel.dismiss(forPlayback)
     }
     private fun showQueue(status: com.xcloud.tclnative.signaling.QueueStatus?) {
         if (pendingLoadingGame != null) queuePanel.updateQueue(status)
@@ -2025,6 +2048,7 @@ open class MainActivity : Activity() {
         usbRumble.setForeground(true);usbDirect.setForeground(true)
         rumble.enabled=playbackSettings.rumble && webrtcClient!=null
         updateJoystickDispatch()
+        renderStatistics()
         val recoveryPhase = transmissionRecovery?.phase
         if (recoveryPhase == TransmissionRecoveryState.Phase.WAITING_RETRY ||
             recoveryPhase == TransmissionRecoveryState.Phase.SESSION_ENDED) showTransmissionInterrupted()

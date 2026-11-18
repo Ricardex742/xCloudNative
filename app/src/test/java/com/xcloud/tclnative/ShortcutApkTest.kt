@@ -3,6 +3,7 @@ package com.xcloud.tclnative
 import com.android.apksig.ApkSigner
 import com.android.apksig.ApkVerifier
 import com.xcloud.tclnative.home.BinaryManifestEditor
+import com.xcloud.tclnative.home.GameShortcutInstaller
 import com.xcloud.tclnative.home.ShortcutApkBuilder
 import org.junit.Assert.*
 import org.junit.AfterClass
@@ -34,6 +35,27 @@ class ShortcutApkTest {
         @JvmStatic @AfterClass fun cleanup() { if(::folder.isInitialized) folder.deleteRecursively() }
     }
     private val template=File("build/generated/shortcutAssets/game-shortcut/template.apk")
+
+    @Test fun cachePrunesOnlyExpiredGeneratedApksAndKeepsPendingAndRecentHandoffs() {
+        val cache = Files.createTempDirectory(folder.toPath(), "cache-").toFile()
+        val now = 1_700_000_000_000L
+        fun fixture(name: String, timestamp: Long): File = File(cache, name).apply {
+            writeText("test APK")
+            assertTrue(setLastModified(timestamp))
+        }
+        val packageName = ShortcutApkBuilder.packageName("game")
+        val yesterday = now - 2 * 24 * 60 * 60_000L
+        val expired = fixture("$packageName.apk", yesterday)
+        val pending = fixture("$packageName-${"b".repeat(32)}.apk", yesterday)
+        val recent = fixture("$packageName-${"c".repeat(32)}.apk", now)
+        val unrelated = fixture("other.apk", yesterday)
+
+        GameShortcutInstaller.removeExpiredApks(cache, pending, now)
+        assertFalse(expired.exists())
+        assertTrue(pending.exists())
+        assertTrue(recent.exists())
+        assertTrue(unrelated.exists())
+    }
     private fun build(id: String,name: String): File = ZipFile(template).use { apk ->
         val images=apk.entries().asSequence().filter { it.name.endsWith(".png") }.map {
             apk.getInputStream(it).use { stream -> stream.readBytes() }

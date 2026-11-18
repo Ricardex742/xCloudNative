@@ -1,6 +1,8 @@
 package com.xcloud.tclnative
 
 import android.app.Activity
+import android.content.ContextWrapper
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
@@ -27,6 +29,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -112,13 +118,14 @@ class DashboardTest {
     @Test fun shoulderTabsWrapAndFavoritesSurviveViewRecreationWithoutLeakingBetweenAccounts() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
-        val library = GameLibrary(activity, "account-a")
         activity.getSharedPreferences("library_"+GameLibrary.accountKey("account-a"), 0).edit().clear().commit()
+        val library = GameLibrary(activity, "account-a")
         library.saveCloudRecent(listOf(games.first().titleId))
         val view = GameDashboardView(activity, library, {}, {}, {}, {})
         activity.setContentView(view); view.setGames(games); layout(view)
         assertEquals(LibraryTab.RECENT, view.activeTab)
         key(view, KeyEvent.KEYCODE_BUTTON_Y)
+        view.awaitFavoriteWrites()
         assertTrue(games.first().titleId in GameLibrary(activity, "account-a").favorites)
         assertTrue(GameLibrary(activity, "account-b").favorites.isEmpty())
         key(view, KeyEvent.KEYCODE_BUTTON_L1)
@@ -129,9 +136,82 @@ class DashboardTest {
         assertEquals(LibraryTab.FAVORITES, view.activeTab)
         assertEquals(games.first().titleId, view.selectedGame?.titleId)
         key(view, KeyEvent.KEYCODE_BUTTON_Y)
+        view.awaitFavoriteWrites()
         assertNull(view.selectedGame)
         assertTrue(library.favorites.isEmpty())
         view.close(); controller.pause().stop().destroy()
+    }
+    @Test fun aSlowFavoriteCommitKeepsTheOldSnapshotAndLetsTheCatalogNavigate() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val rejectCommit = AtomicBoolean(false)
+        val commitThread = AtomicReference<Thread>()
+        val target = "library_" + GameLibrary.accountKey("delayed-favorite")
+        val preference = activity.getSharedPreferences(target, 0)
+        val wrapped = object : SharedPreferences by preference {
+            override fun edit(): SharedPreferences.Editor {
+                val editor = preference.edit()
+                return object : SharedPreferences.Editor by editor {
+                    private var savesFavorites = false
+                    override fun putStringSet(key: String, values: MutableSet<String>?): SharedPreferences.Editor {
+                        savesFavorites = key == "favorites"
+                        editor.putStringSet(key, values)
+                        return this
+                    }
+                    override fun commit(): Boolean {
+                        if (savesFavorites) {
+                            commitThread.set(Thread.currentThread())
+                            entered.countDown()
+                            check(release.await(5, TimeUnit.SECONDS))
+                            if (rejectCommit.get()) {
+                                editor.apply()
+                                return false
+                            }
+                        }
+                        return editor.commit()
+                    }
+                }
+            }
+        }
+        val context = object : ContextWrapper(activity) {
+            override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
+                if (name == target) wrapped else super.getSharedPreferences(name, mode)
+        }
+        val library = GameLibrary(context, "delayed-favorite")
+        val title = games.first().titleId
+        library.saveCloudRecent(listOf(title))
+        val acknowledgements = mutableListOf<Boolean>()
+        val view = GameDashboardView(activity, library, {}, {}, {}, {}, onFavoritesChanged = {
+            acknowledgements += library.isFavorite(title)
+        })
+        try {
+            activity.setContentView(view); view.setGames(games); layout(view)
+            key(view, KeyEvent.KEYCODE_BUTTON_Y)
+            assertTrue(entered.await(2, TimeUnit.SECONDS))
+            assertNotSame(Thread.currentThread(), commitThread.get())
+            assertFalse(library.isFavorite(title))
+            assertTrue(acknowledgements.isEmpty())
+            key(view, KeyEvent.KEYCODE_BUTTON_Y)
+            key(view, KeyEvent.KEYCODE_BUTTON_L1)
+            assertEquals(LibraryTab.ALL, view.activeTab)
+            release.countDown()
+            view.awaitFavoriteWrites()
+            assertEquals(listOf(true, false), acknowledgements)
+            assertFalse(library.isFavorite(title))
+
+            rejectCommit.set(true)
+            view.selectTab(LibraryTab.RECENT); layout(view)
+            key(view, KeyEvent.KEYCODE_BUTTON_Y)
+            view.awaitFavoriteWrites()
+            assertEquals(listOf(true, false), acknowledgements)
+            assertFalse(library.isFavorite(title))
+            assertEquals(emptySet<String>(), preference.getStringSet("favorites", emptySet()))
+        } finally {
+            release.countDown()
+            view.close(); controller.pause().stop().destroy()
+        }
     }
     @Test fun choosingACoverLaunchesItsRealCloudIdAndSearchIncludesTheFullCatalog() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()

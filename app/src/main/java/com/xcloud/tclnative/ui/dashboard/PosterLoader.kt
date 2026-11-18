@@ -37,7 +37,7 @@ internal class PosterLoader(context: Context, private val scope: CoroutineScope,
     fun pause() {
         paused=true
         bindings.forEach { (view,binding) -> binding.job?.cancel(); view.setImageDrawable(null) }
-        bindings.clear(); deliveries?.clear(); backend.cache.evictAll()
+        bindings.clear(); deliveries?.clear()
     }
     fun resume() { paused=false }
     fun load(view: ImageView, originalUrl: String?, maxWidth: Int = 720, maxHeight: Int = 1080,
@@ -108,6 +108,9 @@ internal class ArtworkBackend(context: Context,
     init { application.registerComponentCallbacks(this) }
     override fun onConfigurationChanged(newConfig: Configuration) = Unit
     override fun onLowMemory() { cache.evictAll() }
+    fun trimForPlayback() {
+        if (policy.constrainedMemory) cache.evictAll()
+    }
     override fun onTrimMemory(level: Int) {
         // Evict references only: a displayed/shared bitmap must never be recycled here.
         when {

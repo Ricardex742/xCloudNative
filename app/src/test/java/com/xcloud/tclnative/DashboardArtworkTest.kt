@@ -76,7 +76,7 @@ class DashboardArtworkTest {
             view.setGames(games.map { it.copy(seriesOptimized=true) }); layout(view)
             val count=server.requestCount
             view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y))
-            shadowOf(Looper.getMainLooper()).idle()
+            view.awaitFavoriteWrites()
             assertTrue(library.isFavorite(games.first().titleId))
             images.forEachIndexed { i,image -> assertSame(bitmaps[i],(image.drawable as BitmapDrawable).bitmap) }
             assertEquals(count,server.requestCount)

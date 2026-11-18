@@ -9,6 +9,7 @@ import android.widget.ImageView
 import com.xcloud.tclnative.ui.dashboard.PosterLoader
 import com.xcloud.tclnative.ui.dashboard.ArtworkBackend
 import com.xcloud.tclnative.ui.dashboard.ArtworkPolicy
+import com.xcloud.tclnative.ui.dashboard.ArtworkRequest
 import com.xcloud.tclnative.ui.dashboard.ArtworkImageDecoder
 import kotlinx.coroutines.*
 import okhttp3.mockwebserver.Dispatcher
@@ -35,6 +36,29 @@ import java.util.concurrent.CountDownLatch
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class ArtworkLoadingTest {
+    @Test fun gameplayTrimsTheDecodedCacheOnlyOnConstrainedDevices() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val request = ArtworkRequest.create("https://art.example/cover.png", 32, 32)
+        try {
+            for (constrained in listOf(false, true)) {
+                val backend = ArtworkBackend(controller.get(), ArtworkPolicy(4 * 1024 * 1024, 1, constrained))
+                try {
+                    val cover = Bitmap.createBitmap(32, 32, Bitmap.Config.ARGB_8888)
+                    backend.cache.put(request, cover)
+                    backend.trimForPlayback()
+                    if (constrained) assertNull(backend.cache.get(request)) else assertSame(cover, backend.cache.get(request))
+                    assertFalse(cover.isRecycled)
+                    backend.onLowMemory()
+                    assertNull(backend.cache.get(request))
+                } finally {
+                    backend.close()
+                }
+            }
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun imageAllocationFailureKeepsTheUiAliveAndTheNextImageCanLoad() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val activity=controller.get()
         val server=MockWebServer().apply { start() }
@@ -273,7 +297,8 @@ class ArtworkLoadingTest {
             Thread.sleep(600); shadowOf(Looper.getMainLooper()).idle()
             assertEquals(Color.BLUE, (image.drawable as BitmapDrawable).bitmap.getPixel(0,0))
             val before = server.requestCount
-            loader.close()
+            loader.pause()
+            assertNull(image.drawable)
             val next = PosterLoader(activity, scope)
             val thumbnail = ImageView(activity)
             val callbacks=mutableListOf<Boolean>()

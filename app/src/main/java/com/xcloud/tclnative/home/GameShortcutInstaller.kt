@@ -28,8 +28,9 @@ import javax.security.auth.x500.X500Principal
 
 /** Invoked only after selecting a favorite. The system installer retains control of installation. */
 class GameShortcutInstaller(private val context: Context) {
-    fun create(game: GameTitle,cover: Bitmap?): File {
+    fun create(game: GameTitle,cover: Bitmap?,pendingApk: File? = null): File {
         val folder=File(context.cacheDir,"game-shortcuts").apply { mkdirs() }
+        removeExpiredApks(folder, pendingApk)
         // An installer may still be reading the previous APK, even after another request starts.
         val template=File.createTempFile("template-", ".apk",folder)
         val packageName=ShortcutApkBuilder.packageName(game.titleId)
@@ -76,5 +77,21 @@ class GameShortcutInstaller(private val context: Context) {
         return ApkSigner.SignerConfig.Builder("xcloud-shortcut",store.getKey(KEY_ALIAS,null) as PrivateKey,
             listOf(store.getCertificate(KEY_ALIAS) as X509Certificate)).build()
     }
-    companion object { private const val KEY_ALIAS="xcloud-game-shortcuts-v1" }
+    companion object {
+        private const val KEY_ALIAS = "xcloud-game-shortcuts-v1"
+        private const val INSTALL_GRACE_MS = 24 * 60 * 60_000L
+        private val apkName = Regex("com[.]xcloud[.]game[.]g[0-9a-f]{24}(?:-[0-9a-f]{32})?[.]apk")
+
+        internal fun isShortcutApkName(name: String) = apkName.matches(name)
+
+        internal fun removeExpiredApks(folder: File, pendingApk: File?, now: Long = System.currentTimeMillis()) {
+            val cutoff = now - INSTALL_GRACE_MS
+            // Keep recent handoffs to the system installer and the confirmation restored by the Activity.
+            folder.listFiles()?.forEach { file ->
+                if (file != pendingApk && isShortcutApkName(file.name) && file.isFile && file.lastModified() in 1..cutoff) {
+                    file.delete()
+                }
+            }
+        }
+    }
 }

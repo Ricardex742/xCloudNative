@@ -97,7 +97,7 @@ class PlayStationPhoneReviewTest {
                     try {
                         home.setGames(data);home.selectTab(LibraryTab.ALL);home.setProfile(XboxProfile("Jogador","Perfil de demonstração",subscription="ULTIMATE"));home.setCloudPlaytime(CloudPlaytime(CloudPlaytimeStatus.LIMITED,42*60))
                         mount(home);home.restoreFocus();home.awaitCatalog();measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-home");assertHomeGeometry(home)
-                        home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));home.selectTab(LibraryTab.FAVORITES);measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-favorites")
+                        home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));home.awaitFavoriteWrites();home.selectTab(LibraryTab.FAVORITES);measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-favorites")
                         val browse=all(home).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.toString()==UiText.text("Biblioteca") };browse.performClick()
                         val chooser=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog;dialog(chooser,p,"${theme.name}-library");chooser.dismiss()
                         home.setSearch("Call of Duty");measure(home,p.cw,p.ch);capture(home,p,"${theme.name}-search-results")

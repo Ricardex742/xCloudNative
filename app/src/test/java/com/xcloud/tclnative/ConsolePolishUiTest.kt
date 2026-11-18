@@ -180,7 +180,7 @@ class ConsolePolishUiTest {
                 capture(v,"era-${theme.name.lowercase()}")
                 second.requestFocus();layout(v)
                 assertSame(second,v.findFocus());assertEquals("POLISH-1",v.selectedGame!!.titleId)
-                v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));layout(v);assertTrue(second.contentDescription.contains("favorito"))
+                v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));v.awaitFavoriteWrites();layout(v);assertTrue(second.contentDescription.contains("favorito"))
                 v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));assertEquals(listOf("POLISH-1"),played)
             } finally { v.close();controller.pause().stop().destroy() }
         }
