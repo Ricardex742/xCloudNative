@@ -288,14 +288,14 @@ Entregar também commit, branch, ID do build, versão/código, certificado e SHA
 
 ## Continuação na feature branch
 
-A implementação nativa posterior e os builds de teste conferidos estão descritos em `CODEX_CONTEXT.md`, nas seções “Build de teste nativo conferido” e “Build da revisão de celular conferido”. O exame histórico deste guia continua servindo de referência. Para a home, o pedido mais recente usa os prints `html-ps4-home.jpg` e `html-ps5-home.jpg`; as simulações orientam a composição, com Views/Canvas, catálogo e estados reais. A identidade de assinatura foi preservada; os ajustes de recursos/download do workflow estão descritos abaixo. A validação física em TV/celular permanece pendente.
+A implementação nativa posterior e os builds de teste conferidos estão descritos em `CODEX_CONTEXT.md`, nas seções “Build de teste nativo conferido”, “Build da revisão de celular conferido” e “Build da composição e imersão conferido”. O exame histórico deste guia continua servindo de referência. Para a home, o pedido mais recente usa os prints `html-ps4-home.jpg` e `html-ps5-home.jpg`; as simulações orientam a composição, com Views/Canvas, catálogo e estados reais. A identidade de assinatura foi preservada; os ajustes de recursos/download do workflow estão descritos abaixo. A validação física em TV/celular permanece pendente.
 
 
 ### Revisão de geometria no celular
 
 O app permanece em paisagem, conforme o manifesto e a orientação atual do usuário. A revisão usa áreas úteis menores que a resolução total, incluindo barras e recorte simulados. Consultar a seção “Revisão nativa da área útil em celular” de `CODEX_CONTEXT.md` e `PlayStationPhoneReviewTest`. Não confundir essas capturas Android/Robolectric com inspeção ou medição em aparelho real. O APK conferido usa código 96, superior ao 95 distribuído anteriormente, com a mesma assinatura permanente; build e hashes estão na seção “Build da revisão de celular conferido”.
 
-A revisão seguinte, no código 97, está descrita em “Composição dos consoles e janelas imersivas” de `CODEX_CONTEXT.md`. Ela retoma a composição de referência dos Xbox em paisagem, corrige também filas e painéis e mantém a imersão nas janelas próprias. Não recuperar a disposição separada de celular do código 96 como referência visual atual. Resultados e identidade do próximo artefato precisam ser conferidos na execução correspondente.
+A revisão seguinte, no código 97, está descrita em “Composição dos consoles e janelas imersivas” de `CODEX_CONTEXT.md`. Ela retoma a composição de referência dos Xbox em paisagem, corrige também filas e painéis e mantém a imersão nas janelas próprias. Não recuperar a disposição separada de celular do código 96 como referência visual atual. O APK foi conferido no build `44361124859`, fonte `3302564d4b9da35858e8fe131e1629c9118d7037`; versão, certificado, hashes, resultados e limitações estão na seção “Build da composição e imersão conferido”.
 
 
 ### Recursos da suíte de capturas
