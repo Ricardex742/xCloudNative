@@ -1507,7 +1507,11 @@ class GameDashboardView(
         override fun getItemId(position: Int) = items[position].key.fold(1125899906842597L) { hash, c -> hash*31+c.code }
         override fun getItemCount() = items.size
         fun submit(next: List<CatalogCard>, changes: CatalogChanges) {
+            val resized=items.size!=next.size
             items=next
+            // The PS5 library tile follows the real shelf. A worker result may arrive
+            // after the first measure without changing the viewport dimensions.
+            if(resized && designScene==ConsoleScene.PS5) { lastGeometry=0L;this@GameDashboardView.requestLayout() }
             if(changes.replace) notifyDataSetChanged()
             else changes.ranges.forEach { notifyItemRangeChanged(it.first,it.last-it.first+1,"metadata") }
         }

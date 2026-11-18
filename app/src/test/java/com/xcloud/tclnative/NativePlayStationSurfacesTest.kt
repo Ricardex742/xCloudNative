@@ -38,7 +38,11 @@ class NativePlayStationSurfacesTest {
     }
     private val themes=listOf(UiTheme.PS4,UiTheme.PS5,UiTheme.PS4_NIGHT,UiTheme.PS5_NIGHT)
     private fun all(v: View): List<View> = listOf(v)+if(v is ViewGroup) (0 until v.childCount).flatMap { all(v.getChildAt(it)) } else emptyList()
-    private fun layout(v: View,w: Int=1280,h: Int=720) { repeat(3) {
+    private fun layout(v: View,w: Int=1280,h: Int=720) {
+        // The catalog worker runs on a real thread. Advancing the paused Main clock alone
+        // does not finish a resumed catalog or its pending focus request on a busy runner.
+        (v as? GameDashboardView)?.awaitCatalog()
+        repeat(3) {
         v.measure(View.MeasureSpec.makeMeasureSpec(w,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(h,View.MeasureSpec.EXACTLY));v.layout(0,0,w,h)
         shadowOf(Looper.getMainLooper()).idleFor(32,TimeUnit.MILLISECONDS)
     } }
@@ -81,6 +85,32 @@ class NativePlayStationSurfacesTest {
                 } finally { view.close() }
             }
         } finally { c.pause().stop().destroy() }
+    }
+    @Test fun ps5LibraryTileFollowsCatalogResultsAndSearchWithoutAViewportResize() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();DashboardTheme.apply(a,UiTheme.PS5)
+        val view=GameDashboardView(a,GameLibrary(a,"native-async-shelf"),{},{},{},{})
+        try {
+            a.setContentView(view);layout(view)
+            val grid=all(view).filterIsInstance<RecyclerView>().single()
+            val library=all(view).single { it.isShown && it.isClickable && it.contentDescription=="Biblioteca" }
+            val emptyX=library.left
+            fun measureBeforeWorkerReturns() {
+                view.measure(View.MeasureSpec.makeMeasureSpec(1280,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(720,View.MeasureSpec.EXACTLY));view.layout(0,0,1280,720)
+            }
+            view.setGames((0..5).map { game().copy(titleId="SHELF-$it",name="Native shelf $it") });view.selectTab(LibraryTab.ALL);measureBeforeWorkerReturns();layout(view)
+            fun followsLast(count: Int) {
+                assertEquals(count,grid.adapter!!.itemCount)
+                val last=grid.findViewHolderForAdapterPosition(count-1)!!.itemView
+                val bounds=Rect(0,0,last.width,last.height);view.offsetDescendantRectToMyCoords(last,bounds)
+                assertTrue("Library overlaps a cover",library.left>=bounds.right)
+                assertTrue("Library must follow the loaded shelf",library.left-bounds.right<=40)
+                inside(view,library)
+            }
+            followsLast(6);val fullX=library.left;assertTrue(fullX<emptyX)
+            view.setSearch("Native shelf 0");measureBeforeWorkerReturns();layout(view);followsLast(1);assertTrue(library.left<fullX)
+            view.setSearch("no matching game");measureBeforeWorkerReturns();layout(view);assertEquals(0,grid.adapter!!.itemCount);assertEquals(emptyX,library.left)
+            view.setSearch("");measureBeforeWorkerReturns();layout(view);followsLast(6);assertEquals(fullX,library.left)
+        } finally { view.close();c.pause().stop().destroy() }
     }
     @Test fun ps5ScreenshotQuickCardsAndOptionsOpenSharedSettingsWithRealQuota() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();UiText.apply(a,AppLanguage.PORTUGUESE)
@@ -218,8 +248,6 @@ class NativePlayStationSurfacesTest {
                 try {
                     a.setContentView(view);view.setGames((0..20).map { game().copy(titleId="PHONE-$it",name="Jogo $it") });view.selectTab(LibraryTab.ALL)
                     layout(view,2400,1080)
-                    val deadline=System.currentTimeMillis()+5000
-                    while(view.isCatalogUpdating && System.currentTimeMillis()<deadline) { Thread.sleep(10);shadowOf(Looper.getMainLooper()).idleFor(32,TimeUnit.MILLISECONDS) }
                     view.restoreFocus();layout(view,2400,1080)
                     val touch=48*a.resources.displayMetrics.density
                     for(label in listOf("Pesquisar jogos","Configurações",if(theme.scene==ConsoleScene.PS5) "Opções:" else "FAVORITAR")) {
@@ -234,11 +262,10 @@ class NativePlayStationSurfacesTest {
                     view.pauseArtwork();val layer=all(view).filterIsInstance<ConsoleThemeBackdrop>().single();assertFalse(layer.framePending)
                     view.resumeArtwork();view.restoreFocus();layout(view,2400,1080)
                     assertSame(adapter,grid.adapter);assertEquals(selected,view.selectedGame!!.titleId);assertTrue(played.isEmpty())
+                    assertTrue("$theme catalog must regain focus after playback",grid.hasFocus())
                     repeat(24) { view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT));layout(view,2400,1080) }
-                    val settled=System.currentTimeMillis()+5000
-                    while(view.isCatalogUpdating && System.currentTimeMillis()<settled) { Thread.sleep(10);shadowOf(Looper.getMainLooper()).idleFor(32,TimeUnit.MILLISECONDS) }
                     assertFalse(view.isCatalogUpdating);layout(view,2400,1080)
-                    assertEquals("PHONE-20",view.selectedGame!!.titleId)
+                    assertEquals("$theme held D-pad must reach the last game","PHONE-20",view.selectedGame!!.titleId)
                     val focused=view.findFocus();assertNotNull(focused);inside(view,focused!!)
                     var rebinds=0
                     val observer=object: RecyclerView.AdapterDataObserver() {
