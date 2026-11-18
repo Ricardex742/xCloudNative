@@ -12,7 +12,7 @@ import com.xcloud.tclnative.signaling.XCloudSignalingClient
 import com.xcloud.tclnative.ui.MainActivity
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialog
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.*
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
 import org.junit.Test
@@ -40,19 +40,57 @@ class RejectingRendererActivity: MainActivity() {
 class RendererStartupFailureTest {
     private fun all(view: View): List<View> = listOf(view)+if(view is ViewGroup)
         (0 until view.childCount).flatMap { all(view.getChildAt(it)) } else emptyList()
+    private val launch = MainActivity::class.java.getDeclaredMethod("launchCloudGame", XCloudSignalingClient::class.java,
+        GameTitle::class.java, TouchMode::class.java, Boolean::class.javaPrimitiveType).apply { isAccessible = true }
+
+    @Test fun cancellingAQueuedLaunchDoesNotBypassAnEarlierCleanup() {
+        MockWebServer().use { server ->
+            val controller = Robolectric.buildActivity(RejectingRendererActivity::class.java).setup()
+            val activity = controller.get()
+            val signaling = XCloudSignalingClient(XCloudSession("test-token", server.url("/").toString(), "demo"))
+            val cleanup = CompletableDeferred<Unit>()
+            val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+            val closing = scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                try { awaitCancellation() } finally { withContext(NonCancellable) { cleanup.await() } }
+            }
+            try {
+                ReflectionHelpers.setField(activity, "gameJob", closing)
+                launch.invoke(activity, signaling, GameTitle("second", "Second"), TouchMode.OFF, false)
+                launch.invoke(activity, signaling, GameTitle("third", "Third"), TouchMode.OFF, false)
+                val latest = ReflectionHelpers.getField<Job>(activity, "gameJob")
+                shadowOf(Looper.getMainLooper()).idle()
+                assertTrue(closing.isCancelled)
+                assertFalse(latest.isCompleted)
+                assertTrue(activity.attempted.isEmpty())
+
+                cleanup.complete(Unit)
+                val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+                while (!latest.isCompleted && System.nanoTime() < deadline) {
+                    shadowOf(Looper.getMainLooper()).idle()
+                    Thread.sleep(5)
+                }
+                assertTrue(latest.isCompleted)
+                assertEquals(1, activity.attempted.size)
+            } finally {
+                cleanup.complete(Unit)
+                scope.cancel()
+                (ShadowDialog.getLatestDialog() as? ConsoleDialog)?.dismiss()
+                controller.pause().stop().destroy()
+            }
+        }
+    }
+
     @Test fun changingUpscalerAcrossAttemptsNeverLeavesLoadingOpenWhenRendererPreparationThrows() {
         val server=MockWebServer();server.start()
         val controller=Robolectric.buildActivity(RejectingRendererActivity::class.java).setup()
         val activity=controller.get()
         val signaling=XCloudSignalingClient(XCloudSession("test-token",server.url("/").toString(),"demo"))
-        val launch=MainActivity::class.java.getDeclaredMethod("launchCloudGame",XCloudSignalingClient::class.java,
-            GameTitle::class.java,TouchMode::class.java).apply { isAccessible=true }
         val game=GameTitle("demo-title","Demo game",posterUrl="",tileUrl="")
         try {
             for(mode in FsrMode.entries) {
                 (ShadowDialog.getLatestDialog() as? ConsoleDialog)?.dismiss()
                 ReflectionHelpers.setField(activity,"playbackSettings",PlaybackSettings(fsr=mode,touchMode=TouchMode.OFF))
-                launch.invoke(activity,signaling,game,TouchMode.OFF)
+                launch.invoke(activity,signaling,game,TouchMode.OFF,false)
                 val deadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5)
                 do {
                     shadowOf(Looper.getMainLooper()).idle();Thread.sleep(5)

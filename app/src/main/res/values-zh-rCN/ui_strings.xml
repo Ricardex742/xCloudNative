@@ -1248,4 +1248,6 @@
     <string name="ui_2faf10b778337a96" formatted="false">"看清每处细节"</string>
     <string name="ui_ca2404ad054fa6ca" formatted="false">"{0}小时{1}分"</string>
     <string name="ui_6168ae9c0ab7595c" formatted="false">"{0}分"</string>
+    <string name="ui_73d1dd504499ea34" formatted="false">"切换游戏"</string>
+    <string name="ui_d69d87868f85df52" formatted="false">"结束当前会话并打开{0}吗？"</string>
 </resources>

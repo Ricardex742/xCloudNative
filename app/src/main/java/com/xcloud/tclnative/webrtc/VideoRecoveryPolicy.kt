@@ -43,5 +43,6 @@ class VideoRecoveryPolicy(private val compatibility: Boolean = false) {
         receiving == false -> VideoRecoveryAction.REQUEST_KEYFRAME // A decoder reset cannot repair missing network packets.
         else -> VideoRecoveryAction.RESET_DECODER
     }
+    fun reset() { lastProgressMs = null; stage = 0; lastRequestMs = Long.MIN_VALUE }
     fun retry(nowMs: Long) { lastProgressMs = nowMs - 3500; stage = 0; lastRequestMs = Long.MIN_VALUE }
 }

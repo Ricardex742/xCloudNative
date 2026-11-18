@@ -190,6 +190,7 @@ open class MainActivity : Activity() {
     private var lastSessionReport: SessionReport?=null
     private var postSessionDialog: Dialog?=null
     @Volatile private var activityVisible=false
+    private var videoVisibilityEpoch = 0
     private var activeGame: GameTitle? = null
     private var pendingLaunch = PendingGameLaunch()
     private val homeShortcuts by lazy { HomeShortcuts(this) }
@@ -204,6 +205,7 @@ open class MainActivity : Activity() {
         const val REQUEST_SHORTCUT_INSTALL_PERMISSION=4102
     }
     private var gameMenuDialog: Dialog? = null
+    private var shortcutSwitchDialog: Dialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         com.xcloud.tclnative.i18n.UiText.install(this)
@@ -336,10 +338,12 @@ open class MainActivity : Activity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        val request = intent.getStringExtra("shortcut_request")
+        if (request != null && request == lastShortcutRequest) return
         if (pendingLaunch.receive(intent)) {
             setIntent(intent)
-            lastShortcutRequest=intent.getStringExtra("shortcut_request")
-            if(transitionPanel.visibility==View.VISIBLE && !transitionPanel.exiting) {
+            lastShortcutRequest=request
+            if (gameJob?.isActive != true && transitionPanel.visibility==View.VISIBLE && !transitionPanel.exiting) {
                 transitionPanel.showStartup(pendingLaunch.titleId?.let { GameTitle(it,UiText.text("Seu jogo")) },UiText.text("Preparando seu jogo…"))
                 loadStartupArtwork()
             }
@@ -361,9 +365,20 @@ open class MainActivity : Activity() {
         val game = pendingLaunch.consume(currentGames)
         if (game == null) {
             ConsoleDialogs.message(this,UiText.text("Atalho indisponível"),UiText.text("Este jogo não está disponível no catálogo desta conta. Atualize o catálogo nas configurações."))
-        } else if (activeGame?.titleId != game.titleId || gameJob?.isActive != true) {
-            launchCloudGame(signaling,game)
+        } else if (gameJob?.isActive != true) {
+            launchCloudGame(signaling, game, fromShortcut = true)
             return true
+        } else if (activeGame?.titleId != game.titleId && shortcutSwitchDialog == null) {
+            val generation = playbackGeneration
+            val dialog = ConsoleDialogs.message(this, UiText.text("Trocar de jogo"),
+                UiText.text("Encerrar a sessão atual e abrir {0}?", UiText.nested(game.name)),
+                listOf(ConsoleAction(UiText.text("Cancelar")) {}, ConsoleAction(UiText.text("Jogar na nuvem")) {
+                    if (generation == playbackGeneration && currentSignaling === signaling && activityVisible) {
+                        launchCloudGame(signaling, game, fromShortcut = true)
+                    }
+                }))
+            shortcutSwitchDialog = dialog
+            dialog.setOnDismissListener { if (shortcutSwitchDialog === dialog) shortcutSwitchDialog = null }
         }
         return false
     }
@@ -1195,7 +1210,10 @@ open class MainActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
-    private fun launchCloudGame(signaling: XCloudSignalingClient, game: GameTitle, touchChoice: TouchMode? = null) {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun launchCloudGame(signaling: XCloudSignalingClient, game: GameTitle,
+                                touchChoice: TouchMode? = null, fromShortcut: Boolean = false) {
+        shortcutSwitchDialog?.dismiss()
         friendsPanel?.close();friendsPanel=null
         playtimeJob?.cancel();playtimeJob=null
         recentHistoryJob?.cancel(); recentHistoryJob=null
@@ -1246,8 +1264,10 @@ open class MainActivity : Activity() {
         beginLoading(game)
         hudTextView.text = "PLAY: Solicitando sessão para [$gameName]. Voltar cancela."
         hudTextView.setTextColor(Color.CYAN)
-        gameJob = mainScope.launch {
-            previous?.join()
+        gameJob = mainScope.launch(start = CoroutineStart.ATOMIC) {
+            // Keep the cleanup chain intact if another request replaces this waiting launch.
+            if (previous != null) withContext(NonCancellable) { previous.join() }
+            ensureActive()
             if (generation != playbackGeneration) return@launch
             val firstFrame = CompletableDeferred<Unit>()
             var transportFailure = CompletableDeferred<Exception>()
@@ -1257,6 +1277,7 @@ open class MainActivity : Activity() {
             var allocatedRtc: XCloudWebRtcClient?=null
             var failed=false
             var startupFailure: String?=null
+            var startupInput = "LAUNCH/${if (fromShortcut) "SHORTCUT" else "CATALOG"}; locale=${sessionOptions.locale}"
             controllerPath.clear()
             signaling.resetStartupDiagnostics()
             tracker.inputDetails={ "Upscaling=${settings.fsr}; output=${settings.fsrOutput}\n"+controllerPath.diagnostics()+"\n"+signaling.startupDiagnostics()+"\n"+surfaceRenderer.diagnostics() }
@@ -1267,13 +1288,20 @@ open class MainActivity : Activity() {
                 InputDevice.getDeviceIds().map { InputDevice.getDevice(it) }.filterNotNull().filter { !usbDirect.ownsAndroid(it.id) }.filter {
                     it.sources and InputDevice.SOURCE_GAMEPAD==InputDevice.SOURCE_GAMEPAD || it.sources and InputDevice.SOURCE_JOYSTICK==InputDevice.SOURCE_JOYSTICK
                 }.sortedWith(compareBy<InputDevice> { it.id!=preferredControllerId }.thenBy { it.id }).forEach { controllers.slot(it.id) }
+                val primary = controllers.sourceFor(0)
+                val source = when (primary) {
+                    is ControllerSource.Android -> "ANDROID"
+                    is ControllerSource.Usb -> "USB"
+                    null -> "NONE"
+                }
+                startupInput += "; primary=$source; catalog_preference=${primary is ControllerSource.Android && primary.deviceId == preferredControllerId}"
                 rumble.enabled=settings.rumble
                 rumble.touchRumble=settings.touchRumble
                 val playbackEgl=try { prepareSessionRenderer(settings) } catch(error: Exception) {
                     if(error is CancellationException) throw error
                     throw RenderFailureException(error)
                 }
-                surfaceRenderer.onFirstFrameRendered = {
+                surfaceRenderer.onFirstFrameSubmitted = {
                     if (generation == playbackGeneration && recoveryState.current(0) && !firstFrame.isCompleted) {
                         tracker.begin(android.os.SystemClock.elapsedRealtime(),NetworkSnapshot.read(this@MainActivity))
                         runCatching { startupReportStore.clear() }
@@ -1313,12 +1341,16 @@ open class MainActivity : Activity() {
                         if(current()) {
                             val now=android.os.SystemClock.elapsedRealtime()
                             streamHistory.add(now,metrics,input); tracker.add(now,metrics,input)
-                            if(!compatible) runOnUiThread {
-                                if(current()) surfaceRenderer.observeFsrPerformance(now,metrics,
-                                    firstFrame.isCompleted && activityVisible && gameplayInputEnabled())
+                            runOnUiThread {
+                                if (current()) {
+                                    if (!compatible) surfaceRenderer.observeFsrPerformance(now, metrics,
+                                        firstFrame.isCompleted && activityVisible && gameplayInputEnabled())
+                                    latestMetrics = metrics
+                                    latestInput = input
+                                    renderStatistics()
+                                }
                             }
                         }
-                        runOnUiThread { if(current()) { latestMetrics=metrics;latestInput=input;renderStatistics() } }
                     }, lowLatencyVideo = settings.videoMode.lowLatency, streamResolution = settings.resolution,
                     nativeTouch = touchMode==TouchMode.NATIVE,
                     onRumble = { command -> if(current() && recoveryState.phase==TransmissionRecoveryState.Phase.ACTIVE) rumble.play(command) },compatibility=compatible,
@@ -1330,7 +1362,7 @@ open class MainActivity : Activity() {
                 var rtc=buildRtc()
                 webrtcClient = rtc
                 val appVersion=packageManager.getPackageInfo(packageName,0).versionName ?: "n/d"
-                tracker.inputDetails = { (dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" } ?: "")+UiText.join(UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())),"\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}","\nUSB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}","\n${inputDevice.diagnostics()}",(when(touchMode) { TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}";TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}";else -> "" }),UiText.text("\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10} | Mouse/teclado: {11} | Entrada MKB ativa: {12} | Captura Android: {13}",UiText.nested(joystickDispatch.diagnostics()),UiText.nested(signaling.profileDiagnostics()),UiText.nested(signaling.keepAliveDiagnostics()),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(playbackDisplay.diagnostics(window.decorView.display)),UiText.nested(rtc.audioDiagnostics()),UiText.nested(rtc.latencyDiagnostics()),UiText.nested(rtc.iceDiagnostics()),UiText.nested(rtc.codecDiagnostics()),UiText.nested(rumble.diagnostics()),UiText.nested(gyro.status),UiText.nested(sessionDesktopMode.label),UiText.nested(desktopCaptured),UiText.nested(if(Build.VERSION.SDK_INT>=26) window.decorView.hasPointerCapture() else false)))+"\n"+recoveryState.diagnostics() }
+                tracker.inputDetails = { "$startupInput\n"+(dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" } ?: "")+UiText.join(UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())),"\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}","\nUSB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}","\n${inputDevice.diagnostics()}",(when(touchMode) { TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}";TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}";else -> "" }),UiText.text("\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10} | Mouse/teclado: {11} | Entrada MKB ativa: {12} | Captura Android: {13}",UiText.nested(joystickDispatch.diagnostics()),UiText.nested(signaling.profileDiagnostics()),UiText.nested(signaling.keepAliveDiagnostics()),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(playbackDisplay.diagnostics(window.decorView.display)),UiText.nested(rtc.audioDiagnostics()),UiText.nested(rtc.latencyDiagnostics()),UiText.nested(rtc.iceDiagnostics()),UiText.nested(rtc.codecDiagnostics()),UiText.nested(rumble.diagnostics()),UiText.nested(gyro.status),UiText.nested(sessionDesktopMode.label),UiText.nested(desktopCaptured),UiText.nested(if(Build.VERSION.SDK_INT>=26) window.decorView.hasPointerCapture() else false)))+"\n"+recoveryState.diagnostics() }
                 surfaceRenderer.displayDimensions()?.let(rtc::updateDisplayDimensions)
                 if(touchMode!=TouchMode.NATIVE) (0..3).filter { controllers.sourceFor(it)!=null }.forEach { publishGamepad(it) }
                 signaling.startAndConnectWebRtcSession(titleId, rtc, resolution = settings.resolution, nativeTouch=touchMode==TouchMode.NATIVE,options=sessionOptions,microphone=settings.microphone, onQueueStatus = { status -> runOnUiThread {
@@ -1354,6 +1386,7 @@ open class MainActivity : Activity() {
                     throw java.io.IOException("VIDEO: transporte conectado, mas nenhum quadro foi renderizado em 20s.")
                 }
                 val recovery = VideoRecoveryPolicy(compatible)
+                var visibilityEpoch = videoVisibilityEpoch
                 val nativeReadiness=com.xcloud.tclnative.webrtc.NativeTouchReadiness()
                 var lastToken = -1L
                 var recovering = false
@@ -1398,7 +1431,7 @@ open class MainActivity : Activity() {
                                 transportFailure=CompletableDeferred()
                                 val failure=transportFailure
                                 val frame=CompletableDeferred<Unit>()
-                                surfaceRenderer.onFirstFrameRendered={ if(generation==playbackGeneration && recoveryState.current(token)) frame.complete(Unit) }
+                                surfaceRenderer.onFirstFrameSubmitted={ if(generation==playbackGeneration && recoveryState.current(token)) frame.complete(Unit) }
                                 surfaceRenderer.onRenderError={ if(generation==playbackGeneration && recoveryState.current(token)) failure.complete(RenderFailureException(it)) }
                                 rtc=buildRtc();webrtcClient=rtc
                                 rtc.setAudioForeground(activityVisible)
@@ -1448,6 +1481,11 @@ open class MainActivity : Activity() {
                             }
                             continue
                         }
+                        if (!activityVisible) continue
+                        if (visibilityEpoch != videoVisibilityEpoch) {
+                            visibilityEpoch = videoVisibilityEpoch
+                            recovery.reset()
+                        }
                         val now = android.os.SystemClock.elapsedRealtime()
                         if(nativeReadiness.offer(now,currentTouchMode==TouchMode.NATIVE,rtc.nativeTouchMetadataReady(),
                                 activityVisible && gameplayInputEnabled())) {
@@ -1456,16 +1494,16 @@ open class MainActivity : Activity() {
                         }
                         val health = surfaceRenderer.probeVideoHealth()
                         val receiving=streamHistory.receivingVideo(now)
-                        val action = recovery.observe(now, health.presentedToken, health.deliveredRecently,receiving)
-                        tracker.observe(now,health.presentedToken,receiving,action)
-                        if (health.presentedToken != lastToken && recovering) {
+                        val action = recovery.observe(now, health.submittedToken, health.deliveredRecently,receiving)
+                        tracker.observe(now,health.submittedToken,receiving,action)
+                        if (health.submittedToken != lastToken && recovering) {
                             recovering = false
                             hudTextView.visibility = View.GONE
                             videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
                             hudTextView.text = UiText.text("Vídeo nativo ativo [{0}]",UiText.nested(gameName))
                             hudTextView.setTextColor(Color.GREEN)
                         }
-                        lastToken = health.presentedToken
+                        lastToken = health.submittedToken
                         when (action) {
                             VideoRecoveryAction.NONE -> Unit
                             VideoRecoveryAction.REQUEST_KEYFRAME -> {
@@ -1527,7 +1565,7 @@ open class MainActivity : Activity() {
                     if(!firstFrame.isCompleted) runCatching {
                         val version=packageManager.getPackageInfo(packageName,0).versionName ?: "n/d"
                         startupReportStore.save(gameName,"xCLOUD $version\nSTARTUP/NO_VIDEO; input=${touchMode.name}; failure=${startupFailure ?: "NONE"}\n"+
-                            "REQUESTED_PROFILE/${settings.resolution.name}; os=${settings.resolution.osName}; codec=${settings.videoCodec.name}; mode=${settings.videoMode.name}\n"+
+                            "$startupInput\nREQUESTED_PROFILE/${settings.resolution.name}; os=${settings.resolution.osName}; codec=${settings.videoCodec.name}; mode=${settings.videoMode.name}\n"+
                             signaling.startupDiagnostics()+"\n"+(rtc?.inputDiagnostics() ?: ""))
                     }
                     tracker.finish(android.os.SystemClock.elapsedRealtime(),if(failed) SessionEnd.FAILURE else SessionEnd.USER,rtc?.currentInputMetrics())
@@ -1545,10 +1583,16 @@ open class MainActivity : Activity() {
                     resetController()
                     currentTouchMode=TouchMode.OFF
                     touchView.configure(TouchMode.OFF)
-                    surfaceRenderer.clearSession()
-                    rtc?.close()
-                    if (webrtcClient === rtc) webrtcClient = null
-                    signaling.stop()
+                    try {
+                        surfaceRenderer.clearSession()
+                    } finally {
+                        try {
+                            rtc?.close()
+                        } finally {
+                            if (webrtcClient === rtc) webrtcClient = null
+                            signaling.stop()
+                        }
+                    }
                     if (generation == playbackGeneration) { activeGame=null; restoreDashboard() }
                     finishSessionReport(tracker)
                 }
@@ -1645,6 +1689,7 @@ open class MainActivity : Activity() {
         val closing=gameJob
         closing?.cancel()
         activeGame = null
+        shortcutSwitchDialog?.dismiss()
         gameMenuDialog?.dismiss()
         videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         resetController()
@@ -1809,6 +1854,7 @@ open class MainActivity : Activity() {
         com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.show(this,{ recoverImage?.invoke() },{ reloadTransmission?.invoke() },onBack)
     }
     private fun showTransmissionInterrupted() {
+        if (!activityVisible) return
         videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         videoRecoveryDialog=com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.failed(this,
             { reloadTransmission?.invoke() },{ cancelPlayback() },::showGameMenu,
@@ -1979,6 +2025,9 @@ open class MainActivity : Activity() {
         usbRumble.setForeground(true);usbDirect.setForeground(true)
         rumble.enabled=playbackSettings.rumble && webrtcClient!=null
         updateJoystickDispatch()
+        val recoveryPhase = transmissionRecovery?.phase
+        if (recoveryPhase == TransmissionRecoveryState.Phase.WAITING_RETRY ||
+            recoveryPhase == TransmissionRecoveryState.Phase.SESSION_ENDED) showTransmissionInterrupted()
         if(activeGame==null && dashboard!=null && controlPanel.visibility==View.VISIBLE && transitionPanel.visibility!=View.VISIBLE) {
             refreshCloudPlaytime(dashboard!!)
             val signaling=currentSignaling; val library=gameLibrary
@@ -1986,16 +2035,21 @@ open class MainActivity : Activity() {
         }
     }
     override fun onStop() {
+        activityVisible = false
+        videoVisibilityEpoch++
+        shortcutSwitchDialog?.dismiss()
         friendsPanel?.close();friendsPanel=null
         val heldUsb=usbDirect.currentInput().buttons
         joystickDispatch.request(false);rumble.enabled=false;rumble.stop()
         usbRumble.setForeground(false);usbDirect.setForeground(false);usbNavigation.clear();resetController()
         usbBlockedButtons=heldUsb
-        microphoneJob?.cancel();webrtcClient?.setAudioForeground(false);activityVisible=false
+        microphoneJob?.cancel();webrtcClient?.setAudioForeground(false)
         reportTracker?.setVisible(false);super.onStop()
     }
 
     override fun onDestroy() {
+        activityVisible = false
+        shortcutSwitchDialog?.dismiss()
         friendsPanel?.close();friendsPanel=null
         transmissionRecovery?.close()
         browserLogin?.close();browserLogin=null
@@ -2005,7 +2059,8 @@ open class MainActivity : Activity() {
         postSessionDialog?.dismiss()
         ++playbackGeneration
         gyro.stop();setDesktopCapture(false);auxiliaryHandler.removeCallbacksAndMessages(null)
-        mainScope.cancel()
+        val activityJobs = mainScope.coroutineContext.job
+        activityJobs.cancel()
         (getSystemService(Context.INPUT_SERVICE) as InputManager).unregisterInputDeviceListener(deviceListener)
         rumble.enabled=false; rumble.stop()
         usbRumble.close();usbDirect.close();usbNavigation.clear()
@@ -2017,9 +2072,14 @@ open class MainActivity : Activity() {
         transitionPanel.close()
         queuePanel.close()
         videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
-        surfaceRenderer.clearSession()
-        webrtcClient?.close()
-        surfaceRenderer.release()
+        // A cancelled startup may still be returning from a native peer operation. Its owner
+        // releases the track and transport first, while keeping the shared EGL context alive.
+        CoroutineScope(Dispatchers.Main.immediate).launch {
+            activityJobs.join()
+            surfaceRenderer.clearSession()
+            webrtcClient?.close()
+            surfaceRenderer.release()
+        }
         super.onDestroy()
     }
 }

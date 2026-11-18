@@ -6,6 +6,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class VideoRecoveryPolicyTest {
+    @Test fun resumingStartsANewWatchdogWindowEvenIfNoFrameWasSubmittedWhileHidden() {
+        val policy = VideoRecoveryPolicy()
+        policy.observe(0, 1, true)
+        assertEquals(REQUEST_KEYFRAME, policy.observe(4_000, 1, false))
+        policy.reset()
+        assertEquals(NONE, policy.observe(100_000, 1, false))
+        assertEquals(NONE, policy.observe(103_000, 1, false))
+        assertEquals(REQUEST_KEYFRAME, policy.observe(104_000, 1, false))
+    }
+
     @Test fun staticLoadingScreensWithNewFramesDoNotTriggerRecovery() {
         val policy = VideoRecoveryPolicy()
         for (second in 0L..120L) assertEquals(NONE, policy.observe(second * 1000, second, true))

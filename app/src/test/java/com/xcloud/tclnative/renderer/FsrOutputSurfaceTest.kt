@@ -24,6 +24,14 @@ import org.robolectric.annotation.Implementation
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28],shadows=[RecordingSurfaceShadow::class])
 class FsrOutputSurfaceTest {
+    @Test fun pinnedWebRtcRegistersTheEglSurfaceCallbackBeforeTheViewIsAttached() {
+        val view = OutputSurfaceViewRenderer(org.robolectric.RuntimeEnvironment.getApplication())
+        var submitted = false
+        view.addFrameSubmissionListener { submitted = true }
+        view.onFirstFrameRendered()
+        assertFalse(submitted)
+    }
+
     @Test fun endingANativeSessionRetiresItsSurfaceBeforeChoosingAnotherUpscaler() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val owner=AiPqSurfaceRenderer(controller.get());controller.get().setContentView(owner)

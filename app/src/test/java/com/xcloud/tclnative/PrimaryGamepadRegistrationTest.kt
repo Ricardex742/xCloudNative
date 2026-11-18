@@ -10,6 +10,16 @@ import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 
 class PrimaryGamepadRegistrationTest {
+    @Test fun rejectedHotplugDoesNotCommitTheSlotChange() {
+        val connections = GamepadConnections()
+        assertFalse(connections.add(1) { false })
+        assertTrue(connections.add(1) { true })
+        assertFalse(connections.remove(1) { false })
+        assertFalse(connections.add(1))
+        assertTrue(connections.remove(1) { true })
+        assertTrue(connections.add(1))
+    }
+
     @Test fun startupWithSeveralKnownDevicesAndReconnectBothAnnouncePlayerOneFirst() {
         for(knownBeforeHandshake in listOf(true,false)) {
             var now=0L

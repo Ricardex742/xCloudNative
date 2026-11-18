@@ -28,7 +28,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val egl = lazy { EglBase.create() }
     val eglBase: EglBase get()=egl.value
-    var onFirstFrameRendered: (() -> Unit)? = null
+    var onFirstFrameSubmitted: (() -> Unit)? = null
     var onRenderError: ((Exception) -> Unit)? = null
     var onDisplayDimensionsChanged: ((ClientDisplayDimensions) -> Unit)? = null
     private var lastDisplayDimensions: ClientDisplayDimensions? = null
@@ -66,27 +66,16 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     fun setPresentationPacing(mode: PresentationPacing) { pacingMode=mode }
     @Volatile private var generation = 0
     private val lastDeliveryMs = AtomicLong(Long.MIN_VALUE)
-    private val presentedToken = AtomicLong()
-    private val probePending = AtomicBoolean()
+    private val submittedToken = AtomicLong()
     private val fsrDraws=AtomicLong()
     private val allDraws=AtomicLong()
     private val fsrPerformance=FsrPerformanceGuard()
-    data class VideoHealth(val presentedToken: Long, val deliveredRecently: Boolean)
+    data class VideoHealth(val submittedToken: Long, val deliveredRecently: Boolean)
 
-    /** One zero-scale callback per watchdog tick: no bitmap allocation or GPU pixel readback. */
+    /** Counts buffers submitted to EGL, independently of frames delivered by the track. */
     fun probeVideoHealth(): VideoHealth {
-        val id = generation
-        val view = renderer
-        if (view != null && probePending.compareAndSet(false, true)) {
-            view.addFrameListener({
-                if (generation == id && !released) {
-                    presentedToken.incrementAndGet()
-                    probePending.set(false)
-                }
-            }, 0f)
-        }
         val delivered = lastDeliveryMs.get()
-        return VideoHealth(presentedToken.get(), delivered != Long.MIN_VALUE &&
+        return VideoHealth(submittedToken.get(), delivered != Long.MIN_VALUE &&
             android.os.SystemClock.elapsedRealtime() - delivered < 2000)
     }
 
@@ -227,7 +216,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         fsrFailure=null;treatmentFailure=null;resetTreatmentBudget()
         videoWidth = expectedWidth; videoHeight = expectedHeight
         lastDeliveryMs.set(Long.MIN_VALUE)
-        presentedToken.set(0)
+        submittedToken.set(0)
         replaceRenderer()
     }
     private fun replaceRenderer() {
@@ -235,7 +224,6 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         cancelBufferVerification();requestedBuffer=null
         generation++
         fsrDraws.set(0);allDraws.set(0);fsrPerformance.reset()
-        probePending.set(false)
         frameRateHintRequested = false
         val previous=renderer
         renderer=null;aspectDrawer=null
@@ -264,11 +252,11 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         renderer=newView
         try {
             val view=newView
+            val surfaceEpoch = AtomicLong()
+            val firstSubmissionPending = AtomicBoolean(true)
             view.onBufferFailure={ post { if(!released && generation==id) fallbackFsr("Surface recusou o tamanho solicitado") } }
             view.init(eglBase.eglBaseContext, object : RendererCommon.RendererEvents {
-                override fun onFirstFrameRendered() {
-                    post { if (!released && generation == id) onFirstFrameRendered?.invoke() }
-                }
+                override fun onFirstFrameRendered() = Unit // WebRTC emits this on delivery, before EGL draws.
                 override fun onFrameResolutionChanged(width: Int, height: Int, rotation: Int) {
                     post { if (!released && generation == id) {
                         videoWidth = if (rotation % 180 == 0) width else height
@@ -277,6 +265,21 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
                     } }
                 }
             },EglBase.CONFIG_PLAIN,drawer)
+            view.addFrameSubmissionListener {
+                if (!released && generation == id) {
+                    submittedToken.incrementAndGet()
+                    if (firstSubmissionPending.compareAndSet(true, false)) {
+                        val epoch = surfaceEpoch.get()
+                        post {
+                            if (!released && generation == id && epoch == surfaceEpoch.get() && view.holder.surface.isValid) {
+                                onFirstFrameSubmitted?.invoke()
+                            } else {
+                                firstSubmissionPending.set(true)
+                            }
+                        }
+                    }
+                }
+            }
             view.setScalingType(RendererCommon.ScalingType.SCALE_ASPECT_FILL)
             view.setEnableHardwareScaler(nativeUpscaling && !fsrEnabled)
             if(compatibility) view.setFpsReduction(30f) else view.disableFpsReduction()
@@ -288,12 +291,19 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
                         }.isSuccess
                     }
                 }
-                override fun surfaceCreated(holder: android.view.SurfaceHolder) { frameRate(holder);if(!released && generation==id) updateOutputBuffer() }
+                override fun surfaceCreated(holder: android.view.SurfaceHolder) {
+                    surfaceEpoch.incrementAndGet()
+                    frameRate(holder)
+                    if(!released && generation==id) updateOutputBuffer()
+                }
                 override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {
                     frameRate(holder)
                     if(!released && generation==id) updateOutputBuffer()
                 }
-                override fun surfaceDestroyed(holder: android.view.SurfaceHolder) { if (generation == id) { frameRateHintRequested = false;cancelBufferVerification() } }
+                override fun surfaceDestroyed(holder: android.view.SurfaceHolder) {
+                    surfaceEpoch.incrementAndGet()
+                    if (generation == id) { frameRateHintRequested = false;cancelBufferVerification() }
+                }
             })
             addView(view, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         } catch(error: Exception) {
@@ -459,7 +469,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         generation++
         cancelBufferVerification();fsrPerformance.reset()
         fsrRequested=false
-        onFirstFrameRendered = null
+        onFirstFrameSubmitted = null
         onRenderError = null
         // An idle renderer must not receive output-buffer changes for the next session's settings.
         // Always retire it, including the native path, before another upscaler is selected.

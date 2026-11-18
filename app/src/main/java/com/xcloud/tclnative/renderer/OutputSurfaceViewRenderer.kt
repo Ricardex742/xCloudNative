@@ -2,6 +2,7 @@ package com.xcloud.tclnative.renderer
 
 import android.content.Context
 import android.view.SurfaceHolder
+import org.webrtc.SurfaceEglRenderer
 import org.webrtc.SurfaceViewRenderer
 
 /** Keep stock WebRTC/EGL rendering; override only holder sizing while an FSR target is selected. */
@@ -14,10 +15,32 @@ open class OutputSurfaceViewRenderer(context: Context): SurfaceViewRenderer(cont
         return sizedHolder
     }
     fun setOutputBuffer(size: VideoViewport?) { (holder as OutputSurfaceHolder).setOutput(size) }
+
+    /** Register before attaching the view, while the EGL thread cannot be submitting frames. */
+    internal fun addFrameSubmissionListener(submitted: () -> Unit) {
+        val egl = checkNotNull((holder as OutputSurfaceHolder).eglRenderer) {
+            "The pinned WebRTC renderer did not register its EGL surface callback"
+        }
+        egl.addRenderListener { submitted() }
+    }
 }
 
 /** WebRTC re-applies setSizeFromLayout on layout/frame changes; retain the requested buffer size. */
 internal class OutputSurfaceHolder(private val original: SurfaceHolder,private val failed: () -> Unit): SurfaceHolder by original {
+    internal var eglRenderer: SurfaceEglRenderer? = null
+        private set
+
+    override fun addCallback(callback: SurfaceHolder.Callback) {
+        // SurfaceViewRenderer registers its SurfaceEglRenderer through our holder in M137.
+        if (callback is SurfaceEglRenderer) eglRenderer = callback
+        original.addCallback(callback)
+    }
+
+    override fun removeCallback(callback: SurfaceHolder.Callback) {
+        original.removeCallback(callback)
+        if (callback === eglRenderer) eglRenderer = null
+    }
+
     private var output: VideoViewport?=null
     private var applied: VideoViewport?=null
     private var layoutApplied=false

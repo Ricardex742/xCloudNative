@@ -54,8 +54,10 @@ class XCloudWebRtcClient(
     private val remoteInputTrace=RemoteInputTrace()
     private val channelTrace=ChannelLifecycleTrace()
     fun nativeTouchMetadataReady()=inputDimensions!=null
-    fun canUseNativeTouch()=nativeTouch && channelsReady.isCompleted && !closed.get()
+    fun canUseNativeTouch()=nativeTouch && inputReady && !closed.get()
     private val pumpLock = Any()
+    @Volatile private var inputRegistrationFailed = false
+    private val inputReady get() = channelsReady.isCompleted && !channelsReady.isCancelled && !inputRegistrationFailed
     private val pendingTouch = NativeTouchBuffer()
     private val desktopInput=DesktopInputBuffer()
     private var negotiatedInputVersion=0
@@ -503,13 +505,17 @@ class XCloudWebRtcClient(
         val bytes=JSONObject().put("message","gamepadChanged").put("gamepadIndex",index).put("wasAdded",added).toString().toByteArray(Charsets.UTF_8)
         val accepted=!closed.get() && channels["control"]?.send(DataChannel.Buffer(ByteBuffer.wrap(bytes),false))==true
         if(accepted) channelTrace.sent(ChannelMessage("control",bytes))
-        else if(!closed.get()) fail("CHANNELS: falha ao atualizar controle")
+        else if (!closed.get()) {
+            inputRegistrationFailed = true
+            inputPump?.requestStop()
+            fail("CHANNELS: falha ao atualizar controle")
+        }
         return accepted
     }
     fun updateGamepad(state: GamepadState, index: Int = 0,auxiliary: Boolean=false) {
         require(index in 0..3)
         synchronized(pumpLock) {
-            if(closed.get()) return
+            if(closed.get() || inputRegistrationFailed) return
             if(auxiliary && nativeTouch && index==0 && state==GamepadState()) {
                 if(gamepads.remove(index)!=null) inputPump?.releaseAfterNeutral(index)
                 return
@@ -517,15 +523,17 @@ class XCloudWebRtcClient(
             val added=index !in gamepads
             // Reserved menu chords and idle dongles must not start physical reports in a touch-only game.
             if ((nativeTouch || nativeKeyboardMouse) && added && state == GamepadState()) return
+            if (added && index != 0 && inputReady && !gamepadConnections.add(index) { sendGamepadChanged(index, true) }) return
             gamepads[index]=state
-            if(added && channelsReady.isCompleted && gamepadConnections.add(index)) sendGamepadChanged(index,true)
             inputPump?.update(state,index)
         }
     }
     fun removeGamepad(index: Int) {
         synchronized(pumpLock) {
+            if (closed.get() || inputRegistrationFailed) return
             if(index==0 && !nativeTouch) { gamepads[0]=GamepadState(); inputPump?.update(GamepadState()); return }
-            if(gamepads.remove(index)!=null && channelsReady.isCompleted && gamepadConnections.remove(index)) sendGamepadChanged(index,false)
+            if (index != 0 && index in gamepads && inputReady && !gamepadConnections.remove(index) { sendGamepadChanged(index, false) }) return
+            gamepads.remove(index)
             // Native touch owns logical slot zero even when its physical source disconnects.
             if(index==0 && nativeTouch) inputPump?.releaseAfterNeutral(index) else inputPump?.remove(index)
         }

@@ -182,9 +182,13 @@ class RealtimeInputPump(
             }
         }, "xCloud-Input").apply { isDaemon = true; start() }
     }
-    fun close() {
+    fun requestStop() {
         running.set(false)
-        thread?.let { LockSupport.unpark(it); if (it !== Thread.currentThread()) it.join(250) }
+        thread?.let(LockSupport::unpark)
+    }
+    fun close() {
+        requestStop()
+        thread?.let { if (it !== Thread.currentThread()) it.join(250) }
     }
     companion object {
         const val INPUT_HZ = 250

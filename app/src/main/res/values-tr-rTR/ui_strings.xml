@@ -1248,4 +1248,6 @@
     <string name="ui_2faf10b778337a96" formatted="false">"Her ayrıntıyı görün"</string>
     <string name="ui_ca2404ad054fa6ca" formatted="false">"{0}sa {1}dk"</string>
     <string name="ui_6168ae9c0ab7595c" formatted="false">"{0}dk"</string>
+    <string name="ui_73d1dd504499ea34" formatted="false">"Oyun değiştir"</string>
+    <string name="ui_d69d87868f85df52" formatted="false">"Mevcut oturumu sonlandırıp {0} açılsın mı?"</string>
 </resources>

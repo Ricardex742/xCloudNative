@@ -141,6 +141,23 @@ class ShortcutStartupTest {
                 try { awaitCancellation() } finally { withContext(NonCancellable) { releaseCleanup.await() } }
             }
             MainActivity::class.java.getDeclaredField("gameJob").apply { isAccessible=true }.set(activity,closing)
+            if (cached) {
+                val shortcut = GameLaunchLink.intent(app, "OTHER").putExtra("shortcut_request", "switch-once")
+                controller.newIntent(shortcut)
+                val confirmation = org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
+                assertTrue(confirmation.isShowing)
+                assertTrue(all(confirmation.panel).filterIsInstance<TextView>().any { it.text == "Encerrar a sessão atual e abrir Other?" })
+                assertTrue(closing.isActive)
+                controller.newIntent(shortcut)
+                assertSame(confirmation, org.robolectric.shadows.ShadowDialog.getLatestDialog())
+                all(confirmation.panel).filterIsInstance<TextView>().single { it.text == "CANCELAR" }.performClick()
+                shadowOf(Looper.getMainLooper()).idle()
+                assertTrue(closing.isActive)
+                assertFalse(confirmation.isShowing)
+                assertEquals(View.VISIBLE,queue.visibility)
+                controller.newIntent(shortcut)
+                assertSame(confirmation, org.robolectric.shadows.ShadowDialog.getLatestDialog())
+            }
             activity.onKeyDown(KeyEvent.KEYCODE_BACK,KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BACK))
             assertEquals(View.VISIBLE,transition.visibility); assertTrue(transition.exiting)
             assertTrue(all(transition).filterIsInstance<TextView>().any { it.text.toString()=="Voltando ao catálogo…" })
