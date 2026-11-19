@@ -18,7 +18,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão no código desta branch **0.40.12-shortcut-bar**, versionCode **107**, usando a identidade de atualização existente.
+- Versão no código desta branch **0.40.13-bitrate-artwork**, versionCode **108**, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
@@ -282,3 +282,12 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - O teste nativo `GameShortcutBarTest` passou com recorte simulado, troca de lado do recorte, primeiro toque, busca de foco direcional, A/Enter, B/Voltar, X e confirmação de saída. Foram abertas as três capturas nativas de 2340×1080. O ADB não listou aparelho conectado para validação física.
 - A versão **0.40.12-shortcut-bar**, código **107**, foi compilada no commit `98b40c3a586c1b472ec5e4da4614389d0fa312c6`. Passaram **866 testes JVM**, lint obrigatório, as verificações de assinatura, as traduções e os validadores gráficos. [Build 44595940475](https://github.com/Ricardex742/xCloudNative/actions/runs/44595940475)
 - O ZIP e o APK baixados conferiram com o build. O APK mantém o certificado permanente, vem com a depuração desabilitada e declara `userLandscape`. SHA-256 do APK `bba37f21e0860155e1944362f777b15ce91f6fa1af482072161b94c4b89c83b9`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44595940475/artifacts/14567605523)
+
+## Controle virtual, bitrate e capa na fila
+
+- No celular, a barra exibe Mostrar ou Ocultar controle virtual conforme o estado do HUD. HUD e controles deste jogo fica em Mais opções, logo abaixo de Encerrar partida.
+- Bitrate máximo em Mais opções aplica o valor somente à partida atual. Após confirmação, o app renegocia o transporte WebRTC na sessão Xbox existente. O diagnóstico distingue o teto solicitado do bitrate recebido.
+- O carregamento do catálogo preserva a capa já resolvida para o jogo em preparação quando uma resposta anterior chega incompleta. A fila tenta as artes alternativas do título se a primeira imagem falhar.
+- Passaram 70 testes direcionados, incluindo o fluxo atalho → catálogo → segundo jogo com resposta atrasada e a negociação simulada de bitrate na mesma sessão. As capturas nativas da barra foram verificadas. A confirmação do fluxo de bitrate em uma partida no Xbox Cloud Gaming continua pendente.
+- A versão **0.40.13-bitrate-artwork**, código **108**, foi compilada no commit `3ff432d84d0b4d4a90d68dd6a0b6196980fdfa7a`. Passaram 867 testes JVM, lint, traduções e verificações gráficas. [Build 44610112319](https://github.com/Ricardex742/xCloudNative/actions/runs/44610112319)
+- O APK baixado mantém o certificado permanente e declara `userLandscape`. SHA-256 `8f0ace935bfe20f387237b3595c71d8918084281eb959e50b0f65ae5f8ca18f8`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44610112319/artifacts/14572802610)
