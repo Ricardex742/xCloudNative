@@ -66,6 +66,14 @@ object SessionReportPanel {
             dialog.body.addView(line,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=dialog.px(9) })
         }
         dialog.body.addView(dialog.text(UiText.join(UiText.text("Recebido WebRTC: {0} • Enviado: {1}\n",UiText.nested(SessionReport.bytes(report.receivedBytes)),UiText.nested(SessionReport.bytes(report.uploadedBytes))),UiText.text("Vídeo RTP: {0} • Input: {1}\n",UiText.nested(SessionReport.bytes(report.videoBytes)),UiText.nested(SessionReport.bytes(report.inputBytes))),UiText.text("Descartes observados: {0} • Sem progresso: {1} ({2} episódios)\n",UiText.nested(report.droppedFrames ?: "n/d"),UiText.nested(SessionReport.duration(report.stalledMs)),UiText.nested(report.stalledEvents)),UiText.text("Apresentação solicitada: {0} FPS • Decoder: {1}",UiText.nested(report.presentationFps),UiText.nested(report.decoder ?: "n/d")),(report.inputDetails?.let { "\n$it" } ?: "")),19,color=DashboardTheme.muted).apply { isFocusable=true; isFocusableInTouchMode=true; DashboardTheme.customFocus(this) })
+        report.videoDelivery?.let { dialog.body.addView(dialog.text(it.text(), 19, color = DashboardTheme.muted)) }
+        report.mediaDetails?.let {
+            dialog.body.addView(dialog.text(it, 19, color = DashboardTheme.muted).apply {
+                isFocusable = true
+                isFocusableInTouchMode = true
+                DashboardTheme.customFocus(this)
+            })
+        }
         report.timeline?.let { timeline ->
             dialog.body.addView(dialog.text(timeline.text(),19,color=DashboardTheme.muted))
         }

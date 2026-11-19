@@ -141,15 +141,16 @@ internal class LabGlPass(context: Context,asset: String){
 internal class LabGpuTimer {
     private val ids=IntArray(2)
     private val pending=BooleanArray(2)
+    private val disjoint = IntArray(1)
+    private val result = IntArray(1)
     private var supported=GLES20.glGetString(GLES20.GL_EXTENSIONS)?.split(' ')?.contains("GL_EXT_disjoint_timer_query")==true
     private var active=-1
     private var latest: Double?=null
     init {if(supported){GLES30.glGenQueries(2,ids,0);if(GLES20.glGetError()!=GLES20.GL_NO_ERROR)supported=false}}
     fun begin(){
         if(!supported)return
-        val disjoint=IntArray(1);GLES20.glGetIntegerv(0x8FBB,disjoint,0)
+        GLES20.glGetIntegerv(0x8FBB,disjoint,0)
         if(disjoint[0]!=0)latest=null
-        val result=IntArray(1)
         repeat(2){i->
             if(pending[i]){
                 GLES30.glGetQueryObjectuiv(ids[i],0x8867,result,0)

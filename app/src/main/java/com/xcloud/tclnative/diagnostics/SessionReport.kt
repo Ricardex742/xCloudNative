@@ -38,6 +38,23 @@ data class SamplePercentiles(val p50: Double, val p95: Double, val p99: Double, 
         }
     }
 }
+data class VideoDelivery(val received: Long?, val decoded: Long?, val eglSubmissions: Long?) {
+    internal fun json() = JSONObject().put("rtpReceivedObserved", received).put("decodedObserved", decoded)
+        .put("eglSubmissionsTotal", eglSubmissions)
+
+    fun text(): String = "VIDEO_FLOW RTP_RX_OBSERVED=${received ?: "n/d"} | DECODED_OBSERVED=${decoded ?: "n/d"} | " +
+        "EGL_SUBMISSIONS_TOTAL=${eglSubmissions ?: "n/d"}"
+
+    companion object {
+        internal fun read(json: JSONObject?): VideoDelivery? {
+            if (json == null) return null
+            fun count(key: String) = json.optLong(key, -1L).takeIf { it >= 0 }
+            return VideoDelivery(count("rtpReceivedObserved"), count("decodedObserved"), count("eglSubmissionsTotal"))
+                .takeIf { it.received != null || it.decoded != null || it.eglSubmissions != null }
+        }
+    }
+}
+
 enum class SessionEnd(private val sourceLabel: String) { USER("Encerrada pelo usuário"),FAILURE("Falha na transmissão"),REPLACED("Outra partida iniciada"),APP_CLOSED("Aplicativo fechado") ;
     val label: String get()=UiText.text(sourceLabel)
 }
@@ -50,7 +67,9 @@ data class SessionReport(
     val stalledMs: Long,val stalledEvents: Long,val stalledWithoutDataMs: Long,val stalledWithDataMs: Long,
     val recovery: Map<VideoRecoveryAction,Int>,val score: Int?,val inputDetails: String? = null,val failure: SessionFailure? = null,
     val interruption: SessionFailure? = null,val interruptionDetails: String?=null,
-    val timeline: PlaybackTimeline.Snapshot? = null
+    val timeline: PlaybackTimeline.Snapshot? = null,
+    val mediaDetails: String? = null,
+    val videoDelivery: VideoDelivery? = null
 ) {
     val quality: String get()=when { interruption!=null || end==SessionEnd.FAILURE -> UiText.text("Atenção"); score==null -> UiText.text("Dados parciais"); score>=90 -> UiText.text("Excelente"); score>=75 -> UiText.text("Boa"); score>=60 -> UiText.text("Regular"); else -> UiText.text("Atenção") }
     fun findings(): List<String> = buildList {
@@ -73,6 +92,8 @@ data class SessionReport(
     }
     fun exportJson(): JSONObject? = timeline?.json()?.apply {
         put("end", end.name)
+        put("presentationTargetFps", presentationFps)
+        videoDelivery?.let { put("videoFrames", it.json().put("droppedObserved", droppedFrames)) }
         put("lastIntervalSamples", JSONObject().apply {
             metrics.forEach { (metric, summary) ->
                 summary.percentiles?.let { put(metric.name, it.json()) }
@@ -88,7 +109,9 @@ data class SessionReport(
         interruption?.let { append(UiText.text("Primeira interrupção observada: {0}\n",UiText.nested(it.description))) }
         interruptionDetails?.let { append(UiText.text("Estado anterior da transmissão: {0}\n",UiText.nested(it))) }
         timeline?.let { append(it.text()).append('\n') }
+        videoDelivery?.let { append(it.text()).append('\n') }
         inputDetails?.let { append("$it\n") }
+        mediaDetails?.let { append("$it\n") }
         append(UiText.text("Recebido: {0} | {1} | {2}\n",UiText.nested(resolution ?: "n/d"),UiText.nested(codec ?: "n/d"),UiText.nested(decoder ?: "n/d")))
         append(UiText.text("Índice estimado: {0}/100 • {1}\n\n",UiText.nested(score?.toString() ?: "n/d"),UiText.nested(quality)))
         ReportMetric.entries.forEach { key ->
@@ -112,6 +135,12 @@ data class SessionReport(
     }
     companion object {
         const val MAX_INPUT_DETAILS=4096
+        const val MAX_MEDIA_DETAILS=8192
+        internal fun boundMediaDetails(value: String): String {
+            if (value.length <= MAX_MEDIA_DETAILS) return value
+            val endOfLine = value.lastIndexOf('\n', MAX_MEDIA_DETAILS - 2)
+            return if (endOfLine > 0) value.take(endOfLine) + "\n…" else value.take(MAX_MEDIA_DETAILS - 1) + "…"
+        }
         fun number(n: Double?)=n?.takeIf { it.isFinite() }?.let { String.format(Locale.US,"%.2f",it) } ?: "n/d"
         fun duration(ms: Long): String { val s=ms.coerceAtLeast(0)/1000; return "%d:%02d:%02d".format(Locale.US,s/3600,(s/60)%60,s%60) }
         fun bytes(value: Long?): String {
@@ -127,6 +156,8 @@ class SessionReportTracker(private val game: String,private val device: String,p
                            private val fpsTarget: Int,private val wallClock: () -> Long = System::currentTimeMillis) {
     var timeline: PlaybackTimeline? = null
     @Volatile var inputDetails: (() -> String)? = null
+    @Volatile var mediaDetails: (() -> String)? = null
+    var submittedFrames: (() -> Long)? = null
     private var failure: SessionFailure?=null
     private var interruption: SessionFailure?=null
     private var interruptionDetails: String?=null
@@ -166,6 +197,8 @@ class SessionReportTracker(private val game: String,private val device: String,p
         Aggregate(it == ReportMetric.RTT || it == ReportMetric.DECODE || it == ReportMetric.JITTER || it == ReportMetric.BUFFER)
     }
     private val video=Counter(); private val down=Counter(); private val up=Counter()
+    private var receivedFrames: Long? = null
+    private var decodedFrames: Long? = null
     private var start: Long?=null; private var frozen=false; private var delivered=false; private var report: SessionReport?=null
     private var visible=true; private var network=UiText.text("Rede não informada"); private var resumed=false
     private var samples=0L; private var observed=0.0; private var lastSample=Long.MIN_VALUE
@@ -206,6 +239,8 @@ class SessionReportTracker(private val game: String,private val device: String,p
         add(ReportMetric.BUFFER_MINIMUM,m.jitterBufferMinimumMs,bufferWeight)
         add(ReportMetric.DECODE,m.decodeMs,m.decodedFrames?.toDouble() ?: seconds)
         add(ReportMetric.INPUT_DELAY,i.maxSchedulerDelayMs)
+        m.receivedFrames?.takeIf { it >= 0 }?.let { receivedFrames = (receivedFrames ?: 0) + it }
+        m.decodedFrames?.takeIf { it >= 0 }?.let { decodedFrames = (decodedFrames ?: 0) + it }
         m.droppedFrames?.takeIf { it>=0 }?.let { dropped+=it; droppedKnown=true }
         if(m.receivedPackets!=null && m.lostPackets!=null) { received+=m.receivedPackets.coerceAtLeast(0); lost+=m.lostPackets.coerceAtLeast(0); lossCounters=true }
     }
@@ -238,11 +273,15 @@ class SessionReportTracker(private val game: String,private val device: String,p
                 minOf(10.0,(avg(ReportMetric.DECODE)-12).coerceAtLeast(0.0)*1.5)-
                 minOf(40.0,100.0*stallMs/(observed*1000))).roundToInt().coerceIn(0,100)
         }
+        val eglSubmissions = submittedFrames?.invoke()?.takeIf { it >= 0 }
         report=SessionReport(game.take(256),device.take(180),network,profile.take(180),fpsTarget,(now-began).coerceAtLeast(0),
             (observed*1000).toLong(),samples,wallClock(),end,metrics,resolution,codec,decoder,efficient,video.value(),down.value(),up.value(),
             input.sentBytes,dropped.takeIf { droppedKnown },input.pointerEventsSent,input.backpressureSkips,input.coalescedEdges,
             stallMs,stallEvents,noDataMs,withDataMs,recovery.toMap(),score,inputDetails?.invoke()?.take(SessionReport.MAX_INPUT_DETAILS),
-            failure.takeIf { end==SessionEnd.FAILURE },interruption,interruptionDetails,timeline?.snapshot())
+            failure.takeIf { end==SessionEnd.FAILURE },interruption,interruptionDetails,timeline?.snapshot(),
+            mediaDetails?.invoke()?.let(SessionReport::boundMediaDetails),
+            VideoDelivery(receivedFrames, decodedFrames, eglSubmissions)
+                .takeIf { receivedFrames != null || decodedFrames != null || eglSubmissions != null })
         return report
     }
     @Synchronized fun takeReport(): SessionReport? { val ready=report ?: return null; if(delivered) return null; delivered=true; return ready }

@@ -39,6 +39,24 @@ class PlaybackDisplayPreference(private val window: Window) {
         val requested=window.attributes.preferredDisplayModeId
         val request=modes.firstOrNull { it.modeId==requested }?.let(::describe)
             ?: if(requested==0) UiText.text("padrão do sistema (#0)") else UiText.text("#{0} não anunciado",UiText.nested(requested))
-        UiText.join(UiText.text("Modo de tela pedido: {0} | físico atual: {1} | taxa informada ao app: {2}Hz\n",UiText.nested(request),UiText.nested(describe(display.mode)),UiText.nested(rate(display.refreshRate))),"Modos anunciados: ${modes.take(12).joinToString("; ",transform=::describe)}")
+        val hdr = runCatching { hdrTypes(display.hdrCapabilities?.supportedHdrTypes) }.getOrDefault("n/d")
+        UiText.join(UiText.text("Modo de tela pedido: {0} | físico atual: {1} | taxa informada ao app: {2}Hz\n",
+            UiText.nested(request), UiText.nested(describe(display.mode)), UiText.nested(rate(display.refreshRate))),
+            "Modos anunciados: ${modes.take(12).joinToString("; ",transform=::describe)}\nDISPLAY_HDR_ADVERTISED/$hdr")
     }.getOrDefault(UiText.text("Modo de tela: não informado pelo Android"))
+
+    companion object {
+        internal fun hdrTypes(types: IntArray?): String {
+            if (types == null) return "n/d"
+            return types.distinct().joinToString(",") { type ->
+                when {
+                    type == Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION -> "DOLBY_VISION"
+                    type == Display.HdrCapabilities.HDR_TYPE_HDR10 -> "HDR10"
+                    type == Display.HdrCapabilities.HDR_TYPE_HLG -> "HLG"
+                    android.os.Build.VERSION.SDK_INT >= 29 && type == Display.HdrCapabilities.HDR_TYPE_HDR10_PLUS -> "HDR10_PLUS"
+                    else -> "OTHER($type)"
+                }
+            }.ifEmpty { "NONE" }
+        }
+    }
 }

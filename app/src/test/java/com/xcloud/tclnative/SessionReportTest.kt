@@ -51,6 +51,45 @@ class SessionReportTest {
         details="outro modo"
         assertSame(r,t.finish(3000,SessionEnd.USER)); assertTrue(r.inputDetails!!.contains("1280×720"))
     }
+    @Test fun videoFlowUsesObservedRtcDeltasAndReportsEglSubmissionsSeparately() {
+        val tracker = tracker()
+        tracker.timeline = PlaybackTimeline(1, PlaybackOrigin.CATALOG) { 0 }
+        tracker.submittedFrames = { 150 }
+        tracker.begin(0, "Ethernet")
+        tracker.add(1000, sample().copy(receivedFrames = 62, decodedFrames = 59, droppedFrames = 3), InputMetrics())
+        tracker.setVisible(false)
+        tracker.add(2000, sample().copy(receivedFrames = 62, decodedFrames = 60, droppedFrames = 2), InputMetrics())
+        tracker.setVisible(true)
+        tracker.add(3000, sample().copy(receivedFrames = 62, decodedFrames = 60, droppedFrames = 2), InputMetrics())
+        tracker.add(4000, sample().copy(receivedFrames = 56, decodedFrames = 54, droppedFrames = 2), InputMetrics())
+        val report = finish(tracker, 4000)
+
+        assertEquals(VideoDelivery(118, 113, 150), report.videoDelivery)
+        assertEquals(5L, report.droppedFrames)
+        val json = checkNotNull(report.exportJson()).getJSONObject("videoFrames")
+        assertEquals(118L, json.getLong("rtpReceivedObserved"))
+        assertEquals(113L, json.getLong("decodedObserved"))
+        assertEquals(150L, json.getLong("eglSubmissionsTotal"))
+        assertEquals(5L, json.getLong("droppedObserved"))
+        assertTrue(report.text().contains("EGL_SUBMISSIONS_TOTAL=150"))
+    }
+
+    @Test fun longInputAndRendererDetailsKeepTheAudioLineAndBoundTheReport() {
+        val tracker = tracker()
+        val audio = "Audio RTP: Opus | buffer 100 ms | target 90 ms"
+        tracker.inputDetails = { "input data ".repeat(1000) }
+        tracker.mediaDetails = { audio + "\n" + "renderer diagnostic line\n".repeat(1000) }
+        tracker.begin(0, "Ethernet")
+        val report = finish(tracker, 1000)
+
+        assertEquals(SessionReport.MAX_INPUT_DETAILS, report.inputDetails?.length)
+        val media = checkNotNull(report.mediaDetails)
+        assertTrue(media.length <= SessionReport.MAX_MEDIA_DETAILS)
+        assertTrue(media.endsWith("renderer diagnostic line\n…"))
+        assertTrue(report.text().contains(audio))
+        assertNull(report.exportJson())
+    }
+
     private fun tracker()=SessionReportTracker("Jogo","Dispositivo","720p",60) { 123456L }
     private fun sample(rtt: Double=30.0,seconds: Double=1.0)=StreamMetrics(
         rttMs=rtt,jitterMs=2.0,packetLossPercent=0.0,fps=60.0,bitrateMbps=8.0,decodeMs=4.0,

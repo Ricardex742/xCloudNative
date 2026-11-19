@@ -133,8 +133,16 @@ class SessionReportUiTest {
             val report=demo().copy(inputDetails=details)
             store.save(report)
             assertEquals(details,store.read()!!.inputDetails)
-            store.save(report.copy(inputDetails="x".repeat(6000)))
-            assertEquals(SessionReport.MAX_INPUT_DETAILS,store.read()!!.inputDetails!!.length)
+            val audio = "Áudio RTP: Opus | buffer WebRTC 100 ms | perdas 0"
+            val updated = report.copy(inputDetails="x".repeat(6000),
+                mediaDetails=audio + "\n" + "renderer details\n".repeat(900), videoDelivery=VideoDelivery(300, 280, 270))
+            store.save(updated)
+            val saved = checkNotNull(store.read())
+            assertEquals(SessionReport.MAX_INPUT_DETAILS,saved.inputDetails!!.length)
+            assertEquals(updated.videoDelivery, saved.videoDelivery)
+            assertTrue(checkNotNull(saved.mediaDetails).length <= SessionReport.MAX_MEDIA_DETAILS)
+            assertTrue(saved.text().contains(audio))
+            assertFalse(checkNotNull(saved.exportJson()).toString().contains(audio))
         } finally { c.pause().stop().destroy() }
     }
     @Test fun failureReasonSurvivesRecreationAndIsVisibleAndCopyableWithoutRequiringAPhonePaste() {

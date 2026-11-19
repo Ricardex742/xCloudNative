@@ -82,12 +82,80 @@ class MotionFrameSinkTest {
         sink.close();clock.flush();assertEquals(1,clock.closes);assertEquals(1,backend.closes)
         assertTrue(backend.buffers.all {it.refs==0})
     }
-    @Test fun sixtyFpsContentIsNeverReducedToThirtyOrClaimedAsGenerated(){
-        val clock=Clock();val backend=Backend(clock);val seen=mutableListOf<Long>()
-        val sink=MotionFrameSink(VideoSink {seen+=it.timestampNs},{backend},clock)
-        repeat(50){i->backend.signature=20+i*4;val b=push(sink,1_000_000_000L+i*16_666_667L);clock.flush();assertEquals(0,b.refs);clock.advance(16_666_667L)}
-        assertEquals(50,seen.size);assertTrue(backend.buffers.isEmpty())
-        sink.close();clock.flush();assertEquals(1,clock.closes)
+    @Test fun fullRateContentKeepsEveryOriginalAndProbesOnlyShortWindows() {
+        val clock = Clock()
+        val backend = Backend(clock)
+        val seen = mutableListOf<Long>()
+        val sink = MotionFrameSink(VideoSink { seen += it.timestampNs }, { backend }, clock)
+        val timestamps = (0 until 240).map { 1_000_000_000L + it * 16_666_667L }
+        timestamps.forEachIndexed { index, timestamp ->
+            backend.signature = if (index % 2 == 0) 32 else 64
+            val buffer = push(sink, timestamp)
+            clock.flush()
+            assertEquals(0, buffer.refs)
+            clock.advance(16_666_667L)
+        }
+
+        assertEquals(timestamps, seen)
+        assertEquals(52, backend.prepared)
+        assertTrue(backend.buffers.isEmpty())
+        assertTrue(sink.diagnostics().contains("signature probes=52 bypassed=188"))
+        sink.close()
+        clock.flush()
+        assertEquals(1, clock.closes)
+    }
+
+    @Test fun aDropToNativeThirtyFpsRestartsProbingOnTheVeryNextFrame() {
+        val clock = Clock()
+        val backend = Backend(clock)
+        val sink = MotionFrameSink(VideoSink {}, { backend }, clock)
+        var timestamp = 1_000_000_000L
+        repeat(24) { index ->
+            backend.signature = if (index % 2 == 0) 32 else 64
+            push(sink, timestamp)
+            clock.flush()
+            clock.advance(16_666_667L)
+            timestamp += 16_666_667L
+        }
+        assertEquals(13, backend.prepared)
+
+        timestamp += 16_666_666L
+        clock.advance(16_666_666L)
+        repeat(12) { index ->
+            backend.signature = 44 + index * 4
+            push(sink, timestamp)
+            clock.flush()
+            if (index == 0) assertEquals(14, backend.prepared)
+            clock.advance(33_333_333L)
+            timestamp += 33_333_333L
+        }
+
+        assertTrue(sink.snapshot().generated > 0)
+        sink.close()
+        clock.flush()
+    }
+
+    @Test fun periodicProbeRediscoversDuplicatedThirtyFpsAtSixtyFpsDelivery() {
+        val clock = Clock()
+        val backend = Backend(clock)
+        val seen = mutableListOf<Long>()
+        val sink = MotionFrameSink(VideoSink { seen += it.timestampNs }, { backend }, clock)
+        repeat(110) { index ->
+            backend.signature = if (index < 24) {
+                if (index % 2 == 0) 32 else 64
+            } else {
+                32 + ((index - 24) / 2 % 20) * 4
+            }
+            push(sink, 1_000_000_000L + index * 16_666_667L)
+            clock.flush()
+            clock.advance(16_666_667L)
+            if (index < 60) assertEquals(0L, sink.snapshot().generated)
+        }
+
+        assertTrue(sink.snapshot().generated > 0)
+        assertTrue(seen.zipWithNext().all { (before, after) -> before < after })
+        sink.close()
+        clock.flush()
     }
     @Test fun duplicatedSixtyHzNeedsConfirmedAlternationAndKeepsTheFirstContentSample(){
         val probe=ContentFrameCadence();val decisions=(0 until 50).map {i->probe.observe(1_000_000_000L+i*16_666_667L,ByteArray(16){(20+i/2*4).toByte()})}

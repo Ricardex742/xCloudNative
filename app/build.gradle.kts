@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 101
-        versionName = "0.40.6-playback-diagnostics"
+        versionCode = 102
+        versionName = "0.40.7-streaming-lab"
     }
 
     signingConfigs {

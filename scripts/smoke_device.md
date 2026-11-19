@@ -17,3 +17,11 @@ O script verifica a assinatura e o manifesto do APK, instala como atualização,
 5. Se houver tela preta, atraso perceptível ou perda de foco, registre o passo, os marcos do JSON e a ação que recuperou a interface. Para comparar frame pacing e retorno ao catálogo, use Perfetto com as trilhas de UI, escalonamento e SurfaceFlinger suportadas pelo dispositivo. Registre as condições do teste e repita nas duas versões.
 
 Os marcos de superfície indicam submissão ao EGL. A latência até a exibição física e a latência de ponta a ponta exigem medição no aparelho.
+
+## Comparar perfis de vídeo
+
+Use o mesmo aparelho, título e trecho de jogo em execuções alternadas. Compare 1080p e 720p com Menor atraso e o mesmo codec solicitado. Registre também a resolução e o codec recebidos. Repita primeiro sem pós-processamento. Compare Compatibilidade em separado, pois o perfil também altera o codec, os efeitos e a cadência solicitada.
+
+Para avaliar pacing, faça o par imediato e suave em Adaptativo, com geração e filtros desligados. Para avaliar a geração experimental, faça outro par com a mesma configuração de imagem e conteúdo de origem conhecido, usando material com movimento a 30 FPS, cadência de 60 FPS e menus estáticos. Reabra a partida após mudar a geração. No relatório, compare os quadros RTP, decodificados, descartados e submetidos ao EGL, o número de consultas de assinatura e o trabalho medido no processamento. Os contadores RTP cobrem intervalos válidos observados no primeiro plano. O total EGL cobre toda a tentativa.
+
+Registre a taxa de atualização disponível, a rota de áudio, a temperatura e o consumo quando houver instrumentação. Use Perfetto para cadência de apresentação e câmera de alta velocidade para latência física. A lista HDR do Android informa a capacidade anunciada pela tela. Uma trilha HDR depende de sinalização da origem, negociação, decoder e compositor.

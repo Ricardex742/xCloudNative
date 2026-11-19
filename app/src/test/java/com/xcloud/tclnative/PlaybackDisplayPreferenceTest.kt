@@ -1,6 +1,7 @@
 package com.xcloud.tclnative
 
 import android.app.Activity
+import android.view.Display
 import com.xcloud.tclnative.renderer.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -58,6 +59,14 @@ class PlaybackDisplayPreferenceTest {
             assertEquals(90f, window.attributes.preferredRefreshRate, 0f)
         } finally { controller.pause().stop().destroy() }
     }
+    @Test fun hdrCapabilitiesDescribeOnlyTheTypesAdvertisedByAndroid() {
+        assertEquals("n/d", PlaybackDisplayPreference.hdrTypes(null))
+        assertEquals("NONE", PlaybackDisplayPreference.hdrTypes(intArrayOf()))
+        assertEquals("HDR10,DOLBY_VISION", PlaybackDisplayPreference.hdrTypes(intArrayOf(
+            Display.HdrCapabilities.HDR_TYPE_HDR10, Display.HdrCapabilities.HDR_TYPE_DOLBY_VISION,
+            Display.HdrCapabilities.HDR_TYPE_HDR10)))
+    }
+
     @Test fun diagnosticsDistinguishTheWindowRequestFromTheUnchangedPhysicalModeAndListAvailableModes() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         try {

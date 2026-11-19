@@ -41,6 +41,7 @@ class MotionFrameSink(private val target: VideoSink,private val backendFactory: 
     private var retiring=0
     private var schedulerClosed=false
     private val cadence=ContentFrameCadence()
+    private val probeGate = FrameSignatureProbeGate()
     @Volatile private var closed=false
     @Volatile private var enabled=eligible
     @Volatile private var phase=if(eligible) FrameGenerationPhase.WAITING else FrameGenerationPhase.UNSUPPORTED
@@ -59,6 +60,9 @@ class MotionFrameSink(private val target: VideoSink,private val backendFactory: 
     @Volatile private var workP95Ms=0.0
     @Volatile private var backendInfo=""
     private val work=DoubleArray(32)
+    private val sortedWork = DoubleArray(work.size)
+    @Volatile private var signatureProbes = 0L
+    @Volatile private var bypassedProbes = 0L
     private var samples=0;private var at=0;private var warmup=0
     private var lastTimestamp=Long.MIN_VALUE
     private var lastObservation=0L;private var observedDraws=0L;private var observedSent=0L;private var observedGenerated=0L;private var slowMs=0L
@@ -80,7 +84,7 @@ class MotionFrameSink(private val target: VideoSink,private val backendFactory: 
         scheduler.post(Runnable { disable("disabled or comparison selected",why) },0)
     }
     private fun disable(message: String,why: FrameGenerationPhase=FrameGenerationPhase.PROTECTED){
-        enabled=false;reason=message;phase=why;cadence.reset()
+        enabled=false;reason=message;phase=why;cadence.reset();probeGate.reset()
         flushHeld(true);retireBackend()
     }
     private fun flushHeld(show: Boolean){
@@ -98,10 +102,25 @@ class MotionFrameSink(private val target: VideoSink,private val backendFactory: 
         try {
             if(closed)return
             if(held!=null&&scheduler.nowNs()>=heldDue)present.run()
-            if(!enabled||frame.timestampNs<=0){flushHeld(true);deliver(frame,false);return}
-            if(scheduler.nowNs()-arrival>50_000_000L){flushHeld(false);backend?.reset();cadence.reset();expired++;phase=FrameGenerationPhase.LATE;deliver(frame,false);return}
+            if (!enabled) { flushHeld(true); deliver(frame,false); return }
+            if (frame.timestampNs <= 0 || scheduler.nowNs() - arrival > 50_000_000L) {
+                val late = frame.timestampNs > 0
+                flushHeld(!late)
+                backend?.reset()
+                cadence.reset()
+                probeGate.reset()
+                if (late) { expired++; phase=FrameGenerationPhase.LATE }
+                deliver(frame,false)
+                return
+            }
+            if (!probeGate.shouldProbe(frame.timestampNs)) {
+                bypassedProbes++
+                deliver(frame,false)
+                return
+            }
             val start=scheduler.nowNs()
             val engine=backend ?: backendFactory().also { backend=it;protectionOverride?.let(it::updateProtection) }
+            signatureProbes++
             val decision=cadence.observe(frame.timestampNs,engine.prepare(frame))
             when(decision.action){
                 ContentFrameCadence.Action.RESET -> {flushHeld(false);lastTimestamp=Long.MIN_VALUE;engine.commit();deliver(frame,false);phase=FrameGenerationPhase.WAITING;reason="history reset/cut"}
@@ -126,11 +145,20 @@ class MotionFrameSink(private val target: VideoSink,private val backendFactory: 
                     }
                 }
             }
-            backendInfo=engine.diagnostics()
+            if (probeGate.observe(decision.uniqueFastFrame)) {
+                engine.reset()
+                cadence.reset()
+                reason = "full-rate source; signature probes paused"
+            }
             val ms=(scheduler.nowNs()-start)/1e6
             if(++warmup>24){
                 work[at]=ms;at=(at+1)%work.size;samples=minOf(samples+1,work.size)
-                val current=work.copyOf(samples).sorted();workMeanMs=current.average();workP95Ms=current[((samples-1)*.95).toInt()]
+                work.copyInto(sortedWork, endIndex = samples)
+                java.util.Arrays.sort(sortedWork, 0, samples)
+                var sum = 0.0
+                for (index in 0 until samples) sum += sortedWork[index]
+                workMeanMs = sum / samples
+                workP95Ms = sortedWork[((samples-1)*.95).toInt()]
                 if(samples>=12&&(workP95Ms>8.0||ms>100))disable("processing budget exceeded; original frames preserved")
             }
         }catch(error: Exception){
@@ -152,6 +180,7 @@ class MotionFrameSink(private val target: VideoSink,private val backendFactory: 
                 if(slowMs>=2000)disable("renderer cadence budget exceeded; generation stopped")
             }else { submittedRate=null;drawRate=null;generatedRate=null }
             lastObservation=nowMs;observedDraws=draws;observedSent=sent;observedGenerated=generated
+            backend?.let { backendInfo = runCatching { it.diagnostics() }.getOrDefault("") }
         },0)
     }
     fun snapshot()=FrameGenerationSnapshot(when {
@@ -160,8 +189,8 @@ class MotionFrameSink(private val target: VideoSink,private val backendFactory: 
         phase==FrameGenerationPhase.ACTIVE && generatedRate==0.0 -> FrameGenerationPhase.WAITING
         else -> phase
     },generated,submittedRate,drawRate,generatedRate)
-    fun diagnostics()=String.format(Locale.US,"Frame generation: %s | enabled=%s | input=%d real=%d generated=%d duplicate=%d replaced=%d expired=%d errors=%d | GL work incl. waits mean/P95=%.2f/%.2f ms | counts are submissions, not physical FPS/input latency\n%s",
-        reason,enabled,incoming,real,generated,duplicates,replaced,expired,errors,workMeanMs,workP95Ms,backendInfo)
+    fun diagnostics()=String.format(Locale.US,"Frame generation: %s | enabled=%s | input=%d real=%d generated=%d duplicate=%d replaced=%d expired=%d errors=%d | signature probes=%d bypassed=%d | GL work incl. waits mean/P95=%.2f/%.2f ms | counts are submissions, not physical FPS/input latency\n%s",
+        reason,enabled,incoming,real,generated,duplicates,replaced,expired,errors,signatureProbes,bypassedProbes,workMeanMs,workP95Ms,backendInfo)
     private fun retireBackend(){
         val old=backend ?: return;backend=null;retiring++
         old.close {retiring--;finishShutdown()}

@@ -1336,6 +1336,7 @@ open class MainActivity : Activity() {
             val firstFrame = attempt.firstFrame
             val timeline = attempt.timeline
             tracker.timeline = timeline
+            tracker.submittedFrames = { surfaceRenderer.probeVideoHealth().submittedToken }
             var transportFailure = CompletableDeferred<Exception>()
             val recoveryState = attempt.recovery
             transmissionRecovery=recoveryState
@@ -1346,7 +1347,8 @@ open class MainActivity : Activity() {
             var startupInput = "LAUNCH/${if (fromShortcut) "SHORTCUT" else "CATALOG"}; locale=${sessionOptions.locale}"
             controllerPath.clear()
             signaling.resetStartupDiagnostics()
-            tracker.inputDetails={ "Upscaling=${settings.fsr}; output=${settings.fsrOutput}\n"+controllerPath.diagnostics()+"\n"+signaling.startupDiagnostics()+"\n"+surfaceRenderer.diagnostics() }
+            tracker.inputDetails={ "Upscaling=${settings.fsr}; output=${settings.fsrOutput}\n"+controllerPath.diagnostics()+"\n"+signaling.startupDiagnostics() }
+            tracker.mediaDetails=surfaceRenderer::diagnostics
             try {
                 resetController()
                 controllers.beginSession(settings.localCoOp,touchMode!=TouchMode.OFF || sessionDesktopMode!=DesktopInputMode.OFF)
@@ -1435,7 +1437,26 @@ open class MainActivity : Activity() {
                 var rtc=buildRtc()
                 webrtcClient = rtc
                 val appVersion=packageManager.getPackageInfo(packageName,0).versionName ?: "n/d"
-                tracker.inputDetails = { "$startupInput\n"+(dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" } ?: "")+UiText.join(UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())),"\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}","\nUSB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}","\n${inputDevice.diagnostics()}",(when(touchMode) { TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}";TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}";else -> "" }),UiText.text("\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n{7}\n{8}\n{9}\n{10} | Mouse/teclado: {11} | Entrada MKB ativa: {12} | Captura Android: {13}",UiText.nested(joystickDispatch.diagnostics()),UiText.nested(signaling.profileDiagnostics()),UiText.nested(signaling.keepAliveDiagnostics()),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(playbackDisplay.diagnostics(window.decorView.display)),UiText.nested(rtc.audioDiagnostics()),UiText.nested(rtc.latencyDiagnostics()),UiText.nested(rtc.iceDiagnostics()),UiText.nested(rtc.codecDiagnostics()),UiText.nested(rumble.diagnostics()),UiText.nested(gyro.status),UiText.nested(sessionDesktopMode.label),UiText.nested(desktopCaptured),UiText.nested(if(Build.VERSION.SDK_INT>=26) window.decorView.hasPointerCapture() else false)))+"\n"+recoveryState.diagnostics() }
+                tracker.inputDetails = {
+                    "$startupInput\n" + (dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" } ?: "") +
+                        UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),
+                            UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())) +
+                        "\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}\n" +
+                        "USB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}\n" +
+                        inputDevice.diagnostics() + when (touchMode) {
+                            TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}"
+                            TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}"
+                            else -> ""
+                        } + "\n${joystickDispatch.diagnostics()}\n${rumble.diagnostics()}\n${gyro.status}\n" +
+                        signaling.keepAliveDiagnostics() +
+                        "\nMKB/${sessionDesktopMode.name}; capture=$desktopCaptured; " +
+                        "androidCapture=${Build.VERSION.SDK_INT >= 26 && window.decorView.hasPointerCapture()}"
+                }
+                tracker.mediaDetails = {
+                    listOf(rtc.audioDiagnostics(), rtc.codecDiagnostics(), rtc.latencyDiagnostics(), rtc.iceDiagnostics(),
+                        signaling.profileDiagnostics(), playbackDisplay.diagnostics(window.decorView.display),
+                        surfaceRenderer.diagnostics(), recoveryState.diagnostics()).joinToString("\n")
+                }
                 surfaceRenderer.displayDimensions()?.let(rtc::updateDisplayDimensions)
                 if(touchMode!=TouchMode.NATIVE) (0..3).filter { controllers.sourceFor(it)!=null }.forEach { publishGamepad(it) }
                 signaling.startAndConnectWebRtcSession(titleId, rtc, resolution = settings.resolution, nativeTouch=touchMode==TouchMode.NATIVE,options=sessionOptions,microphone=settings.microphone, onStage={ timeline.mark(0, it) }, onQueueStatus = { status -> runOnUiThread {
