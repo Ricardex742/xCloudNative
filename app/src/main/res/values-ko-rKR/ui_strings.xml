@@ -1251,4 +1251,8 @@
     <string name="ui_73d1dd504499ea34" formatted="false">"게임 전환"</string>
     <string name="ui_d69d87868f85df52" formatted="false">"현재 세션을 종료하고 {0}을(를) 열까요?"</string>
     <string name="ui_fefc0b4a78d70f6c" formatted="false">"진단 정보 내보내기"</string>
+    <string name="ui_8fc6b8b69804d942">"화면"</string>
+    <string name="ui_195c60bb232551a9">"오디오"</string>
+    <string name="ui_80b26f920e37575b">"조작"</string>
+    <string name="ui_5d951376c42f3cf3">"추가 옵션"</string>
 </resources>

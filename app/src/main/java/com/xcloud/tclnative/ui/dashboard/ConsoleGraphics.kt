@@ -6,7 +6,7 @@ import android.graphics.drawable.Drawable
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID }
+internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID,CHEVRON_LEFT,MORE,EXIT }
 
 internal class ConsoleIconDrawable(private val glyph: ConsoleGlyph,private val size: Int,private val colors: android.content.res.ColorStateList): Drawable() {
     private val icons=ConsoleIcons()
@@ -58,6 +58,18 @@ internal class ConsoleIcons {
         p.shader=null;p.color=color;p.style=Paint.Style.STROKE;p.strokeWidth=1.65f;p.strokeCap=Paint.Cap.ROUND;p.strokeJoin=Paint.Join.ROUND
         path.reset()
         when(icon) {
+            ConsoleGlyph.CHEVRON_LEFT -> {
+                path.moveTo(15f,5f);path.lineTo(8f,12f);path.lineTo(15f,19f);c.drawPath(path,p)
+            }
+            ConsoleGlyph.MORE -> {
+                p.style=Paint.Style.FILL
+                for(center in 5..19 step 7) c.drawCircle(center.toFloat(),12f,1.7f,p)
+            }
+            ConsoleGlyph.EXIT -> {
+                path.moveTo(12f,3f);path.lineTo(3f,3f);path.lineTo(3f,21f);path.lineTo(12f,21f)
+                path.moveTo(9f,12f);path.lineTo(21f,12f)
+                path.moveTo(16f,7f);path.lineTo(21f,12f);path.lineTo(16f,17f);c.drawPath(path,p)
+            }
             ConsoleGlyph.XBOX -> {
                 c.drawCircle(12f,12f,10f,p)
                 path.moveTo(5f,5f);path.cubicTo(10f,7f,17f,14f,19f,20f)

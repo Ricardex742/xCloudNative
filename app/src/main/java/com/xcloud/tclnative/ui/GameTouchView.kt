@@ -124,6 +124,8 @@ class GameTouchView(context: Context,
             }
         }
     }
+    fun setMenuCovered(covered: Boolean) { menuButton.visibility=if(isEditing) GONE else if(covered) INVISIBLE else VISIBLE }
+
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
         releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE
         autoHidden=false
@@ -207,7 +209,8 @@ class GameTouchView(context: Context,
             listOf(state.leftX,state.leftY,state.rightX,state.rightY).any { kotlin.math.abs(it)>.15f }
         if(active && configuration.autoHide.physical) hideAutomatically()
     }
-    private fun menuHit(x: Float,y: Float)=x>=menuButton.left && x<menuButton.right && y>=menuButton.top && y<menuButton.bottom
+    private fun menuHit(x: Float,y: Float)=menuButton.visibility==VISIBLE &&
+        x>=menuButton.left && x<menuButton.right && y>=menuButton.top && y<menuButton.bottom
     private fun publish() {
         val now=SystemClock.uptimeMillis()
         nativeEvents.hudUpdates++;onGamepad(model.state(now)); removeCallbacks(lookReset)

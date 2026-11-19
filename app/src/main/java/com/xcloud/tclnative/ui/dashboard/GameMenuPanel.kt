@@ -6,6 +6,8 @@ import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.settings.ConsoleScene
 import com.xcloud.tclnative.settings.InputDeviceProfile
 
+internal data class GameMenuShortcut(val icon: ConsoleGlyph, val action: ConsoleAction, val barLabel: String? = null)
+
 /** Actions that control or inspect the current session. */
 object GameMenuPanel {
     fun show(context: Context,image: (() -> Unit)?,statistics: () -> Unit,diagnostics: () -> Unit,
@@ -13,22 +15,33 @@ object GameMenuPanel {
              mouse: (() -> Unit)?=null,controllerProfiles: (() -> Unit)?=null,statisticsOptions: (() -> Unit)?=null,
              recovery: (() -> Unit)?=null,hudToggle: (() -> Unit)?=null,hudVisible: Boolean=false,
              nativeTouch: (() -> Unit)?=null,xbox: (() -> Unit)?=null): ConsoleDialog {
-        val shortcuts=listOfNotNull(
-            image?.let { ConsoleGlyph.IMAGE to ConsoleAction(UiText.text("Imagem e tela"),it) },
-            audio?.let { ConsoleGlyph.AUDIO to ConsoleAction(UiText.text("Áudio e microfone"),it) },
-            hudToggle?.let { toggle -> ConsoleGlyph.CONTROLLER to ConsoleAction(
+        val shortcuts=shortcuts(image,statistics,diagnostics,hud,audio,mouse,controllerProfiles,
+            statisticsOptions,recovery,hudToggle,hudVisible,nativeTouch,xbox)
+        return show(context,shortcuts,disconnect)
+    }
+
+    internal fun shortcuts(image: (() -> Unit)?,statistics: () -> Unit,diagnostics: () -> Unit,
+             hud: (() -> Unit)?=null,audio: (() -> Unit)?=null,mouse: (() -> Unit)?=null,
+             controllerProfiles: (() -> Unit)?=null,statisticsOptions: (() -> Unit)?=null,
+             recovery: (() -> Unit)?=null,hudToggle: (() -> Unit)?=null,hudVisible: Boolean=false,
+             nativeTouch: (() -> Unit)?=null,xbox: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
+            image?.let { GameMenuShortcut(ConsoleGlyph.IMAGE,ConsoleAction(UiText.text("Imagem e tela"),it),UiText.text("Imagem")) },
+            audio?.let { GameMenuShortcut(ConsoleGlyph.AUDIO,ConsoleAction(UiText.text("Áudio e microfone"),it),UiText.text("Áudio")) },
+            hudToggle?.let { toggle -> GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(
                 UiText.text(if(hudVisible) "Ocultar controle virtual" else "Mostrar controle virtual"),toggle)
-            },
-            hud?.let { ConsoleGlyph.CONTROLLER to ConsoleAction(UiText.text("HUD e controles deste jogo"),it) },
-            nativeTouch?.let { ConsoleGlyph.CONTROLLER to ConsoleAction(UiText.text("Usar toque nativo nesta partida"),it) },
-            controllerProfiles?.let { ConsoleGlyph.CONTROLLER to ConsoleAction(UiText.text("Calibração e remapeamento do controle"),it) },
-            mouse?.let { ConsoleGlyph.CONTROLLER to ConsoleAction(UiText.text("Capturar / soltar mouse e teclado — F8"),it) },
-            ConsoleGlyph.DIAGNOSTICS to ConsoleAction(UiText.text("Mostrar / ocultar estatísticas"),statistics).apply { longAction=statisticsOptions },
-            statisticsOptions?.let { ConsoleGlyph.SETTINGS to ConsoleAction(UiText.text("Personalizar estatísticas"),it) },
-            ConsoleGlyph.DIAGNOSTICS to ConsoleAction(UiText.text("Diagnóstico da partida"),diagnostics),
-            recovery?.let { ConsoleGlyph.DISPLAY to ConsoleAction(UiText.text("Recuperar / recarregar transmissão"),it) },
-            xbox?.let { ConsoleGlyph.XBOX to ConsoleAction(UiText.text("Botão Xbox — experimental"),it) }
+            ) },
+            hud?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("HUD e controles deste jogo"),it),UiText.text("Controles")) },
+            nativeTouch?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Usar toque nativo nesta partida"),it)) },
+            controllerProfiles?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Calibração e remapeamento do controle"),it)) },
+            mouse?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Capturar / soltar mouse e teclado — F8"),it)) },
+            GameMenuShortcut(ConsoleGlyph.DIAGNOSTICS,ConsoleAction(UiText.text("Mostrar / ocultar estatísticas"),statistics).apply { longAction=statisticsOptions }),
+            statisticsOptions?.let { GameMenuShortcut(ConsoleGlyph.SETTINGS,ConsoleAction(UiText.text("Personalizar estatísticas"),it)) },
+            GameMenuShortcut(ConsoleGlyph.DIAGNOSTICS,ConsoleAction(UiText.text("Diagnóstico da partida"),diagnostics)),
+            recovery?.let { GameMenuShortcut(ConsoleGlyph.DISPLAY,ConsoleAction(UiText.text("Recuperar / recarregar transmissão"),it)) },
+            xbox?.let { GameMenuShortcut(ConsoleGlyph.XBOX,ConsoleAction(UiText.text("Botão Xbox — experimental"),it)) }
         )
+
+    internal fun show(context: Context, shortcuts: List<GameMenuShortcut>, disconnect: () -> Unit): ConsoleDialog {
         val device=InputDeviceProfile.read(context)
         val window=(context as? Activity)?.window?.decorView
         val width=window?.width?.takeIf { it>0 } ?: context.resources.displayMetrics.widthPixels
@@ -51,13 +64,19 @@ object GameMenuPanel {
                     row.compoundDrawablePadding=maxOf(px(10),touchSize()/5)
                     action.longAction?.let { longAction -> row.setOnLongClickListener { dismiss();longAction();true } }
                 }
-            } else addShortcuts(shortcuts)
+            } else addShortcuts(shortcuts.map { it.icon to it.action })
             addAction(UiText.text("Retomar partida")) {}
             addAction(UiText.text("Encerrar partida")) {
-                ConsoleDialogs.message(context,UiText.text("Encerrar partida"),UiText.text("Encerrar a partida e voltar ao catálogo?"),
-                    listOf(ConsoleAction(UiText.text("Encerrar partida"),disconnect),ConsoleAction(UiText.text("Retomar partida")) {}))
+                confirmExit(context,disconnect)
             }
             show()
         }
+    }
+
+    internal fun confirmExit(context: Context, disconnect: () -> Unit, onBack: (() -> Unit)? = null): ConsoleDialog {
+        val end=ConsoleAction(UiText.text("Encerrar partida"),disconnect)
+        val resume=ConsoleAction(UiText.text("Retomar partida")) {}
+        return ConsoleDialogs.message(context,UiText.text("Encerrar partida"),UiText.text("Encerrar a partida e voltar ao catálogo?"),
+            if(onBack==null) listOf(end,resume) else listOf(resume,end),onCancel=onBack)
     }
 }

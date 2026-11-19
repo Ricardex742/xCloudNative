@@ -39,6 +39,8 @@ import com.xcloud.tclnative.catalog.CatalogCache
 import java.io.File
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
+import com.xcloud.tclnative.ui.dashboard.GameMenuPanel
+import com.xcloud.tclnative.ui.dashboard.GameShortcutBar
 import com.xcloud.tclnative.ui.dashboard.ConsoleLoginView
 import com.xcloud.tclnative.ui.dashboard.MicrosoftLoginDialog
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialogs
@@ -315,7 +317,7 @@ open class MainActivity : Activity() {
             onGamepad={ state -> controllers.virtual(state); if(currentTouchMode==TouchMode.VIRTUAL && transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) publishGamepad(0) },
             onPointers={ events -> if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) webrtcClient?.sendPointers(events) },
             coordinates=surfaceRenderer::touchCoordinates,
-            onMenu={ showGameMenu() })
+            onMenu={ showTouchGameMenu() })
         surfaceRenderer.onDisplayDimensionsChanged = { webrtcClient?.updateDisplayDimensions(it) }
         touchView.onHudSaved={ settings ->
             val game=activeGame
@@ -1060,36 +1062,57 @@ open class MainActivity : Activity() {
             else usbDirect.snapshot().status.label+"\n\n"+rumble.describe()+"\n\n"+usbRumble.describe()
         com.xcloud.tclnative.ui.dashboard.RumbleDiagnosticsPanel.show(this,description,actions,back)
     }
-    private fun showGameMenu() {
+    private fun showGameMenu() = showGameMenu(null)
+
+    private fun showTouchGameMenu() {
+        val position=if(InputDeviceProfile.read(this).television) null else GameShortcutBar.Position()
+        showGameMenu(position)
+    }
+
+    private fun showGameMenu(position: GameShortcutBar.Position?) {
         if (transitionPanel.visibility==View.VISIBLE || gameMenuDialog?.isShowing == true || (webrtcClient == null && reloadTransmission==null) || queuePanel.visibility == View.VISIBLE) return
         resetController()
+        val generation=playbackGeneration
+        var toolbar: GameShortcutBar? = null
+        val back: () -> Unit = { if(generation==playbackGeneration) showGameMenu(toolbar?.position) }
         val active=transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE
         val touch=active && InputDeviceProfile.read(this).touchDevice
         val liveSettings=PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{},{},{},
             liveVideoMode=sessionSettings?.videoMode ?: playbackSettings.videoMode,
             microphone=if(active && webrtcClient?.canUseMicrophone()==true) ::toggleMicrophone else null,
             microphoneLabel={ UiText.text(webrtcClient?.microphoneLabel() ?: "Ativar microfone") })
-        gameMenuDialog = com.xcloud.tclnative.ui.dashboard.GameMenuPanel.show(this,
-            image=if(active) ({ liveSettings.showUpscaling(::showGameMenu) }) else null,
-            audio=if(active) ({ liveSettings.showAudio(::showGameMenu) }) else null,
+        val shortcuts = GameMenuPanel.shortcuts(
+            image=if(active) ({ liveSettings.showUpscaling(back) }) else null,
+            audio=if(active) ({ liveSettings.showAudio(back) }) else null,
             xbox=if(active) ::pressXboxButton else null,
             statistics=::toggleStatistics,
-            statisticsOptions={ com.xcloud.tclnative.ui.dashboard.StatisticsSettingsPanel(this,statisticsStore,::refreshStatisticsSettings,::showGameMenu).show() },
-            recovery=if(reloadTransmission!=null) ({ showTransmissionRecovery() }) else null,
+            statisticsOptions={ com.xcloud.tclnative.ui.dashboard.StatisticsSettingsPanel(this,statisticsStore,::refreshStatisticsSettings,back).show() },
+            recovery=if(reloadTransmission!=null) ({ showTransmissionRecovery(back) }) else null,
             hudToggle=if(touch) ({
                 if(touchView.controlsVisible) hideGameHud() else enableGameHud()
             }) else null,
             hudVisible=touchView.controlsVisible,
             nativeTouch=if(active && currentTouchMode!=TouchMode.NATIVE && webrtcClient?.canUseNativeTouch()==true) ({ enableNativeTouch() }) else null,
-            diagnostics={ showLiveDiagnostics(::showGameMenu) },
-            disconnect={ cancelPlayback() },
-            hud=if(touch) ({ showGameHudSettings(::showGameMenu) }) else null,
-            controllerProfiles=if(active) ({ showControllerProfiles(::showGameMenu) }) else null,
+            diagnostics={ showLiveDiagnostics(back) },
+            hud=if(touch) ({ showGameHudSettings(back) }) else null,
+            controllerProfiles=if(active) ({ showControllerProfiles(back) }) else null,
             mouse=if(!active || sessionDesktopMode==DesktopInputMode.OFF) null else ({
                 auxiliaryHandler.post { setDesktopCapture(!desktopCaptured) }
-            })).also { dialog ->
-                dialog.setOnDismissListener { if(gameMenuDialog===dialog) gameMenuDialog=null }
+            }))
+        touchView.setMenuCovered(position!=null)
+        val dialog = if(position==null) GameMenuPanel.show(this,shortcuts,::cancelPlayback) else {
+            GameShortcutBar(this,shortcuts,position,::cancelPlayback,back).also {
+                toolbar=it
+                it.show()
             }
+        }
+        gameMenuDialog=dialog
+        dialog.setOnDismissListener {
+            if(gameMenuDialog===dialog) {
+                gameMenuDialog=null
+                touchView.setMenuCovered(false)
+            }
+        }
     }
     private fun videoDiagnostics()=ImmersiveWindow.diagnostics(window,rootLayout)+"\n"+surfaceRenderer.diagnostics()
     private fun showLiveDiagnostics(onBack: () -> Unit) {
@@ -1811,7 +1834,7 @@ open class MainActivity : Activity() {
     }
 
     private fun gameplayInputEnabled() = controlPanel.visibility == View.GONE &&
-        transitionPanel.visibility!=View.VISIBLE && queuePanel.visibility != View.VISIBLE && videoRecoveryDialog?.isShowing != true && nativeTouchDialog?.isShowing != true && webrtcClient != null &&
+        transitionPanel.visibility!=View.VISIBLE && queuePanel.visibility != View.VISIBLE && gameMenuDialog?.isShowing != true && videoRecoveryDialog?.isShowing != true && nativeTouchDialog?.isShowing != true && webrtcClient != null &&
         transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE && !touchView.isEditing && hasWindowFocus()
 
     private fun updateJoystickDispatch() { joystickDispatch.request(activityVisible && immediateJoystickForSession && gameplayInputEnabled()) }

@@ -1251,4 +1251,8 @@
     <string name="ui_73d1dd504499ea34" formatted="false">"Switch games"</string>
     <string name="ui_d69d87868f85df52" formatted="false">"End the current session and open {0}?"</string>
     <string name="ui_fefc0b4a78d70f6c" formatted="false">"Export diagnostics"</string>
+    <string name="ui_8fc6b8b69804d942">"Image"</string>
+    <string name="ui_195c60bb232551a9">"Audio"</string>
+    <string name="ui_80b26f920e37575b">"Controls"</string>
+    <string name="ui_5d951376c42f3cf3">"More options"</string>
 </resources>

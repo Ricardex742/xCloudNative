@@ -1251,4 +1251,8 @@
     <string name="ui_73d1dd504499ea34" formatted="false">"切換遊戲"</string>
     <string name="ui_d69d87868f85df52" formatted="false">"要結束目前的工作階段並開啟{0}嗎？"</string>
     <string name="ui_fefc0b4a78d70f6c" formatted="false">"匯出診斷"</string>
+    <string name="ui_8fc6b8b69804d942">"畫面"</string>
+    <string name="ui_195c60bb232551a9">"音訊"</string>
+    <string name="ui_80b26f920e37575b">"控制"</string>
+    <string name="ui_5d951376c42f3cf3">"更多選項"</string>
 </resources>

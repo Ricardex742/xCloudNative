@@ -1251,4 +1251,8 @@
     <string name="ui_73d1dd504499ea34" formatted="false">"Spiel wechseln"</string>
     <string name="ui_d69d87868f85df52" formatted="false">"Die aktuelle Sitzung beenden und {0} öffnen?"</string>
     <string name="ui_fefc0b4a78d70f6c" formatted="false">"Diagnose exportieren"</string>
+    <string name="ui_8fc6b8b69804d942">"Bild"</string>
+    <string name="ui_195c60bb232551a9">"Audio"</string>
+    <string name="ui_80b26f920e37575b">"Steuerung"</string>
+    <string name="ui_5d951376c42f3cf3">"Mehr Optionen"</string>
 </resources>
