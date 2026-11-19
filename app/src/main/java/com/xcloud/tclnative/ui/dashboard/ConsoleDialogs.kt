@@ -28,7 +28,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 data class ConsoleAction(val label: String, val action: () -> Unit) { var longAction: (() -> Unit)?=null }
-enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER, PROFILE }
+enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER, PROFILE, GAME_SESSION }
 
 /** Shared native panels for search, account menus and messages. No platform alert buttons/rows. */
 class ConsoleDialog(context: Context, private val heading: String,private val purpose: ConsolePanelPurpose=ConsolePanelPurpose.GENERAL) : Dialog(context, R.style.ConsoleDialog) {
@@ -36,7 +36,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val navigationContext=context
     private val activity = context as? Activity
     private val skin=ConsolePanelSkin()
-    private val fullScreen=skin.scene.playStation && purpose !in listOf(ConsolePanelPurpose.GUIDE,ConsolePanelPurpose.CONTROL_CENTER) && !(purpose==ConsolePanelPurpose.PROFILE && skin.scene==ConsoleScene.PS5)
+    private val sessionSidebar=purpose==ConsolePanelPurpose.GAME_SESSION
+    private val fullScreen=skin.scene.playStation && !sessionSidebar && purpose !in listOf(ConsolePanelPurpose.GUIDE,ConsolePanelPurpose.CONTROL_CENTER) && !(purpose==ConsolePanelPurpose.PROFILE && skin.scene==ConsoleScene.PS5)
     private val screenWidth = activity?.window?.decorView?.width?.takeIf { it > 0 }
         ?: context.resources.displayMetrics.widthPixels
     private val screenHeight = activity?.window?.decorView?.height?.takeIf { it > 0 }
@@ -66,7 +67,11 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
     }.apply { orientation = LinearLayout.HORIZONTAL;isBaselineAligned=false }
     private val scroll = ScrollView(context).apply {
-        isVerticalScrollBarEnabled = skin.scene.playStation
+        isVerticalScrollBarEnabled = sessionSidebar || skin.scene.playStation
+        if(sessionSidebar) {
+            isVerticalFadingEdgeEnabled=true
+            setFadingEdgeLength(px(18))
+        }
         overScrollMode = View.OVER_SCROLL_NEVER
         DashboardTheme.customFocus(this)
         addView(body, ViewGroup.LayoutParams(-1, -2))
@@ -101,8 +106,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         activity?.let(::setOwnerActivity)
         val headingContent=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
-        if(purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
-            headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(14) })
+        if(sessionSidebar || purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
+            headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { if(!sessionSidebar) bottomMargin=px(14) })
             if(purpose==ConsolePanelPurpose.GUIDE) panel.minimumHeight=(screenHeight*.88f).roundToInt()
         } else if(skin.scene.playStation) {
             headingContent.addView(text(heading,34),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(22) })
@@ -129,7 +134,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             headingContent.addView(text("xCLOUD", 16, true, DashboardTheme.accent), LinearLayout.LayoutParams(-1, -2))
             headingContent.addView(text(heading, 35, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(5); bottomMargin=px(23) })
         }
-        val header=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL;gravity=Gravity.TOP }
+        val header=LinearLayout(context).apply {
+            orientation=LinearLayout.HORIZONTAL
+            gravity=if(sessionSidebar) Gravity.CENTER_VERTICAL else Gravity.TOP
+        }
         header.addView(headingContent,LinearLayout.LayoutParams(0,-2,1f))
         val close=keyButton("×") { closePanels() }.apply {
             tag="close-settings"
@@ -138,12 +146,13 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             if(skin.scene.playStation) setTextSize(TypedValue.COMPLEX_UNIT_PX,28*scale) else setTextSize(TypedValue.COMPLEX_UNIT_SP,28f)
             setPadding(0,0,0,0)
         }
-        val closeSize=if(skin.scene.playStation) px(48) else touchSize()
+        val closeSize=if(skin.scene.playStation && !sessionSidebar) px(48) else touchSize()
         header.addView(close,LinearLayout.LayoutParams(closeSize,closeSize).apply { marginStart=px(10) })
         panel.addView(header,LinearLayout.LayoutParams(-1,-2))
         panel.addView(scroll, LinearLayout.LayoutParams(-1, -2, 1f))
         panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(22) })
         if(skin.scene.playStation) ConsoleHitTargets.install(panel,listOf(close))
+        com.xcloud.tclnative.ui.ImmersiveWindow.protectContent(panel)
         setContentView(panel)
         setOnKeyListener { _, key, event ->
             if(shortcut?.invoke(event)==true) true else when (key) {
@@ -266,9 +275,9 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 body.addView(tileRow,LinearLayout.LayoutParams(-1,px(88)).apply { bottomMargin=px(7) })
             }
             tileRow!!.addView(item,LinearLayout.LayoutParams(0,-1,1f).apply { if(menuItems%skin.columns!=0) marginStart=px(10) })
-        } else body.addView(item, LinearLayout.LayoutParams(-1, if(phone) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(62),touchSize())).apply { bottomMargin = px(if(skin.scene.playStation) 0 else 7) })
-        if(phone) {
-            item.minimumHeight=px(62);item.maxLines=3
+        } else body.addView(item, LinearLayout.LayoutParams(-1, if(phone || sessionSidebar) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(62),touchSize())).apply { bottomMargin = px(if(skin.scene.playStation) 0 else 7) })
+        if(phone || sessionSidebar) {
+            item.minimumHeight=if(sessionSidebar) touchSize() else px(62);item.maxLines=3
             if(android.os.Build.VERSION.SDK_INT>=26) item.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
             item.setTextSize(TypedValue.COMPLEX_UNIT_PX,23*scale)
         }
@@ -289,7 +298,11 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             decorView.setPadding(0,0,0,0)
             addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setDimAmount(if(skin.enabled) .48f else .72f)
-            if(purpose==ConsolePanelPurpose.CONTROL_CENTER) {
+            if(sessionSidebar) {
+                setGravity(Gravity.TOP or Gravity.LEFT)
+                val width=(340*context.resources.displayMetrics.density).roundToInt()
+                setLayout(width.coerceAtMost((screenWidth*.88f).roundToInt()),(screenHeight*.90f).roundToInt())
+            } else if(purpose==ConsolePanelPurpose.CONTROL_CENTER) {
                 setGravity(Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
                 setLayout((screenWidth*.96f).roundToInt(),WindowManager.LayoutParams.WRAP_CONTENT)
             } else if(purpose==ConsolePanelPurpose.GUIDE) {

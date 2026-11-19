@@ -18,17 +18,17 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão no código desta branch: **0.40.9-landscape**, versionCode **104**, usando a identidade de atualização existente.
+- Versão no código desta branch: **0.40.10-live-menu**, versionCode **105**, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
 
 Arquivos principais:
 
-- `ui/dashboard/GameMenuPanel.kt`: painel da partida com atalhos nativos, ícones e nomes. HUD e estatísticas alternam diretamente; áudio, vídeo, amigos e configurações têm acesso próprio. Toque nativo e seleção para a próxima sessão são ações distintas. Encerrar exige confirmação; fechar o painel não encerra a sessão.
+- `ui/dashboard/GameMenuPanel.kt`: painel nativo da sessão. Em celular, abre pela seta no canto superior esquerdo. Os atalhos de imagem, áudio e controle refletem a sessão ativa. As configurações da próxima partida ficam no catálogo. Encerrar exige confirmação.
 - `ui/dashboard/PlaybackSettingsPanel.kt`: seis categorias: Vídeo e conexão; Controles e toque; Áudio e microfone; Aparência e temas; Conta e amigos; Ajuda e diagnóstico. A página de vídeo usa abas para imagem/tela, rede/sessão e avançado, evitando duas árvores duplicadas.
 - `ui/dashboard/ConsoleDialogs.kt`: X no cabeçalho fecha diretamente, sem chamar callbacks de Voltar. Voltar/B retorna ao pai. Restaura foco do item ao retornar a menus. Segurar X do controle limpa somente o campo de pesquisa, sem enviar a busca.
-- `ui/GameTouchView.kt`: acesso ao menu é um botão nativo com nome acessível e alvo de 48×48 dp, presente também com toque nativo ou HUD oculto. O desenho volta ao círculo pequeno proporcional à altura da tela usado antes da navegação nova; a área transparente de toque é maior que o desenho. Preservar solturas de contatos/botões ao abrir menus e durante edição.
+- `ui/GameTouchView.kt`: o acesso ao menu é uma seta nativa em um círculo pequeno, com nome acessível e alvo de 48×48 dp. Fica fora do recorte e aparece também com toque nativo ou HUD oculto. Preservar solturas de contatos e botões ao abrir menus e durante edição.
 - `ui/dashboard/SessionOptionsPanel.kt` e `settings/SessionOptions.kt`: seletor Este jogo/Padrão das partidas no mesmo painel, indicação de herança por campo e suporte a `zh-CN` no idioma **do jogo**, separado do idioma da interface.
 - `ui/MainActivity.kt`: liga os painéis ao jogo ativo, aplica alterações que podem mudar ao vivo e mantém marcações de próxima sessão. Ações de substituir catálogo/trocar conta ficam indisponíveis dentro da partida.
 - `QuickSettingsNavigationTest.kt`, `SessionOptionsTest.kt` e testes de UI existentes cobrem navegação e persistência. As capturas geradas usam dados de demonstração em `app/build/reports/navigation`.

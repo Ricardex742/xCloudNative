@@ -59,7 +59,11 @@ class QuickControlsUiTest {
         event(view,MotionEvent.ACTION_DOWN,a.x,a.y);assertNotEquals(0,state.buttons)
         event(view,MotionEvent.ACTION_UP,a.x,a.y);idle(10)
         assertFalse(view.controlsVisible)
-        event(view,MotionEvent.ACTION_DOWN,640f,720*.055f);event(view,MotionEvent.ACTION_UP,640f,720*.055f)
+        view.measure(View.MeasureSpec.makeMeasureSpec(1280,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(720,View.MeasureSpec.EXACTLY))
+        view.layout(0,0,1280,720)
+        val menu=view.getChildAt(0)
+        val x=menu.left+menu.width/2f;val y=menu.top+menu.height/2f
+        event(view,MotionEvent.ACTION_DOWN,x,y);event(view,MotionEvent.ACTION_UP,x,y)
         assertEquals(1,menus);assertFalse(view.controlsVisible)
         activity.pause().stop().destroy()
     }
@@ -99,11 +103,11 @@ class QuickControlsUiTest {
     }
     @Test fun quickMenuExposesActionsWithoutEnteringHudSettings() {
         val activity=Robolectric.buildActivity(Activity::class.java).setup()
-        var toggles=0;var native=0;var selection=0
+        var toggles=0;var native=0
         fun nodes(view: View): List<View> = listOf(view)+if(view is ViewGroup)
             (0 until view.childCount).flatMap { nodes(view.getChildAt(it)) } else emptyList()
         fun open()=GameMenuPanel.show(activity.get(),{},{},{},{},hudToggle={toggles++},hudVisible=true,
-            nativeTouch={native++},touchSelection={selection++})
+            nativeTouch={native++})
         var panel=open()
         panel.panel.measure(View.MeasureSpec.makeMeasureSpec(1050,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(648,View.MeasureSpec.AT_MOST))
         panel.panel.layout(0,0,panel.panel.measuredWidth,panel.panel.measuredHeight)
@@ -111,8 +115,7 @@ class QuickControlsUiTest {
         File("build/reports/social/quick-controls.png").apply { parentFile!!.mkdirs() }.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) };bitmap.recycle()
         nodes(panel.panel).filterIsInstance<TextView>().single { it.text.toString()=="Ocultar controle virtual" }.performClick()
         panel=open();nodes(panel.panel).filterIsInstance<TextView>().single { it.text.toString()=="Usar toque nativo nesta partida" }.performClick()
-        panel=open();nodes(panel.panel).filterIsInstance<TextView>().single { it.text.toString()=="Modo de toque da próxima partida" }.performClick()
-        assertEquals(1,toggles);assertEquals(1,native);assertEquals(1,selection)
+        assertEquals(1,toggles);assertEquals(1,native)
         val unavailable=GameMenuPanel.show(activity.get(),{},{},{},{})
         assertFalse(nodes(unavailable.panel).filterIsInstance<TextView>().any { it.text.toString()=="Usar toque nativo nesta partida" })
         unavailable.dismiss();activity.pause().stop().destroy()

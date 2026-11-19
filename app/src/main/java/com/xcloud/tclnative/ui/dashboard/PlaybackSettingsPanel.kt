@@ -28,17 +28,21 @@ class PlaybackSettingsPanel(
     private val playtimeInformation: () -> String = { com.xcloud.tclnative.catalog.CloudPlaytime().diagnostics() },
     private val friends: (() -> Unit)?=null,private val gameShortcut: (() -> Unit)?=null,
     private val sessionPanel: SessionOptionsPanel?=null,private val back: () -> Unit={},
-    private val videoBack: (() -> Unit)?=null,private val allowAccountChanges: Boolean=true,
+    private val allowAccountChanges: Boolean=true,
     private val gameControls: (() -> Unit)?=null,private val recovery: (() -> Unit)?=null,
     private val currentDiagnostics: (() -> Unit)?=null,private val microphone: (() -> Unit)?=null,
     private val statisticsChanged: () -> Unit={},
-    private val microphoneLabel: () -> String={ UiText.text("Ativar microfone") }
+    private val microphoneLabel: () -> String={ UiText.text("Ativar microfone") },
+    private val liveVideoMode: VideoMode?=null
 ) {
     private var videoSection=0
     private var currentPage=SettingsPage.ROOT
     private var upscalingBack: () -> Unit = { showImage() }
     private var advancedImageBack: () -> Unit={ showUpscaling() }
     private var appearanceBack: (() -> Unit)?=null
+    private fun compatibility(value: PlaybackSettings)=(liveVideoMode ?: value.videoMode)==VideoMode.COMPATIBILITY
+    private fun resetImageLab(value: PlaybackSettings)=if(liveVideoMode==null) ImageLabSettings()
+        else ImageLabSettings(frameGeneration=value.imageLab.frameGeneration)
     private fun enter(page: SettingsPage) { currentPage=page;onPageEntered(page) }
     fun open(page: SettingsPage): ConsoleDialog = when(page) {
         SettingsPage.ROOT -> show();SettingsPage.VIDEO -> showVideo();SettingsPage.IMAGE -> showImage();SettingsPage.APPEARANCE -> showAppearance()
@@ -105,8 +109,8 @@ class PlaybackSettingsPanel(
                     addMenuItem(UiText.text("Avançado — métodos e filtros")) { showAdvancedImage { showVideo() } }
                 }
             }
-            addAction(UiText.text("Voltar")) { videoBack?.invoke() ?: this@PlaybackSettingsPanel.show() }
-            setOnCancelListener { videoBack?.invoke() ?: this@PlaybackSettingsPanel.show() };show()
+            addAction(UiText.text("Voltar")) { this@PlaybackSettingsPanel.show() }
+            setOnCancelListener { this@PlaybackSettingsPanel.show() };show()
         }
     }
     fun showAppearance(onBack: (() -> Unit)?=null): ConsoleDialog {
@@ -183,11 +187,18 @@ class PlaybackSettingsPanel(
         if(onBack!=null) upscalingBack=onBack
         enter(SettingsPage.UPSCALING)
         val value=store.read();val profile=ImageProfiles.selected(value)
-        return ConsoleDialog(context,UiText.text("Upscaling e tratamento")).apply {
-            body.addView(text(UiText.text("Escolha um perfil e compare a mesma cena. Mais intensidade não garante mais detalhes. Os ajustes personalizados ficam em Avançado."),20,color=DashboardTheme.muted))
-            if(value.videoMode==VideoMode.COMPATIBILITY) {
-                body.addView(text(UiText.text("Compatibilidade está ativa e desativa os métodos e filtros experimentais. Mude o modo em Vídeo e transmissão para usá-los."),20,color=DashboardTheme.muted))
-                addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
+        val live=liveVideoMode!=null
+        val compatible=compatibility(value)
+        return ConsoleDialog(context,if(live) UiText.text("Imagem e tela") else UiText.text("Upscaling e tratamento")).apply {
+            if(live) addMenuItem(UiText.text("Proporção: {0}",UiText.nested(value.aspect.label))) { chooseAspect { showUpscaling() } }
+            if(!live || !compatible) {
+                body.addView(text(UiText.text("Escolha um perfil e compare a mesma cena. Mais intensidade não garante mais detalhes. Os ajustes personalizados ficam em Avançado."),20,color=DashboardTheme.muted))
+            }
+            if(compatible) {
+                if(!live) {
+                    body.addView(text(UiText.text("Compatibilidade está ativa e desativa os métodos e filtros experimentais. Mude o modo em Vídeo e transmissão para usá-los."),20,color=DashboardTheme.muted))
+                    addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
+                }
             } else {
                 addMenuItem(UiText.text("Perfil de imagem: {0}",UiText.nested(profile.label))) { chooseImageProfile() }
                 if(profile==ImageProfile.LIGHT || profile==ImageProfile.RECONSTRUCTION)
@@ -197,7 +208,7 @@ class PlaybackSettingsPanel(
                 addMenuItem(UiText.text("Avançado — métodos e filtros")) { showAdvancedImage { showUpscaling() } }
                 addMenuItem(UiText.text("Restaurar imagem original")) {
                     save(ImageProfiles.apply(value,ImageProfile.ORIGINAL).copy(saturation=100,brightness=0,contrast=100,
-                        imageLab=ImageLabSettings()))
+                        imageLab=resetImageLab(value)))
                 }
             }
             addAction(UiText.text("Voltar"),upscalingBack);setOnCancelListener { upscalingBack() };show()
@@ -228,17 +239,18 @@ class PlaybackSettingsPanel(
         if(onBack!=null) advancedImageBack=onBack
         enter(SettingsPage.IMAGE_ADVANCED)
         val value=store.read();val mode=value.fsr
+        if(liveVideoMode!=null && compatibility(value)) return showUpscaling()
         fun back() { showAdvancedImage() }
         return ConsoleDialog(context,UiText.text("Avançado — métodos e filtros")).apply {
-            if(value.videoMode==VideoMode.COMPATIBILITY) {
+            if(compatibility(value)) {
                 body.addView(text(UiText.text("Compatibilidade está ativa e desativa os métodos e filtros experimentais. Mude o modo em Vídeo e transmissão para usá-los."),20,color=DashboardTheme.muted))
                 addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
             } else {
                 body.addView(text(methodDescription(mode),20,color=DashboardTheme.muted))
                 addMenuItem(UiText.text("Método: {0}",UiText.nested(methodName(mode)))) { chooseFsr() }
-                if(mode==FsrMode.OFF) {
+                if(mode==FsrMode.OFF && liveVideoMode==null) {
                     addMenuItem(UiText.text("Upscaling nativo: {0}",UiText.nested(if(value.nativeUpscaling) UiText.text("Ativado") else UiText.text("Desativado")))) { chooseUpscaling() }
-                } else addMenuItem(UiText.text("Saída do escalador: {0}",UiText.nested(value.fsrOutput.label))) { chooseFsrOutput() }
+                } else if(mode!=FsrMode.OFF) addMenuItem(UiText.text("Saída do escalador: {0}",UiText.nested(value.fsrOutput.label))) { chooseFsrOutput() }
                 when(mode) {
                     FsrMode.OFF,FsrMode.FSR1,FsrMode.SGSR1 -> {
                         val amount=if(mode==FsrMode.OFF) value.sharpness else value.fsrSharpness
@@ -256,11 +268,12 @@ class PlaybackSettingsPanel(
                 addMenuItem(UiText.text("Cores da imagem")) { showImageAdjustments(onBack=::back) }
                 addMenuItem(UiText.text("Proteção de desempenho: {0}",UiText.nested(if(value.imageTreatment.autoProtect) UiText.text("Ativada") else UiText.text("Desativada")))) { choosePerformanceProtection() }
                 addMenuItem(UiText.text("Laboratório de imagem: {0}",UiText.nested(if(value.imageLab.enabled) UiText.text("Ativado") else UiText.text("Desativado")))) {
-                    ImageLabPanel(context,store,changed) { showAdvancedImage() }.show()
+                    ImageLabPanel(context,store,changed,live=liveVideoMode!=null) { showAdvancedImage() }.show()
                 }
                 addMenuItem(UiText.text("Restaurar imagem original")) {
-                    save(value.copy(nativeUpscaling=true,fsr=FsrMode.OFF,fsrOutput=FsrOutput.AUTO,fsrSharpness=50,
-                        reconstruction=ReconstructionSettings(),imageLab=ImageLabSettings(),imageTreatment=ImageTreatmentSettings(),imageComparison=ImageComparison.PROCESSED,sharpness=0,saturation=100,brightness=0,contrast=100),::back)
+                    save(value.copy(nativeUpscaling=liveVideoMode==null || value.nativeUpscaling,
+                        fsr=FsrMode.OFF,fsrOutput=FsrOutput.AUTO,fsrSharpness=50,
+                        reconstruction=ReconstructionSettings(),imageLab=resetImageLab(value),imageTreatment=ImageTreatmentSettings(),imageComparison=ImageComparison.PROCESSED,sharpness=0,saturation=100,brightness=0,contrast=100),::back)
                 }
             }
             addAction(UiText.text("Voltar"),advancedImageBack);setOnCancelListener { advancedImageBack() };show()
@@ -448,7 +461,7 @@ class PlaybackSettingsPanel(
             ImageComparison.entries.map { it.label to (it==options.comparison) }) { save(value.copy(reconstruction=options.copy(comparison=ImageComparison.entries[it]))) }
     }
     fun showTreatment(): ConsoleDialog {
-        if(store.read().videoMode==VideoMode.COMPATIBILITY) return showAdvancedImage()
+        if(compatibility(store.read())) return showAdvancedImage()
         enter(SettingsPage.TREATMENT)
         val value=store.read();val image=value.imageTreatment
         fun level(title: String,current: Int,max: Int=100,change: (ImageTreatmentSettings,Int)->ImageTreatmentSettings) {
@@ -572,7 +585,7 @@ class PlaybackSettingsPanel(
                 }
             },
             microphone?.let { ConsoleAction(microphoneLabel(),it) },
-            ConsoleAction(UiText.text("Perfil de áudio: {0}", UiText.nested(current.audioMode.label))) {
+            if(liveVideoMode!=null) null else ConsoleAction(UiText.text("Perfil de áudio: {0}", UiText.nested(current.audioMode.label))) {
                 choices(UiText.text("Perfil de áudio"), UiText.text("Solicita saída de áudio de baixa latência no Android 8 ou superior. O sistema pode ignorar o pedido. Padrão mantém o comportamento atual. Vale na próxima partida; volte ao padrão se houver estalos ou cortes."),
                     AudioPlaybackMode.entries.map { it.label to (it==current.audioMode) }, { showAudio(onBack) }) {
                     save(current.copy(audioMode=AudioPlaybackMode.entries[it])) { showAudio(onBack) }
@@ -583,7 +596,7 @@ class PlaybackSettingsPanel(
                 choices(UiText.text("Ganho de áudio"),UiText.text("100% preserva o volume. Acima disso, o app aumenta gradualmente e reduz o ganho ao detectar picos no áudio. Transientes ainda podem distorcer. Comece em 125%. O foco e o volume do Android continuam ativos."),
                     values.map { "$it%" to (it==current.audioGain) },{ showAudio(onBack) }) { save(current.copy(audioGain=values[it])) { showAudio(onBack) } }
             },
-            ConsoleAction(UiText.text("Microfone nas próximas partidas: {0}",UiText.nested(if(current.microphone) UiText.text("Disponível — inicia mudo") else UiText.text("Desativado")))) {
+            if(liveVideoMode!=null) null else ConsoleAction(UiText.text("Microfone nas próximas partidas: {0}",UiText.nested(if(current.microphone) UiText.text("Disponível — inicia mudo") else UiText.text("Desativado")))) {
                 choices(UiText.text("Microfone opcional"),UiText.text("A sessão sempre inicia muda. Com esta opção, o app consulta suporte a chat; ative a captura no menu da partida, após conceder a permissão do Android. Ir para segundo plano silencia. Alguns servidores podem não oferecer chat."),
                     listOf(UiText.text("Desativado") to !current.microphone,UiText.text("Disponível — iniciar mudo") to current.microphone),{ showAudio(onBack) }) { save(current.copy(microphone=it==1)) { showAudio(onBack) } }
             }

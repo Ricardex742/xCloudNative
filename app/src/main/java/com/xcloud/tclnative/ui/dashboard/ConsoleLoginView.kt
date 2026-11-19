@@ -1,6 +1,7 @@
 package com.xcloud.tclnative.ui.dashboard
 
 import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.ui.ImmersiveWindow
 
 import android.content.Context
 import android.graphics.Color
@@ -77,6 +78,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
     private val footer = label(UiText.text("A  SELECIONAR       B  VOLTAR"),18,false).apply { setTextColor(DashboardTheme.muted) }
     init {
         background=DashboardBackground()
+        ImmersiveWindow.protectContent(this)
         listOf(brand,eyebrow,headline,description,card,footer,language,bypass).forEach(::addView)
         listOf(cardTitle,qr,code,instructions,status,validity,spinner,primary,secondary,alternate).forEach(card::addView)
         headline.text=SpannableString(UiText.text("SEUS JOGOS.\nNA SUA TELA.")).apply {
@@ -164,7 +166,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
         view.layoutParams=LayoutParams(w.roundToInt(),h.roundToInt()).apply { leftMargin=x.roundToInt(); topMargin=y.roundToInt() }
     }
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val w=MeasureSpec.getSize(widthMeasureSpec); val h=MeasureSpec.getSize(heightMeasureSpec)
+        val w=MeasureSpec.getSize(widthMeasureSpec)-paddingLeft-paddingRight; val h=MeasureSpec.getSize(heightMeasureSpec)-paddingTop-paddingBottom
         val key=w.toLong() shl 32 or h.toLong()
         if (key != geometry && w > 0 && h > 0) {
             geometry=key

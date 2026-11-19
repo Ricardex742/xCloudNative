@@ -1,6 +1,7 @@
 package com.xcloud.tclnative.ui.dashboard
 
 import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.ui.ImmersiveWindow
 
 import android.content.Context
 import android.content.res.ColorStateList
@@ -77,6 +78,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
     init {
         background = DashboardBackground()
         addView(backdrop, LayoutParams(-1, -1)); addView(shade, LayoutParams(-1, -1))
+        ImmersiveWindow.protectContent(this,backdrop,shade)
         addView(eyebrow);addView(consoleLogo); addView(title); addView(poster); addView(posterFallback); addView(badges)
         listOf(status, estimateLabel, estimate, elapsedLabel, elapsed, explanation, heartbeat, freshness, spinner).forEach(panel::addView)
         addView(panel); steps.forEach(::addView); addView(note); addView(cancelButton)
@@ -249,7 +251,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         view.layoutParams = LayoutParams(w.roundToInt(), h.roundToInt()).apply { leftMargin=x.roundToInt(); topMargin=y.roundToInt() }
     }
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val w = MeasureSpec.getSize(widthMeasureSpec); val h = MeasureSpec.getSize(heightMeasureSpec)
+        val w = MeasureSpec.getSize(widthMeasureSpec)-paddingLeft-paddingRight; val h = MeasureSpec.getSize(heightMeasureSpec)-paddingTop-paddingBottom
         val key = w.toLong() shl 32 or h.toLong()
         if (key != geometry && w > 0 && h > 0) {
             geometry = key

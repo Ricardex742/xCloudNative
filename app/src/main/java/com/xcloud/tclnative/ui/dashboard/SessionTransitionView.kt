@@ -1,6 +1,7 @@
 package com.xcloud.tclnative.ui.dashboard
 
 import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.ui.ImmersiveWindow
 
 import android.content.Context
 import android.content.res.ColorStateList
@@ -60,6 +61,7 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
     init {
         background=DashboardBackground()
         addView(banner,LayoutParams(-1,-1)); addView(shade,LayoutParams(-1,-1))
+        ImmersiveWindow.protectContent(this,banner,shade)
         listOf(cover,logo,eyebrow,title,status,detail,progress,consoleBrand).forEach(::addView)
         if(scene.playStation) {
             shade.background=ConsoleQueueChrome(scene)
@@ -130,7 +132,7 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
         art.cancel(banner);art.cancel(cover);cover.visibility=GONE; url=null; logo.setImageDrawable(null)
     }
     override fun onMeasure(widthMeasureSpec: Int,heightMeasureSpec: Int) {
-        val w=MeasureSpec.getSize(widthMeasureSpec); val h=MeasureSpec.getSize(heightMeasureSpec)
+        val w=MeasureSpec.getSize(widthMeasureSpec)-paddingLeft-paddingRight; val h=MeasureSpec.getSize(heightMeasureSpec)-paddingTop-paddingBottom
         val key=w.toLong() shl 32 or h.toLong()
         if(key!=geometry && w>0 && h>0) {
             geometry=key

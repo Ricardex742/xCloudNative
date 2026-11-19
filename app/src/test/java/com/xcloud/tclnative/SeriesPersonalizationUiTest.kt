@@ -87,7 +87,7 @@ class SeriesPersonalizationUiTest {
         try {
             for(side in listOf(SeriesGuideSide.LEFT,SeriesGuideSide.RIGHT)) {
                 store.save(store.read().copy(guide=side))
-                val guide=GameMenuPanel.show(a,{}, {}, {}, {},profile=XboxProfile("DEMO PLAYER","DEMO PLAYER",subscription="ULTIMATE"))
+                val guide=GameMenuPanel.show(a,{}, {}, {}, {})
                 guide.addCleanup { cleanups++ };guide.setOnDismissListener { resumed++ }
                 capture(guide,"guide-${side.name.lowercase()}")
                 assertEquals(if(side==SeriesGuideSide.LEFT) Gravity.LEFT else Gravity.RIGHT,guide.window!!.attributes.gravity and Gravity.HORIZONTAL_GRAVITY_MASK)

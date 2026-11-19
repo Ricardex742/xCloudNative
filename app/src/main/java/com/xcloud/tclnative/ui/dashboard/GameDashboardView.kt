@@ -1,6 +1,7 @@
 package com.xcloud.tclnative.ui.dashboard
 
 import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.ui.ImmersiveWindow
 
 import android.content.Context
 import com.xcloud.tclnative.settings.ConsoleScene
@@ -301,6 +302,7 @@ class GameDashboardView(
         clipChildren = false; clipToPadding = false
         addView(heroBackdrop,LayoutParams(-1,-1))
         addView(consoleBackdrop,LayoutParams(LayoutParams.MATCH_PARENT,LayoutParams.MATCH_PARENT))
+        ImmersiveWindow.protectContent(this,heroBackdrop,consoleBackdrop)
         consoleBackdrop.setChrome(consoleChrome)
         addView(consoleBrand);addView(dashboardClock);addView(sectionTitle);addView(launchButton);addView(consoleBack);addView(shortcuts)
         addView(playStationBenefits);playStationBenefits.addView(playStationAccountTitle)
@@ -929,7 +931,7 @@ class GameDashboardView(
 
     override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-        val w = MeasureSpec.getSize(widthMeasureSpec); val h = MeasureSpec.getSize(heightMeasureSpec)
+        val w = MeasureSpec.getSize(widthMeasureSpec)-paddingLeft-paddingRight; val h = MeasureSpec.getSize(heightMeasureSpec)-paddingTop-paddingBottom
         val geometry = (w.toLong() shl 32) or h.toLong()
         if (!closed && geometry != lastGeometry && w > 0 && h > 0) {
             lastGeometry = geometry; scale = w / 1280f; layoutGeometry(w, h)

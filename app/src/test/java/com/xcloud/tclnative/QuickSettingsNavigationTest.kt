@@ -49,13 +49,13 @@ class QuickSettingsNavigationTest {
         File("build/reports/navigation/$name.png").apply { parentFile!!.mkdirs() }.outputStream().use { image.compress(Bitmap.CompressFormat.PNG,100,it) };image.recycle()
     }
     @Test fun shortcutsAreDirectAndOnlyExplicitConfirmationEndsTheGame() {
-        var toggles=0;var stats=0;var video=0;var friends=0;var settings=0;var xbox=0;var ends=0
-        fun menu()=GameMenuPanel.show(activity,{}, {stats++}, {}, {ends++},hudToggle={toggles++},hudVisible=true,
-            audio={},friends={friends++},video={video++},settings={settings++},xbox={xbox++})
+        var toggles=0;var stats=0;var video=0;var audio=0;var xbox=0;var ends=0
+        fun menu()=GameMenuPanel.show(activity,{video++}, {stats++}, {}, {ends++},hudToggle={toggles++},hudVisible=true,
+            audio={audio++},xbox={xbox++})
         val first=menu();capture(first,"quick-actions-tv")
         click(first,"Ocultar controle virtual");click(menu(),"Mostrar / ocultar estatísticas")
-        click(menu(),"Vídeo e conexão");click(menu(),"Amigos");click(menu(),"Configurações");click(menu(),"Botão Xbox")
-        assertEquals(listOf(1,1,1,1,1,1),listOf(toggles,stats,video,friends,settings,xbox))
+        click(menu(),"Imagem e tela");click(menu(),"Áudio e microfone");click(menu(),"Botão Xbox")
+        assertEquals(listOf(1,1,1,1,1),listOf(toggles,stats,video,audio,xbox))
         click(menu(),"ENCERRAR PARTIDA");assertEquals(0,ends)
         close(latest());assertEquals(0,ends)
         click(menu(),"ENCERRAR PARTIDA");click(latest(),"ENCERRAR PARTIDA");assertEquals(1,ends)
@@ -110,6 +110,30 @@ class QuickSettingsNavigationTest {
         click(latest(),"Escolher indicadores");click(latest(),"Tempo restante de nuvem")
         assertEquals(1,updates)
     }
+    @Test fun sessionControlsUseTheActiveVideoModeAndShowOnlyLiveSettings() {
+        val store=PlaybackSettingsStore(activity)
+        store.save(store.read().copy(videoMode=VideoMode.COMPATIBILITY,imageLab=ImageLabSettings(enabled=true)))
+        val panel=PlaybackSettingsPanel(activity,store,{},{},{},{},
+            microphone={},liveVideoMode=VideoMode.ADAPTIVE)
+        fun labels(dialog: ConsoleDialog)=all(dialog.body).filterIsInstance<TextView>()
+            .filter { it.isClickable }.map { it.text.toString() }
+        val image=panel.showUpscaling()
+        assertTrue(labels(image).any { it.startsWith("Proporção:") })
+        assertTrue(labels(image).any { it=="Cores da imagem" })
+        assertFalse(labels(image).any { it.startsWith("Modo de vídeo:") || it.startsWith("Resolução:") })
+        click(image,"Avançado — métodos e filtros")
+        assertFalse(labels(latest()).any { it.startsWith("Upscaling nativo:") })
+        click(latest(),"Laboratório de imagem:")
+        assertFalse(labels(latest()).any { it.startsWith("Geração de quadros:") })
+        latest().dismiss()
+        val audio=panel.showAudio()
+        assertTrue(labels(audio).any { it.startsWith("Ganho de áudio:") })
+        assertTrue("Ativar microfone" in labels(audio))
+        assertFalse(labels(audio).any { it.startsWith("Perfil de áudio:") || it.startsWith("Microfone nas próximas partidas:") })
+        audio.dismiss()
+        val catalogAudio=PlaybackSettingsPanel(activity,store,{},{},{},{}).showAudio()
+        assertTrue(labels(catalogAudio).any { it.startsWith("Perfil de áudio:") })
+    }
     @Test fun controllerLongXClearsOnlyTheSearchFieldWithoutSubmittingOrLeaving() {
         var searches=0
         val search=ConsoleDialogs.search(activity,"Genshin") { searches++ }
@@ -141,7 +165,7 @@ class QuickSettingsNavigationTest {
     @Test fun phoneAndConsoleThemesHaveReachableCloseAndTouchTargets() {
         for((w,h) in listOf(780 to 360,360 to 780,1280 to 720)) for(theme in listOf(UiTheme.GREEN,UiTheme.XBOX_360,UiTheme.XBOX_SERIES)) {
             layout(activity.window.decorView,w,h);DashboardTheme.apply(activity,theme)
-            val dialog=GameMenuPanel.show(activity,{},{},{},{},hudToggle={},audio={},friends={},settings={},nativeTouch={},touchSelection={},xbox={})
+            val dialog=GameMenuPanel.show(activity,{},{},{},{},hudToggle={},audio={},nativeTouch={},xbox={})
             capture(dialog,"quick-${w}x${h}-${theme.name.lowercase()}")
             val close=all(dialog.panel).single { it.tag=="close-settings" }
             assertTrue(close.width>=48);assertTrue(close.height>=48)
@@ -151,6 +175,7 @@ class QuickSettingsNavigationTest {
             if(w==780) buttons.forEach { button ->
                 // Compare hit bounds rather than TextView's internally scrolled text rectangle.
                 val viewport=dialog.body.parent as ScrollView
+                viewport.scrollTo(0,maxOf(0,button.bottom-viewport.height))
                 val origin=IntArray(2);viewport.getLocationOnScreen(origin)
                 val frame=android.graphics.Rect(origin[0],origin[1],origin[0]+viewport.width,origin[1]+viewport.height)
                 button.getLocationOnScreen(origin)
@@ -168,7 +193,7 @@ class QuickSettingsNavigationTest {
     @Test fun playStationQuickMenusKeepResumeCloseAndExplicitEndConfirmation() {
         for(theme in listOf(UiTheme.PS4,UiTheme.PS5,UiTheme.PS4_NIGHT,UiTheme.PS5_NIGHT)) {
             DashboardTheme.apply(activity,theme);var ends=0;var toggles=0
-            fun menu()=GameMenuPanel.show(activity,{},{},{},{ends++},hudToggle={toggles++},audio={},friends={},settings={})
+            fun menu()=GameMenuPanel.show(activity,{},{},{},{ends++},hudToggle={toggles++},audio={})
             val first=menu();capture(first,"${theme.name.lowercase()}-quick-menu")
             all(first.panel).filterIsInstance<TextView>().filter { it.isClickable && it.text.toString() in listOf("RETOMAR PARTIDA","ENCERRAR PARTIDA") }.forEach { action ->
                 assertTrue("$theme action text is clipped",action.layout.getLineBottom(action.layout.lineCount-1)<=action.height-action.paddingTop-action.paddingBottom)

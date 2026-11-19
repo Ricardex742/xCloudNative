@@ -6,7 +6,7 @@ import com.xcloud.tclnative.settings.*
 
 /** All experimental image controls have one home and an immediate original-image comparison. */
 class ImageLabPanel(private val context: Context,private val store: PlaybackSettingsStore,
-    private val changed: (PlaybackSettings)->Unit,private val back: ()->Unit) {
+    private val changed: (PlaybackSettings)->Unit,private val live: Boolean=false,private val back: ()->Unit) {
     private fun state(v: Boolean)=if(v)UiText.text("Ativado")else UiText.text("Desativado")
     private fun protection(v: HudProtection)=when(v){
         HudProtection.OFF->UiText.text("Desativado")
@@ -38,7 +38,7 @@ class ImageLabPanel(private val context: Context,private val store: PlaybackSett
                     choose(UiText.text("Superamostragem"),UiText.text("Processa em tamanho intermediário maior e reduz à saída atual. Não muda a resolução pedida ao Xbox. Pode suavizar contornos; exige mais GPU e memória. O tamanho efetivo aparece no diagnóstico."),
                         ImageSupersampling.entries.map {scale(it) to (it==lab.supersampling)}){save(lab.copy(supersampling=ImageSupersampling.entries[it]))}
                 }
-                addMenuItem(UiText.text("Geração de quadros: {0}",UiText.nested(generation(lab.frameGeneration)))){
+                if(!live) addMenuItem(UiText.text("Geração de quadros: {0}",UiText.nested(generation(lab.frameGeneration)))){
                     choose(UiText.text("Geração de quadros"),UiText.text("Aplica na próxima partida. Interpola conteúdo estável a 30 FPS para até 60 submissões/s; também procura duplicatas alternadas em streams a 60. Requer GLES 3 e memória disponível, até 2,5 MP. Acrescenta espera e pode gerar artefatos. Cortes, dúvidas, sobrecarga e comparação preservam os quadros originais. Não altera o FPS do jogo nem garante 60 Hz físicos."),
                         ExperimentalFrameGeneration.entries.map {generation(it) to (it==lab.frameGeneration)}){save(lab.copy(frameGeneration=ExperimentalFrameGeneration.entries[it]))}
                 }

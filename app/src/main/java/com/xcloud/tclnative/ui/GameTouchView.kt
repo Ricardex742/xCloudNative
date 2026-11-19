@@ -6,13 +6,13 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
 import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.TextView
-import android.graphics.RectF
 import com.xcloud.tclnative.settings.TouchMode
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.touch.*
@@ -77,33 +77,52 @@ class GameTouchView(context: Context,
     var onGesturesRequested: (String,Map<HudSwipe,HudGesture>) -> Unit = { _,_ -> }
     private val lookReset=Runnable { if(mode==TouchMode.VIRTUAL && !isEditing) publish() }
     private var menuButtonFocused=false
-    private val menuBounds=RectF()
     private val menuButton=TextView(context).apply {
-        text="⋯";gravity=Gravity.CENTER;includeFontPadding=false
         setPadding(0,0,0,0)
         contentDescription=UiText.text("Atalhos da partida")
-        setTextColor(Color.WHITE)
         background=object: android.graphics.drawable.Drawable() {
             private val brush=Paint(Paint.ANTI_ALIAS_FLAG)
+            private val arrow=Path()
             override fun draw(canvas: Canvas) {
-                val radius=this@GameTouchView.height*.031f
+                val x=bounds.exactCenterX()
+                val y=bounds.exactCenterY()
+                val radius=minOf(this@GameTouchView.height*.031f,bounds.width()*.38f)
                 brush.style=Paint.Style.FILL;brush.color=0x99101a13.toInt()
-                canvas.drawCircle(bounds.exactCenterX(),bounds.exactCenterY(),radius,brush)
+                canvas.drawCircle(x,y,radius,brush)
                 brush.style=Paint.Style.STROKE;brush.strokeWidth=maxOf(1f,this@GameTouchView.height*.002f)
                 brush.color=if(menuButtonFocused) Color.WHITE else 0xaa54de69.toInt()
-                canvas.drawCircle(bounds.exactCenterX(),bounds.exactCenterY(),radius,brush)
+                canvas.drawCircle(x,y,radius,brush)
+                brush.color=Color.WHITE;brush.strokeWidth=maxOf(1.5f,radius*.13f)
+                brush.strokeCap=Paint.Cap.ROUND;brush.strokeJoin=Paint.Join.ROUND
+                arrow.rewind()
+                arrow.moveTo(x-radius*.16f,y-radius*.35f)
+                arrow.lineTo(x+radius*.22f,y)
+                arrow.lineTo(x-radius*.16f,y+radius*.35f)
+                canvas.drawPath(arrow,brush)
             }
             override fun setAlpha(alpha: Int) {}
             override fun setColorFilter(filter: android.graphics.ColorFilter?) {}
             @Deprecated("Deprecated in Java") override fun getOpacity()=android.graphics.PixelFormat.TRANSLUCENT
         }
-        setOnFocusChangeListener { _,focused -> menuButtonFocused=focused;invalidate() }
+        setOnFocusChangeListener { view,focused -> menuButtonFocused=focused;view.invalidate() }
         isClickable=true;isFocusable=true
         setOnClickListener { if(mode==TouchMode.NATIVE) nativeEvents.menu++;releaseInputs();onMenu() }
     }
     init {
         visibility=GONE;isFocusable=false;setWillNotDraw(false)
-        addView(menuButton,LayoutParams((48*resources.displayMetrics.density).toInt(),(48*resources.displayMetrics.density).toInt(),Gravity.TOP or Gravity.CENTER_HORIZONTAL))
+        val hitSize=kotlin.math.ceil(48*resources.displayMetrics.density).toInt()
+        val margin=(4*resources.displayMetrics.density).toInt()
+        addView(menuButton,LayoutParams(hitSize,hitSize,Gravity.TOP or Gravity.LEFT).apply {
+            leftMargin=margin;topMargin=margin
+        })
+        ImmersiveWindow.observeCutout(this) { cutout ->
+            val params=menuButton.layoutParams as LayoutParams
+            val left=margin+cutout.left
+            val top=margin+cutout.top
+            if(params.leftMargin!=left || params.topMargin!=top) {
+                params.leftMargin=left;params.topMargin=top;menuButton.layoutParams=params
+            }
+        }
     }
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
         releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE
@@ -165,12 +184,7 @@ class GameTouchView(context: Context,
     override fun onSizeChanged(w: Int,h: Int,oldw: Int,oldh: Int) {
         val page=preset
         releaseInputs(); rebuild(page);scheduleAutoHide()
-        val density=resources.displayMetrics.density
-        val buttonWidth=48*density;val buttonHeight=48*density
-        menuButton.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,h*.040f)
-        val top=(h*.055f-buttonHeight/2).coerceAtLeast(0f)
-        menuBounds.set((w-buttonWidth)/2,top,(w+buttonWidth)/2,top+buttonHeight)
-        menuButton.layoutParams=(menuButton.layoutParams as LayoutParams).apply { topMargin=top.toInt() }
+        menuButton.invalidate()
     }
     override fun onDetachedFromWindow() { releaseInputs(); super.onDetachedFromWindow() }
     override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
@@ -193,7 +207,7 @@ class GameTouchView(context: Context,
             listOf(state.leftX,state.leftY,state.rightX,state.rightY).any { kotlin.math.abs(it)>.15f }
         if(active && configuration.autoHide.physical) hideAutomatically()
     }
-    private fun menuHit(x: Float,y: Float)=menuBounds.contains(x,y)
+    private fun menuHit(x: Float,y: Float)=x>=menuButton.left && x<menuButton.right && y>=menuButton.top && y<menuButton.bottom
     private fun publish() {
         val now=SystemClock.uptimeMillis()
         nativeEvents.hudUpdates++;onGamepad(model.state(now)); removeCallbacks(lookReset)

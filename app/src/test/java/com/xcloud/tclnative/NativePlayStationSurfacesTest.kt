@@ -216,7 +216,7 @@ class NativePlayStationSurfacesTest {
             for(theme in themes) {
                 DashboardTheme.apply(a,theme);var ends=0;var toggles=0
                 fun menu(): ConsoleDialog {
-                    val d=GameMenuPanel.show(a,{},{},{},{ends++},hudToggle={toggles++},audio={},friends={},settings={})
+                    val d=GameMenuPanel.show(a,{},{},{},{ends++},hudToggle={toggles++},audio={})
                     val requested=d.window!!.attributes.width;layout(d.panel,if(requested>0) requested else w,h)
                     return d
                 }

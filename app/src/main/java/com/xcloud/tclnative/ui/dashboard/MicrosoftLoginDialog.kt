@@ -31,7 +31,9 @@ internal class MicrosoftLoginDialog(activity: Activity,private val authorization
         val back=Button(activity).apply { text=UiText.text("Voltar");setOnClickListener { cancel() } }
         toolbar.addView(back,LinearLayout.LayoutParams(-2,-1));toolbar.addView(address,LinearLayout.LayoutParams(0,-1,1f))
         root.addView(toolbar,LinearLayout.LayoutParams(-1,(48*activity.resources.displayMetrics.density).toInt()))
-        root.addView(browser,LinearLayout.LayoutParams(-1,0,1f));setContentView(root)
+        root.addView(browser,LinearLayout.LayoutParams(-1,0,1f))
+        com.xcloud.tclnative.ui.ImmersiveWindow.protectContent(root)
+        setContentView(root)
         browser.settings.apply {
             javaScriptEnabled=true;domStorageEnabled=true
             allowFileAccess=false;allowContentAccess=false;setGeolocationEnabled(false)

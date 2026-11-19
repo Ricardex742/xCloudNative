@@ -208,6 +208,7 @@ open class MainActivity : Activity() {
         const val REQUEST_DIAGNOSTIC_EXPORT=4103
     }
     private var gameMenuDialog: Dialog? = null
+    private var displayCutout=android.graphics.Rect()
     private var shortcutSwitchDialog: Dialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -303,6 +304,13 @@ open class MainActivity : Activity() {
         rootLayout.addView(statsView, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START
         ).apply { topMargin = (56 * resources.displayMetrics.density).toInt(); marginStart = 12 })
+        ImmersiveWindow.observeCutout(rootLayout) { cutout ->
+            if(displayCutout!=cutout) {
+                displayCutout=cutout
+                com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout)
+                renderStatistics()
+            }
+        }
         refreshStatisticsSettings()
         touchView=GameTouchView(this,
             onGamepad={ state -> controllers.virtual(state); if(currentTouchMode==TouchMode.VIRTUAL && transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) publishGamepad(0) },
@@ -742,7 +750,7 @@ open class MainActivity : Activity() {
     private fun showSettings(session: XCloudSession,startPage: SettingsPage=SettingsPage.ROOT,onBack: () -> Unit={}) {
         settingsPanel(session,onBack).open(startPage)
     }
-    private fun settingsPanel(session: XCloudSession,onBack: () -> Unit={},videoBack: (() -> Unit)?=null): PlaybackSettingsPanel {
+    private fun settingsPanel(session: XCloudSession,onBack: () -> Unit={}): PlaybackSettingsPanel {
         var returnPage=SettingsPage.ROOT
         val game=activeGame ?: dashboard?.selectedGame
         fun back() { showSettings(session,returnPage,onBack) }
@@ -760,7 +768,7 @@ open class MainActivity : Activity() {
             playtimeInformation={ dashboard?.cloudPlaytimeDiagnostics() ?: CloudPlaytime().diagnostics() },
             friends={ showFriends(::back) },gameShortcut=game?.let { selected -> ({ showGameShortcut(selected,::back) }) },
             sessionPanel=com.xcloud.tclnative.ui.dashboard.SessionOptionsPanel(this,SessionOptionsStore(this,session.libraryAccountId),session.regions,game?.titleId,game?.name,::back),
-            back=onBack,videoBack=videoBack,allowAccountChanges=activeGame==null,
+            back=onBack,allowAccountChanges=activeGame==null,
             gameControls=if(activeGame==null) null else ({ showGameHudSettings { showSettings(session,SettingsPage.CONTROLS,onBack) } }),
             recovery=if(activeGame==null) null else ({ showTransmissionRecovery { showSettings(session,SettingsPage.DIAGNOSTICS,onBack) } }),
             currentDiagnostics=if(activeGame==null) null else ({ showLiveDiagnostics { showSettings(session,SettingsPage.DIAGNOSTICS,onBack) } }),
@@ -1056,35 +1064,31 @@ open class MainActivity : Activity() {
     private fun showGameMenu() {
         if (transitionPanel.visibility==View.VISIBLE || gameMenuDialog?.isShowing == true || (webrtcClient == null && reloadTransmission==null) || queuePanel.visibility == View.VISIBLE) return
         resetController()
+        val active=transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE
+        val touch=active && InputDeviceProfile.read(this).touchDevice
+        val liveSettings=PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{},{},{},
+            liveVideoMode=sessionSettings?.videoMode ?: playbackSettings.videoMode,
+            microphone=if(active && webrtcClient?.canUseMicrophone()==true) ::toggleMicrophone else null,
+            microphoneLabel={ UiText.text(webrtcClient?.microphoneLabel() ?: "Ativar microfone") })
         gameMenuDialog = com.xcloud.tclnative.ui.dashboard.GameMenuPanel.show(this,
-            image={ PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{}, {}, {}).showUpscaling(onBack={ showGameMenu() }) },
-            aspect={ PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{}, {}, {}).chooseAspect(onBack={ showGameMenu() }) },
-            video={ currentSession?.let { settingsPanel(it,::showGameMenu,::showGameMenu).showVideo() } },
-            settings={ currentSession?.let { showSettings(it,onBack=::showGameMenu) } },
-            xbox=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ::pressXboxButton else null,
-            statistics={ toggleStatistics() },
+            image=if(active) ({ liveSettings.showUpscaling(::showGameMenu) }) else null,
+            audio=if(active) ({ liveSettings.showAudio(::showGameMenu) }) else null,
+            xbox=if(active) ::pressXboxButton else null,
+            statistics=::toggleStatistics,
             statisticsOptions={ com.xcloud.tclnative.ui.dashboard.StatisticsSettingsPanel(this,statisticsStore,::refreshStatisticsSettings,::showGameMenu).show() },
-            recovery={ showTransmissionRecovery() },
-            hudToggle=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ({
+            recovery=if(reloadTransmission!=null) ({ showTransmissionRecovery() }) else null,
+            hudToggle=if(touch) ({
                 if(touchView.controlsVisible) hideGameHud() else enableGameHud()
-            }) else null,hudVisible=touchView.controlsVisible,
-            nativeTouch=if(currentTouchMode!=TouchMode.NATIVE && webrtcClient?.canUseNativeTouch()==true &&
-                transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ({ enableNativeTouch() }) else null,
-            touchSelection={ PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{}, {}, {}).chooseTouch(::showGameMenu) },
-            friends={ showFriends(::showGameMenu) },
-            shortcut=activeGame?.let { game -> ({ showGameShortcut(game,::showGameMenu) }) },
+            }) else null,
+            hudVisible=touchView.controlsVisible,
+            nativeTouch=if(active && currentTouchMode!=TouchMode.NATIVE && webrtcClient?.canUseNativeTouch()==true) ({ enableNativeTouch() }) else null,
             diagnostics={ showLiveDiagnostics(::showGameMenu) },
             disconnect={ cancelPlayback() },
-            hud=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ({ showGameHudSettings(::showGameMenu) }) else null,
-            sessionOptions={ currentSession?.let(::showSessionOptionsMenu) },
-            audio={ currentSession?.let { settingsPanel(it,::showGameMenu).showAudio(::showGameMenu) } },
-            language={ com.xcloud.tclnative.ui.dashboard.LanguageMenu.show(this) { showGameMenu() } },
-            appearance={ PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{}, {}, {},
-                backgrounds={ dashboard?.wallpaperChoices() ?: com.xcloud.tclnative.ui.dashboard.SeriesWallpaperGallery.fromGames(currentGames,listOfNotNull(activeGame)) }).showAppearance(onBack={ showGameMenu() }) },
-            profile=dashboard?.profileSnapshot(),
-            microphone=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ::toggleMicrophone else null,microphoneLabel=webrtcClient?.microphoneLabel() ?: UiText.text("Ativar microfone"),
-            controllerProfiles={ showControllerProfiles { showGameMenu() } },
-            mouse=if(sessionDesktopMode==DesktopInputMode.OFF || transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) null else ({ auxiliaryHandler.post { setDesktopCapture(!desktopCaptured) } })).also { dialog ->
+            hud=if(touch) ({ showGameHudSettings(::showGameMenu) }) else null,
+            controllerProfiles=if(active) ({ showControllerProfiles(::showGameMenu) }) else null,
+            mouse=if(!active || sessionDesktopMode==DesktopInputMode.OFF) null else ({
+                auxiliaryHandler.post { setDesktopCapture(!desktopCaptured) }
+            })).also { dialog ->
                 dialog.setOnDismissListener { if(gameMenuDialog===dialog) gameMenuDialog=null }
             }
     }
@@ -1920,7 +1924,7 @@ open class MainActivity : Activity() {
     }
     private fun refreshStatisticsSettings() {
         statisticsSettings=statisticsStore.read();statistics.configure(statisticsSettings.detailed)
-        if(::statsView.isInitialized) { com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings);renderStatistics() }
+        if(::statsView.isInitialized) { com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout);renderStatistics() }
     }
     private fun renderStatistics() {
         if(!::statsView.isInitialized) return

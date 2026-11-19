@@ -117,7 +117,7 @@ class PlayStationPhoneReviewTest {
                         val settings=panel.show();dialog(settings,p,"${theme.name}-settings");settings.dismiss()
                         val panels=listOf("video" to { panel.showVideo() },"advanced" to { panel.showAdvancedImage() },"controls" to { panel.showControls() },"physical" to { panel.showPhysical() },"audio" to { panel.showAudio() },"appearance" to { panel.showAppearance() },"account" to { panel.showAccount() },"diagnostics" to { panel.showDiagnostics() })
                         for((label,open) in panels) { val d=open();dialog(d,p,"${theme.name}-$label");d.dismiss() }
-                        val menu=GameMenuPanel.show(a,{},{},{},{},hudToggle={},audio={},friends={},settings={});dialog(menu,p,"${theme.name}-game-menu");menu.dismiss()
+                        val menu=GameMenuPanel.show(a,{},{},{},{},hudToggle={},audio={});dialog(menu,p,"${theme.name}-game-menu");menu.dismiss()
                         home.pauseArtwork()
                         val queue=GameLoadingView(a) {}
                         try { queue.begin(data[0],0);queue.updateQueue(QueueStatus(0,7000,QueueEstimate(787),0),8000);mount(queue);capture(queue,p,"${theme.name}-queue");assertPrimaryTitle(queue)

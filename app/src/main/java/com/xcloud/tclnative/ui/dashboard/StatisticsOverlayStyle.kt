@@ -1,6 +1,7 @@
 package com.xcloud.tclnative.ui.dashboard
 
 import android.graphics.Color
+import android.graphics.Rect
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.FrameLayout
@@ -9,7 +10,7 @@ import android.text.TextUtils
 import com.xcloud.tclnative.settings.*
 
 object StatisticsOverlayStyle {
-    fun apply(view: TextView,settings: StatisticsSettings) {
+    fun apply(view: TextView,settings: StatisticsSettings,cutout: Rect=Rect()) {
         val value=settings.normalized();val density=view.resources.displayMetrics.density
         val margin=(12*density).toInt()
         val gravity=when(value.position) {
@@ -24,7 +25,10 @@ object StatisticsOverlayStyle {
         view.setBackgroundColor(Color.argb(value.background*255/100,0,0,0))
         view.setPadding((8*density).toInt(),(6*density).toInt(),(8*density).toInt(),(6*density).toInt())
         view.layoutParams=FrameLayout.LayoutParams(-2,-2,gravity).apply {
-            topMargin=(56*density).toInt();bottomMargin=margin;marginStart=margin;marginEnd=margin
+            topMargin=(56*density).toInt()+cutout.top;bottomMargin=margin+cutout.bottom
+            val rtl=view.layoutDirection==android.view.View.LAYOUT_DIRECTION_RTL
+            marginStart=margin+if(rtl) cutout.right else cutout.left
+            marginEnd=margin+if(rtl) cutout.left else cutout.right
         }
     }
     fun constrain(view: TextView,width: Int,height: Int) {
