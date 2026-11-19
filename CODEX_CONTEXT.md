@@ -8,7 +8,7 @@ Leia também `CODEX_THEME_BUILD_CONTEXT.md`. Ele documenta a arquitetura nativa 
 
 ## Objetivo atual e limites
 
-Manter a navegação simplificada e os atalhos nativos da partida. O usuário retomou PS4/PS5 e pediu seguir `CODEX_THEME_BUILD_CONTEXT.md`, usando as simulações apenas como referência visual e a arquitetura nativa dos Xbox. O pedido mais recente fornece `html-ps4-home.jpg` e `html-ps5-home.jpg` e pede aproximar a home desses prints. Eles passam a orientar a composição da home; fotos reais continuam como apoio dos painéis. Priorizar a composição dos consoles em home, fila, transições e painéis internos. Não recuperar a integração HTML/WebView descartada.
+Manter a navegação simplificada e os atalhos nativos da partida. O usuário retomou PS4/PS5 e pediu seguir `CODEX_THEME_BUILD_CONTEXT.md`, usando as simulações apenas como referência visual e a arquitetura nativa dos Xbox. `html-ps4-home.jpg` e `html-ps5-home.jpg` orientam a composição da home. Fotos reais continuam como apoio dos painéis. Priorizar a composição dos consoles em home, fila, transições e painéis internos. Não recuperar a integração HTML/WebView descartada.
 
 O usuário prefere execução autônoma, comunicação em português e conclusões baseadas em evidência. Não pedir novamente autorização para ações já incluídas no pedido. Não dizer que um problema foi resolvido em aparelho real apenas porque testes locais passaram.
 
@@ -249,3 +249,11 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - [Artefato do APK 103](https://github.com/Ricardex742/xCloudNative/actions/runs/44453124428/artifacts/14497152475). O ZIP e o APK baixados conferem com o build. O pacote `com.xcloud.tclnative` mantém o certificado permanente, depuração desabilitada, minSdk 24 e targetSdk 34. Foram conferidos os launchers móvel e Leanback, as exclusões de backup e transferência e o alinhamento ELF/ZIP em 16 KiB para ARM64 e x86_64.
 - APK SHA-256 `e239293763a1d9ef6a334d97253caff961e4f60cf583d3287fd90b0981fdaa0a`. ZIP SHA-256 `df7e07870a636897207fe455d348f27d352443e90a508d1bb8bcb0a1b2941002`.
 - A candidata está na feature branch. O ADB não listou aparelho conectado. Instalação como atualização, runtime de 16 KiB, imersão e controles físicos, partida e fila no serviço, medição térmica e latência até a tela continuam pendentes.
+
+## Foco, catálogo do PS5 e rotação em paisagem
+
+- As abas de PS4 e PS5, inclusive nas variantes Night, reservam margem interna para o contorno de foco. No PS4, o sublinhado indica a aba ativa quando o foco está em outro controle.
+- A home do PS5 exibe até cinco jogos por categoria. O botão de grade tem o tamanho da capa comum, acompanha a última capa e abre a lista completa de Todos os jogos. A grade reutiliza o adapter nativo e as miniaturas existentes. Voltar restaura a seleção e o foco do atalho de origem.
+- O manifesto usa `userLandscape`. A Activity continua em paisagem e permite os dois sentidos com a rotação automática do Android. Os testes de launcher validam a declaração. A inspeção nativa cobriu 1280×600 e 2400×1080, com barras e recortes simulados. A rotação pelo sensor segue pendente em aparelho real.
+- A versão **0.40.9-landscape**, **versionCode 104**, foi compilada no commit `5b5b4de3132dcae61dc774e1517098cc1d129a04`. Passaram **862 testes JVM**, o lint obrigatório, a validação de traduções, assinatura e filtros gráficos. [Build 44541620430](https://github.com/Ricardex742/xCloudNative/actions/runs/44541620430)
+- O APK baixado conferiu com o build, com o certificado permanente e depuração desabilitada. O SHA-256 do APK é `62d8980d1e1ecebef754bd6043d0b2150522eed680dc352cd253ec8af64a25e9`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44541620430/artifacts/14539094247)
