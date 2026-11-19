@@ -283,8 +283,9 @@ class PlayStationPhoneReviewTest {
                         tap(home,back)
                     } else home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
                     measure(home,p.cw,p.ch)
-                    assertEquals(5,shelf.adapter!!.itemCount);assertEquals("SHELF-4",home.selectedGame!!.titleId)
-                    assertSame(icon,home.findFocus())
+                    assertEquals(5,shelf.adapter!!.itemCount)
+                    assertEquals("$theme ${p.name}", "SHELF-4",home.selectedGame!!.titleId)
+                    assertSame("$theme ${p.name}",icon,home.findFocus())
                 } finally { home.close() }
             } } finally { c.pause().stop().destroy() }
         }

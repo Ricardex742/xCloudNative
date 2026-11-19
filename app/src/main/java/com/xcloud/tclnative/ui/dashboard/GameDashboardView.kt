@@ -671,11 +671,12 @@ class GameDashboardView(
     }
     private fun closePlayStationCatalog() {
         val home=playStationHome ?: return
+        // Move focus out before replacing the rows so RecyclerView cannot restore a grid card.
+        categoryFocus().requestFocus()
         catalogFocus.cancel()
         playStationHome=null
         configureCardLayout()
         if(activeTab==home.tab) refresh() else selectTab(home.tab)
-        categoryFocus().requestFocus()
         selectedCard=null
         updateSelected(home.card)
         doOnNextLayout { if(!closed && designScene==ConsoleScene.PS5 && !playStationGrid) home.opener.requestFocus() }
