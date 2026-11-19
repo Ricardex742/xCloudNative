@@ -219,7 +219,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
             cancelButton.setOnFocusChangeListener { _,value -> focus.highlighted=value }
             steps.forEach { it.gravity=Gravity.CENTER;it.setPadding(0,0,0,0);it.typeface=DashboardTheme.font(context) }
             spinner.indeterminateTintList=ColorStateList.valueOf(DashboardTheme.accent)
-            geometry=0L;lastBackdrop=null;lastPoster=null;requestLayout();game?.let(::setGame)
+            geometry=0L;lastBackdrop=null;lastPosters=emptyList();requestLayout();game?.let(::setGame)
             if(game!=null) render(lastRenderedAt)
             return
         }
