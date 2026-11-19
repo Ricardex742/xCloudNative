@@ -86,7 +86,7 @@ class GameShortcutBarTest {
             canvas.drawBitmap(scene, null, Rect(0, 0, width, height), null)
             gameplay.draw(canvas)
             overlay?.draw(canvas)
-            File("build/reports/navigation/$name.png").apply { parentFile.mkdirs() }.outputStream().use {
+            File("build/reports/navigation/$name.png").apply { parentFile?.mkdirs() }.outputStream().use {
                 assertTrue(screen.compress(Bitmap.CompressFormat.PNG, 100, it))
             }
         } finally {
@@ -98,7 +98,8 @@ class GameShortcutBarTest {
     @Test fun cutoutTouchAndControllerNavigateThreeStatesWithoutSendingGameInput() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
-        val cutout = DisplayCutout(Rect(80, 0, 0, 0), listOf(Rect(0, 500, 80, 580)))
+        val safeArea = Rect(80, 0, 0, 0)
+        val cutout = DisplayCutout(safeArea, listOf(Rect(0, 500, 80, 580)))
         val insets = WindowInsets.Builder().setDisplayCutout(cutout).build()
         var pointers = 0
         var statistics = 0
@@ -112,7 +113,7 @@ class GameShortcutBarTest {
             }, audio = {}, hud = {}, hudToggle = {}, statistics = { statistics++ }, diagnostics = {},
                 recovery = {}, statisticsOptions = {}, controllerProfiles = {}, xbox = {})
             gameplay.setMenuCovered(true)
-            bar = GameShortcutBar(activity, shortcuts, position, { ended++ }, back).apply {
+            bar = GameShortcutBar(activity, shortcuts, position, safeArea, { ended++ }, back).apply {
                 setOnDismissListener { if (bar === this) gameplay.setMenuCovered(false) }
                 show()
             }
@@ -144,11 +145,15 @@ class GameShortcutBarTest {
             val resume = control(root, "Retomar partida")
             for (view in listOf(resume, image, control(root, "Áudio e microfone"), control(root, "HUD e controles deste jogo"), more)) {
                 val target = bounds(root, view)
-                assertTrue(target.left >= cutout.safeInsetLeft)
+                assertTrue("${view.contentDescription} under cutout: $target", target.left >= cutout.safeInsetLeft)
                 assertTrue(target.right < width / 2)
                 assertTrue(target.width() >= 144 && target.height() >= 144)
             }
             capture("live-shortcuts-expanded", gameplay, root)
+            val originalLeft = bounds(root, resume).left
+            bar.setCutout(Rect(0, 0, 80, 0))
+            layout(root, insets)
+            assertEquals(originalLeft - 80, bounds(root, resume).left)
             resume.requestFocus()
             // ViewRootImpl normally applies D-pad focus search after dispatching the key.
             assertTrue(resume.focusSearch(View.FOCUS_RIGHT).requestFocus())
@@ -171,8 +176,9 @@ class GameShortcutBarTest {
             assertEquals("Mais opções", bar.currentFocus?.contentDescription)
             press(bar, KeyEvent.KEYCODE_ENTER)
             assertTrue(bar.position.more)
-            assertTrue(stats.performClick())
-            idle()
+            layout(returnedRoot, insets)
+            val statsTarget = bounds(returnedRoot, stats)
+            tap(returnedRoot, statsTarget.exactCenterX(), statsTarget.exactCenterY())
             assertEquals(1, statistics)
             assertFalse(bar.isShowing)
             assertEquals(View.VISIBLE, arrow.visibility)

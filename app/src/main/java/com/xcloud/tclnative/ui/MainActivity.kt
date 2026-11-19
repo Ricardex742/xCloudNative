@@ -308,6 +308,7 @@ open class MainActivity : Activity() {
         ImmersiveWindow.observeCutout(rootLayout) { cutout ->
             if(displayCutout!=cutout) {
                 displayCutout=cutout
+                (gameMenuDialog as? GameShortcutBar)?.setCutout(cutout)
                 com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout)
                 renderStatistics()
             }
@@ -1101,7 +1102,7 @@ open class MainActivity : Activity() {
             }))
         touchView.setMenuCovered(position!=null)
         val dialog = if(position==null) GameMenuPanel.show(this,shortcuts,::cancelPlayback) else {
-            GameShortcutBar(this,shortcuts,position,::cancelPlayback,back).also {
+            GameShortcutBar(this,shortcuts,position,displayCutout,::cancelPlayback,back).also {
                 toolbar=it
                 it.show()
             }
@@ -1971,6 +1972,7 @@ open class MainActivity : Activity() {
     }
     private fun showTransmissionInterrupted() {
         if (!activityVisible) return
+        (gameMenuDialog as? GameShortcutBar)?.dismiss()
         videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         videoRecoveryDialog=com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.failed(this,
             { reloadTransmission?.invoke() },{ cancelPlayback() },::showGameMenu,

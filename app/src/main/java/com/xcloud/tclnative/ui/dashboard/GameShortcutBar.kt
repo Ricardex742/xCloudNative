@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Rect
 import android.text.TextUtils
 import android.util.TypedValue
 import android.view.Gravity
@@ -25,6 +26,7 @@ internal class GameShortcutBar(
     private val activity: Activity,
     shortcuts: List<GameMenuShortcut>,
     initial: Position,
+    cutout: Rect,
     disconnect: () -> Unit,
     onBackFromAction: () -> Unit
 ) : Dialog(activity, R.style.ConsoleDialog) {
@@ -36,6 +38,7 @@ internal class GameShortcutBar(
     private val dp = activity.resources.displayMetrics.density
     private val ink = ColorStateList.valueOf(Color.WHITE)
     private val actions = mutableListOf<View>()
+    private val overlay = FrameLayout(activity)
     private val collapse = toolbarButton(ConsoleGlyph.CHEVRON_LEFT, null, UiText.text("Retomar partida"), ::dismiss)
     private val more = toolbarButton(ConsoleGlyph.MORE, UiText.text("Mais opções"), UiText.text("Mais opções")) {
         setMoreVisible(!position.more)
@@ -74,7 +77,7 @@ internal class GameShortcutBar(
             GameMenuPanel.confirmExit(activity, disconnect, onBackFromAction)
         })
         shortcuts.filter { it.barLabel == null }.forEach { item -> addRow(item.icon, item.action) }
-        val overlay = FrameLayout(activity).apply {
+        overlay.apply {
             setOnClickListener { dismiss() }
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             isFocusable = false
@@ -82,7 +85,7 @@ internal class GameShortcutBar(
                 setMargins(px(4), px(4), px(4), px(4))
             })
         }
-        ImmersiveWindow.protectContent(overlay)
+        setCutout(cutout)
         setContentView(overlay)
         setOnKeyListener { _, key, event ->
             val invoke = event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0
@@ -104,10 +107,20 @@ internal class GameShortcutBar(
         }
     }
 
+    fun setCutout(cutout: Rect) = overlay.setPadding(cutout.left, cutout.top, cutout.right, cutout.bottom)
+
     private fun px(value: Int) = (value * dp).roundToInt()
 
+    private fun button(label: String, click: () -> Unit) = DashboardTheme.button(activity, label, dp, click).apply {
+        setOnTouchListener { view, event ->
+            // Give the button focus before TextView can consume the first tap just to obtain it.
+            if (event.actionMasked == MotionEvent.ACTION_DOWN) view.requestFocus()
+            false
+        }
+    }
+
     private fun toolbarButton(icon: ConsoleGlyph, label: String?, description: String, click: () -> Unit) =
-        DashboardTheme.button(activity, label.orEmpty(), dp, click).apply {
+        button(label.orEmpty(), click).apply {
             contentDescription = description
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             ellipsize = TextUtils.TruncateAt.END
@@ -125,7 +138,7 @@ internal class GameShortcutBar(
         }
 
     private fun addRow(icon: ConsoleGlyph, action: ConsoleAction) {
-        val row = DashboardTheme.button(activity, action.label, dp) { open(action, true) }.apply {
+        val row = button(action.label) { open(action, true) }.apply {
             contentDescription = action.label
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
