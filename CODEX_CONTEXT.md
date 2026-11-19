@@ -18,14 +18,14 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão no código desta branch: **0.40.11-fullscreen**, versionCode **106**, usando a identidade de atualização existente.
+- Versão no código desta branch **0.40.12-shortcut-bar**, versionCode **107**, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
 
 Arquivos principais:
 
-- `ui/dashboard/GameMenuPanel.kt`: painel nativo da sessão. Em celular, abre pela seta no canto superior esquerdo. Os atalhos de imagem, áudio e controle refletem a sessão ativa. As configurações da próxima partida ficam no catálogo. Encerrar exige confirmação.
+- `ui/dashboard/GameMenuPanel.kt` define os atalhos da sessão ativa e a confirmação de saída. `ui/dashboard/GameShortcutBar.kt` apresenta essas ações em uma barra horizontal quando aberta pela seta no celular. A TV e os atalhos físicos continuam usando os painéis do tema. As configurações da próxima partida ficam no catálogo.
 - `ui/dashboard/PlaybackSettingsPanel.kt`: seis categorias: Vídeo e conexão; Controles e toque; Áudio e microfone; Aparência e temas; Conta e amigos; Ajuda e diagnóstico. A página de vídeo usa abas para imagem/tela, rede/sessão e avançado, evitando duas árvores duplicadas.
 - `ui/dashboard/ConsoleDialogs.kt`: X no cabeçalho fecha diretamente, sem chamar callbacks de Voltar. Voltar/B retorna ao pai. Restaura foco do item ao retornar a menus. Segurar X do controle limpa somente o campo de pesquisa, sem enviar a busca.
 - `ui/GameTouchView.kt`: o acesso ao menu é uma seta nativa em um círculo pequeno, com nome acessível e alvo de 48×48 dp. Fica fora do recorte e aparece também com toque nativo ou HUD oculto. Preservar solturas de contatos e botões ao abrir menus e durante edição.
@@ -274,3 +274,11 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - Foram abertas capturas nativas de 2340×1080 com recortes simulados à esquerda e à direita. Os testes também verificam as janelas imersivas, a largura da área do vídeo e os insets da pesquisa com teclado. As tentativas no emulador Android 16 sem aceleração terminaram com falhas durante a instalação. A validação em aparelhos Galaxy continua pendente.
 - A versão **0.40.11-fullscreen**, **versionCode 106**, foi compilada no commit `cedb134eca48811b7b2ff4da46f981370781b40e`. A segunda tentativa do Actions passou **865 testes JVM**, lint obrigatório, traduções, assinatura e verificadores gráficos. [Build 44557959908](https://github.com/Ricardex742/xCloudNative/actions/runs/44557959908)
 - O APK baixado manteve a assinatura permanente e conferiu com o build. SHA-256 `194aab31bbff5038fe9aab75ab5f4338dafc495c4892aa18916365526f666aaa`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44557959908/artifacts/14550630350)
+
+## Barra de atalhos durante a partida
+
+- No celular, a seta abre a barra nativa com Imagem, Áudio, Controles e Mais opções, conforme as ações disponíveis na sessão. Mais opções abre uma lista rolável abaixo da barra com encerramento, estatísticas, diagnóstico, recuperação e controles adicionais quando disponíveis. Encerrar exige confirmação. A composição usa a paleta e os ícones do xCLOUD.
+- A janela imersiva usa a área segura da Activity e recebe suas atualizações de recorte. A seta recolhida fica oculta enquanto a barra está aberta. A abertura solta os comandos em andamento. Voltar recolhe a lista ou retorna de um ajuste ao atalho que o abriu. X encerra a navegação no menu.
+- O teste nativo `GameShortcutBarTest` passou com recorte simulado, troca de lado do recorte, primeiro toque, busca de foco direcional, A/Enter, B/Voltar, X e confirmação de saída. Foram abertas as três capturas nativas de 2340×1080. O ADB não listou aparelho conectado para validação física.
+- A versão **0.40.12-shortcut-bar**, código **107**, foi compilada no commit `98b40c3a586c1b472ec5e4da4614389d0fa312c6`. Passaram **866 testes JVM**, lint obrigatório, as verificações de assinatura, as traduções e os validadores gráficos. [Build 44595940475](https://github.com/Ricardex742/xCloudNative/actions/runs/44595940475)
+- O ZIP e o APK baixados conferiram com o build. O APK mantém o certificado permanente, vem com a depuração desabilitada e declara `userLandscape`. SHA-256 do APK `bba37f21e0860155e1944362f777b15ce91f6fa1af482072161b94c4b89c83b9`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44595940475/artifacts/14567605523)
