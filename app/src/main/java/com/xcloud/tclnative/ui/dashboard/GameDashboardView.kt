@@ -91,6 +91,10 @@ class GameDashboardView(
         }
     }
     private val seriesGrid get()=designScene==ConsoleScene.XBOX_SERIES && activeTab==LibraryTab.ALL && seriesPreferences.libraryGrid
+    private data class PlayStationHome(val tab: LibraryTab, val card: CatalogCard?, val opener: View)
+    private var playStationHome: PlayStationHome? = null
+    private val playStationGrid get()=designScene==ConsoleScene.PS5 && playStationHome!=null
+    private fun homeCoverLimit(): Int? = 5.takeIf { designScene==ConsoleScene.PS5 && !playStationGrid && searchQuery.isBlank() }
     private val seriesGlyphs=listOf(ConsoleGlyph.HOME,ConsoleGlyph.FAVORITE,ConsoleGlyph.GAME_PASS,ConsoleGlyph.PURCHASED,ConsoleGlyph.RECENT,ConsoleGlyph.LIBRARY)
     private var games = emptyList<GameTitle>()
     private var gamePassProducts: Set<String>? = null
@@ -156,6 +160,7 @@ class GameDashboardView(
     private var pendingCatalog: CatalogInput? = null
     private var renderedTab = activeTab
     private var renderedQuery = searchQuery
+    private var renderedLimit: Int? = null
     private var positions = emptyMap<String, Int>()
     private val catalogFocus = CatalogFocus()
     internal val isCatalogUpdating: Boolean get() = catalogJob?.isActive == true || metadataJob?.isActive == true
@@ -202,8 +207,8 @@ class GameDashboardView(
     private val playStationLibrary=DashboardTheme.button(context,"") { if(designScene.playStation) { selectTab(LibraryTab.RECENT);focusFirstCover() } else showPlayStationLibrary() }.apply {
         id=generateViewId();contentDescription=UiText.text("Biblioteca");setPadding(0,0,0,0)
     }
-    private val playStationAllGames=DashboardTheme.button(context,"") { showPlayStationLibrary() }.apply {
-        id=generateViewId();contentDescription=UiText.text("Biblioteca");setPadding(0,0,0,0)
+    private val playStationAllGames=DashboardTheme.button(context,"") { openPlayStationCatalog(LibraryTab.ALL) }.apply {
+        id=generateViewId();contentDescription=LibraryTab.ALL.label;setPadding(0,0,0,0)
     }
     private val playStationCaption=label(12f,false)
     private val playStationQuotaValue=label(44f,false).apply { importantForAccessibility=IMPORTANT_FOR_ACCESSIBILITY_NO }
@@ -227,7 +232,9 @@ class GameDashboardView(
     private var selectionRefreshPosted=false
     private val sectionTitle=label(27f,false)
     private val launchButton=DashboardTheme.button(context,UiText.text("JOGAR")) { selectedCard?.let(::playCard) }.apply { id=generateViewId() }
-    private val consoleBack=DashboardTheme.button(context,UiText.text("Voltar")) { showOriginalCategories() }.apply { id=generateViewId() }
+    private val consoleBack=DashboardTheme.button(context,UiText.text("Voltar")) {
+        if(playStationGrid) closePlayStationCatalog() else showOriginalCategories()
+    }.apply { id=generateViewId() }
     private val shortcuts=FrameLayout(context)
     private val quickActions=listOf(
         DashboardTheme.button(context,LibraryTab.ALL.label) { if(designScene==ConsoleScene.PS5) onThemeSettings(SettingsPage.CONTROLS) else { selectTab(LibraryTab.ALL);focusFirstCover() } },
@@ -248,12 +255,12 @@ class GameDashboardView(
     private val rb = label(24f).apply { text = "RB"; gravity = Gravity.CENTER }
     private val grid = object : RecyclerView(context) {
         override fun focusSearch(focused: View, direction: Int): View? {
-            if(seriesGrid && hasFocus()) {
+            if((seriesGrid || playStationGrid) && hasFocus()) {
                 val key=when(direction) {
                     FOCUS_LEFT -> KeyEvent.KEYCODE_DPAD_LEFT;FOCUS_RIGHT -> KeyEvent.KEYCODE_DPAD_RIGHT
                     FOCUS_UP -> KeyEvent.KEYCODE_DPAD_UP;FOCUS_DOWN -> KeyEvent.KEYCODE_DPAD_DOWN;else -> null
                 }
-                if(key!=null) { handleSeriesGridKey(KeyEvent(KeyEvent.ACTION_DOWN,key));return findFocus() ?: focused }
+                if(key!=null) { handleGridKey(KeyEvent(KeyEvent.ACTION_DOWN,key));return findFocus() ?: focused }
             }
             // Spatial search can prefer the header over an off-screen, differently sized tile.
             if(cardHorizontal && hasFocus() && direction in listOf(FOCUS_LEFT,FOCUS_RIGHT)) {
@@ -326,7 +333,10 @@ class GameDashboardView(
                 id = generateViewId(); text = tab.label; gravity = Gravity.CENTER
                 isFocusable = true; isFocusableInTouchMode = true; isClickable = true; background = plate
                 DashboardTheme.customFocus(this)
-                setOnClickListener { selectTab(tab);focusFirstCover() }
+                setOnClickListener {
+                    if(designScene==ConsoleScene.PS5 && tab==LibraryTab.ALL) openPlayStationCatalog(tab,this)
+                    else { selectTab(tab);focusFirstCover() }
+                }
                 setOnFocusChangeListener { _, focused ->
                     if (focused) selectTab(tab)
                     if(designScene.playStation) { lastGeometry=0L;this@GameDashboardView.requestLayout() }
@@ -498,15 +508,17 @@ class GameDashboardView(
         if(closed) return
         if(ownershipFilter!=OwnershipFilter.ALL && (ownershipProducts()-ownershipRequested).isNotEmpty()) onOwnershipNeeded()
         if(artworkPaused) return
-        if(renderedTab!=activeTab || renderedQuery!=searchQuery || renderedOwnershipFilter!=ownershipFilter) {
+        val limit=homeCoverLimit()
+        if(renderedTab!=activeTab || renderedQuery!=searchQuery || renderedOwnershipFilter!=ownershipFilter || renderedLimit!=limit) {
             // Do not leave clickable cards from the previous category while preparing the next.
             renderedTab=activeTab; renderedQuery=searchQuery;renderedOwnershipFilter=ownershipFilter
+            renderedLimit=limit
             adapter.submit(emptyList(),CatalogChanges(true,emptyList()))
             positions=emptyMap(); updateSelected(null)
             renderCatalogState(0,preparing=true)
         }
         pendingCatalog=CatalogInput(games,officialGalleries.toMap(),galleryBindings.toMap(),
-            gamePassProducts,gamePassTitles,activeTab,library.favorites,added,recent,searchQuery,ownershipFilter,ownership.toMap())
+            gamePassProducts,gamePassTitles,activeTab,library.favorites,added,recent,searchQuery,ownershipFilter,ownership.toMap(),limit=limit)
         if(catalogJob?.isActive==true) return
         // One worker, one pending snapshot: bursts cannot build an unbounded CPU queue.
         catalogJob=scope.launch {
@@ -519,7 +531,7 @@ class GameDashboardView(
                     result to CatalogChanges.between(before,result.cards)
                 }
                 // Metadata arriving during a build must not starve an otherwise current category.
-                if(!closed && !artworkPaused && input.tab==activeTab && input.query==searchQuery && input.ownershipFilter==ownershipFilter)
+                if(!closed && !artworkPaused && input.tab==activeTab && input.query==searchQuery && input.ownershipFilter==ownershipFilter && input.limit==homeCoverLimit())
                     applyCatalog(presentation,if(adapter.items!==before) CatalogChanges(true,emptyList()) else changes)
             }
         }
@@ -636,8 +648,32 @@ class GameDashboardView(
     private fun categoryFocus()=if(designScene.playStation && activeTab !in playStationTabs) playStationBrowseTab else tabs[activeTab.ordinal]
     private fun showPlayStationLibrary() {
         ConsoleDialogs.menu(context,UiText.text("Biblioteca"),LibraryTab.entries.map { tab ->
-            ConsoleAction(tab.label) { selectTab(tab);focusFirstCover() }
+            ConsoleAction(tab.label) {
+                if(designScene==ConsoleScene.PS5) openPlayStationCatalog(tab,playStationBrowseTab)
+                else { selectTab(tab);focusFirstCover() }
+            }
         },onBack={ categoryFocus().requestFocus() })
+    }
+    private fun openPlayStationCatalog(tab: LibraryTab, opener: View=playStationAllGames) {
+        val selectedKey=selectedCard?.key
+        if(!playStationGrid) {
+            playStationHome=PlayStationHome(activeTab,selectedCard,opener)
+            configureCardLayout()
+            headerArtJob?.cancel();posters.cancel(heroBackdrop);consoleBackdrop.setArtwork(null)
+            lastGeometry=0L;requestLayout()
+        }
+        if(activeTab==tab) refresh() else selectTab(tab)
+        catalogFocus.defer(selectedKey,0)
+    }
+    private fun closePlayStationCatalog() {
+        val home=playStationHome ?: return
+        playStationHome=null
+        configureCardLayout()
+        if(activeTab==home.tab) refresh() else selectTab(home.tab)
+        categoryFocus().requestFocus()
+        updateSelected(home.card)
+        doOnNextLayout { if(!closed && designScene==ConsoleScene.PS5 && !playStationGrid) home.opener.requestFocus() }
+        lastGeometry=0L;requestLayout()
     }
     private fun cycleTab(step: Int) {
         val next = (activeTab.ordinal + step + LibraryTab.entries.size) % LibraryTab.entries.size
@@ -707,8 +743,8 @@ class GameDashboardView(
         }
         return false
     }
-    private fun handleSeriesGridKey(event: KeyEvent): Boolean {
-        if(!seriesGrid || !grid.hasFocus()) return false
+    private fun handleGridKey(event: KeyEvent): Boolean {
+        if((!seriesGrid && !playStationGrid) || !grid.hasFocus()) return false
         val direction = when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> CatalogDirection.LEFT
             KeyEvent.KEYCODE_DPAD_RIGHT -> CatalogDirection.RIGHT
@@ -729,7 +765,7 @@ class GameDashboardView(
         }
         return true
     }
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean = handleSeriesGridKey(event) || handleCarouselKey(event) || super.dispatchKeyEvent(event)
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean = handleGridKey(event) || handleCarouselKey(event) || super.dispatchKeyEvent(event)
     fun restoreFocus() {
         refresh()
         if(designScene==ConsoleScene.XBOX_ORIGINAL && !originalBrowsing) { categoryFocus().requestFocus();return }
@@ -773,10 +809,10 @@ class GameDashboardView(
         if(designScene.playStation) {
             posters.cancel(headerIcon)
             val hero=game.product?.heroUrl ?: game.game?.heroUrl
-            if(designScene==ConsoleScene.PS5 && hero!=null) {
+            if(designScene==ConsoleScene.PS5 && !playStationGrid && hero!=null) {
                 val target=if(devicePolicy.constrainedMemory) ArtworkSize(640,360) else ArtworkSize(1024,576)
                 posters.load(heroBackdrop,hero,target.width,target.height) { ready ->
-                    if(selectedCard?.key==game.key && designScene==ConsoleScene.PS5) consoleBackdrop.setArtwork(if(ready) heroBackdrop.drawable else null)
+                    if(selectedCard?.key==game.key && designScene==ConsoleScene.PS5 && !playStationGrid) consoleBackdrop.setArtwork(if(ready) heroBackdrop.drawable else null)
                 }
             } else { posters.cancel(heroBackdrop);consoleBackdrop.setArtwork(null) }
             return
@@ -856,13 +892,14 @@ class GameDashboardView(
         if(designScene==ConsoleScene.XBOX_ORIGINAL && originalBrowsing) { showOriginalCategories();return }
         when {
             searchQuery.isNotBlank() -> setSearch("")
+            playStationGrid -> closePlayStationCatalog()
             grid.hasFocus() -> categoryFocus().requestFocus()
             else -> onExit()
         }
     }
     /** Handle gamepad keys only while the catalog is visible, before the native gameplay route. */
     fun handleKey(event: KeyEvent): Boolean {
-        if(handleSeriesGridKey(event)) return true
+        if(handleGridKey(event)) return true
         if(handleCarouselKey(event)) return true
         val key = event.keyCode
         val handled = key in setOf(KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1,
@@ -1016,6 +1053,7 @@ class GameDashboardView(
         val focused=grid.hasFocus();val position=positions[selectedCard?.key] ?: 0
         val changed=designScene!=next
         if(changed) { catalogFocus.cancelLayout();originalBrowsing=next==ConsoleScene.XBOX_ORIGINAL && focused }
+        if(next!=ConsoleScene.PS5) playStationHome=null
         designScene=next
         seriesPreferences=seriesStore.read()
         val console=next!=ConsoleScene.NONE
@@ -1095,13 +1133,14 @@ class GameDashboardView(
         val selected=selectedCard;selectedCard=null;updateSelected(selected)
         renderProfile();updateTabs();renderCatalogState(adapter.itemCount,isCatalogUpdating);lastGeometry=0L;requestLayout()
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
+        if(changed && renderedLimit!=homeCoverLimit()) refresh()
         if(changed && focused) grid.post { if(!closed) focusCoverNow(position) }
         consoleBackdrop.refreshStructure()
     }
     private fun configureCardLayout() {
         val manager=grid.layoutManager as GridLayoutManager
-        cardHorizontal=(designScene==ConsoleScene.XBOX_SERIES && !seriesGrid) || designScene==ConsoleScene.XBOX_360_NXE || designScene.playStation
-        cardColumns=if(seriesGrid) 6 else when(designScene) {
+        cardHorizontal=(designScene==ConsoleScene.XBOX_SERIES && !seriesGrid) || designScene==ConsoleScene.XBOX_360_NXE || designScene.playStation && !playStationGrid
+        cardColumns=if(seriesGrid || playStationGrid) 6 else when(designScene) {
             ConsoleScene.XBOX_360,ConsoleScene.XBOX_ORIGINAL,ConsoleScene.XBOX_SERIES,ConsoleScene.XBOX_360_NXE,ConsoleScene.PS4,ConsoleScene.PS5 -> 1
             ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_360_METRO -> 3;else -> COLUMNS
         }
@@ -1214,7 +1253,8 @@ class GameDashboardView(
             val tw=navWidth*weights[i]/weights.sum()
             pos(v,x,0f,tw-9f,navHeight);x+=tw
             v.text=when(i) { 0 -> if(ps5) UiText.text("Jogos") else UiText.text("Voltar a jogar");1 -> titleCase(LibraryTab.ALL.label);2 -> UiText.text("Biblioteca");else -> titleCase(LibraryTab.FAVORITES.label) }
-            v.gravity=Gravity.CENTER_VERTICAL or Gravity.START;v.setPadding(0,0,0,0);v.setCompoundDrawables(null,null,null,null)
+            val padding=(10*s).roundToInt()
+            v.gravity=Gravity.CENTER_VERTICAL or Gravity.START;v.setPadding(padding,0,padding,0);v.setCompoundDrawables(null,null,null,null)
             v.typeface=Typeface.create("sans-serif",Typeface.NORMAL)
             fitConsoleText(v,((tw-9)*s).toInt(),(navHeight*s).toInt(),16*s,(if(ps5) 23 else 18)*s,1)
             v.nextFocusUpId=profilePanel.id;v.nextFocusDownId=grid.id
@@ -1226,6 +1266,7 @@ class GameDashboardView(
         }
         playStationBrowseTab.visibility=VISIBLE
         val rowTop=if(portrait) navTop+navHeight+24f else if(ps5) { if(compact) maxOf(92f,utilitiesY+searchSide+10f) else 92f } else maxOf(197f,navTop+navHeight+17f)
+        if(playStationGrid) { layoutPlayStationCatalog(w,h,edge,rowTop,controls);return }
         val band=if(ps5) 132f else 280f
         coverHeight=(band*s).roundToInt()
         val switcherOffset=if(ps5) maxOf(85f,touch+15f) else 0f
@@ -1237,11 +1278,13 @@ class GameDashboardView(
             pos(searchButton,searchX-searchSide-16f,51f-searchSide/2f,searchSide,searchSide)
         }
         val gridLeft=((edge+switcherOffset-8f)*s).roundToInt()
-        val railWidth=if(ps5 && adapter.itemCount in 1..8) carouselWidth(true)+(adapter.itemCount-1)*carouselWidth(false) else wide
-        val allX=if(ps5) minOf(edge+switcherOffset+railWidth-1f,wide-edge-maxOf(70f,touch)) else 0f
+        val tileSide=carouselWidth(false)-16f
+        val railWidth=if(ps5 && adapter.itemCount>0) carouselWidth(true)+(adapter.itemCount-1)*carouselWidth(false) else wide
+        val allX=if(ps5) minOf(edge+switcherOffset+railWidth-1f,wide-edge-tileSide) else 0f
         val gridRight=if(ps5) ((allX-5f)*s).roundToInt().coerceAtMost(w) else w
         place(grid,gridLeft.toFloat(),rowTop*s,(gridRight-gridLeft).coerceAtLeast((touch*s).roundToInt()).toFloat(),band*s)
-        pos(playStationAllGames,allX,rowTop+19f,maxOf(70f,touch),maxOf(70f,touch));icon(playStationAllGames,ConsoleGlyph.GRID,true)
+        pos(playStationAllGames,allX,rowTop+19f,tileSide,tileSide);icon(playStationAllGames,ConsoleGlyph.GRID,true)
+        playStationAllGames.contentDescription=LibraryTab.ALL.label
         pos(emptyState,edge+switcherOffset,rowTop,(gridRight-gridLeft)/s-16f,band);text(emptyState,22f)
         fitConsoleText(emptyState,emptyState.layoutParams.width,emptyState.layoutParams.height,16*s,22*s,3)
         val titleTop=if(portrait) rowTop+band+52f else if(ps5) { if(compact) rowTop+band+18f else maxOf(300f,rowTop+band+60f) } else rowTop+band+2f
@@ -1357,6 +1400,32 @@ class GameDashboardView(
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
     }
 
+    private fun layoutPlayStationCatalog(w: Int,h: Int,edge: Float,top: Float,tabs: List<TextView>) {
+        val s=scale
+        val margin=(edge*s).roundToInt()
+        val width=w-2*margin
+        val gridTop=((top+58f)*s).roundToInt()
+        val height=h-gridTop-(24*s).roundToInt()
+        listOf(headerTitle,playStationFeature,playStationCaption,playStationDescription,playStationLibrary,
+            playStationAllGames,launchButton,playStationFavorite,playStationBenefits,shortcuts,footer,catalogNote)
+            .forEach { it.visibility=GONE }
+        consoleBack.visibility=VISIBLE
+        consoleBack.background=ConsoleControlPlate(designScene,ConsoleControl.TAB)
+        consoleBack.nextFocusUpId=categoryFocus().id;consoleBack.nextFocusDownId=grid.id
+        place(consoleBack,margin.toFloat(),top*s,112*s,48*s);textSize(consoleBack,18f)
+        place(grid,margin.toFloat(),gridTop.toFloat(),width.toFloat(),height.toFloat())
+        place(emptyState,margin.toFloat(),gridTop.toFloat(),width.toFloat(),height.toFloat())
+        fitConsoleText(emptyState,width,height,16*s,22*s,3)
+        emptyState.visibility=if(adapter.itemCount==0) VISIBLE else GONE
+        if(adapter.itemCount==0) tabs.forEach { it.nextFocusDownId=consoleBack.id }
+        val cell=width/cardColumns
+        coverHeight=cell+(28*s).roundToInt()
+        val side=cell-(16*s).roundToInt()
+        coverArtSize=ArtworkSize.forDisplay(side,side)
+        ConsoleHitTargets.install(this,tabs+listOf(searchButton,settingsButton,profilePanel,consoleBack))
+        adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
+    }
+
     private fun layoutPlayStationPhone(w: Int,h: Int) {
         val d=resources.displayMetrics.density;val sp=resources.displayMetrics.scaledDensity
         scale=d;val wide=w/d;val high=h/d;val portrait=h>w;val ps5=designScene==ConsoleScene.PS5
@@ -1384,7 +1453,8 @@ class GameDashboardView(
         tabs.forEachIndexed { i,v -> v.visibility=if(LibraryTab.entries[i] in playStationTabs) VISIBLE else GONE }
         val controls=listOf(tabs[LibraryTab.RECENT.ordinal],tabs[LibraryTab.ALL.ordinal],playStationBrowseTab,tabs[LibraryTab.FAVORITES.ordinal])
         controls.forEachIndexed { i,v ->
-            pos(v,i*navW/4,0f,navW/4-4f,48f);v.gravity=Gravity.CENTER;v.setPadding((2*d).roundToInt(),0,(2*d).roundToInt(),0);label(v,14f)
+            val padding=(6*d).roundToInt()
+            pos(v,i*navW/4,0f,navW/4-4f,48f);v.gravity=Gravity.CENTER;v.setPadding(padding,0,padding,0);label(v,14f)
             v.text=when(i) { 0 -> if(ps5) UiText.text("Jogos") else UiText.text("Voltar a jogar");1 -> titleCase(LibraryTab.ALL.label);2 -> UiText.text("Biblioteca");else -> titleCase(LibraryTab.FAVORITES.label) }
             v.setCompoundDrawables(null,null,null,null)
             fitConsoleText(v,(navW/4*d).toInt(),(48*d).toInt(),12*sp,14*sp,2)
@@ -1396,6 +1466,7 @@ class GameDashboardView(
         }
         playStationBrowseTab.visibility=VISIBLE
         val railY=if(portrait) 124f else 64f
+        if(playStationGrid) { layoutPlayStationCatalog(w,h,16f,railY,controls);return }
         val railH=if(ps5) { if(portrait) 104f else 64f } else if(portrait) 156f else 124f
         coverHeight=(railH*d).roundToInt()
         val left=if(ps5) 84f else 8f
@@ -1403,9 +1474,10 @@ class GameDashboardView(
         val total=if(adapter.itemCount==0) wide else carouselWidth(true)+(adapter.itemCount-1).coerceAtLeast(0)*carouselWidth(false)
         val allX=minOf(left+total+8f,wide-16-side)
         playStationLibrary.visibility=if(ps5) VISIBLE else GONE;playStationAllGames.visibility=playStationLibrary.visibility
-        playStationLibrary.contentDescription=UiText.text("Jogos");playStationAllGames.contentDescription=UiText.text("Biblioteca")
+        playStationLibrary.contentDescription=UiText.text("Jogos")
         pos(playStationLibrary,16f,railY+8f,side,side);glyph(playStationLibrary,ConsoleGlyph.CLOUD,true)
         pos(playStationAllGames,allX,railY+8f,side,side);glyph(playStationAllGames,ConsoleGlyph.GRID,true)
+        playStationAllGames.contentDescription=LibraryTab.ALL.label
         val right=if(ps5) allX-8 else wide-8
         pos(grid,left,railY,(right-left).coerceAtLeast(80f),railH)
         pos(emptyState,left+8,railY,(right-left-16).coerceAtLeast(64f),railH);label(emptyState,16f)
@@ -1724,7 +1796,13 @@ class GameDashboardView(
             card.nextFocusUpId = if(cardHorizontal || position<cardColumns) {
                 if(designScene==ConsoleScene.XBOX_ORIGINAL) consoleBack.id else categoryFocus().id
             } else View.NO_ID
-            card.nextFocusDownId=if(designScene==ConsoleScene.PS4 && launchButton.visibility!=VISIBLE) playStationFavorite.id else if(designScene.playStation) launchButton.id else if(designScene==ConsoleScene.XBOX_SERIES && !seriesGrid) quickActions.first().id else View.NO_ID
+            card.nextFocusDownId=when {
+                playStationGrid -> View.NO_ID
+                designScene==ConsoleScene.PS4 && launchButton.visibility!=VISIBLE -> playStationFavorite.id
+                designScene.playStation -> launchButton.id
+                designScene==ConsoleScene.XBOX_SERIES && !seriesGrid -> quickActions.first().id
+                else -> View.NO_ID
+            }
             card.nextFocusLeftId=if(cardColumns==1 && !cardHorizontal) {
                 if(designScene==ConsoleScene.XBOX_ORIGINAL) consoleBack.id else categoryFocus().id
             } else if(designScene==ConsoleScene.XBOX_360_NXE && position==0) categoryFocus().id
@@ -1915,16 +1993,20 @@ class GameDashboardView(
         private fun layoutPlayStationCard() {
             val s=scale;val selected=boundCard?.key==selectedCard?.key
             val margin=8f
-            val side=((carouselWidth(selected)-2*margin)*s).roundToInt()
+            val side=if(playStationGrid) coverHeight-(28*s).roundToInt()-2*(margin*s).roundToInt()
+                else ((carouselWidth(selected)-2*margin)*s).roundToInt()
             val top=if(selected) 8f else if(designScene==ConsoleScene.PS4) 21f else 8f
             cover.layoutParams=LayoutParams(-1,side).apply { setMargins((margin*s).roundToInt(),(top*s).roundToInt(),(margin*s).roundToInt(),0) }
             cover.background=rounded(0xff242c40.toInt(),if(designScene==ConsoleScene.PS5) 12*s else 0f)
             cover.clipToOutline=designScene==ConsoleScene.PS5
             caption.rotationY=0f;cover.rotationY=0f;rowBadges.visibility=GONE
-            caption.visibility=if(designScene==ConsoleScene.PS4 && selected) VISIBLE else GONE
-            caption.text=UiText.text("Iniciar");caption.gravity=Gravity.CENTER;caption.background=android.graphics.drawable.ColorDrawable(0x49002574)
+            caption.visibility=if(playStationGrid || designScene==ConsoleScene.PS4 && selected) VISIBLE else GONE
+            caption.text=if(playStationGrid) boundCard?.name.orEmpty() else UiText.text("Iniciar")
+            caption.gravity=if(playStationGrid) Gravity.CENTER_VERTICAL or Gravity.START else Gravity.CENTER
+            caption.background=if(playStationGrid) null else android.graphics.drawable.ColorDrawable(0x49002574)
             caption.setPadding(0,0,0,0);textSize(caption,18f)
-            caption.layoutParams=LayoutParams(-1,((if(playStationMobile) 28 else 34)*s).roundToInt()).apply { leftMargin=(margin*s).roundToInt();rightMargin=(margin*s).roundToInt();topMargin=(top*s).roundToInt()+side }
+            val captionHeight=if(playStationGrid || playStationMobile) 28 else 34
+            caption.layoutParams=LayoutParams(-1,(captionHeight*s).roundToInt()).apply { leftMargin=(margin*s).roundToInt();rightMargin=(margin*s).roundToInt();topMargin=(top*s).roundToInt()+side }
             badges.visibility=GONE
             fallback.typeface=Typeface.create("sans-serif",Typeface.NORMAL)
             fitConsoleText(fallback,side,side,10*s,18*s,4)
@@ -1986,7 +2068,7 @@ class GameDashboardView(
         override fun dispatchDraw(canvas: Canvas) {
             super.dispatchDraw(canvas)
             if(designScene.playStation && (focused || boundCard?.key==selectedCard?.key)) {
-                val s=scale;frame.set(cover.left-3*s,cover.top-3*s,cover.right+3*s,if(designScene==ConsoleScene.PS4) caption.bottom+3*s else cover.bottom+3*s)
+                val s=scale;frame.set(cover.left-3*s,cover.top-3*s,cover.right+3*s,if(designScene==ConsoleScene.PS4 || playStationGrid) caption.bottom+3*s else cover.bottom+3*s)
                 outline.shader=null;outline.style=Paint.Style.STROKE;outline.strokeWidth=(if(focused) 3f else 1.5f)*s;outline.color=Color.WHITE;outline.alpha=if(focused) 255 else 170
                 val radius=if(designScene==ConsoleScene.PS5) 15*s else 0f
                 canvas.drawRoundRect(frame,radius,radius,outline)

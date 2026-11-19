@@ -92,7 +92,9 @@ class NativePlayStationSurfacesTest {
         try {
             a.setContentView(view);layout(view)
             val grid=all(view).filterIsInstance<RecyclerView>().single()
-            val library=all(view).single { it.isShown && it.isClickable && it.contentDescription=="Biblioteca" }
+            val library=all(view).filterIsInstance<TextView>().single {
+                it.isShown && it.isClickable && it.text.isBlank() && it.contentDescription==LibraryTab.ALL.label
+            }
             val emptyX=library.left
             fun measureBeforeWorkerReturns() {
                 view.measure(View.MeasureSpec.makeMeasureSpec(1280,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(720,View.MeasureSpec.EXACTLY));view.layout(0,0,1280,720)
@@ -106,10 +108,10 @@ class NativePlayStationSurfacesTest {
                 assertTrue("Library must follow the loaded shelf",library.left-bounds.right<=40)
                 inside(view,library)
             }
-            followsLast(6);val fullX=library.left;assertTrue(fullX<emptyX)
+            followsLast(5);val fullX=library.left;assertTrue(fullX<emptyX)
             view.setSearch("Native shelf 0");measureBeforeWorkerReturns();layout(view);followsLast(1);assertTrue(library.left<fullX)
             view.setSearch("no matching game");measureBeforeWorkerReturns();layout(view);assertEquals(0,grid.adapter!!.itemCount);assertEquals(emptyX,library.left)
-            view.setSearch("");measureBeforeWorkerReturns();layout(view);followsLast(6);assertEquals(fullX,library.left)
+            view.setSearch("");measureBeforeWorkerReturns();layout(view);followsLast(5);assertEquals(fullX,library.left)
         } finally { view.close();c.pause().stop().destroy() }
     }
     @Test fun ps5ScreenshotQuickCardsAndOptionsOpenSharedSettingsWithRealQuota() {
@@ -267,8 +269,13 @@ class NativePlayStationSurfacesTest {
                     assertTrue("$theme catalog must regain focus after playback",grid.hasFocus())
                     repeat(24) { view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT));layout(view,2400,1080) }
                     assertFalse(view.isCatalogUpdating);layout(view,2400,1080)
-                    assertEquals("$theme held D-pad must reach the last game","PHONE-20",view.selectedGame!!.titleId)
                     val focused=view.findFocus();assertNotNull(focused);inside(view,focused!!)
+                    if(theme.scene==ConsoleScene.PS5) {
+                        assertEquals("PHONE-4",view.selectedGame!!.titleId)
+                        assertEquals(LibraryTab.ALL.label,focused.contentDescription)
+                    } else {
+                        assertEquals("$theme held D-pad must reach the last game","PHONE-20",view.selectedGame!!.titleId)
+                    }
                     var rebinds=0
                     val observer=object: RecyclerView.AdapterDataObserver() {
                         override fun onItemRangeChanged(positionStart: Int,itemCount: Int,payload: Any?) { rebinds++ }

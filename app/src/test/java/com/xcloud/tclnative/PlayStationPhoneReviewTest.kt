@@ -106,7 +106,7 @@ class PlayStationPhoneReviewTest {
                         assertTrue(Rect(0,0,home.width,home.height).contains(bounds(home,empty)))
                         assertFalse(all(home).filterIsInstance<TextView>().any { it.isShown && it.isEnabled && it.text.toString() in listOf("JOGAR","Jogar na nuvem") })
                         if(theme.scene==ConsoleScene.PS5) {
-                            val libraryTile=all(home).single { it.isShown && it.isClickable && it is TextView && it.text.isBlank() && it.contentDescription==UiText.text("Biblioteca") }
+                            val libraryTile=allGamesIcon(home)
                             assertFalse("Empty result overlaps library tile",Rect.intersects(bounds(home,empty),bounds(home,libraryTile)))
                         }
                         home.setSearch("");measure(home,p.cw,p.ch);home.selectTab(LibraryTab.FAVORITES);measure(home,p.cw,p.ch)
@@ -139,6 +139,9 @@ class PlayStationPhoneReviewTest {
         assertTrue("Clipped height: ${t.text}; ${l.height} > ${t.height-t.compoundPaddingTop-t.compoundPaddingBottom}",l.height<=t.height-t.compoundPaddingTop-t.compoundPaddingBottom)
         assertTrue("Clipped/ellipsized text: ${t.text}",(0 until l.lineCount).all { l.getEllipsisCount(it)==0 } && l.getLineEnd(l.lineCount-1)>=t.text.length)
     }
+    private fun allGamesIcon(home: GameDashboardView): TextView = all(home).filterIsInstance<TextView>().single {
+        it.isShown && it.isClickable && it.text.isBlank() && it.contentDescription==LibraryTab.ALL.label
+    }
     private fun assertPrimaryTitle(root: ViewGroup): TextView {
         val t=all(root).filterIsInstance<TextView>().filter { it.isShown && it.parent===root && it.text.toString().equals(longName,true) }.maxBy { it.textSize }
         fits(t);assertTrue("Primary title outside usable area",Rect(0,0,root.width,root.height).contains(bounds(root,t)))
@@ -160,7 +163,7 @@ class PlayStationPhoneReviewTest {
         all(home).filterIsInstance<TextView>().filter { it.isShown && it.parent===home && it.text.toString().equals(longName,true) && it!==title && it.parent !is RecyclerView }.forEach { other ->
             assertFalse("Cover caption overlaps platform",Rect.intersects(bounds(home,other),bounds(home,platform)))
         }
-        val full=all(home).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
+        val full=all(home).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.isNotBlank() && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
         fits(full);assertTrue(ConsoleHitTargets.bounds(home,full).height()>=48*home.resources.displayMetrics.density)
         if(DashboardTheme.palette.theme.scene==ConsoleScene.PS4) {
             val bitmap=Bitmap.createBitmap(home.width,home.height,Bitmap.Config.ARGB_8888)
@@ -168,7 +171,7 @@ class PlayStationPhoneReviewTest {
             try {
                 canvas.drawColor(Color.BLACK);home.background.draw(canvas)
                 all(home).filterIsInstance<ConsoleThemeBackdrop>().single().draw(canvas)
-                val tabs=all(home).filterIsInstance<TextView>().filter { it.isShown && it.isClickable && (it.text.toString()==UiText.text("Biblioteca") || LibraryTab.entries.any { tab -> it.contentDescription?.startsWith(tab.label)==true }) }
+                val tabs=all(home).filterIsInstance<TextView>().filter { it.isShown && it.isClickable && it.text.isNotBlank() && (it.text.toString()==UiText.text("Biblioteca") || LibraryTab.entries.any { tab -> it.contentDescription?.startsWith(tab.label)==true }) }
                 for(tab in tabs) {
                     val r=bounds(home,tab);val l=tab.layout
                     for(line in 0 until l.lineCount) {
@@ -209,13 +212,14 @@ class PlayStationPhoneReviewTest {
                     attach(a,home,p);home.setGames((0..20).map { GameTitle("INPUT-$it","Jogo %02d".format(it)) });home.selectTab(LibraryTab.RECENT)
                     measure(a.window.decorView,p.w,p.h);measure(home,p.cw,p.ch)
                     val grid=all(home).filterIsInstance<RecyclerView>().single();assertEquals(2,grid.adapter!!.itemCount)
-                    val tab=all(home).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
+                    val tab=all(home).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.isNotBlank() && it.contentDescription?.startsWith(LibraryTab.ALL.label)==true }
                     tap(home,tab);measure(home,p.cw,p.ch);assertEquals(21,grid.adapter!!.itemCount)
                     home.restoreFocus();measure(home,p.cw,p.ch)
-                    repeat(20) { home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT));measure(home,p.cw,p.ch) }
+                    val keys=if(theme.scene==ConsoleScene.PS5) List(3) { KeyEvent.KEYCODE_DPAD_DOWN } + List(2) { KeyEvent.KEYCODE_DPAD_RIGHT }
+                        else List(20) { KeyEvent.KEYCODE_DPAD_RIGHT }
+                    keys.forEach { home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,it));measure(home,p.cw,p.ch) }
                     assertEquals("INPUT-20",home.selectedGame!!.titleId)
                     assertTrue(Rect(0,0,home.width,home.height).contains(bounds(home,home.findFocus()!!)))
-                    // PS5 leaves the carousel at its final right-side library shortcut.
                     home.restoreFocus();measure(home,p.cw,p.ch)
                     home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));assertEquals(listOf("INPUT-20"),played)
                     home.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_ENTER));home.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_ENTER))
@@ -233,6 +237,54 @@ class PlayStationPhoneReviewTest {
                     home.resumeArtwork();home.restoreFocus();measure(home,p.cw,p.ch)
                     assertEquals("INPUT-20",home.selectedGame!!.titleId);assertTrue(grid.hasFocus())
                     home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B));assertFalse(grid.hasFocus())
+                } finally { home.close() }
+            } } finally { c.pause().stop().destroy() }
+        }
+    }
+    @Test fun playStationFocusFramesAndPs5ShelfFitBothLandscapeCutouts() {
+        for(p in listOf(phones[1],phones[1].copy(name="phone-reverse",safe=Rect(0,0,44,0)),phones[3])) {
+            RuntimeEnvironment.setQualifiers(p.qualifiers)
+            val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();UiText.apply(a,AppLanguage.PORTUGUESE)
+            try { for(theme in listOf(UiTheme.PS4,UiTheme.PS4_NIGHT,UiTheme.PS5,UiTheme.PS5_NIGHT)) {
+                DashboardTheme.apply(a,theme)
+                val library=GameLibrary(a,"shelf-${theme.name}-${p.name}")
+                library.saveCloudRecent((0..8).map { "SHELF-$it" })
+                val home=GameDashboardView(a,library,{},{},{},{})
+                try {
+                    attach(a,home,p);home.setGames((0..20).map { GameTitle("SHELF-$it","Jogo %02d".format(it)) });measure(home,p.cw,p.ch)
+                    val tab=all(home).filterIsInstance<TextView>().single { it.isShown && it.text.toString()==if(theme.scene==ConsoleScene.PS5) "Jogos" else "Voltar a jogar" }
+                    assertTrue(tab.requestFocus());measure(home,p.cw,p.ch);fits(tab)
+                    val frameInset=tab.height*.045f+1.25f
+                    assertTrue("Focused tab covers its label",tab.compoundPaddingLeft+tab.layout.getLineLeft(0)>frameInset)
+                    assertTrue("Focused tab covers its label",tab.compoundPaddingLeft+tab.layout.getLineRight(0)<tab.width-frameInset)
+                    capture(home,p,"${theme.name}-focused-tab")
+                    if(theme.scene!=ConsoleScene.PS5) continue
+                    val shelf=all(home).filterIsInstance<RecyclerView>().single()
+                    assertEquals(5,shelf.adapter!!.itemCount)
+                    home.restoreFocus();measure(home,p.cw,p.ch)
+                    repeat(4) { home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT));measure(home,p.cw,p.ch) }
+                    val icon=allGamesIcon(home)
+                    val cover=all(shelf.findViewHolderForAdapterPosition(1)!!.itemView).filterIsInstance<FixedArtworkView>().single().parent as View
+                    val lastCover=all(shelf.findViewHolderForAdapterPosition(4)!!.itemView).filterIsInstance<FixedArtworkView>().single().parent as View
+                    assertEquals(icon.width,icon.height)
+                    assertTrue("Grid icon is proportional to the ordinary tile",kotlin.math.abs(cover.width-icon.width)<=2)
+                    assertTrue("Grid icon follows the fifth cover",bounds(home,icon).left-bounds(home,lastCover).right in 1..icon.width/2)
+                    home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT));assertSame(icon,home.findFocus())
+                    if(theme==UiTheme.PS5) tap(home,icon) else home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
+                    measure(home,p.cw,p.ch);assertEquals(21,shelf.adapter!!.itemCount)
+                    assertEquals(RecyclerView.VERTICAL,(shelf.layoutManager as androidx.recyclerview.widget.GridLayoutManager).orientation)
+                    assertFalse(icon.isShown)
+                    val selected=shelf.findViewHolderForAdapterPosition(4)!!.itemView
+                    val caption=all(selected).filterIsInstance<TextView>().single { it.text.toString()=="Jogo 04" }
+                    assertTrue("Focus frame is clipped below the card caption",selected.height-caption.bottom>icon.width/15f)
+                    capture(home,p,"${theme.name}-full-catalog")
+                    if(theme==UiTheme.PS5) {
+                        val back=all(home).filterIsInstance<TextView>().single { it.isShown && it.text.toString()=="Voltar" }
+                        tap(home,back)
+                    } else home.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
+                    measure(home,p.cw,p.ch)
+                    assertEquals(5,shelf.adapter!!.itemCount);assertEquals("SHELF-4",home.selectedGame!!.titleId)
+                    assertSame(icon,home.findFocus())
                 } finally { home.close() }
             } } finally { c.pause().stop().destroy() }
         }

@@ -13,7 +13,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [29, 34])
 class LauncherSmokeTest {
-    @Test fun packagedManifestResolvesThePhoneAndTvLaunchersInLandscape() {
+    @Test fun packagedManifestResolvesBothLaunchersWithUserLandscapeRotation() {
         val app = RuntimeEnvironment.getApplication()
         val launchers = listOf(app.packageManager.getLaunchIntentForPackage(app.packageName),
             app.packageManager.getLeanbackLaunchIntentForPackage(app.packageName))
@@ -22,7 +22,7 @@ class LauncherSmokeTest {
             val activity = app.packageManager.resolveActivity(intent, 0)?.activityInfo
             assertEquals(Intent.ACTION_MAIN, intent.action)
             assertEquals(MainActivity::class.java.name, activity?.name)
-            assertEquals(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE, activity?.screenOrientation)
+            assertEquals(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE, activity?.screenOrientation)
             assertTrue(checkNotNull(activity).exported)
         }
     }

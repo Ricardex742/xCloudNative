@@ -15,7 +15,8 @@ internal data class CatalogInput(
     val recent: List<String>?,
     val query: String,
     val ownershipFilter: OwnershipFilter=OwnershipFilter.ALL,
-    val ownership: Map<String,Ownership> = emptyMap()
+    val ownership: Map<String,Ownership> = emptyMap(),
+    val limit: Int? = null
 )
 
 internal data class CatalogPresentation(
@@ -35,9 +36,10 @@ internal class CatalogPresentationEngine {
     fun build(input: CatalogInput): CatalogPresentation {
         val catalog=data?.takeIf { it.matches(input) } ?: IndexedCatalog(input).also { data=it }
         val search=CatalogQuery(input.query)
-        val visible=catalog.select(input).filter { card ->
+        val matching=catalog.select(input).asSequence().filter { card ->
             search.matches(card) && input.ownershipFilter.accepts(input.ownership[card.ownershipProductId()] ?: Ownership.UNKNOWN)
         }
+        val visible=(input.limit?.let(matching::take) ?: matching).toList()
         return CatalogPresentation(visible,visible.withIndex().associate { it.value.key to it.index },catalog.subscription,catalog.products)
     }
     private class IndexedCatalog(private val source: CatalogInput) {

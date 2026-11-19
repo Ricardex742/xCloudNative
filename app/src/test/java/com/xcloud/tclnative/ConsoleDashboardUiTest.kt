@@ -129,7 +129,7 @@ class ConsoleDashboardUiTest {
                 view.setGamePassProducts(setOf("PRODUCT-1","PRODUCT-5"));layout(view)
                 val grid=all(view).filterIsInstance<RecyclerView>().single();val adapter=grid.adapter
                 val manager=grid.layoutManager as GridLayoutManager
-                assertEquals(6,adapter!!.itemCount)
+                assertEquals(if(theme.scene==ConsoleScene.PS5) 5 else 6,adapter!!.itemCount)
                 assertEquals(if(theme==UiTheme.XBOX_ONE || theme==UiTheme.XBOX_360_METRO) 3 else 1,manager.spanCount)
                 assertEquals(if(theme==UiTheme.XBOX_SERIES || theme==UiTheme.XBOX_360_NXE || theme.scene.playStation) RecyclerView.HORIZONTAL else RecyclerView.VERTICAL,manager.orientation)
                 if(theme==UiTheme.XBOX_ORIGINAL) {

@@ -54,7 +54,7 @@
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize"
             android:exported="true"
             android:launchMode="singleTask"
-            android:screenOrientation="landscape">
+            android:screenOrientation="userLandscape">
             
             <!-- Ícone para Celular (LAUNCHER) e Banner para Google TV (LEANBACK_LAUNCHER) -->
             <intent-filter>
