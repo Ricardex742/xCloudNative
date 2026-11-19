@@ -1,6 +1,7 @@
 package com.xcloud.tclnative.ui.dashboard
 
 import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.ui.ImmersiveWindow
 
 import android.app.Activity
 import android.app.Dialog
@@ -152,7 +153,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         panel.addView(scroll, LinearLayout.LayoutParams(-1, -2, 1f))
         panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(22) })
         if(skin.scene.playStation) ConsoleHitTargets.install(panel,listOf(close))
-        com.xcloud.tclnative.ui.ImmersiveWindow.protectContent(panel)
+        ImmersiveWindow.protectContent(panel,avoidKeyboard=fullScreen)
         setContentView(panel)
         setOnKeyListener { _, key, event ->
             if(shortcut?.invoke(event)==true) true else when (key) {
@@ -288,7 +289,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         return item
     }
     override fun show() {
-        window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
+        window?.let { ImmersiveWindow.apply(it,edgeToEdge=fullScreen) }
         super.show()
         visiblePanels.removeAll { it.get()==null || it.get()===this }
         visiblePanels.add(java.lang.ref.WeakReference(this))
@@ -323,7 +324,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 setLayout((screenWidth*(if(skin.enabled) .90f else .82f)).roundToInt(), WindowManager.LayoutParams.WRAP_CONTENT)
             }
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
-            com.xcloud.tclnative.ui.ImmersiveWindow.apply(this)
+            ImmersiveWindow.apply(this,edgeToEdge=fullScreen)
         }
         val target=if(explicitFocus) initialFocus else returningFocus ?: initialFocus
         target?.requestFocus()
@@ -331,7 +332,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if(hasFocus) window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
+        if(hasFocus) window?.let { ImmersiveWindow.apply(it,edgeToEdge=fullScreen) }
     }
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         com.xcloud.tclnative.webrtc.AndroidControllerMonitor.key(event)

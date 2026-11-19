@@ -6,6 +6,7 @@ import android.os.Looper
 import android.view.*
 import android.widget.*
 import com.xcloud.tclnative.catalog.*
+import com.xcloud.tclnative.renderer.AiPqSurfaceRenderer
 import com.xcloud.tclnative.settings.*
 import com.xcloud.tclnative.signaling.*
 import com.xcloud.tclnative.ui.*
@@ -120,22 +121,32 @@ class ConsoleFidelityReviewTest {
             }
         } finally { c.pause().stop().destroy() }
     }
-    @Suppress("DEPRECATION") private fun assertImmersive(w: Window) {
+    @Suppress("DEPRECATION") private fun assertImmersive(w: Window,edgeToEdge: Boolean=false) {
+        val sdk=android.os.Build.VERSION.SDK_INT
         val flags=w.decorView.systemUiVisibility
         assertTrue(flags and View.SYSTEM_UI_FLAG_FULLSCREEN!=0)
         assertTrue(flags and View.SYSTEM_UI_FLAG_HIDE_NAVIGATION!=0)
         assertTrue(flags and View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY!=0)
         assertTrue(w.attributes.flags and WindowManager.LayoutParams.FLAG_FULLSCREEN!=0)
-        if(android.os.Build.VERSION.SDK_INT>=28) assertEquals(
-            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES,w.attributes.layoutInDisplayCutoutMode)
+        if(sdk>=28) assertEquals(
+            if(edgeToEdge && sdk>=30) WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            else WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES,w.attributes.layoutInDisplayCutoutMode)
+        if(edgeToEdge) {
+            assertEquals(Color.TRANSPARENT,w.navigationBarColor)
+            if(sdk>=30) {
+                assertEquals(0,w.attributes.fitInsetsTypes)
+                assertFalse(org.robolectric.util.ReflectionHelpers.getField<Boolean>(w,"mDecorFitsSystemWindows"))
+            } else assertTrue(flags and View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION!=0)
+        }
     }
     @Test @Config(sdk=[28,30,34]) fun panelsKeepSystemBarsHiddenOnShowFocusReturnAndNestedNavigation() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView,1280,591)
         try { for(theme in UiTheme.entries) {
-            DashboardTheme.apply(a,theme);ImmersiveWindow.apply(a.window);assertImmersive(a.window)
+            DashboardTheme.apply(a,theme);ImmersiveWindow.apply(a.window,edgeToEdge=true);assertImmersive(a.window,edgeToEdge=true)
             val first=ConsoleDialogs.menu(a,"Configurações",listOf(ConsoleAction("Vídeo") {}))
-            try { assertImmersive(first.window!!);first.window!!.decorView.systemUiVisibility=0;first.onWindowFocusChanged(true);assertImmersive(first.window!!)
-                val child=ConsoleDialogs.menu(a,"Vídeo",listOf(ConsoleAction("Resolução") {}));assertImmersive(child.window!!);child.cancel();first.onWindowFocusChanged(true);assertImmersive(first.window!!)
+            val full=theme.scene.playStation
+            try { assertImmersive(first.window!!,full);first.window!!.decorView.systemUiVisibility=0;first.onWindowFocusChanged(true);assertImmersive(first.window!!,full)
+                val child=ConsoleDialogs.menu(a,"Vídeo",listOf(ConsoleAction("Resolução") {}));assertImmersive(child.window!!,full);child.cancel();first.onWindowFocusChanged(true);assertImmersive(first.window!!,full)
             } finally { first.dismiss() }
         } } finally { c.pause().stop().destroy() }
     }
@@ -158,13 +169,17 @@ class ConsoleFidelityReviewTest {
             assertEquals(1,opens);capture(v,"compact-game-menu")
         } finally { c.pause().stop().destroy() }
     }
-    @Test @Config(sdk=[30]) fun landscapeCutoutKeepsFullArtworkAndSafeInteractiveAreasOnBothSides() {
+    @Test @Config(sdk=[30],qualifiers="w780dp-h360dp-land-xxhdpi")
+    fun landscapeCutoutKeepsFullArtworkAndSafeInteractiveAreasOnBothSides() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
-        val root=FrameLayout(a);a.setContentView(root);ImmersiveWindow.apply(a.window)
-        layout(a.window.decorView,1280,600);DashboardTheme.apply(a,UiTheme.XBOX_360_METRO)
+        val w=2340;val h=1080
+        val root=FrameLayout(a);a.setContentView(root);ImmersiveWindow.apply(a.window,edgeToEdge=true)
+        layout(a.window.decorView,w,h);DashboardTheme.apply(a,UiTheme.PS5)
+        assertImmersive(a.window,edgeToEdge=true)
         val home=GameDashboardView(a,GameLibrary(a,"cutout-home"),{},{},{},{})
         val queue=GameLoadingView(a) {}
         val transition=SessionTransitionView(a)
+        val video=AiPqSurfaceRenderer(a).apply { aspect=VideoAspect.STRETCH }
         var opened=0
         val touch=GameTouchView(a,{},{},{x,y->x to y},{opened++})
         fun layoutWithCutout(view: View,w: Int,h: Int,insets: WindowInsets) {
@@ -175,25 +190,29 @@ class ConsoleFidelityReviewTest {
             view.layout(0,0,view.measuredWidth,view.measuredHeight)
         }
         try {
-            val demo=GameTitle("cutout","Jogo de demonstração")
+            val demo=GameTitle("forza","Forza Horizon 5",tileUrl="https://demo.invalid/forza",
+                posterUrl="https://demo.invalid/forza",heroUrl="https://demo.invalid/forza-hero")
+            seed(a,listOf(demo),h/720f)
             home.setGames(listOf(demo));home.selectTab(LibraryTab.ALL)
             queue.begin(demo);transition.showStartup(demo,"Preparando seu jogo…")
             touch.configure(TouchMode.NATIVE,demo);touch.setBackgroundColor(0xff304d48.toInt())
             for(left in listOf(true,false)) {
                 val side=if(left) "left" else "right"
-                val safe=if(left) Rect(56,0,0,0) else Rect(0,0,56,0)
-                val cutout=DisplayCutout(safe,listOf(if(left) Rect(0,274,56,326) else Rect(1224,274,1280,326)))
+                val safe=if(left) Rect(80,0,0,0) else Rect(0,0,80,0)
+                val cutout=DisplayCutout(safe,listOf(if(left) Rect(0,500,80,580) else Rect(w-80,500,w,580)))
                 val insets=WindowInsets.Builder().setDisplayCutout(cutout).build()
                 for((view,name) in listOf(home to "home",queue to "queue",transition to "startup")) {
                     root.removeAllViews();root.addView(view,FrameLayout.LayoutParams(-1,-1))
-                    layoutWithCutout(view,1280,600,insets)
+                    layoutWithCutout(view,w,h,insets)
                     assertEquals(name,safe.left,view.paddingLeft);assertEquals(name,safe.right,view.paddingRight)
                     val background=view.getChildAt(1)
-                    assertEquals(Rect(0,0,1280,600),Rect(background.left,background.top,background.right,background.bottom))
-                    capture(view,"cutout-$side-$name")
+                    assertEquals(Rect(0,0,w,h),Rect(background.left,background.top,background.right,background.bottom))
+                    capture(view,"edge-$side-$name")
                 }
-                root.removeAllViews();root.addView(touch,FrameLayout.LayoutParams(-1,-1))
-                layoutWithCutout(touch,1280,600,insets)
+                root.removeAllViews();root.addView(video,FrameLayout.LayoutParams(-1,-1));root.addView(touch,FrameLayout.LayoutParams(-1,-1))
+                layoutWithCutout(root,w,h,insets)
+                assertEquals(w,video.width);assertEquals(h,video.height)
+                assertTrue(ImmersiveWindow.diagnostics(a.window,root).contains("content=${w}x$h"))
                 val arrow=touch.getChildAt(0)
                 assertTrue(arrow.left>=safe.left && arrow.right<touch.width/2)
                 val now=android.os.SystemClock.uptimeMillis()
@@ -201,7 +220,7 @@ class ConsoleFidelityReviewTest {
                     val event=MotionEvent.obtain(now,now,action,arrow.left+arrow.width/2f,arrow.top+arrow.height/2f,0)
                     try { assertTrue(touch.dispatchTouchEvent(event)) } finally { event.recycle() }
                 }
-                capture(touch,"cutout-$side-arrow");shadowOf(Looper.getMainLooper()).idle()
+                capture(touch,"edge-$side-arrow");shadowOf(Looper.getMainLooper()).idle()
                 val menu=GameMenuPanel.show(a,{},{},{},{},audio={},hudToggle={})
                 try {
                     assertImmersive(menu.window!!)
@@ -210,11 +229,31 @@ class ConsoleFidelityReviewTest {
                     val base=menu.panel.paddingLeft
                     layoutWithCutout(menu.panel,params.width,params.height,insets)
                     assertTrue(menu.panel.paddingLeft>=base+safe.left)
-                    capture(menu.panel,"cutout-$side-live-menu")
+                    capture(menu.panel,"edge-$side-live-menu")
                 } finally { menu.dismiss() }
             }
             assertEquals(2,opened)
-        } finally { home.close();queue.close();transition.close();c.pause().stop().destroy() }
+        } finally { home.close();queue.close();transition.close();video.release();c.pause().stop().destroy() }
+    }
+    @Test @Config(sdk=[30]) fun fullscreenSearchAppliesKeyboardInsetsWithoutAddingThemToTheCutout() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
+        a.setContentView(FrameLayout(a));layout(a.window.decorView,1280,600);DashboardTheme.apply(a,UiTheme.PS5)
+        val dialog=ConsoleDialogs.search(a,"") {}
+        try {
+            assertImmersive(dialog.window!!,edgeToEdge=true)
+            val panel=dialog.panel
+            val base=Rect(panel.paddingLeft,panel.paddingTop,panel.paddingRight,panel.paddingBottom)
+            val type=WindowInsets.Type.ime()
+            val cutout=DisplayCutout(Rect(50,0,0,0),listOf(Rect(0,260,50,340)))
+            val hidden=WindowInsets.Builder().setDisplayCutout(cutout).build()
+            val shown=WindowInsets.Builder(hidden).setInsets(type,Insets.of(0,0,0,220)).setVisible(type,true).build()
+            panel.dispatchApplyWindowInsets(shown)
+            assertEquals(base.left+50,panel.paddingLeft)
+            assertEquals(base.bottom+220,panel.paddingBottom)
+            panel.dispatchApplyWindowInsets(hidden)
+            assertEquals(base.left+50,panel.paddingLeft)
+            assertEquals(base.bottom,panel.paddingBottom)
+        } finally { dialog.dismiss();c.pause().stop().destroy() }
     }
     @Test fun compactCloseAcceptsNativeTapOutsideItsVisibleArtwork() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()

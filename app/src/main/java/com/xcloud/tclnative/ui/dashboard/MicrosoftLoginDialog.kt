@@ -11,6 +11,7 @@ import android.webkit.*
 import android.widget.*
 import com.xcloud.tclnative.auth.BrowserAuthorization
 import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.ui.ImmersiveWindow
 
 /** Microsoft-hosted login only; no password fields, JS bridges or intercepted credential requests. */
 internal class MicrosoftLoginDialog(activity: Activity,private val authorization: BrowserAuthorization,
@@ -32,7 +33,7 @@ internal class MicrosoftLoginDialog(activity: Activity,private val authorization
         toolbar.addView(back,LinearLayout.LayoutParams(-2,-1));toolbar.addView(address,LinearLayout.LayoutParams(0,-1,1f))
         root.addView(toolbar,LinearLayout.LayoutParams(-1,(48*activity.resources.displayMetrics.density).toInt()))
         root.addView(browser,LinearLayout.LayoutParams(-1,0,1f))
-        com.xcloud.tclnative.ui.ImmersiveWindow.protectContent(root)
+        ImmersiveWindow.protectContent(root,avoidKeyboard=true)
         setContentView(root)
         browser.settings.apply {
             javaScriptEnabled=true;domStorageEnabled=true
@@ -75,16 +76,16 @@ internal class MicrosoftLoginDialog(activity: Activity,private val authorization
     }
     private fun finishError(message: String) { finished=true;dismiss();failed(message) }
     override fun show() {
-        window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
+        window?.let { ImmersiveWindow.apply(it,edgeToEdge=true) }
         super.show();window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT,ViewGroup.LayoutParams.MATCH_PARENT)
         ownerActivity?.let { owner -> window?.let { AppControllerWindows.attach(owner,it) } }
         window?.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-        window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
+        window?.let { ImmersiveWindow.apply(it,edgeToEdge=true) }
         browser.loadUrl(authorization.url)
     }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if(hasFocus) window?.let(com.xcloud.tclnative.ui.ImmersiveWindow::apply)
+        if(hasFocus) window?.let { ImmersiveWindow.apply(it,edgeToEdge=true) }
     }
     fun close() { finished=true;dismiss() }
     override fun onStop() { window?.let(AppControllerWindows::detach);super.onStop() }

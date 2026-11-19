@@ -228,8 +228,7 @@ open class MainActivity : Activity() {
             ?.let { pendingShortcutApk=File(cacheDir,"game-shortcuts/$it").takeIf(File::isFile) }
 
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        window.navigationBarColor = Color.BLACK
-        ImmersiveWindow.apply(window)
+        ImmersiveWindow.apply(window,edgeToEdge=true)
         authenticator = createAuthenticator()
         settingsStore = PlaybackSettingsStore(this)
         playbackSettings = settingsStore.read()
@@ -1092,8 +1091,9 @@ open class MainActivity : Activity() {
                 dialog.setOnDismissListener { if(gameMenuDialog===dialog) gameMenuDialog=null }
             }
     }
+    private fun videoDiagnostics()=ImmersiveWindow.diagnostics(window,rootLayout)+"\n"+surfaceRenderer.diagnostics()
     private fun showLiveDiagnostics(onBack: () -> Unit) {
-        showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(surfaceRenderer.diagnostics()),UiText.nested(currentSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))+"\n"+(webrtcClient?.inputDiagnostics() ?: ""),onBack=onBack)
+        showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(videoDiagnostics()),UiText.nested(currentSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))+"\n"+(webrtcClient?.inputDiagnostics() ?: ""),onBack=onBack)
     }
     private fun pressXboxButton() {
         val client=webrtcClient ?: return
@@ -1352,7 +1352,7 @@ open class MainActivity : Activity() {
             controllerPath.clear()
             signaling.resetStartupDiagnostics()
             tracker.inputDetails={ "Upscaling=${settings.fsr}; output=${settings.fsrOutput}\n"+controllerPath.diagnostics()+"\n"+signaling.startupDiagnostics() }
-            tracker.mediaDetails=surfaceRenderer::diagnostics
+            tracker.mediaDetails=::videoDiagnostics
             try {
                 resetController()
                 controllers.beginSession(settings.localCoOp,touchMode!=TouchMode.OFF || sessionDesktopMode!=DesktopInputMode.OFF)
@@ -1459,7 +1459,7 @@ open class MainActivity : Activity() {
                 tracker.mediaDetails = {
                     listOf(rtc.audioDiagnostics(), rtc.codecDiagnostics(), rtc.latencyDiagnostics(), rtc.iceDiagnostics(),
                         signaling.profileDiagnostics(), playbackDisplay.diagnostics(window.decorView.display),
-                        surfaceRenderer.diagnostics(), recoveryState.diagnostics()).joinToString("\n")
+                        videoDiagnostics(), recoveryState.diagnostics()).joinToString("\n")
                 }
                 surfaceRenderer.displayDimensions()?.let(rtc::updateDisplayDimensions)
                 if(touchMode!=TouchMode.NATIVE) (0..3).filter { controllers.sourceFor(it)!=null }.forEach { publishGamepad(it) }
@@ -2076,7 +2076,7 @@ open class MainActivity : Activity() {
         else {
             rumble.enabled=playbackSettings.rumble && webrtcClient!=null
             resumeAuxiliaryInput();resynchronizeUsbInput()
-            ImmersiveWindow.apply(window)
+            ImmersiveWindow.apply(window,edgeToEdge=true)
         }
     }
 
