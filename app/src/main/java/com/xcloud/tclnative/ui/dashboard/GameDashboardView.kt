@@ -509,12 +509,14 @@ class GameDashboardView(
         if(ownershipFilter!=OwnershipFilter.ALL && (ownershipProducts()-ownershipRequested).isNotEmpty()) onOwnershipNeeded()
         if(artworkPaused) return
         val limit=homeCoverLimit()
-        if(renderedTab!=activeTab || renderedQuery!=searchQuery || renderedOwnershipFilter!=ownershipFilter || renderedLimit!=limit) {
+        val categoryChanged=renderedTab!=activeTab || renderedQuery!=searchQuery || renderedOwnershipFilter!=ownershipFilter
+        if(categoryChanged || renderedLimit!=limit) {
             // Do not leave clickable cards from the previous category while preparing the next.
             renderedTab=activeTab; renderedQuery=searchQuery;renderedOwnershipFilter=ownershipFilter
             renderedLimit=limit
             adapter.submit(emptyList(),CatalogChanges(true,emptyList()))
-            positions=emptyMap(); updateSelected(null)
+            positions=emptyMap()
+            if(categoryChanged) updateSelected(null)
             renderCatalogState(0,preparing=true)
         }
         pendingCatalog=CatalogInput(games,officialGalleries.toMap(),galleryBindings.toMap(),
@@ -649,14 +651,16 @@ class GameDashboardView(
     private fun showPlayStationLibrary() {
         ConsoleDialogs.menu(context,UiText.text("Biblioteca"),LibraryTab.entries.map { tab ->
             ConsoleAction(tab.label) {
+                selectTab(tab)
                 if(designScene==ConsoleScene.PS5) openPlayStationCatalog(tab,playStationBrowseTab)
-                else { selectTab(tab);focusFirstCover() }
+                else focusFirstCover()
             }
         },onBack={ categoryFocus().requestFocus() })
     }
     private fun openPlayStationCatalog(tab: LibraryTab, opener: View=playStationAllGames) {
         val selectedKey=selectedCard?.key
         if(!playStationGrid) {
+            catalogFocus.cancel()
             playStationHome=PlayStationHome(activeTab,selectedCard,opener)
             configureCardLayout()
             headerArtJob?.cancel();posters.cancel(heroBackdrop);consoleBackdrop.setArtwork(null)
@@ -667,10 +671,12 @@ class GameDashboardView(
     }
     private fun closePlayStationCatalog() {
         val home=playStationHome ?: return
+        catalogFocus.cancel()
         playStationHome=null
         configureCardLayout()
         if(activeTab==home.tab) refresh() else selectTab(home.tab)
         categoryFocus().requestFocus()
+        selectedCard=null
         updateSelected(home.card)
         doOnNextLayout { if(!closed && designScene==ConsoleScene.PS5 && !playStationGrid) home.opener.requestFocus() }
         lastGeometry=0L;requestLayout()
@@ -1134,7 +1140,7 @@ class GameDashboardView(
         renderProfile();updateTabs();renderCatalogState(adapter.itemCount,isCatalogUpdating);lastGeometry=0L;requestLayout()
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
         if(changed && renderedLimit!=homeCoverLimit()) refresh()
-        if(changed && focused) grid.post { if(!closed) focusCoverNow(position) }
+        if(changed && focused) grid.post { if(!closed) focusCoverAt(position) }
         consoleBackdrop.refreshStructure()
     }
     private fun configureCardLayout() {

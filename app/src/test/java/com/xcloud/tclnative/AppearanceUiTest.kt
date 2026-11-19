@@ -167,7 +167,7 @@ class AppearanceUiTest {
                 AppearanceSettingsStore(a).save(theme)
                 DashboardTheme.apply(a,theme,a.findViewById(android.R.id.content))
                 layout(view)
-                assertSame(adapter,grid.adapter);assertEquals(6,adapter.itemCount)
+                assertSame(adapter,grid.adapter);assertEquals(if(theme.scene==ConsoleScene.PS5) 5 else 6,adapter.itemCount)
                 assertEquals(selected,view.selectedGame?.titleId);assertTrue(library.isFavorite(games[1].titleId))
                 val name=theme.name.lowercase()
                 val pixels=capture(view,name);signatures.add(pixels.contentHashCode())
