@@ -70,11 +70,7 @@ class CatalogService(
                     mutex.withLock {
                         val updates = enriched.associateBy { it.titleId }
                         // Do not overwrite valid cached art with an incomplete/missing response.
-                        current = current.map { old -> updates[old.titleId]?.let { fresh -> fresh.copy(
-                            name = if (fresh.name == fresh.titleId) old.name else fresh.name,
-                            posterUrl = fresh.posterUrl ?: old.posterUrl, tileUrl = fresh.tileUrl ?: old.tileUrl,
-                            heroUrl = fresh.heroUrl ?: old.heroUrl, seriesOptimized = fresh.seriesOptimized || old.seriesOptimized)
-                        } ?: old }
+                        current = current.map { old -> updates[old.titleId]?.withMetadataFallback(old) ?: old }
                         failed = failed || enriched.any { it.posterUrl == null && it.tileUrl == null }
                         completed++
                         onBatch(current)

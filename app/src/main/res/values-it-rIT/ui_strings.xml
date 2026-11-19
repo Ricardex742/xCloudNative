@@ -1255,4 +1255,5 @@
     <string name="ui_195c60bb232551a9">"Audio"</string>
     <string name="ui_80b26f920e37575b">"Comandi"</string>
     <string name="ui_5d951376c42f3cf3">"Altre opzioni"</string>
+    <string name="ui_97ed90f5456061da">"La modifica del bitrate ricarica lo streaming della partita in corso. Xbox decide il bitrate ricevuto."</string>
 </resources>

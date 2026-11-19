@@ -70,6 +70,21 @@ class QuickSettingsNavigationTest {
         assertFalse(latest().isShowing);assertEquals(0,returned);assertEquals(0,changes);assertEquals(before,store.read())
         val root=panel.show();root.cancel();shadowOf(Looper.getMainLooper()).idle();assertEquals(1,returned)
     }
+    @Test fun liveBitrateChangesOnlyTheCurrentTransportAfterConfirmation() {
+        var back=0
+        val requests=mutableListOf<Int>()
+        fun open()=SessionOptionsPanel.liveBitrate(activity,0,{ back++ }) { requests+=it }
+        click(open(),"Automático")
+        assertEquals(1,back)
+        assertTrue(requests.isEmpty())
+        click(open(),"  8.0 Mbps")
+        assertTrue(requests.isEmpty())
+        assertTrue(all(latest().body).filterIsInstance<TextView>().any { it.text.toString().contains("recarrega a transmissão da partida atual") })
+        latest().cancel();shadowOf(Looper.getMainLooper()).idle()
+        click(latest(),"  6.0 Mbps")
+        click(latest(),"RECARREGAR TRANSMISSÃO")
+        assertEquals(listOf(6000),requests)
+    }
     @Test fun closeAlsoDismissesAParentKeptOpenByAPreviewWithoutCallingBack() {
         var backs=0
         val parent=ConsoleDialogs.menu(activity,"Parent",emptyList(),onBack={backs++})

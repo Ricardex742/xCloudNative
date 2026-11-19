@@ -79,6 +79,16 @@ object StoreMetadata {
     }
 }
 
+/** A partial response can fill gaps without erasing artwork from another request. */
+internal fun GameTitle.withMetadataFallback(previous: GameTitle) = copy(
+    name = if (name == titleId) previous.name else name,
+    productId = productId ?: previous.productId,
+    posterUrl = posterUrl ?: previous.posterUrl,
+    tileUrl = tileUrl ?: previous.tileUrl,
+    heroUrl = heroUrl ?: previous.heroUrl,
+    seriesOptimized = seriesOptimized || previous.seriesOptimized
+)
+
 /** Public art only. A cached product never adds a playable title or restores account entitlements. */
 class CatalogCache(private val file: File) {
     /** A visual hint before authentication; callers must validate launch access with the live catalog. */
@@ -90,7 +100,8 @@ class CatalogCache(private val file: File) {
     @Synchronized fun save(games: List<GameTitle>) {
         try {
             val products = JSONArray()
-            games.filter { it.productId != null && (it.posterUrl != null || it.tileUrl != null) }.forEach { game ->
+            games.zip(restore(games)) { fresh, cached -> fresh.withMetadataFallback(cached) }
+                .filter { it.productId != null && (it.posterUrl != null || it.tileUrl != null) }.forEach { game ->
                 products.put(JSONObject().put("StoreId", game.productId).put("XCloudTitleId", game.titleId)
                     .put("ProductTitle", game.name).put("Image_Poster", game.posterUrl).put("Image_Tile", game.tileUrl)
                     .put("Image_Hero", game.heroUrl).put("SeriesOptimized", game.seriesOptimized))

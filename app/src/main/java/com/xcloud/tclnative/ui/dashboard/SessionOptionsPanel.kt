@@ -14,6 +14,27 @@ class SessionOptionsPanel(private val context: Context,private val store: Sessio
     private val back: () -> Unit) {
     private var selectedGame=gameId
     private var returnTo: () -> Unit={ show() }
+    companion object {
+        private val bitrateOptions = listOf(0,1000,2000,3000,5000,6000,8000,10000,12000,15000,20000,30000,50000)
+        private fun bitrateLabel(kbps: Int) = if(kbps==0) UiText.text("Automático") else "${kbps/1000.0} Mbps"
+
+        internal fun liveBitrate(context: Context,current: Int,back: () -> Unit,reload: (Int) -> Unit): ConsoleDialog {
+            val notice=UiText.text("Alterar o bitrate recarrega a transmissão da partida atual. O Xbox decide o bitrate recebido.")
+            return ConsoleDialog(context,UiText.text("Bitrate máximo")).apply {
+                body.addView(text(notice,20,color=DashboardTheme.muted))
+                bitrateOptions.forEach { value ->
+                    val row=addMenuItem(UiText.text("{0}  {1}",UiText.nested(if(value==current) "✓" else "○"),UiText.nested(bitrateLabel(value)))) {
+                        if(value==current) back() else ConsoleDialogs.message(context,UiText.text("Bitrate máximo: {0}",UiText.nested(bitrateLabel(value))),notice,
+                            listOf(ConsoleAction(UiText.text("Voltar")) { liveBitrate(context,current,back,reload) },
+                                ConsoleAction(UiText.text("Recarregar transmissão — experimental")) { reload(value) }),
+                            onCancel={ liveBitrate(context,current,back,reload) })
+                    }
+                    if(value==current) focusFirst(row)
+                }
+                addAction(UiText.text("Voltar"),back);setOnCancelListener { back() };show()
+            }
+        }
+    }
     fun show(): ConsoleDialog = ConsoleDialog(context,UiText.text("Opções das partidas")).apply {
         appendTo(this) { this@SessionOptionsPanel.show() }
         addAction(UiText.text("Voltar"),back);setOnCancelListener { back() };show()
@@ -57,10 +78,9 @@ class SessionOptionsPanel(private val context: Context,private val store: Sessio
         }
     fun bitrate(): ConsoleDialog {
         val current=store.read(selectedGame)
-        val values=listOf(0,1000,2000,3000,5000,6000,8000,10000,12000,15000,20000,30000,50000)
         return choices(UiText.text("Bitrate máximo"),UiText.text("Automático mantém o orçamento do perfil de vídeo. Um teto manual é independente da resolução. Valores maiores exigem mais rede e podem piorar a estabilidade. O Xbox decide o bitrate recebido. Vale na próxima partida."),
-            values.map { (if(it==0) UiText.text("Automático") else "${it/1000.0} Mbps") to (it==current.maxBitrateKbps) },SessionOptionField.BITRATE) {
-            store.set(selectedGame,SessionOptionField.BITRATE,values[it])
+            bitrateOptions.map { bitrateLabel(it) to (it==current.maxBitrateKbps) },SessionOptionField.BITRATE) {
+            store.set(selectedGame,SessionOptionField.BITRATE,bitrateOptions[it])
         }
     }
     fun region(): ConsoleDialog {

@@ -1255,4 +1255,5 @@
     <string name="ui_195c60bb232551a9">"Звук"</string>
     <string name="ui_80b26f920e37575b">"Управление"</string>
     <string name="ui_5d951376c42f3cf3">"Другие параметры"</string>
+    <string name="ui_97ed90f5456061da">"Изменение битрейта перезагружает трансляцию текущей игры. Получаемый битрейт определяет Xbox."</string>
 </resources>

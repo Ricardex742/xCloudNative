@@ -24,13 +24,16 @@ object GameMenuPanel {
              hud: (() -> Unit)?=null,audio: (() -> Unit)?=null,mouse: (() -> Unit)?=null,
              controllerProfiles: (() -> Unit)?=null,statisticsOptions: (() -> Unit)?=null,
              recovery: (() -> Unit)?=null,hudToggle: (() -> Unit)?=null,hudVisible: Boolean=false,
-             nativeTouch: (() -> Unit)?=null,xbox: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
+             nativeTouch: (() -> Unit)?=null,xbox: (() -> Unit)?=null,
+             bitrate: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
             image?.let { GameMenuShortcut(ConsoleGlyph.IMAGE,ConsoleAction(UiText.text("Imagem e tela"),it),UiText.text("Imagem")) },
             audio?.let { GameMenuShortcut(ConsoleGlyph.AUDIO,ConsoleAction(UiText.text("Áudio e microfone"),it),UiText.text("Áudio")) },
-            hudToggle?.let { toggle -> GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(
-                UiText.text(if(hudVisible) "Ocultar controle virtual" else "Mostrar controle virtual"),toggle)
-            ) },
-            hud?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("HUD e controles deste jogo"),it),UiText.text("Controles")) },
+            hudToggle?.let { toggle ->
+                val label=UiText.text(if(hudVisible) "Ocultar controle virtual" else "Mostrar controle virtual")
+                GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(label,toggle),label)
+            },
+            hud?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("HUD e controles deste jogo"),it)) },
+            bitrate?.let { GameMenuShortcut(ConsoleGlyph.NETWORK,ConsoleAction(UiText.text("Bitrate máximo"),it)) },
             nativeTouch?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Usar toque nativo nesta partida"),it)) },
             controllerProfiles?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Calibração e remapeamento do controle"),it)) },
             mouse?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Capturar / soltar mouse e teclado — F8"),it)) },

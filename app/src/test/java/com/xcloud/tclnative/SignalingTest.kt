@@ -5,6 +5,7 @@ import com.xcloud.tclnative.diagnostics.PlaybackStage
 import com.xcloud.tclnative.signaling.XCloudSignalingClient
 import com.xcloud.tclnative.webrtc.StreamingPeer
 import com.xcloud.tclnative.webrtc.StreamResolution
+import com.xcloud.tclnative.webrtc.StreamProfile
 import com.xcloud.tclnative.webrtc.LocalIceOfferRetry
 import com.xcloud.tclnative.webrtc.LocalIceUnavailableException
 import com.xcloud.tclnative.catalog.*
@@ -119,10 +120,18 @@ class SignalingTest {
         val client=signaling()
         client.startAndConnectWebRtcSession("real-id",peer) {}.getOrThrow()
         val marker=requests.size
-        client.reconnectExistingSession(peer).getOrThrow()
+        val replacement = object : StreamingPeer by peer {
+            override suspend fun createOfferSdp(): Pair<String, List<IceCandidate>> {
+                val (sdp, candidates)=peer.createOfferSdp()
+                return StreamProfile.receiveSdp(sdp,maxBitrateKbps=6000) to candidates
+            }
+        }
+        client.reconnectExistingSession(replacement).getOrThrow()
         val reload=requests.drop(marker)
         assertEquals(listOf("/session/keepalive","/session/sdp","/session/sdp","/session/ice","/session/ice"),reload.map { it.path })
-        assertEquals("2",JSONObject(reload.single { it.method=="POST" && it.path=="/session/sdp" }.body.clone().readUtf8()).getString("requestId"))
+        val request=JSONObject(reload.single { it.method=="POST" && it.path=="/session/sdp" }.body.clone().readUtf8())
+        assertEquals("2",request.getString("requestId"))
+        assertTrue(request.getString("sdp").contains("b=TIAS:6000000"))
         assertEquals(1,requests.count { it.path=="/v5/sessions/cloud/play" })
         assertEquals(1,requests.count { it.path=="/session/connect" })
         assertFalse(requests.any { it.method=="DELETE" })

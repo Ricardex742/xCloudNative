@@ -1255,4 +1255,5 @@
     <string name="ui_195c60bb232551a9">"音频"</string>
     <string name="ui_80b26f920e37575b">"控制"</string>
     <string name="ui_5d951376c42f3cf3">"更多选项"</string>
+    <string name="ui_97ed90f5456061da">"更改码率会重新加载当前游戏的串流。实际接收的码率由 Xbox 决定。"</string>
 </resources>

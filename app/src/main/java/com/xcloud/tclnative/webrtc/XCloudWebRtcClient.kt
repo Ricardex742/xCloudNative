@@ -27,7 +27,7 @@ class XCloudWebRtcClient(
     private val onRumble: (RumbleCommand) -> Unit = {},
     private val compatibility: Boolean = false,
     private val videoCodec: VideoCodecMode = VideoCodecMode.H264,
-    private val maxBitrateKbps: Int = 0,private val ipPreference: IpPreference = IpPreference.AUTO,
+    internal val maxBitrateKbps: Int = 0,private val ipPreference: IpPreference = IpPreference.AUTO,
     private val nativeKeyboardMouse: Boolean = false,private val microphoneAllowed: Boolean = false,outputGain: Int = 100,
     private val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD,
     private val onServerDisconnect: (XboxServerDisconnect) -> Unit = {}

@@ -74,14 +74,19 @@ class ShortcutStartupTest {
         // Metadata still enforces HTTPS. Seed the HTTP image cache substitute here; actual
         // downloading/decoding and catalog card delivery are covered by DashboardArtworkTest.
         val artUrl="https://art.example/fortnite.png"
+        val otherArtUrl="https://art.example/other.png"
         val image=Bitmap.createBitmap(32,48,Bitmap.Config.RGB_565).apply { eraseColor(Color.BLUE) }
         val artwork=ArtworkBackend.get(app)
         artwork.cache.put(ArtworkRequest.create(artUrl,720,1080),image)
         artwork.cache.put(ArtworkRequest.create(artUrl,1920,1080),image)
         artwork.cache.put(ArtworkRequest.create(artUrl,1280,720),image)
+        val otherImage=Bitmap.createBitmap(32,48,Bitmap.Config.RGB_565).apply { eraseColor(Color.GREEN) }
+        artwork.cache.put(ArtworkRequest.create(otherArtUrl,720,1080),otherImage)
         if(cached) CatalogCache(File(app.cacheDir,"catalog-art-v2.json")).save(listOf(
             com.xcloud.tclnative.signaling.GameTitle("FORTNITE","Fortnite","PRODUCT",posterUrl=artUrl,heroUrl=artUrl)))
         val releaseAuth=java.util.concurrent.CountDownLatch(1)
+        val bulkStarted=java.util.concurrent.CountDownLatch(1)
+        val releaseBulk=java.util.concurrent.CountDownLatch(1)
         server.dispatcher=object: Dispatcher() {
             override fun dispatch(r: RecordedRequest): MockResponse {
                 requests.add(r)
@@ -93,7 +98,18 @@ class ShortcutStartupTest {
                     "/transfer" -> """{"access_token":"test-console"}"""
                     "/v2/titles" -> """{"results":[{"titleId":"FORTNITE","details":{"productTitle":"Fortnite","productId":"PRODUCT","supportedInputTypes":["NativeTouch"]}},{"titleId":"OTHER","details":{"productTitle":"Other","productId":"OTHER-PRODUCT"}}]}"""
                     "/v2/titles/mru" -> """{"results":[{"titleId":"OTHER"},{"titleId":"FORTNITE"}]}"""
-                    "/store/v7.0/products" -> """{"Products":[{"StoreId":"PRODUCT","Image_Poster":{"URL":"$artUrl"}}]}"""
+                    "/store/v7.0/products" -> when(r.requestUrl!!.queryParameter("bigIds")) {
+                        "OTHER-PRODUCT" -> """{"Products":[{"StoreId":"OTHER-PRODUCT","Image_Poster":{"URL":"$otherArtUrl"}}]}"""
+                        else -> {
+                            val bulk=!cached && r.requestUrl!!.queryParameter("bigIds")?.contains(',')==true
+                            if(bulk) {
+                                bulkStarted.countDown()
+                                releaseBulk.await(15,TimeUnit.SECONDS)
+                            }
+                            val name=if(bulk) "Fortnite atualizado" else "Fortnite"
+                            """{"Products":[{"StoreId":"PRODUCT","ProductTitle":"$name","Image_Poster":{"URL":"$artUrl"}}]}"""
+                        }
+                    }
                     else -> return MockResponse().setResponseCode(404)
                 }
                 return MockResponse().setBody(body)
@@ -185,7 +201,33 @@ class ShortcutStartupTest {
             assertTrue(requests.any { it.path=="/v2/titles/mru?mr=25" })
             assertEquals("OTHER",dashboard.selectedGame?.titleId)
             assertEquals(2,all(dashboard).filterIsInstance<androidx.recyclerview.widget.RecyclerView>().single().adapter!!.itemCount)
-        } finally { releaseAuth.countDown(); releaseCleanup.complete(Unit); cleanupScope.cancel(); controller.pause().stop().destroy(); server.shutdown(); TestShortcutActivity.server=null; PreferencesTokenStore(app).clear() }
+            if(!cached) {
+                val bulkDeadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(5)
+                while(bulkStarted.count>0 && System.nanoTime()<bulkDeadline) {
+                    shadowOf(Looper.getMainLooper()).idleFor(16,TimeUnit.MILLISECONDS); Thread.sleep(10)
+                }
+                assertEquals("The older bulk request must start before the second game",0L,bulkStarted.count)
+                val card=all(dashboard).single { it.isClickable && it.contentDescription=="Other" }
+                assertTrue(card.performClick())
+                stopNativeTransportBeforeItStarts(activity)
+                assertEquals(View.VISIBLE,queue.visibility)
+                fun hasPoster()=all(queue).filterIsInstance<FixedArtworkView>().any { (it.drawable as? BitmapDrawable)?.bitmap===otherImage }
+                val otherArtDeadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(8)
+                while(!hasPoster() && System.nanoTime()<otherArtDeadline) {
+                    shadowOf(Looper.getMainLooper()).idleFor(16,TimeUnit.MILLISECONDS); Thread.sleep(10)
+                }
+                assertTrue("The second game's own lookup must load its cover",hasPoster())
+                fun titles()=org.robolectric.util.ReflectionHelpers.getField<List<com.xcloud.tclnative.signaling.GameTitle>>(activity,"currentGames")
+                releaseBulk.countDown()
+                val olderBatchDeadline=System.nanoTime()+TimeUnit.SECONDS.toNanos(8)
+                while(titles().first().name!="Fortnite atualizado" && System.nanoTime()<olderBatchDeadline) {
+                    shadowOf(Looper.getMainLooper()).idleFor(16,TimeUnit.MILLISECONDS); Thread.sleep(10)
+                }
+                assertEquals("Fortnite atualizado",titles().first().name)
+                assertTrue("An older partial catalog response must preserve the cover in the queue",hasPoster())
+                assertEquals(otherArtUrl,titles().single { it.titleId=="OTHER" }.posterUrl)
+            }
+        } finally { releaseAuth.countDown(); releaseBulk.countDown(); releaseCleanup.complete(Unit); cleanupScope.cancel(); controller.pause().stop().destroy(); server.shutdown(); TestShortcutActivity.server=null; PreferencesTokenStore(app).clear() }
     }
     @Test fun ordinarySavedSessionStartupShowsTheAppIconWithoutBuildingLoginOrLoadingGameArt() {
         val app=RuntimeEnvironment.getApplication()

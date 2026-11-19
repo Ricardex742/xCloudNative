@@ -1255,4 +1255,5 @@
     <string name="ui_195c60bb232551a9">"音訊"</string>
     <string name="ui_80b26f920e37575b">"控制"</string>
     <string name="ui_5d951376c42f3cf3">"更多選項"</string>
+    <string name="ui_97ed90f5456061da">"變更位元速率會重新載入目前遊戲的串流。實際接收的位元速率由 Xbox 決定。"</string>
 </resources>

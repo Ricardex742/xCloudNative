@@ -1255,4 +1255,5 @@
     <string name="ui_195c60bb232551a9">"Audio"</string>
     <string name="ui_80b26f920e37575b">"Controles"</string>
     <string name="ui_5d951376c42f3cf3">"Más opciones"</string>
+    <string name="ui_97ed90f5456061da">"Cambiar la tasa de bits recarga la transmisión de la partida actual. Xbox decide la tasa de bits recibida."</string>
 </resources>

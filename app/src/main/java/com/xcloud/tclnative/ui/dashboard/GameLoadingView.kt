@@ -68,7 +68,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
     }
     private var game: GameTitle? = null
     private var lastBackdrop: String? = null
-    private var lastPoster: String? = null
+    private var lastPosters = emptyList<String>()
     private var startedAt = 0L
     var phase = LoadingPhase.PREPARING
         private set
@@ -112,10 +112,19 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
                 art.load(backdrop,hero,if(modest) 640 else 1024,if(modest) 360 else 576)
             } else art.cancel(backdrop)
         }
-        val portrait = if(scene.playStation || scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.XBOX_360_NXE || scene==ConsoleScene.XBOX_360_METRO) value.tileUrl ?: value.posterUrl else value.posterUrl ?: value.tileUrl
-        if (portrait != lastPoster) {
-            lastPoster = portrait
-            art.load(poster, portrait) { ready -> posterFallback.visibility = if (ready) View.GONE else View.VISIBLE }
+        val square = scene.playStation || scene==ConsoleScene.XBOX_ONE || scene==ConsoleScene.XBOX_SERIES || scene==ConsoleScene.XBOX_360_NXE || scene==ConsoleScene.XBOX_360_METRO
+        val portraits = (if (square) listOfNotNull(value.tileUrl, value.posterUrl, value.heroUrl)
+                         else listOfNotNull(value.posterUrl, value.tileUrl, value.heroUrl)).distinct()
+        if (portraits != lastPosters) {
+            lastPosters = portraits
+            posterFallback.visibility = View.VISIBLE
+            fun load(index: Int) {
+                art.load(poster, portraits.getOrNull(index), notifyPlaceholder = false) { ready ->
+                    if (ready) posterFallback.visibility = View.GONE
+                    else if (index + 1 < portraits.size) load(index + 1)
+                }
+            }
+            load(0)
         }
         badges.bind(value.gamePass, value.seriesOptimized, currentScale())
     }
@@ -189,7 +198,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
     fun cancelFromController() { cancelButton.performClick() }
     fun dismiss(forPlayback: Boolean = false) {
         visibility = View.GONE; queue = null
-        art.pause(); lastBackdrop=null; lastPoster=null
+        art.pause(); lastBackdrop=null; lastPosters=emptyList();posterFallback.visibility=View.VISIBLE
         if (forPlayback) artworkBackend.trimForPlayback()
     }
     private fun secondaryColor()=if(scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_360_METRO) 0xff42532d.toInt() else if(scene==ConsoleScene.XBOX_ORIGINAL) 0xffb9df85.toInt() else 0xffd0d5d9.toInt()
@@ -243,7 +252,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         spinner.indeterminateTintList=ColorStateList.valueOf(if(scene.playStation) Color.WHITE else if(scene==ConsoleScene.XBOX_360) 0xff4d761e.toInt() else 0xff8bdc42.toInt())
         if(scene==ConsoleScene.XBOX_360_NXE) note.setTextColor(0xff263024.toInt())
         geometry=0L;requestLayout()
-        if(changed) { lastBackdrop=null;lastPoster=null;game?.let(::setGame) }
+        if(changed) { lastBackdrop=null;lastPosters=emptyList();game?.let(::setGame) }
         if(game!=null) render(lastRenderedAt)
     }
     private fun currentScale() = consoleReferenceScale(width, height).takeIf { it > 0 } ?: 1f

@@ -1255,4 +1255,5 @@
     <string name="ui_195c60bb232551a9">"Ses"</string>
     <string name="ui_80b26f920e37575b">"Kontroller"</string>
     <string name="ui_5d951376c42f3cf3">"Diğer seçenekler"</string>
+    <string name="ui_97ed90f5456061da">"Bit hızını değiştirmek mevcut oyunun yayınını yeniden yükler. Alınan bit hızını Xbox belirler."</string>
 </resources>

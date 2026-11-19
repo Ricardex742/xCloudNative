@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 107
-        versionName = "0.40.12-shortcut-bar"
+        versionCode = 108
+        versionName = "0.40.13-bitrate-artwork"
     }
 
     signingConfigs {

@@ -104,13 +104,15 @@ class GameShortcutBarTest {
         var pointers = 0
         var statistics = 0
         var ended = 0
+        var hudVisible = false
         lateinit var gameplay: GameTouchView
         lateinit var bar: GameShortcutBar
         fun open(position: GameShortcutBar.Position) {
             val back = { open(bar.position) }
             val shortcuts = GameMenuPanel.shortcuts(image = {
                 ConsoleDialogs.menu(activity, "Imagem e tela", emptyList(), onBack = back)
-            }, audio = {}, hud = {}, hudToggle = {}, statistics = { statistics++ }, diagnostics = {},
+            }, audio = {}, hud = {}, hudToggle = { hudVisible = !hudVisible }, hudVisible = hudVisible,
+                statistics = { statistics++ }, diagnostics = {},
                 recovery = {}, statisticsOptions = {}, controllerProfiles = {}, xbox = {})
             gameplay.setMenuCovered(true)
             bar = GameShortcutBar(activity, shortcuts, position, safeArea, { ended++ }, back).apply {
@@ -143,10 +145,14 @@ class GameShortcutBarTest {
             val more = control(root, "Mais opções")
             val image = control(root, "Imagem e tela")
             val resume = control(root, "Retomar partida")
-            for (view in listOf(resume, image, control(root, "Áudio e microfone"), control(root, "HUD e controles deste jogo"), more)) {
+            val virtual = control(root, "Mostrar controle virtual") as TextView
+            assertTrue(virtual.isShown)
+            assertFalse(control(root, "HUD e controles deste jogo").isShown)
+            assertEquals(0, (0 until virtual.layout.lineCount).sumOf { virtual.layout.getEllipsisCount(it) })
+            for (view in listOf(resume, image, control(root, "Áudio e microfone"), virtual, more)) {
                 val target = bounds(root, view)
                 assertTrue("${view.contentDescription} under cutout: $target", target.left >= cutout.safeInsetLeft)
-                assertTrue(target.right < width / 2)
+                assertTrue(target.right < width * .6f)
                 assertTrue(target.width() >= 144 && target.height() >= 144)
             }
             capture("live-shortcuts-expanded", gameplay, root)
@@ -168,6 +174,7 @@ class GameShortcutBarTest {
             tap(returnedRoot, moreTarget.exactCenterX(), moreTarget.exactCenterY())
             assertTrue(bar.position.more)
             layout(returnedRoot, insets)
+            assertTrue(control(returnedRoot, "HUD e controles deste jogo").isShown)
             val stats = control(returnedRoot, "Mostrar / ocultar estatísticas")
             assertTrue(bounds(returnedRoot, stats).top >= moreTarget.bottom)
             capture("live-shortcuts-more", gameplay, returnedRoot)
@@ -183,6 +190,16 @@ class GameShortcutBarTest {
             assertFalse(bar.isShowing)
             assertEquals(View.VISIBLE, arrow.visibility)
             assertEquals(0, pointers)
+
+            open(GameShortcutBar.Position())
+            control(bar.window!!.decorView, "Mostrar controle virtual").performClick()
+            assertTrue(hudVisible)
+            open(GameShortcutBar.Position())
+            val hide = control(bar.window!!.decorView, "Ocultar controle virtual") as TextView
+            assertTrue(hide.isShown)
+            assertEquals(0, (0 until hide.layout.lineCount).sumOf { hide.layout.getEllipsisCount(it) })
+            hide.performClick()
+            assertFalse(hudVisible)
 
             fun requestExit() {
                 open(GameShortcutBar.Position(more = true))

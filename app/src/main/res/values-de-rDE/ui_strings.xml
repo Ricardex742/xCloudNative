@@ -1255,4 +1255,5 @@
     <string name="ui_195c60bb232551a9">"Audio"</string>
     <string name="ui_80b26f920e37575b">"Steuerung"</string>
     <string name="ui_5d951376c42f3cf3">"Mehr Optionen"</string>
+    <string name="ui_97ed90f5456061da">"Eine Änderung der Bitrate lädt den Stream der aktuellen Sitzung neu. Xbox bestimmt die empfangene Bitrate."</string>
 </resources>

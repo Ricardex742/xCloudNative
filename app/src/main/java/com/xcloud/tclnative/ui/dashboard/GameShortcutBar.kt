@@ -64,7 +64,8 @@ internal class GameShortcutBar(
             shortcuts.filter { it.barLabel != null }.forEach { item ->
                 val button = toolbarButton(item.icon, item.barLabel, item.action.label) { open(item.action, false) }
                 actions.add(button)
-                addView(button, LinearLayout.LayoutParams(px(76), -1, 1f))
+                val preferredWidth=if(item.icon==ConsoleGlyph.CONTROLLER) 94 else 76
+                addView(button, LinearLayout.LayoutParams(px(preferredWidth), -1, 1f))
             }
             addView(more, LinearLayout.LayoutParams(px(80), -1, 1f))
         }
@@ -124,7 +125,7 @@ internal class GameShortcutBar(
             contentDescription = description
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
             ellipsize = TextUtils.TruncateAt.END
-            setPadding(px(4), px(4), px(4), px(4))
+            setPadding(px(4), px(3), px(4), px(3))
             val drawable = ConsoleIconDrawable(icon, px(20), ink)
             if (label == null) {
                 // An icon-only control is centered inside the same 48 dp width as the closed arrow.

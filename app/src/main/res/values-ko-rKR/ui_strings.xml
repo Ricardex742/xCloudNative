@@ -1255,4 +1255,5 @@
     <string name="ui_195c60bb232551a9">"오디오"</string>
     <string name="ui_80b26f920e37575b">"조작"</string>
     <string name="ui_5d951376c42f3cf3">"추가 옵션"</string>
+    <string name="ui_97ed90f5456061da">"비트레이트를 변경하면 현재 게임의 스트리밍을 다시 불러옵니다. 수신 비트레이트는 Xbox에서 결정합니다."</string>
 </resources>

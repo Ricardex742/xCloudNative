@@ -142,8 +142,10 @@ class CatalogTest {
             val cache = CatalogCache(java.io.File(dir, "art.json"))
             cache.save(listOf(GameTitle("FORZA", "Forza Horizon 5", "A", "https://example.com/cover.jpg",
                 gamePass = true, heroUrl = "https://example.com/background.jpg", seriesOptimized = true)))
+            cache.save(listOf(GameTitle("FORZA", "FORZA", "A"))) // Partial hydration finishing after a successful lookup.
             val restored = cache.restore(listOf(GameTitle("FORZA", "FORZA", "A"), GameTitle("NEW", "New", "B")))
             assertEquals("Forza Horizon 5", restored.first().name)
+            assertEquals("https://example.com/cover.jpg", restored.first().posterUrl)
             assertEquals("https://example.com/background.jpg", restored.first().heroUrl)
             assertTrue(restored.first().seriesOptimized)
             assertFalse(restored.first().gamePass)

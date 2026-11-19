@@ -36,11 +36,13 @@ import com.xcloud.tclnative.ui.dashboard.SettingsPage
 import com.xcloud.tclnative.catalog.CatalogCard
 import com.xcloud.tclnative.catalog.OfficialGalleryCards
 import com.xcloud.tclnative.catalog.CatalogCache
+import com.xcloud.tclnative.catalog.withMetadataFallback
 import java.io.File
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
 import com.xcloud.tclnative.ui.dashboard.GameMenuPanel
 import com.xcloud.tclnative.ui.dashboard.GameShortcutBar
+import com.xcloud.tclnative.ui.dashboard.SessionOptionsPanel
 import com.xcloud.tclnative.ui.dashboard.ConsoleLoginView
 import com.xcloud.tclnative.ui.dashboard.MicrosoftLoginDialog
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialogs
@@ -92,7 +94,7 @@ open class MainActivity : Activity() {
     private var transmissionRecovery: TransmissionRecoveryState?=null
     private var transmissionReloadJob: Job?=null
     private var recoverImage: (() -> Unit)?=null
-    private var reloadTransmission: (() -> Unit)?=null
+    private var reloadTransmission: ((Int?) -> Unit)?=null
     private lateinit var settingsStore: PlaybackSettingsStore
     private var playbackSettings = PlaybackSettings()
     private lateinit var controlPanel: LinearLayout
@@ -614,13 +616,15 @@ open class MainActivity : Activity() {
             syncHomeShortcuts()
             launchPendingShortcut()
             val catalog = createCatalogService(catalogCache,catalogWork::await)
+            val baseIds=allGames.mapTo(hashSetOf()) { it.titleId }
             val nativeMetadata = async {
                 catalog.hydrate(allGames, onProgress = { progress -> withContext(Dispatchers.Main) {
                     if (dashboard === view) view.setMetadataProgress(progress)
                 } }) { hydrated -> withContext(Dispatchers.Main) {
                     if (dashboard === view) {
-                        val baseIds=allGames.map { it.titleId }.toSet()
-                        currentGames = hydrated + currentGames.filter { it.titleId !in baseIds }
+                        val known = currentGames.associateBy { it.titleId }
+                        currentGames = hydrated.map { fresh -> known[fresh.titleId]?.let(fresh::withMetadataFallback) ?: fresh } +
+                            currentGames.filter { it.titleId !in baseIds }
                         if(controlPanel.visibility==View.VISIBLE) view.updateMetadata(currentGames)
                         refreshLoadingArt(); syncHomeShortcuts()
                     }
@@ -1078,6 +1082,8 @@ open class MainActivity : Activity() {
         val back: () -> Unit = { if(generation==playbackGeneration) showGameMenu(toolbar?.position) }
         val active=transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE
         val touch=active && InputDeviceProfile.read(this).touchDevice
+        val client=webrtcClient
+        val reload=reloadTransmission
         val liveSettings=PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{},{},{},
             liveVideoMode=sessionSettings?.videoMode ?: playbackSettings.videoMode,
             microphone=if(active && webrtcClient?.canUseMicrophone()==true) ::toggleMicrophone else null,
@@ -1096,6 +1102,12 @@ open class MainActivity : Activity() {
             nativeTouch=if(active && currentTouchMode!=TouchMode.NATIVE && webrtcClient?.canUseNativeTouch()==true) ({ enableNativeTouch() }) else null,
             diagnostics={ showLiveDiagnostics(back) },
             hud=if(touch) ({ showGameHudSettings(back) }) else null,
+            bitrate=if(active && client!=null && reload!=null) ({
+                SessionOptionsPanel.liveBitrate(this,client.maxBitrateKbps,back) { kbps ->
+                    if(generation==playbackGeneration && webrtcClient===client && reloadTransmission===reload &&
+                        transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) reload(kbps)
+                }
+            }) else null,
             controllerProfiles=if(active) ({ showControllerProfiles(back) }) else null,
             mouse=if(!active || sessionDesktopMode==DesktopInputMode.OFF) null else ({
                 auxiliaryHandler.post { setDesktopCapture(!desktopCaptured) }
@@ -1366,6 +1378,7 @@ open class MainActivity : Activity() {
             tracker.timeline = timeline
             tracker.submittedFrames = { surfaceRenderer.probeVideoHealth().submittedToken }
             var transportFailure = CompletableDeferred<Exception>()
+            var maxBitrateKbps = sessionOptions.maxBitrateKbps
             val recoveryState = attempt.recovery
             transmissionRecovery=recoveryState
             val playbackScope=this
@@ -1457,7 +1470,7 @@ open class MainActivity : Activity() {
                     }, lowLatencyVideo = settings.videoMode.lowLatency, streamResolution = settings.resolution,
                     nativeTouch = touchMode==TouchMode.NATIVE,
                     onRumble = { command -> if(current() && recoveryState.phase==TransmissionRecoveryState.Phase.ACTIVE) rumble.play(command) },compatibility=compatible,
-                    videoCodec=settings.videoCodec,maxBitrateKbps=sessionOptions.maxBitrateKbps,
+                    videoCodec=settings.videoCodec,maxBitrateKbps=maxBitrateKbps,
                     ipPreference=settings.ipPreference,nativeKeyboardMouse=sessionDesktopMode==DesktopInputMode.NATIVE,
                     microphoneAllowed=settings.microphone,outputGain=playbackSettings.audioGain,audioMode=settings.audioMode,
                     onServerDisconnect={ notice -> runOnUiThread { if(current()) failure.complete(XboxServerDisconnectException(notice)) } }).also { allocatedRtc=it } }
@@ -1522,8 +1535,9 @@ open class MainActivity : Activity() {
                         }
                     } else Toast.makeText(this@MainActivity,UiText.text("Use Recarregar transmissão para tentar reconectar."),Toast.LENGTH_SHORT).show()
                 }
-                reloadTransmission=reload@ {
+                reloadTransmission=reload@ { bitrate ->
                     val token=recoveryState.begin() ?: return@reload
+                    maxBitrateKbps=bitrate ?: maxBitrateKbps
                     timeline.beginReconnect(token)
                     val previousInput=rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics()
                     val savedTouch=pendingRecoveryTouch ?: currentTouchMode
@@ -1718,16 +1732,17 @@ open class MainActivity : Activity() {
     }
 
     private fun beginLoading(game: GameTitle) {
-        pendingLoadingGame = game
-        queuePanel.begin(game)
+        val latest=currentGames.firstOrNull { it.titleId==game.titleId }?.withMetadataFallback(game) ?: game
+        pendingLoadingGame = latest
+        queuePanel.begin(latest)
         loadingArtJob?.cancel()
-        if(game.posterUrl==null && game.tileUrl==null) loadingArtJob=mainScope.launch {
+        if(latest.posterUrl==null && latest.tileUrl==null) loadingArtJob=mainScope.launch {
             // Resolve only this validated title; bulk catalog work remains paused while playing.
-            createCatalogService().hydrate(listOf(game)) { enriched -> withContext(Dispatchers.Main) {
+            createCatalogService().hydrate(listOf(latest)) { enriched -> withContext(Dispatchers.Main) {
                 val fresh=enriched.firstOrNull() ?: return@withContext
                 if(fresh.posterUrl==null && fresh.tileUrl==null) return@withContext
                 if(pendingLoadingGame?.titleId==game.titleId) {
-                    currentGames=currentGames.map { if(it.titleId==game.titleId) fresh else it }
+                    currentGames=currentGames.map { if(it.titleId==game.titleId) fresh.withMetadataFallback(it) else it }
                     refreshLoadingArt()
                     val snapshot=currentGames
                     withContext(Dispatchers.IO) { catalogCache.save(snapshot) }
@@ -1960,7 +1975,7 @@ open class MainActivity : Activity() {
         if(showPlaytime) dashboard?.let { refreshCloudPlaytime(it,duringPlayback=true) }
         val playtime=dashboard?.cloudPlaytimeSnapshot() ?: CloudPlaytime()
         com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.constrain(statsView,rootLayout.width,rootLayout.height)
-        statsView.text=surfaceRenderer.frameGenerationSummary()?.let { "$it\n" }.orEmpty()+if(statistics.mode==2) playtime.label+"\n"+metrics.overlay(latestInput,"",settings.resolution,settings.videoMode==VideoMode.COMPATIBILITY)+
+        statsView.text=surfaceRenderer.frameGenerationSummary()?.let { "$it\n" }.orEmpty()+if(statistics.mode==2) playtime.label+"\n"+metrics.overlay(latestInput,"",settings.resolution,settings.videoMode==VideoMode.COMPATIBILITY,webrtcClient?.maxBitrateKbps ?: 0)+
             surfaceRenderer.diagnostics()+"\n"+(webrtcClient?.latencyDiagnostics() ?: "")
             else CustomStatistics.format(metrics,latestInput,statisticsSettings,playtime)
     }
@@ -1968,14 +1983,14 @@ open class MainActivity : Activity() {
     private fun showTransmissionRecovery(onBack: () -> Unit) {
         if(reloadTransmission==null) return
         if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) { showTransmissionInterrupted();return }
-        com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.show(this,{ recoverImage?.invoke() },{ reloadTransmission?.invoke() },onBack)
+        com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.show(this,{ recoverImage?.invoke() },{ reloadTransmission?.invoke(null) },onBack)
     }
     private fun showTransmissionInterrupted() {
         if (!activityVisible) return
         (gameMenuDialog as? GameShortcutBar)?.dismiss()
         videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         videoRecoveryDialog=com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.failed(this,
-            { reloadTransmission?.invoke() },{ cancelPlayback() },::showGameMenu,
+            { reloadTransmission?.invoke(null) },{ cancelPlayback() },::showGameMenu,
             sessionEnded=transmissionRecovery?.phase==TransmissionRecoveryState.Phase.SESSION_ENDED).also { dialog ->
                 dialog.setOnDismissListener { if(videoRecoveryDialog===dialog) videoRecoveryDialog=null }
             }
