@@ -18,7 +18,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão no código desta branch: **0.40.7-streaming-lab**, versionCode **102**, usando a identidade de atualização existente. Conferir o build efetivamente aprovado antes da entrega.
+- Versão no código desta branch: **0.40.8-validation**, versionCode **103**, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
@@ -240,3 +240,12 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - O diagnóstico identifica os tipos HDR anunciados pelo Android. A confirmação de HDR, Dolby Vision, baixa latência de TV, sincronismo A/V e desempenho físico depende da negociação, do pipeline e de aparelhos. O ADB não listou dispositivo disponível para a candidata.
 - [Build 44450815018](https://github.com/Ricardex742/xCloudNative/actions/runs/44450815018), commit `0279bb7b832e83fb417b7fdef5e7aa7f0cbdcd46`. **861 testes JVM** sem falhas, erros ou ignorados. Lint, traduções, testes Python e cinco validadores gráficos em software aprovados.
 - [Artefato do APK 102](https://github.com/Ricardex742/xCloudNative/actions/runs/44450815018/artifacts/14495469805). O APK baixado foi conferido com o SHA-256 do build, depuração desabilitada, pacote `com.xcloud.tclnative` e certificado permanente. A versão é **0.40.7-streaming-lab**. APK SHA-256 `81e30736f2dc528f340fb4cee7550fb13071eb48ceec7a0631898e88d42d3996`. ZIP SHA-256 `8831083683b918af3eeb753c3b91119b56d6c7ee94c125c9227dabe42f7bc27e`.
+
+## Sexta etapa do plano de otimização
+
+- O pacote 102 inferia `android.hardware.wifi` como obrigatório pela permissão de estado de rede. A versão 103 torna Wi-Fi opcional para catálogos que filtram aparelhos pelo manifesto. O build verifica a declaração no APK.
+- [Build 44453124428](https://github.com/Ricardex742/xCloudNative/actions/runs/44453124428), commit `2eccc9037ec669e4b59c3af66b7f7f9032736b21`. **861 testes JVM** sem falhas, erros ou ignorados, lint obrigatório, traduções, 10 testes de assinatura e cinco verificadores gráficos em software aprovados. A análise ampliada do lint manteve os sete erros já registrados.
+- A reexecução local com o mesmo código de reprodução aprovou a suíte e gerou 530 capturas da matriz de celular e 161 da matriz de composições. A inspeção de PS4/PS5 incluiu paisagem com barras e recortes simulados e referência de TV. Sete replays sintéticos de 216.000 quadros terminaram com zero referências pendentes de buffers simulados.
+- [Artefato do APK 103](https://github.com/Ricardex742/xCloudNative/actions/runs/44453124428/artifacts/14497152475). O ZIP e o APK baixados conferem com o build. O pacote `com.xcloud.tclnative` mantém o certificado permanente, depuração desabilitada, minSdk 24 e targetSdk 34. Foram conferidos os launchers móvel e Leanback, as exclusões de backup e transferência e o alinhamento ELF/ZIP em 16 KiB para ARM64 e x86_64.
+- APK SHA-256 `e239293763a1d9ef6a334d97253caff961e4f60cf583d3287fd90b0981fdaa0a`. ZIP SHA-256 `df7e07870a636897207fe455d348f27d352443e90a508d1bb8bcb0a1b2941002`.
+- A candidata está na feature branch. O ADB não listou aparelho conectado. Instalação como atualização, runtime de 16 KiB, imersão e controles físicos, partida e fila no serviço, medição térmica e latência até a tela continuam pendentes.
