@@ -101,6 +101,7 @@ jobs:
           badging=$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk")
           printf '%s\n' "$badging" | grep -F "package: name='com.xcloud.tclnative'"
           printf '%s\n' "$badging" | grep -Fx "sdkVersion:'24'"
+          printf '%s\n' "$badging" | grep -F "uses-feature-not-required: name='android.hardware.wifi'"
           sha256sum "$apk" | tee "$apk.sha256"
           printf 'path=%s\nartifact=%s\n' "$apk" "$artifact" >> "$GITHUB_OUTPUT"
           {
