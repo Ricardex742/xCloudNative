@@ -167,7 +167,7 @@ open class MainActivity : Activity() {
     private val televisionInput by lazy { InputDeviceProfile.read(this).television }
     private val deviceListener=object : InputManager.InputDeviceListener {
         override fun onInputDeviceAdded(deviceId: Int) {}
-        override fun onInputDeviceChanged(deviceId: Int) { removeController(deviceId) }
+        override fun onInputDeviceChanged(deviceId: Int) = onInputDeviceRemoved(deviceId)
         override fun onInputDeviceRemoved(deviceId: Int) {
             if(preferredControllerId==deviceId) preferredControllerId=null
             removeController(deviceId)
@@ -1433,8 +1433,7 @@ open class MainActivity : Activity() {
         if (view != null && controlPanel.visibility == View.VISIBLE && queuePanel.visibility != View.VISIBLE) {
             if(event.deviceId>=0 && event.deviceId!=preferredControllerId && event.action==KeyEvent.ACTION_DOWN &&
                 AndroidGamepadPolicy.supportsGamepad(event.source) &&
-                (!televisionInput || AndroidGamepadPolicy.confirmsGamepad(event) ||
-                    event.device?.let(AndroidGamepadPolicy::canReserveTvSlot)==true)) preferredControllerId=event.deviceId
+                (!televisionInput || AndroidGamepadPolicy.confirmsGamepad(event))) preferredControllerId=event.deviceId
             if (view.handleKey(event)) return true
             if (event.keyCode == KeyEvent.KEYCODE_BACK) {
                 if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) view.back()
@@ -1543,10 +1542,15 @@ open class MainActivity : Activity() {
                 resetController()
                 controllers.beginSession(settings.localCoOp,touchMode!=TouchMode.OFF || sessionDesktopMode!=DesktopInputMode.OFF)
                 usbDirect.source?.let { controllers.slot(it) }
-                InputDevice.getDeviceIds().asSequence().mapNotNull(InputDevice::getDevice).filter { !usbDirect.ownsAndroid(it.id) }.filter {
-                    AndroidGamepadPolicy.supportsGamepad(it.sources) && (!televisionInput ||
-                        it.id==preferredControllerId || AndroidGamepadPolicy.canReserveTvSlot(it))
-                }.sortedWith(compareBy<InputDevice> { it.id!=preferredControllerId }.thenBy { it.id }).forEach { controllers.slot(it.id) }
+                // A TV shortcut can start with stale or misleading Android device capabilities.
+                // Leave Android slots unassigned until input unless the catalog selected a pad.
+                val androidIds = if (!televisionInput) InputDevice.getDeviceIds()
+                    else if (origin == PlaybackOrigin.CATALOG) listOfNotNull(preferredControllerId).toIntArray()
+                    else intArrayOf()
+                androidIds.asSequence().mapNotNull(InputDevice::getDevice)
+                    .filter { !usbDirect.ownsAndroid(it.id) && AndroidGamepadPolicy.supportsGamepad(it.sources) }
+                    .sortedWith(compareBy<InputDevice> { it.id != preferredControllerId }.thenBy { it.id })
+                    .forEach { controllers.slot(it.id) }
                 val primary = controllers.sourceFor(0)
                 val source = when (primary) {
                     is ControllerSource.Android -> "ANDROID"
@@ -2082,7 +2086,7 @@ open class MainActivity : Activity() {
         controllers.existingSlot(android)?.let { return it }
         val hasPrimary=controllers.sourceFor(0)!=null
         if(hasPrimary && !controllers.coOp) return null
-        if(deviceId>=0 && (confirmedGamepad || InputDevice.getDevice(deviceId)?.let(AndroidGamepadPolicy::canReserveTvSlot)==true)) {
+        if(deviceId>=0 && confirmedGamepad) {
             return controllers.slot(android)
         }
         return 0.takeUnless { hasPrimary }
@@ -2225,11 +2229,8 @@ open class MainActivity : Activity() {
         if(event.isFromSource(InputDevice.SOURCE_MOUSE) && handleDesktopMouse(event)) return true
         if (gameplayInputEnabled() &&
             event.isFromSource(InputDevice.SOURCE_JOYSTICK) && event.action == MotionEvent.ACTION_MOVE) {
-            val slot=controllerSlot(event.deviceId,event.source,confirmedGamepad=true) ?: return true
             val receivedAt=android.os.SystemClock.uptimeMillis()
             val device=event.device
-            webrtcClient?.recordControllerEvent(event.eventTime,receivedAt,event.historySize,device?.name)
-            val previous=controllers.physical(slot)
             fun range(id: Int): com.xcloud.tclnative.webrtc.ControllerAxisRange? =
                 device?.getMotionRange(id, event.source)?.let {
                     com.xcloud.tclnative.webrtc.ControllerAxisRange(it.min, it.max, it.flat)
@@ -2243,7 +2244,7 @@ open class MainActivity : Activity() {
                 }
                 return maxOf(read(primary), read(fallback))
             }
-            var buttons = previous.buttons and 0xF0FF
+            var buttons = 0
             val x = stick(MotionEvent.AXIS_HAT_X); val y = stick(MotionEvent.AXIS_HAT_Y)
             if (y < -0.5f) buttons = buttons or 256
             if (y > 0.5f) buttons = buttons or 512
@@ -2251,11 +2252,16 @@ open class MainActivity : Activity() {
             if (x > 0.5f) buttons = buttons or 2048
             val rightX = if (range(MotionEvent.AXIS_Z) == null && range(MotionEvent.AXIS_RX) != null) MotionEvent.AXIS_RX else MotionEvent.AXIS_Z
             val rightY = if (range(MotionEvent.AXIS_RZ) == null && range(MotionEvent.AXIS_RY) != null) MotionEvent.AXIS_RY else MotionEvent.AXIS_RZ
-            controllers.update(slot,previous.copy(buttons = buttons,
+            val axes = GamepadState(buttons = buttons,
                 leftX = stick(MotionEvent.AXIS_X, true), leftY = stick(MotionEvent.AXIS_Y, true),
                 rightX = stick(rightX), rightY = stick(rightY),
                 leftTrigger = trigger(MotionEvent.AXIS_LTRIGGER, MotionEvent.AXIS_BRAKE),
-                rightTrigger = trigger(MotionEvent.AXIS_RTRIGGER, MotionEvent.AXIS_GAS)))
+                rightTrigger = trigger(MotionEvent.AXIS_RTRIGGER, MotionEvent.AXIS_GAS))
+            if (televisionInput && controllers.existingSlot(ControllerSource.Android(event.deviceId)) == null &&
+                !AndroidGamepadPolicy.confirmsJoystick(axes)) return true
+            val slot = controllerSlot(event.deviceId, event.source, confirmedGamepad = true) ?: return true
+            webrtcClient?.recordControllerEvent(event.eventTime,receivedAt,event.historySize,device?.name)
+            controllers.update(slot, axes.copy(buttons = (controllers.physical(slot).buttons and 0xF0FF) or axes.buttons))
             touchView.physicalInput(controllers.physical(slot))
             publishGamepad(slot)
             return true
@@ -2263,11 +2269,12 @@ open class MainActivity : Activity() {
         return super.onGenericMotionEvent(event)
     }
 
-    private fun gamepadButton(key: Int): Int = when (key) {
+    private fun gamepadButton(key: Int, event: KeyEvent): Int = when (key) {
         KeyEvent.KEYCODE_BUTTON_MODE -> 2
         KeyEvent.KEYCODE_BUTTON_START -> 4
         KeyEvent.KEYCODE_BUTTON_SELECT -> 8
         KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER -> 16
+        KeyEvent.KEYCODE_ENTER -> if (televisionInput && event.device?.keyboardType != InputDevice.KEYBOARD_TYPE_ALPHABETIC) 16 else 0
         KeyEvent.KEYCODE_BUTTON_B -> 32
         KeyEvent.KEYCODE_BUTTON_X -> 64
         KeyEvent.KEYCODE_BUTTON_Y -> 128
@@ -2283,9 +2290,9 @@ open class MainActivity : Activity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        val mask = gamepadButton(keyCode)
+        val mask = gamepadButton(keyCode, event)
         if (mask != 0 && gameplayInputEnabled()) {
-            val slot=controllerSlot(event.deviceId,event.source,AndroidGamepadPolicy.confirmsGamepad(event)) ?: return true
+            val slot=controllerSlot(event.deviceId,event.source,confirmedGamepad = false) ?: return true
             if (slot==0 && handleControllerShortcut(mask, false)) return true
             controllers.update(slot,controllers.physical(slot).copy(buttons=controllers.physical(slot).buttons and mask.inv()))
             publishGamepad(slot)
@@ -2327,9 +2334,9 @@ open class MainActivity : Activity() {
             if (queuePanel.visibility == View.VISIBLE) cancelPlayback() else if(event.repeatCount == 0) showGameMenu()
             return true
         }
-        val mask = gamepadButton(keyCode)
+        val mask = gamepadButton(keyCode, event)
         if (mask != 0 && gameplayInputEnabled()) {
-            val slot=controllerSlot(event.deviceId,event.source,AndroidGamepadPolicy.confirmsGamepad(event)) ?: return true
+            val slot=controllerSlot(event.deviceId, event.source, televisionInput && AndroidGamepadPolicy.confirmsGamepad(event)) ?: return true
             touchView.physicalInput(GamepadState(buttons=mask))
             if (slot==0 && handleControllerShortcut(mask, true)) return true
             controllers.update(slot,controllers.physical(slot).copy(buttons=controllers.physical(slot).buttons or mask))

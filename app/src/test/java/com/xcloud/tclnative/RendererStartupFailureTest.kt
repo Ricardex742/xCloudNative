@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.hardware.input.InputManager
 import android.util.SparseArray
 import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -18,6 +19,7 @@ import com.xcloud.tclnative.ui.MainActivity
 import com.xcloud.tclnative.ui.PlaybackCoordinator
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialog
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
+import com.xcloud.tclnative.webrtc.AndroidGamepadPolicy
 import com.xcloud.tclnative.webrtc.ControllerRouter
 import com.xcloud.tclnative.webrtc.GamepadState
 import kotlinx.coroutines.*
@@ -55,54 +57,60 @@ class RendererStartupFailureTest {
         GameTitle::class.java, TouchMode::class.java, Boolean::class.javaPrimitiveType).apply { isAccessible = true }
 
     @Test @Config(shadows=[SparseInputManagerShadow::class])
-    fun tvShortcutReservesPlayerOneForTheGamepadAndAcceptsItIfItConnectsLate() {
+    fun tvShortcutKeepsRemoteUsableUntilGamepadInputEvenWithAnIdleJoystickDevice() {
         val inputManager=ReflectionHelpers.callStaticMethod<InputManager>(InputManager::class.java,"getInstance")
         val previousDevices=ReflectionHelpers.getField<SparseArray<InputDevice>?>(inputManager,"mInputDevices")
-        val remote=ShadowInputDevice.makeInputDeviceNamed("TV fixture")
-        val gamepad=ShadowInputDevice.makeInputDeviceNamed("Gamepad fixture")
         val remoteSource=InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_DPAD
         val gamepadSource=InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_JOYSTICK
-        ReflectionHelpers.setField(remote,"mSources",remoteSource)
-        ReflectionHelpers.setField(remote,"mId",1)
-        ReflectionHelpers.setField(remote,"mMotionRanges",ArrayList<InputDevice.MotionRange>())
-        ReflectionHelpers.setField(gamepad,"mSources",gamepadSource)
-        ReflectionHelpers.setField(gamepad,"mId",8)
-        ReflectionHelpers.setField(gamepad,"mMotionRanges",ArrayList<InputDevice.MotionRange>())
-        listOf(MotionEvent.AXIS_X,MotionEvent.AXIS_Y).forEach { axis ->
-            ReflectionHelpers.callInstanceMethod<Unit>(InputDevice::class.java,gamepad,"addMotionRange",
-                ClassParameter.from(Int::class.javaPrimitiveType,axis),
-                ClassParameter.from(Int::class.javaPrimitiveType,InputDevice.SOURCE_JOYSTICK),
-                ClassParameter.from(Float::class.javaPrimitiveType,-1f),ClassParameter.from(Float::class.javaPrimitiveType,1f),
-                ClassParameter.from(Float::class.javaPrimitiveType,0f),ClassParameter.from(Float::class.javaPrimitiveType,0f),
-                ClassParameter.from(Float::class.javaPrimitiveType,0f))
+        fun device(id: Int, name: String, sources: Int) = ShadowInputDevice.makeInputDeviceNamed(name).also { device ->
+            ReflectionHelpers.setField(device,"mId",id)
+            ReflectionHelpers.setField(device,"mSources",sources)
+            ReflectionHelpers.setField(device,"mMotionRanges",ArrayList<InputDevice.MotionRange>())
+            if(sources==gamepadSource) listOf(MotionEvent.AXIS_X, MotionEvent.AXIS_Y).forEach { axis ->
+                ReflectionHelpers.callInstanceMethod<Unit>(InputDevice::class.java,device,"addMotionRange",
+                    ClassParameter.from(Int::class.javaPrimitiveType,axis),
+                    ClassParameter.from(Int::class.javaPrimitiveType,InputDevice.SOURCE_JOYSTICK),
+                    ClassParameter.from(Float::class.javaPrimitiveType,-1f),ClassParameter.from(Float::class.javaPrimitiveType,1f),
+                    ClassParameter.from(Float::class.javaPrimitiveType,0f),ClassParameter.from(Float::class.javaPrimitiveType,0f),
+                    ClassParameter.from(Float::class.javaPrimitiveType,0f))
+            }
         }
-        val installed=SparseArray<InputDevice>().apply { put(1,remote);put(8,gamepad) }
+        val installed=SparseArray<InputDevice>().apply {
+            put(1,device(1,"Idle internal joystick fixture",gamepadSource))
+            put(2,device(2,"TV remote fixture",remoteSource))
+            put(8,device(8,"Gamepad fixture",gamepadSource))
+        }
         ReflectionHelpers.setField(inputManager,"mInputDevices",installed)
         val c=Robolectric.buildActivity(RejectingRendererActivity::class.java).setup()
         val activity=c.get()
         shadowOf(activity.packageManager).setSystemFeature(PackageManager.FEATURE_LEANBACK,true)
         val router=ReflectionHelpers.getField<ControllerRouter>(activity,"controllers")
-        val slot=MainActivity::class.java.getDeclaredMethod("controllerSlot",Int::class.javaPrimitiveType,
+        val route=MainActivity::class.java.getDeclaredMethod("controllerSlot",Int::class.javaPrimitiveType,
             Int::class.javaPrimitiveType,Boolean::class.javaPrimitiveType).apply { isAccessible=true }
+        fun key(id: Int, source: Int, code: Int) = KeyEvent(0,0,KeyEvent.ACTION_DOWN,code,0,0,id,0,0,source)
+        fun slot(event: KeyEvent) = route.invoke(activity,event.deviceId,event.source,AndroidGamepadPolicy.confirmsGamepad(event))
         try {
             val signaling=XCloudSignalingClient(XCloudSession("test-token","https://example.test","demo"))
             launch.invoke(activity,signaling,GameTitle("demo","Demo",posterUrl="",tileUrl=""),TouchMode.OFF,true)
             shadowOf(Looper.getMainLooper()).idle()
             assertEquals(1,activity.attempted.size)
-            assertEquals(8,router.deviceFor(0))
-            assertNull(slot.invoke(activity,1,remoteSource,false))
-            assertEquals(0,slot.invoke(activity,8,InputDevice.SOURCE_DPAD,false))
-
-            router.beginSession(false)
-            installed.remove(8)
-            assertEquals(0,slot.invoke(activity,1,remoteSource,false))
             assertNull(router.deviceFor(0))
+            val down = key(2,remoteSource,KeyEvent.KEYCODE_DPAD_DOWN)
+            assertEquals(0,slot(down))
+            assertEquals(0,slot(key(1,gamepadSource,KeyEvent.KEYCODE_DPAD_DOWN)))
+            assertEquals(0,slot(key(2,remoteSource,KeyEvent.KEYCODE_DPAD_CENTER)))
+            assertNull(router.deviceFor(0))
+            assertFalse(AndroidGamepadPolicy.confirmsJoystick(GamepadState(leftX=.02f)))
+            assertTrue(AndroidGamepadPolicy.confirmsJoystick(GamepadState(leftX=.6f)))
+
             router.update(0,GamepadState(buttons=512))
-            installed.put(8,gamepad)
-            assertEquals(0,slot.invoke(activity,8,gamepadSource,true))
+            assertEquals(0,slot(key(8,gamepadSource,KeyEvent.KEYCODE_BUTTON_A)))
             assertEquals(8,router.deviceFor(0))
             assertEquals(GamepadState(),router.physical(0))
-            assertNull(slot.invoke(activity,1,remoteSource,false))
+            assertNull(slot(down))
+            assertEquals(0,slot(key(8,InputDevice.SOURCE_DPAD,KeyEvent.KEYCODE_DPAD_LEFT)))
+            router.remove(8)
+            assertEquals(0,slot(down))
         } finally {
             ReflectionHelpers.setField(inputManager,"mInputDevices",previousDevices)
             (ShadowDialog.getLatestDialog() as? ConsoleDialog)?.dismiss()

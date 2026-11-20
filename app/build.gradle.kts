@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 114
-        versionName = "0.41.2-remote-menu"
+        versionCode = 115
+        versionName = "0.41.3-tv-shortcut"
     }
 
     signingConfigs {
