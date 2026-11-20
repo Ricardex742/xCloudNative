@@ -13,7 +13,11 @@ class ControllerRouter {
     fun beginSession(enabled: Boolean, touchPlayerOne: Boolean = false) { devices.clear(); coOp=enabled; reserveTouch=enabled && touchPlayerOne; reset() }
     fun slot(deviceId: Int): Int? = slot(ControllerSource.Android(deviceId))
     fun slot(source: ControllerSource): Int? = devices[source] ?: ((if(reserveTouch) 1 else 0) until (if(coOp) 4 else 1))
-        .firstOrNull { it !in devices.values }?.also { devices[source]=it }
+        .firstOrNull { it !in devices.values }?.also {
+            devices[source]=it
+            // An unassigned slot may contain fallback directional input from a remote.
+            states[it]=GamepadState()
+        }
     fun sourceFor(slot: Int): ControllerSource? = devices.entries.firstOrNull { it.value==slot }?.key
     fun existingSlot(source: ControllerSource): Int? = devices[source]
     fun deviceFor(slot: Int): Int? = (sourceFor(slot) as? ControllerSource.Android)?.deviceId

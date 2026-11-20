@@ -98,6 +98,21 @@ class DashboardNavigationRegressionTest {
             } finally { v.close();c.pause().stop().destroy() }
         }
     }
+    @Test fun seriesDpadMovesBetweenVisibleCardsWhileNewArtworkIsPending() {
+        DashboardTheme.apply(RuntimeEnvironment.getApplication(),UiTheme.XBOX_SERIES)
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
+        val v=GameDashboardView(a,GameLibrary(a,"series-pending-art"),{},{},{},{})
+        try {
+            val games=games()
+            a.setContentView(v);v.setGames(games);v.selectTab(LibraryTab.ALL);layout(v);v.restoreFocus();layout(v);selected(v,0)
+            v.updateMetadata(games.map { it.copy(seriesOptimized=false) })
+            assertTrue(v.isCatalogUpdating)
+            assertTrue(v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT)))
+            assertEquals("NAV-1",v.selectedGame?.titleId)
+            assertTrue(v.isCatalogUpdating)
+            layout(v);selected(v,1)
+        } finally { v.close();c.pause().stop().destroy() }
+    }
     @Test fun recycledCaptionsLosePreviousThemeGradientsAndSeriesOverlayStaysInsideItsCover() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
         val library=GameLibrary(a,"caption-regression");library.toggleFavorite("NAV-0")

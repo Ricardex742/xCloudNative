@@ -542,6 +542,7 @@ class GameDashboardView(
     }
     private fun applyCatalog(presentation: CatalogPresentation, changes: CatalogChanges) {
         val selectedKey=selectedCard?.key
+        val targetKey=catalogFocus.targetKey
         val focused=grid.hasFocus()
         val manager=grid.layoutManager as GridLayoutManager
         val anchor=manager.findFirstVisibleItemPosition()
@@ -559,7 +560,7 @@ class GameDashboardView(
         renderCatalogState(presentation.cards.size)
         val requested = catalogFocus.consume(positions)
         if(requested!=null) focusCoverNow(requested)
-        else if(changes.replace && focused) focusCoverNow(selectedPosition ?: 0)
+        else if(changes.replace && focused) focusCoverNow(positions[targetKey] ?: selectedPosition ?: 0)
         else if(changes.replace && anchorKey!=null) positions[anchorKey]?.let { manager.scrollToPositionWithOffset(it,anchorOffset) }
     }
     private fun renderCatalogState(count: Int, preparing: Boolean = false) {
@@ -696,10 +697,8 @@ class GameDashboardView(
             originalBrowsing=true;navigation.visibility=GONE;grid.visibility=VISIBLE;consoleBack.visibility=VISIBLE
             lastGeometry=0L;requestLayout();updateConsoleTitle()
         }
-        if(isCatalogUpdating) {
-            val target=adapter.items.getOrNull(position)?.key
-            catalogFocus.defer(target, position)
-            if(cardHorizontal) catalogFocus.targetKey=target
+        if(adapter.itemCount==0 && isCatalogUpdating) {
+            catalogFocus.defer(null, position)
             return
         }
         focusCoverNow(position)
@@ -775,8 +774,8 @@ class GameDashboardView(
         return true
     }
     override fun dispatchKeyEvent(event: KeyEvent): Boolean = handleGridKey(event) || handleCarouselKey(event) || super.dispatchKeyEvent(event)
-    fun restoreFocus() {
-        refresh()
+    fun restoreFocus(refreshCatalog: Boolean = true) {
+        if(refreshCatalog) refresh()
         if(designScene==ConsoleScene.XBOX_ORIGINAL && !originalBrowsing) { categoryFocus().requestFocus();return }
         val position = positions[selectedCard?.key] ?: 0
         focusCoverAt(position)
@@ -784,7 +783,7 @@ class GameDashboardView(
     private fun updateSelected(game: CatalogCard?) {
         val previous = selectedCard
         selectedCard = game
-        refreshSeriesSelection()
+        if(previous?.key!=game?.key) refreshSeriesSelection()
         if (previous?.key==game?.key && previous?.name==game?.name && previous?.tileUrl==game?.tileUrl &&
             previous?.posterUrl==game?.posterUrl && previous?.product?.heroUrl==game?.product?.heroUrl &&
             previous?.game?.heroUrl==game?.game?.heroUrl && headerTitle.text.isNotEmpty()) return
@@ -1978,6 +1977,7 @@ class GameDashboardView(
         fun refreshSeriesSelection() {
             if(!cardHorizontal || boundCard==null) return
             val desired=(carouselWidth(boundCard?.key==selectedCard?.key)*scale).roundToInt()
+            if(designScene==ConsoleScene.XBOX_SERIES && layoutParams?.width==desired) return
             (layoutParams as? RecyclerView.LayoutParams)?.let { if(it.width!=desired) { it.width=desired;layoutParams=it } }
             if(designScene.playStation) layoutPlayStationCard() else if(designScene==ConsoleScene.XBOX_360_NXE) layoutNxeCard() else layoutSeriesCard()
             invalidate()
