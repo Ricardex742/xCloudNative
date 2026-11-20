@@ -63,7 +63,7 @@ internal class CloudServiceSelector(private val context: Context, private val op
             override fun dispatchKeyEvent(event: KeyEvent): Boolean =
                 handleKey(event) || super.dispatchKeyEvent(event)
         }.apply {
-            orientation = VERTICAL
+            orientation = LinearLayout.VERTICAL
             setPadding(dp(6), dp(6), dp(6), dp(6))
             background = DashboardTheme.panel(dp(8).toFloat())
         }
