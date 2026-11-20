@@ -5,25 +5,30 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class StreamStatsTest {
-    @Test fun networkWarningRequiresSustainedDegradationAndIgnoresLowBitrateAlone() {
-        val warning = NetworkWarning()
+    @Test fun networkQualityConfirmsChangesAndIgnoresLowBitrateAlone() {
+        val monitor = NetworkQualityMonitor()
         val healthy = StreamMetrics(rttMs = 44.0, jitterMs = 3.0, packetLossPercent = 0.0, bitrateMbps = 0.01)
+        val moderate = healthy.copy(jitterMs = 13.0)
         val poor = healthy.copy(packetLossPercent = 3.0)
-        repeat(3) { warning.observe(healthy) }
-        assertFalse(warning.active)
-        repeat(2) { warning.observe(poor) }
-        assertFalse(warning.active)
-        warning.observe(healthy)
-        repeat(3) { warning.observe(poor) }
-        assertTrue(warning.active)
-        repeat(2) { warning.observe(healthy) }
-        assertTrue(warning.active)
-        warning.observe(healthy)
-        assertFalse(warning.active)
-        repeat(3) { warning.observe(healthy.copy(rttMs = 130.0)) }
-        assertTrue(warning.active)
-        warning.observe(StreamMetrics(rttMs = Double.NaN))
-        assertFalse(warning.active)
+        repeat(2) { monitor.observe(healthy) }
+        assertEquals(NetworkQuality.UNKNOWN, monitor.quality)
+        monitor.observe(healthy)
+        assertEquals(NetworkQuality.STABLE, monitor.quality)
+        repeat(2) { monitor.observe(poor) }
+        monitor.observe(healthy)
+        assertEquals(NetworkQuality.STABLE, monitor.quality)
+        listOf(moderate, poor, moderate).forEach(monitor::observe)
+        assertEquals(NetworkQuality.MODERATE, monitor.quality)
+        repeat(3) { monitor.observe(poor) }
+        assertEquals(NetworkQuality.POOR, monitor.quality)
+        repeat(2) { monitor.observe(healthy) }
+        assertEquals(NetworkQuality.POOR, monitor.quality)
+        monitor.observe(healthy)
+        assertEquals(NetworkQuality.STABLE, monitor.quality)
+        repeat(3) { monitor.observe(healthy.copy(rttMs = 130.0)) }
+        assertEquals(NetworkQuality.POOR, monitor.quality)
+        monitor.observe(StreamMetrics(rttMs = Double.NaN))
+        assertEquals(NetworkQuality.UNKNOWN, monitor.quality)
     }
     @Test fun codecLabelUsesTheInboundCodecStatsAndItsRtpProfileRatherThanTheRequestedPreference() {
         fun receive(mime: String,fmtp: String)=StreamStatsCollector().collect(samples(video(1_000_000.0)).map {

@@ -1268,4 +1268,8 @@
     <string name="ui_307b27476b8f31ea" formatted="false">"Nessuna scorciatoia"</string>
     <string name="ui_1aedb34b9afee3d6" formatted="false">"Bitrate ricevuto"</string>
     <string name="ui_3999bf0070131d88" formatted="false">"Statistiche di rete"</string>
+    <string name="ui_b89d1460e46fb261" formatted="false">"Rete stabile"</string>
+    <string name="ui_ed5ca6abcc5e84c1" formatted="false">"Rete discreta"</string>
+    <string name="ui_fd346cca9bbfda65" formatted="false">"Rete scadente"</string>
+    <string name="ui_207961515be647c8" formatted="false">"In attesa dei dati di rete"</string>
 </resources>

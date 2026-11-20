@@ -1268,4 +1268,8 @@
     <string name="ui_307b27476b8f31ea" formatted="false">"Sin acceso directo"</string>
     <string name="ui_1aedb34b9afee3d6" formatted="false">"Tasa de bits recibida"</string>
     <string name="ui_3999bf0070131d88" formatted="false">"Estadísticas de red"</string>
+    <string name="ui_b89d1460e46fb261" formatted="false">"Red estable"</string>
+    <string name="ui_ed5ca6abcc5e84c1" formatted="false">"Red moderada"</string>
+    <string name="ui_fd346cca9bbfda65" formatted="false">"Red deficiente"</string>
+    <string name="ui_207961515be647c8" formatted="false">"Esperando datos de red"</string>
 </resources>

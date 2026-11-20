@@ -7,6 +7,7 @@ import android.app.Activity
 import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
@@ -29,7 +30,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 data class ConsoleAction(val label: String, val action: () -> Unit) { var longAction: (() -> Unit)?=null }
-enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER, PROFILE, GAME_SESSION }
+enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER, PROFILE, GAME_SESSION, NETWORK_STATS }
 
 /** Shared native panels for search, account menus and messages. No platform alert buttons/rows. */
 class ConsoleDialog(context: Context, private val heading: String,private val purpose: ConsolePanelPurpose=ConsolePanelPurpose.GENERAL) : Dialog(context, R.style.ConsoleDialog) {
@@ -38,17 +39,21 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val activity = context as? Activity
     private val skin=ConsolePanelSkin()
     private val sessionSidebar=purpose==ConsolePanelPurpose.GAME_SESSION
-    private val fullScreen=skin.scene.playStation && !sessionSidebar && purpose !in listOf(ConsolePanelPurpose.GUIDE,ConsolePanelPurpose.CONTROL_CENTER) && !(purpose==ConsolePanelPurpose.PROFILE && skin.scene==ConsoleScene.PS5)
+    private val compactNetwork=purpose==ConsolePanelPurpose.NETWORK_STATS
+    private val fullScreen=skin.scene.playStation && !sessionSidebar && !compactNetwork && purpose !in listOf(ConsolePanelPurpose.GUIDE,ConsolePanelPurpose.CONTROL_CENTER) && !(purpose==ConsolePanelPurpose.PROFILE && skin.scene==ConsoleScene.PS5)
+    private val networkCutout=Rect()
     private val screenWidth = activity?.window?.decorView?.width?.takeIf { it > 0 }
         ?: context.resources.displayMetrics.widthPixels
     private val screenHeight = activity?.window?.decorView?.height?.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
     private val phone=skin.scene.playStation && consolePhone(context,screenWidth,screenHeight)
-    val scale = (if(skin.enabled) consoleReferenceScale(screenWidth, screenHeight) else screenWidth/1280f).coerceAtLeast(if(skin.scene.playStation) .5f else maxOf(.5f,context.resources.displayMetrics.density*.65f))
+    val scale = if (compactNetwork) context.resources.displayMetrics.density else
+        (if(skin.enabled) consoleReferenceScale(screenWidth, screenHeight) else screenWidth/1280f).coerceAtLeast(if(skin.scene.playStation) .5f else maxOf(.5f,context.resources.displayMetrics.density*.65f))
     val panel: LinearLayout = object : LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
-            val limit = (screenHeight*if(fullScreen) 1f else .90f).roundToInt()
+            val limit = if(compactNetwork) (screenHeight-networkCutout.top-networkCutout.bottom-px(16)).coerceAtLeast(1)
+                else (screenHeight*if(fullScreen) 1f else .90f).roundToInt()
             val requested = MeasureSpec.getSize(heightMeasureSpec)
             val bound = if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.UNSPECIFIED) limit else minOf(limit, requested)
             super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(bound, if(fullScreen) MeasureSpec.EXACTLY else MeasureSpec.AT_MOST))
@@ -56,7 +61,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }.apply {
         orientation = LinearLayout.VERTICAL
         background = if(skin.enabled) skin.background() else DashboardTheme.panel(16*scale)
-        setPadding(px(if(fullScreen) 64 else 32), px(if(fullScreen) 32 else 26), px(if(fullScreen) 64 else 32), px(if(phone) 20 else 26))
+        if (compactNetwork) setPadding(px(14),px(4),px(8),px(10))
+        else setPadding(px(if(fullScreen) 64 else 32), px(if(fullScreen) 32 else 26), px(if(fullScreen) 64 else 32), px(if(phone) 20 else 26))
     }
     val body = object: LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
@@ -68,7 +74,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
     }.apply { orientation = LinearLayout.HORIZONTAL;isBaselineAligned=false }
     private val scroll = ScrollView(context).apply {
-        isVerticalScrollBarEnabled = sessionSidebar || skin.scene.playStation
+        isVerticalScrollBarEnabled = sessionSidebar || compactNetwork || skin.scene.playStation
         if(sessionSidebar) {
             isVerticalFadingEdgeEnabled=true
             setFadingEdgeLength(px(18))
@@ -107,7 +113,9 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         activity?.let(::setOwnerActivity)
         val headingContent=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
-        if(sessionSidebar || purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
+        if (compactNetwork) {
+            headingContent.addView(text(heading,16,true).apply { textSize=16f;maxLines=2 },LinearLayout.LayoutParams(-1,-2))
+        } else if(sessionSidebar || purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
             headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { if(!sessionSidebar) bottomMargin=px(14) })
             if(purpose==ConsolePanelPurpose.GUIDE) panel.minimumHeight=(screenHeight*.88f).roundToInt()
         } else if(skin.scene.playStation) {
@@ -137,23 +145,25 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         }
         val header=LinearLayout(context).apply {
             orientation=LinearLayout.HORIZONTAL
-            gravity=if(sessionSidebar) Gravity.CENTER_VERTICAL else Gravity.TOP
+            gravity=if(sessionSidebar || compactNetwork) Gravity.CENTER_VERTICAL else Gravity.TOP
         }
         header.addView(headingContent,LinearLayout.LayoutParams(0,-2,1f))
         val close=keyButton("×") { closePanels() }.apply {
             tag="close-settings"
             if(skin.scene.playStation) background=ConsoleControlPlate(skin.scene,ConsoleControl.TAB)
             contentDescription=UiText.text("Fechar ajustes e voltar")
-            if(skin.scene.playStation) setTextSize(TypedValue.COMPLEX_UNIT_PX,28*scale) else setTextSize(TypedValue.COMPLEX_UNIT_SP,28f)
+            if(compactNetwork) textSize=24f
+            else if(skin.scene.playStation) setTextSize(TypedValue.COMPLEX_UNIT_PX,28*scale) else setTextSize(TypedValue.COMPLEX_UNIT_SP,28f)
             setPadding(0,0,0,0)
         }
-        val closeSize=if(skin.scene.playStation && !sessionSidebar) px(48) else touchSize()
-        header.addView(close,LinearLayout.LayoutParams(closeSize,closeSize).apply { marginStart=px(10) })
+        val closeSize=if(skin.scene.playStation && !sessionSidebar && !compactNetwork) px(48) else touchSize()
+        header.addView(close,LinearLayout.LayoutParams(closeSize,closeSize).apply { marginStart=px(if(compactNetwork) 4 else 10) })
+        if(compactNetwork) focusFirst(close)
         panel.addView(header,LinearLayout.LayoutParams(-1,-2))
         panel.addView(scroll, LinearLayout.LayoutParams(-1, -2, 1f))
-        panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(22) })
+        panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(if(compactNetwork) 0 else 22) })
         if(skin.scene.playStation) ConsoleHitTargets.install(panel,listOf(close))
-        ImmersiveWindow.protectContent(panel,avoidKeyboard=fullScreen)
+        if(!compactNetwork) ImmersiveWindow.protectContent(panel,avoidKeyboard=fullScreen)
         setContentView(panel)
         setOnKeyListener { _, key, event ->
             if(shortcut?.invoke(event)==true) true else when (key) {
@@ -288,8 +298,24 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         if (initialFocus == null) initialFocus = item
         return item
     }
+    internal fun setNetworkCutout(cutout: Rect) {
+        networkCutout.set(cutout)
+        if (isShowing) window?.let(::positionNetworkPanel)
+    }
+
+    private fun positionNetworkPanel(window: Window) {
+        val margin=px(8)
+        window.attributes=window.attributes.apply {
+            gravity=Gravity.TOP or Gravity.RIGHT
+            x=margin+networkCutout.right
+            y=margin+networkCutout.top
+            width=minOf(px(248), (screenWidth-networkCutout.left-networkCutout.right-2*margin).coerceAtLeast(1))
+            height=WindowManager.LayoutParams.WRAP_CONTENT
+        }
+    }
+
     override fun show() {
-        window?.let { ImmersiveWindow.apply(it,edgeToEdge=fullScreen) }
+        window?.let { ImmersiveWindow.apply(it,edgeToEdge=fullScreen || compactNetwork) }
         super.show()
         visiblePanels.removeAll { it.get()==null || it.get()===this }
         visiblePanels.add(java.lang.ref.WeakReference(this))
@@ -297,9 +323,14 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         window?.apply {
             setBackgroundDrawableResource(android.R.color.transparent)
             decorView.setPadding(0,0,0,0)
-            addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-            setDimAmount(if(skin.enabled) .48f else .72f)
-            if(sessionSidebar) {
+            if (!compactNetwork) {
+                addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                setDimAmount(if(skin.enabled) .48f else .72f)
+            }
+            if (compactNetwork) {
+                clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                positionNetworkPanel(this)
+            } else if(sessionSidebar) {
                 setGravity(Gravity.TOP or Gravity.LEFT)
                 val width=(340*context.resources.displayMetrics.density).roundToInt()
                 setLayout(width.coerceAtMost((screenWidth*.88f).roundToInt()),(screenHeight*.90f).roundToInt())
@@ -324,7 +355,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 setLayout((screenWidth*(if(skin.enabled) .90f else .82f)).roundToInt(), WindowManager.LayoutParams.WRAP_CONTENT)
             }
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
-            ImmersiveWindow.apply(this,edgeToEdge=fullScreen)
+            ImmersiveWindow.apply(this,edgeToEdge=fullScreen || compactNetwork)
         }
         val target=if(explicitFocus) initialFocus else returningFocus ?: initialFocus
         target?.requestFocus()
@@ -332,7 +363,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if(hasFocus) window?.let { ImmersiveWindow.apply(it,edgeToEdge=fullScreen) }
+        if(hasFocus) window?.let { ImmersiveWindow.apply(it,edgeToEdge=fullScreen || compactNetwork) }
     }
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         com.xcloud.tclnative.webrtc.AndroidControllerMonitor.key(event)

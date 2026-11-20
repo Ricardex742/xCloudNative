@@ -1268,4 +1268,8 @@
     <string name="ui_307b27476b8f31ea" formatted="false">"ショートカットなし"</string>
     <string name="ui_1aedb34b9afee3d6" formatted="false">"受信ビットレート"</string>
     <string name="ui_3999bf0070131d88" formatted="false">"ネットワーク統計"</string>
+    <string name="ui_b89d1460e46fb261" formatted="false">"安定した接続"</string>
+    <string name="ui_ed5ca6abcc5e84c1" formatted="false">"接続品質は普通"</string>
+    <string name="ui_fd346cca9bbfda65" formatted="false">"接続品質が低い"</string>
+    <string name="ui_207961515be647c8" formatted="false">"ネットワークデータを待機中"</string>
 </resources>

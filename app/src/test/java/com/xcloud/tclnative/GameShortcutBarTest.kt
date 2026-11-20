@@ -8,12 +8,14 @@ import android.graphics.Rect
 import android.os.Looper
 import android.os.SystemClock
 import android.view.DisplayCutout
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowManager.LayoutParams
+import android.widget.FrameLayout
 import android.widget.TextView
 import com.xcloud.tclnative.i18n.AppLanguage
 import com.xcloud.tclnative.i18n.UiText
@@ -30,6 +32,9 @@ import com.xcloud.tclnative.ui.dashboard.GameMenuPanel
 import com.xcloud.tclnative.ui.dashboard.GameNetworkPanel
 import com.xcloud.tclnative.ui.dashboard.GameShortcutBar
 import com.xcloud.tclnative.ui.dashboard.GameShortcutEditor
+import com.xcloud.tclnative.ui.dashboard.NetworkIndicator
+import com.xcloud.tclnative.ui.dashboard.NetworkSignalDrawable
+import com.xcloud.tclnative.webrtc.NetworkQuality
 import com.xcloud.tclnative.webrtc.StreamMetrics
 import org.junit.Assert.*
 import org.junit.Test
@@ -85,14 +90,17 @@ class GameShortcutBarTest {
         idle()
     }
 
-    private fun capture(name: String, gameplay: View, overlay: View? = null) {
+    private fun capture(name: String, gameplay: View, overlay: View? = null, left: Int = 0, top: Int = 0) {
         val screen = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         val scene = javaClass.getResourceAsStream("/console-demo/forza-hero.jpg")!!.use { BitmapFactory.decodeStream(it)!! }
         try {
             val canvas = Canvas(screen)
             canvas.drawBitmap(scene, null, Rect(0, 0, width, height), null)
             gameplay.draw(canvas)
-            overlay?.draw(canvas)
+            if (overlay != null) {
+                canvas.translate(left.toFloat(), top.toFloat())
+                overlay.draw(canvas)
+            }
             File("build/reports/navigation/$name.png").apply { parentFile?.mkdirs() }.outputStream().use {
                 assertTrue(screen.compress(Bitmap.CompressFormat.PNG, 100, it))
             }
@@ -140,7 +148,10 @@ class GameShortcutBarTest {
             root.measure(View.MeasureSpec.makeMeasureSpec(window.attributes.width, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST))
             root.layout(0, 0, root.measuredWidth, root.measuredHeight)
-            capture(name, game, root)
+            val attributes = window.attributes
+            if (attributes.gravity == (Gravity.TOP or Gravity.RIGHT)) {
+                capture(name, game, root, width - root.measuredWidth - attributes.x, attributes.y)
+            } else capture(name, game, root)
         }
         try {
             settings.restoreSlots()
@@ -157,11 +168,11 @@ class GameShortcutBarTest {
             barControl("Estatísticas da rede").performClick()
             val readings = all(network.dialog.body).filterIsInstance<TextView>()
             assertEquals(4, readings.count { it.text == "—" })
-            network.update(StreamMetrics(rttMs = 124.0, jitterMs = 20.0, packetLossPercent = 0.0, bitrateMbps = 5.5), true)
+            network.update(StreamMetrics(rttMs = 124.0, jitterMs = 20.0, packetLossPercent = 0.0, bitrateMbps = 5.5), NetworkQuality.POOR)
             assertTrue(readings.map { it.text.toString() }.containsAll(listOf("124 ms", "20 ms", "0%", "5,5 Mbps")))
-            assertTrue(readings.single { it.text == "Rede instável" }.isShown)
+            assertTrue(readings.single { it.text == "Rede ruim" }.isShown)
             capturePanel("live-network-details", network.dialog)
-            network.update(null, false)
+            network.update(null, NetworkQuality.UNKNOWN)
             assertEquals(4, readings.count { it.text == "—" })
             network.dialog.cancel(); idle()
             assertEquals("Estatísticas da rede", bar.currentFocus?.contentDescription)
@@ -207,6 +218,83 @@ class GameShortcutBarTest {
             settings.restoreSlots()
             settings.networkWarnings = false
             ShadowDialog.getLatestDialog()?.dismiss()
+            controller.pause().stop().destroy()
+            DashboardTheme.apply(activity, UiTheme.GREEN)
+        }
+    }
+
+    @Test fun networkIndicatorUsesThreeVisibleLevelsAndOpensACompactPanelInsideTheRightCutout() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        UiText.apply(activity, AppLanguage.PORTUGUESE)
+        DashboardTheme.apply(activity, UiTheme.XBOX_SERIES)
+        val game = FrameLayout(activity)
+        val safe = Rect(0, 24, 80, 0)
+        val insets = WindowInsets.Builder().build()
+        val density = activity.resources.displayMetrics.density
+        var opened: GameNetworkPanel? = null
+        val indicator = NetworkIndicator(activity) {
+            opened = GameNetworkPanel(activity, {}).also {
+                it.dialog.setNetworkCutout(safe)
+                it.update(StreamMetrics(rttMs = 79.0, jitterMs = 10.0, packetLossPercent = 0.5, bitrateMbps = 6.0), NetworkQuality.MODERATE)
+                it.dialog.show()
+            }
+        }
+        try {
+            indicator.setCutout(safe)
+            game.addView(indicator)
+            activity.setContentView(game)
+            assertEquals(View.GONE, indicator.visibility)
+            indicator.visibility = View.VISIBLE
+            layout(activity.window.decorView, insets)
+            assertEquals(width - safe.right - (8 * density).toInt(), indicator.right)
+            assertEquals(safe.top + (8 * density).toInt(), indicator.top)
+            assertEquals((48 * density).toInt(), indicator.width)
+            assertFalse(indicator.isFocusable)
+
+            val states = listOf(
+                Triple(NetworkQuality.STABLE, "Rede estável", 0xff61df9d.toInt()),
+                Triple(NetworkQuality.MODERATE, "Rede moderada", 0xffffd166.toInt()),
+                Triple(NetworkQuality.POOR, "Rede ruim", 0xffff6974.toInt())
+            )
+            for ((level, name, color) in states) {
+                indicator.showQuality(level)
+                assertEquals("$name. Estatísticas da rede", indicator.contentDescription)
+                val icon = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+                try {
+                    NetworkSignalDrawable(96).apply { quality = level; setBounds(0, 0, 96, 96) }.draw(Canvas(icon))
+                    for (signal in 1..3) {
+                        val topOfArc = (19 - (2 + 4 * signal)) * 4
+                        assertEquals(if (signal <= level.signals) color else 0, icon.getPixel(48, topOfArc))
+                    }
+                } finally { icon.recycle() }
+                capture("network-indicator-${level.name.lowercase()}", game)
+            }
+
+            indicator.showQuality(NetworkQuality.MODERATE)
+            tap(game, indicator.x + indicator.width / 2f, indicator.y + indicator.height / 2f)
+            val panel = requireNotNull(opened).dialog
+            val window = panel.window!!
+            val params = window.attributes
+            assertEquals(Gravity.TOP or Gravity.RIGHT, params.gravity)
+            assertEquals(indicator.top, params.y)
+            assertEquals(width - indicator.right, params.x)
+            assertEquals((248 * density).toInt(), params.width)
+            assertEquals(LayoutParams.WRAP_CONTENT, params.height)
+            assertEquals(0, params.flags and LayoutParams.FLAG_DIM_BEHIND)
+            assertEquals(0, params.fitInsetsTypes)
+            val root = window.decorView
+            root.measure(View.MeasureSpec.makeMeasureSpec(params.width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST))
+            root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+            assertTrue(root.measuredHeight < height * .60f)
+            indicator.visibility = View.GONE
+            capture("network-indicator-panel", game, root, width - params.width - params.x, params.y)
+            panel.setNetworkCutout(Rect(80, 0, 0, 0))
+            assertEquals((8 * density).toInt(), window.attributes.x)
+            assertEquals((8 * density).toInt(), window.attributes.y)
+        } finally {
+            opened?.dialog?.dismiss()
             controller.pause().stop().destroy()
             DashboardTheme.apply(activity, UiTheme.GREEN)
         }

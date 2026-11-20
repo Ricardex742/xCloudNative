@@ -1268,4 +1268,8 @@
     <string name="ui_307b27476b8f31ea" formatted="false">"No shortcut"</string>
     <string name="ui_1aedb34b9afee3d6" formatted="false">"Received bitrate"</string>
     <string name="ui_3999bf0070131d88" formatted="false">"Network statistics"</string>
+    <string name="ui_b89d1460e46fb261" formatted="false">"Stable connection"</string>
+    <string name="ui_ed5ca6abcc5e84c1" formatted="false">"Moderate connection"</string>
+    <string name="ui_fd346cca9bbfda65" formatted="false">"Poor connection"</string>
+    <string name="ui_207961515be647c8" formatted="false">"Waiting for network data"</string>
 </resources>
