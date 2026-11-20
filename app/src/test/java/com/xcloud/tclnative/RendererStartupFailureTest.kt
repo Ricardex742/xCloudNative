@@ -34,6 +34,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.LooperMode
 import org.robolectric.shadows.ShadowDialog
 import org.robolectric.shadows.ShadowInputDevice
+import org.robolectric.shadows.ShadowKeyEvent
+import org.robolectric.shadow.api.Shadow
 import org.robolectric.util.ReflectionHelpers
 import org.robolectric.util.ReflectionHelpers.ClassParameter
 import java.util.concurrent.TimeUnit
@@ -87,7 +89,9 @@ class RendererStartupFailureTest {
         val router=ReflectionHelpers.getField<ControllerRouter>(activity,"controllers")
         val route=MainActivity::class.java.getDeclaredMethod("controllerSlot",Int::class.javaPrimitiveType,
             Int::class.javaPrimitiveType,Boolean::class.javaPrimitiveType).apply { isAccessible=true }
-        fun key(id: Int, source: Int, code: Int) = KeyEvent(0,0,KeyEvent.ACTION_DOWN,code,0,0,id,0,0,source)
+        fun key(id: Int, source: Int, code: Int) = KeyEvent(0,0,KeyEvent.ACTION_DOWN,code,0,0,id,0,0,source).also {
+            Shadow.extract<ShadowKeyEvent>(it).setDevice(installed.get(id))
+        }
         fun slot(event: KeyEvent) = route.invoke(activity,event.deviceId,event.source,AndroidGamepadPolicy.confirmsGamepad(event))
         try {
             val signaling=XCloudSignalingClient(XCloudSession("test-token","https://example.test","demo"))
