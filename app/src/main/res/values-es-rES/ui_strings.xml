@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"No se han encontrado consolas. En Xbox, abre Configuración › Dispositivos y conexiones › Características remotas."</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"No se han podido consultar tus consolas Xbox. Inténtalo de nuevo."</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"Volviendo a tus consolas."</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"Juego remoto"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"Prepárate para jugar"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Juega a los títulos instalados en tu Xbox."</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"Qué necesitas"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"Conexión a Internet de al menos 10 Mbps"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Cuenta de Microsoft con un perfil de Xbox"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"Xbox Series X|S o Xbox One con características remotas activadas"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Se recomienda un mando Bluetooth"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"Configurar consola"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"Obtener ayuda"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"Activa las características remotas"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"En tu Xbox, inicia sesión con la misma cuenta de Microsoft y abre la siguiente opción."</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"Configuración › Dispositivos y conexiones › Características remotas"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"Activa las características remotas. Luego vuelve a la aplicación y actualiza la lista de consolas."</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"También puedes completar la configuración en el sitio oficial de Xbox."</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Configurar en Xbox.com"</string>
 </resources>

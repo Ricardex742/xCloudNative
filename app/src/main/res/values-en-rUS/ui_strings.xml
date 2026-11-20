@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"No consoles found. On Xbox, open Settings › Devices &amp; connections › Remote features."</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"Could not find your Xbox consoles. Try again."</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"Returning to your consoles."</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"Remote Play"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"Get ready to play"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Play the games installed on your Xbox."</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"What you need"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"Internet connection of at least 10 Mbps"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Microsoft account with an Xbox profile"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"Xbox Series X|S or Xbox One with remote features enabled"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Bluetooth controller recommended"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"Set up console"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"Get help"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"Enable remote features"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"On your Xbox, sign in with the same Microsoft account and go to the settings below."</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"Settings › Devices &amp; connections › Remote features"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"Turn on remote features. Then return to the app and refresh the console list."</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"You can also complete setup on the official Xbox website."</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Set up on Xbox.com"</string>
 </resources>

@@ -74,8 +74,7 @@ class GameDashboardView(
     private val onOwnershipNeeded: () -> Unit = {},
     private val onGameShortcut: ((GameTitle) -> Unit)?=null,
     private val onFriends: (() -> Unit)?=null,
-    private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() },
-    private val onRemotePlay: (() -> Unit)? = null
+    private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() }
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -253,16 +252,6 @@ class GameDashboardView(
         clipChildren = false; clipToPadding = false
     }
     private val consoleTabRow=FrameLayout(context).apply { clipChildren=false;clipToPadding=false }
-    private val consolesButton = DashboardTheme.button(context, UiText.text("Meus consoles")) {
-        onRemotePlay?.invoke()
-    }.apply {
-        id = generateViewId()
-        visibility = GONE
-        contentDescription = UiText.text("Meus consoles")
-        setOnFocusChangeListener { _, focused ->
-            if (designScene == ConsoleScene.XBOX_SERIES) text = if (focused) UiText.text("Meus consoles") else ""
-        }
-    }
     private val lb = label(24f).apply { text = "LB"; gravity = Gravity.CENTER }
     private val rb = label(24f).apply { text = "RB"; gravity = Gravity.CENTER }
     private val grid = object : RecyclerView(context) {
@@ -492,14 +481,15 @@ class GameDashboardView(
         accountName.text = if(designScene==ConsoleScene.NONE) profile.displayName.uppercase(Locale.getDefault()) else profile.displayName
         gamertag.text = if(designScene==ConsoleScene.NONE) profile.gamertag.uppercase(Locale.getDefault()) else profile.gamertag
         subscription.bindPlan(profile.subscription?.let { if (it == "FREE") "FREE" else "GAME PASS $it" } ?: UiText.text("ASSINATURA NÃO INFORMADA"))
-        subscription.refreshBadge(scale)
+        subscription.refreshBadge(if(designScene==ConsoleScene.NONE) .8f*scale else scale)
         remainingTime.bindTime(cloudPlaytime)
         avatarLetter.text = profile.displayName.take(1).uppercase(Locale.getDefault())
         connected.contentDescription = UiText.text("Conta autenticada no Xbox Cloud")
         profilePanel.contentDescription = if(SeriesGuidePanel.enabled(context))
             UiText.text("{0}, {1}. Abrir Guia",UiText.nested(profile.displayName),UiText.nested(profile.gamertag))
             else UiText.text("{0}, {1}. Abrir configurações",UiText.nested(profile.displayName),UiText.nested(profile.gamertag))
-        val size=ArtworkSize.forDisplay((80*scale).roundToInt(),(80*scale).roundToInt())
+        val avatarSize=((if(designScene==ConsoleScene.NONE) 64 else 80)*scale).roundToInt()
+        val size=ArtworkSize.forDisplay(avatarSize,avatarSize)
         posters.load(avatar, profile.avatarUrl, size.width, size.height) { ready -> avatarLetter.visibility = if (ready) View.GONE else View.VISIBLE }
     }
     fun setAddedGallery(added: List<String>?) {
@@ -669,12 +659,7 @@ class GameDashboardView(
                 if(designScene==ConsoleScene.PS5) openPlayStationCatalog(tab,playStationBrowseTab)
                 else focusFirstCover()
             }
-        } + listOfNotNull(onRemotePlay?.let { ConsoleAction(UiText.text("Meus consoles"), it) }),
-            onBack={ categoryFocus().requestFocus() })
-    }
-    internal fun restoreRemotePlayFocus() {
-        if (consolesButton.visibility == VISIBLE) consolesButton.requestFocus()
-        else categoryFocus().requestFocus()
+        },onBack={ categoryFocus().requestFocus() })
     }
     private fun openPlayStationCatalog(tab: LibraryTab, opener: View=playStationAllGames) {
         val selectedKey=selectedCard?.key
@@ -964,23 +949,6 @@ class GameDashboardView(
         listOf(headerIcon,headerTitle,profilePanel,searchButton,navigation,lb,rb,grid).forEach { it.visibility=VISIBLE }
         metadataNote.visibility=GONE
         settingsButton.visibility=VISIBLE;headerTitle.gravity=Gravity.START
-        if (onRemotePlay != null) {
-            if (consolesButton.parent !== tabRow || tabRow.indexOfChild(consolesButton) != tabRow.childCount - 1) {
-                (consolesButton.parent as? ViewGroup)?.removeView(consolesButton)
-                tabRow.addView(consolesButton, LinearLayout.LayoutParams(0, -1, 1.5f))
-            }
-            consolesButton.visibility = VISIBLE
-            consolesButton.background = FocusPlate(7f, 4f)
-            consolesButton.text = UiText.text("Meus consoles")
-            consolesButton.setTextColor(Color.WHITE)
-            consolesButton.gravity = Gravity.CENTER
-            consolesButton.setPadding(0, 0, 0, 0)
-            consolesButton.maxLines = 2
-            consolesButton.nextFocusLeftId = tabs.last().id
-            consolesButton.nextFocusDownId = grid.id
-            tabs.last().nextFocusRightId = consolesButton.id
-            textSize(consolesButton, 19f)
-        }
         cardWidth=0;cardColumns=COLUMNS;cardHorizontal=false
         val s = scale
         // Reserve the full header for the game and profile. The portrait grid scrolls below it.
@@ -1001,19 +969,19 @@ class GameDashboardView(
         textSize(headerTitle, 46f)
         if (android.os.Build.VERSION.SDK_INT >= 26) headerTitle.setAutoSizeTextTypeUniformWithConfiguration(
             (24*s).roundToInt().coerceAtLeast(1), (46*s).roundToInt().coerceAtLeast(2), 1, TypedValue.COMPLEX_UNIT_PX)
-        place(profilePanel, w-492*s, headerTop+2*s, 440*s, headerSize)
-        val a = 80*s
-        place(avatarLetter, 10*s, 12*s, a, a); place(avatar, 10*s, 12*s, a, a)
-        place(connected, 10*s+a-19*s, 12*s+a-18*s, 15*s, 15*s)
-        val tx = 106*s
-        place(accountName, tx, 0f, 320*s, 31*s)
-        place(gamertag, tx, 31*s, 320*s, 26*s)
-        place(subscription, tx, 60*s, 250*s, 25*s)
-        place(remainingTime,tx,88*s,250*s,22*s);textSize(remainingTime,17f)
-        place(settingsButton, tx+264*s, 64*s, 60*s, 42*s)
-        textSize(accountName, 27f); textSize(gamertag, 24f); textSize(subscription, 20f)
-        textSize(settingsButton, 28f); textSize(avatarLetter, 28f)
-        subscription.refreshBadge(s);remainingTime.refreshBadge(s)
+        place(profilePanel, w-388*s, headerTop+8*s, 336*s, 94*s)
+        val a = 64*s
+        place(avatarLetter, 5*s, 9*s, a, a); place(avatar, 5*s, 9*s, a, a)
+        place(connected, 5*s+a-14*s, 9*s+a-14*s, 11*s, 11*s)
+        val tx = 81*s
+        place(accountName, tx, 0f, 206*s, 24*s)
+        place(gamertag, tx, 24*s, 206*s, 20*s)
+        place(subscription, tx, 47*s, 200*s, 21*s)
+        place(remainingTime,tx,70*s,200*s,18*s);textSize(remainingTime,14f)
+        place(settingsButton, tx+208*s, 40*s, 47*s, 42*s)
+        textSize(accountName, 22f); textSize(gamertag, 19f); textSize(subscription, 16f)
+        textSize(settingsButton, 22f); textSize(avatarLetter, 22f)
+        subscription.refreshBadge(.8f*s);remainingTime.refreshBadge(.8f*s)
         place(metadataNote, 106*s, headerTop+headerSize+5*s, w-210*s, 22*s); textSize(metadataNote, 17f)
         place(navigation, 48*s, navTop, w-84*s, navHeight+3*s)
         val shoulderTop = (navHeight-29*s)/2
@@ -1122,8 +1090,6 @@ class GameDashboardView(
         if(next!=ConsoleScene.XBOX_SERIES && next!=ConsoleScene.PS5) { posters.cancel(heroBackdrop);consoleBackdrop.setArtwork(null) }
         tabRow.visibility=if(console) GONE else VISIBLE
         val parent=if(console) consoleTabRow else tabRow
-        consolesButton.visibility = GONE
-        tabs.last().nextFocusRightId = View.NO_ID
         tabs.forEachIndexed { i,view ->
             view.visibility=VISIBLE
             if(android.os.Build.VERSION.SDK_INT>=26) view.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
@@ -1745,29 +1711,11 @@ class GameDashboardView(
                 pos(dashboardClock,wide-250f,43f,130f,35f);text(dashboardClock,22f)
                 dashboardClock.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)
                 pos(navigation,350f,26f,wide-650f,94f);pos(consoleTabRow,0f,0f,wide-650f,94f)
-                val tw=(wide-650f)/(tabs.size + if (onRemotePlay != null) 1 else 0)
+                val tw=(wide-650f)/tabs.size
                 tabs.forEachIndexed { i,v ->
                     pos(v,i*tw,0f,tw-5f,94f);v.text=if(i==activeTab.ordinal) LibraryTab.entries[i].label else ""
                     v.gravity=Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL;v.maxLines=2
                     v.setPadding((3*s).roundToInt(),(59*s).roundToInt(),(3*s).roundToInt(),(2*s).roundToInt());text(v,14f)
-                }
-                if (onRemotePlay != null) {
-                    if (consolesButton.parent !== consoleTabRow) {
-                        (consolesButton.parent as? ViewGroup)?.removeView(consolesButton)
-                        consoleTabRow.addView(consolesButton)
-                    }
-                    consolesButton.visibility = VISIBLE
-                    consolesButton.background = ConsoleControlPlate(designScene, ConsoleControl.TAB, false, ConsoleGlyph.DISPLAY)
-                    consolesButton.setTextColor(consoleTextColor())
-                    consolesButton.text = if (consolesButton.hasFocus()) UiText.text("Meus consoles") else ""
-                    consolesButton.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-                    consolesButton.maxLines = 2
-                    consolesButton.setPadding((3*s).roundToInt(), (59*s).roundToInt(), (3*s).roundToInt(), (2*s).roundToInt())
-                    consolesButton.nextFocusLeftId = tabs.last().id
-                    consolesButton.nextFocusDownId = grid.id
-                    tabs.last().nextFocusRightId = consolesButton.id
-                    pos(consolesButton, tabs.size*tw, 0f, tw-5f, 94f)
-                    text(consolesButton, 14f)
                 }
                 pos(headerIcon,wide-420f,139f,320f,174f);headerIcon.visibility=INVISIBLE
                 pos(sectionTitle,58f,292f,wide-116f,32f);text(sectionTitle,22f)

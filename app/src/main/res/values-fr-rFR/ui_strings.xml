@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"Aucune console trouvée. Sur Xbox, ouvrez Paramètres › Appareils et connexions › Fonctionnalités à distance."</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"Impossible de rechercher vos consoles Xbox. Réessayez."</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"Retour à vos consoles."</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"Lecture à distance"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"Préparez-vous à jouer"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Jouez aux jeux installés sur votre Xbox."</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"Ce dont vous avez besoin"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"Connexion Internet d’au moins 10 Mbit/s"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Compte Microsoft avec un profil Xbox"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"Xbox Series X|S ou Xbox One avec les fonctions à distance activées"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Manette Bluetooth recommandée"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"Configurer la console"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"Obtenir de l’aide"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"Activez les fonctions à distance"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"Sur votre Xbox, connectez-vous avec le même compte Microsoft et accédez aux paramètres ci-dessous."</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"Paramètres › Appareils et connexions › Fonctionnalités à distance"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"Activez les fonctions à distance, puis revenez dans l’application et actualisez la liste des consoles."</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"Vous pouvez aussi terminer la configuration sur le site officiel Xbox."</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Configurer sur Xbox.com"</string>
 </resources>

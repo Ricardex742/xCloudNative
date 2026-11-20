@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"本体が見つかりません。Xbox で［設定］›［デバイスと接続］›［リモート機能］を開いてください。"</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"Xbox 本体を取得できませんでした。もう一度お試しください。"</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"本体一覧に戻ります。"</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"リモート プレイ"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"プレイの準備"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Xbox にインストール済みのゲームをプレイできます。"</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"必要なもの"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"10 Mbps 以上のインターネット接続"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Xbox プロフィールがある Microsoft アカウント"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"リモート機能を有効にした Xbox Series X|S または Xbox One"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Bluetooth 対応コントローラーを推奨"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"本体を設定"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"ヘルプ"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"リモート機能を有効にする"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"Xbox で同じ Microsoft アカウントにサインインし、次の設定を開きます。"</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"設定 › デバイスと接続 › リモート機能"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"リモート機能をオンにしたら、アプリに戻って本体一覧を更新してください。"</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"Xbox の公式サイトでも設定を完了できます。"</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Xbox.com で設定"</string>
 </resources>

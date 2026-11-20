@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"找不到主機。請在 Xbox 上開啟「設定 › 裝置與連線 › 遠端功能」。"</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"無法查詢你的 Xbox 主機。請再試一次。"</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"正在返回主機清單。"</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"遠端遊玩"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"準備開始遊戲"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"暢玩已安裝在 Xbox 主機上的遊戲。"</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"所需條件"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"至少 10 Mbps 的網際網路連線"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"具有 Xbox 個人檔案的 Microsoft 帳戶"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"已開啟遠端功能的 Xbox Series X|S 或 Xbox One"</string>
+    <string name="ui_cf98967060894648" formatted="false">"建議使用藍牙控制器"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"設定主機"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"取得說明"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"啟用遠端功能"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"在 Xbox 上以相同的 Microsoft 帳戶登入，然後開啟下列設定。"</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"設定 › 裝置與連線 › 遠端功能"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"開啟遠端功能後，回到應用程式並重新整理主機清單。"</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"你也可以在 Xbox 官方網站完成設定。"</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"在 Xbox.com 上設定"</string>
 </resources>

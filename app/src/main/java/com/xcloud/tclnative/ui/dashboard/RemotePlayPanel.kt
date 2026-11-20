@@ -2,6 +2,8 @@ package com.xcloud.tclnative.ui.dashboard
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
@@ -9,8 +11,8 @@ import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.signaling.RemoteConsole
 import kotlin.math.roundToInt
 
-internal class RemotePlayPanel(context: Context) {
-    val dialog = ConsoleDialog(context, UiText.text("Meus consoles"))
+internal class RemotePlayPanel(private val context: Context, private val openPage: (String) -> Unit) {
+    val dialog = ConsoleDialog(context, UiText.text("Reprodução remota"), ConsolePanelPurpose.REMOTE_PLAY)
     private val description = dialog.text(UiText.text("Consultando seus consoles Xbox…"), 22).apply {
         accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
     }
@@ -18,12 +20,20 @@ internal class RemotePlayPanel(context: Context) {
     private val refresh = dialog.addPersistentAction(UiText.text("Atualizar")) { reload?.invoke() }.apply {
         visibility = View.GONE
     }
+    private val setup = dialog.addPersistentAction(UiText.text("Configurar console")) { showSetup() }.apply {
+        visibility = View.GONE
+    }
+    private val help = dialog.addPersistentAction(UiText.text("Obter ajuda")) { openPage(HELP) }.apply {
+        visibility = View.GONE
+    }
     private var reload: (() -> Unit)? = null
+    private var setupPage: ConsoleDialog? = null
 
     init {
         dialog.body.addView(description, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dialog.px(14) })
         dialog.body.addView(content, LinearLayout.LayoutParams(-1, -2))
         dialog.focusFirst(dialog.addAction(UiText.text("Voltar")) {})
+        dialog.addCleanup { setupPage?.dismiss(); setupPage = null }
     }
 
     fun loading() {
@@ -31,6 +41,8 @@ internal class RemotePlayPanel(context: Context) {
         description.visibility = View.VISIBLE
         description.text = UiText.text("Consultando seus consoles Xbox…")
         refresh.visibility = View.GONE
+        setup.visibility = View.GONE
+        help.visibility = View.GONE
         reload = null
     }
 
@@ -38,6 +50,8 @@ internal class RemotePlayPanel(context: Context) {
         description.visibility = View.VISIBLE
         description.text = message
         refresh.visibility = View.VISIBLE
+        setup.visibility = View.VISIBLE
+        help.visibility = View.GONE
         reload = retry
         refresh.requestFocus()
     }
@@ -47,12 +61,13 @@ internal class RemotePlayPanel(context: Context) {
         refresh.visibility = View.VISIBLE
         reload = retry
         if (consoles.isEmpty()) {
-            description.visibility = View.VISIBLE
-            description.text = UiText.text("Nenhum console encontrado. No Xbox, abra Configurações › Dispositivos e conexões › Recursos remotos.")
-            refresh.requestFocus()
+            showPreparation()
             return
         }
-        description.visibility = View.GONE
+        setup.visibility = View.VISIBLE
+        help.visibility = View.GONE
+        description.visibility = View.VISIBLE
+        description.text = UiText.text("Meus consoles")
         val density = dialog.context.resources.displayMetrics.density
         val minTouch = (48 * density).roundToInt()
         val split = LinearLayout(dialog.context).apply {
@@ -111,5 +126,124 @@ internal class RemotePlayPanel(context: Context) {
         }
         select(selected)
         rows[consoles.indexOf(selected)].requestFocus()
+    }
+
+    private fun showPreparation() {
+        description.visibility = View.GONE
+        setup.visibility = View.VISIBLE
+        help.visibility = View.VISIBLE
+        refresh.visibility = View.GONE
+        val density = context.resources.displayMetrics.density
+        val wide = context.resources.displayMetrics.widthPixels / density >= 600
+        val row = LinearLayout(dialog.context).apply {
+            orientation = if (wide) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+            isBaselineAligned = false
+        }
+        val intro = LinearLayout(dialog.context).apply { orientation = LinearLayout.VERTICAL }
+        intro.addArticle(dialog.text(UiText.text("Prepare-se para jogar"), 40, true))
+        intro.addArticle(dialog.text(UiText.text("Jogue os títulos instalados no seu Xbox."), 23))
+        val art = RemotePlayArtwork(dialog.context).apply {
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            background = DashboardTheme.panel(dialog.px(16).toFloat())
+        }
+        intro.addView(art, LinearLayout.LayoutParams(-1, dialog.px(204)).apply { topMargin = dialog.px(14) })
+        val checklist = LinearLayout(dialog.context).apply {
+            orientation = LinearLayout.VERTICAL
+            val padding = dialog.px(22)
+            setPadding(padding, padding, padding, padding)
+            background = DashboardTheme.panel(dialog.px(12).toFloat())
+        }
+        checklist.addArticle(dialog.text(UiText.text("O que você precisa"), 27, true))
+        checklist.addArticle(requirement(ConsoleGlyph.NETWORK, UiText.text("Internet de pelo menos 10 Mbps")))
+        checklist.addArticle(requirement(ConsoleGlyph.ACCOUNT, UiText.text("Conta Microsoft com perfil Xbox")))
+        checklist.addArticle(requirement(ConsoleGlyph.DISPLAY, UiText.text("Xbox Series X|S ou Xbox One com recursos remotos ativos")))
+        checklist.addArticle(requirement(ConsoleGlyph.CONTROLLER, UiText.text("Controle Bluetooth recomendado")))
+        row.addView(intro, if(wide) LinearLayout.LayoutParams(0,-2,1f) else LinearLayout.LayoutParams(-1,-2))
+        row.addView(checklist, if(wide) LinearLayout.LayoutParams(0,-2,1.35f).apply { marginStart=dialog.px(30) }
+            else LinearLayout.LayoutParams(-1,-2).apply { topMargin=dialog.px(20) })
+        content.addView(row, LinearLayout.LayoutParams(-1, -2))
+        setup.requestFocus()
+    }
+
+    private fun requirement(glyph: ConsoleGlyph, message: String) = dialog.text(message, 22).apply {
+        minHeight = dialog.px(40)
+        gravity = Gravity.CENTER_VERTICAL
+        setCompoundDrawablesRelativeWithIntrinsicBounds(ConsoleIconDrawable(glyph, dialog.px(25), textColors), null, null, null)
+        compoundDrawablePadding = dialog.px(12)
+    }
+
+    private fun LinearLayout.addArticle(view: View) {
+        addView(view, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dialog.px(12) })
+    }
+
+    private fun showSetup() {
+        if (setupPage?.isShowing == true) return
+        val guide = ConsoleDialog(context, UiText.text("Configurar console"), ConsolePanelPurpose.REMOTE_PLAY)
+        setupPage = guide
+        fun line(message: String, size: Int, heavy: Boolean = false, highlight: Boolean = false) {
+            val view = guide.text(message, size, heavy)
+            if (highlight) {
+                view.background = DashboardTheme.panel(guide.px(9).toFloat())
+                val padding = guide.px(14)
+                view.setPadding(padding, padding, padding, padding)
+            }
+            guide.body.addView(view, LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = guide.px(14)
+            })
+        }
+        line(UiText.text("Habilite os recursos remotos"), 36, true)
+        line(UiText.text("No Xbox, entre com a mesma conta Microsoft e abra o caminho abaixo."), 23)
+        line(UiText.text("Configurações › Dispositivos e conexões › Recursos remotos"), 25, true, highlight = true)
+        line(UiText.text("Ative os recursos remotos. Depois, volte ao app e atualize a lista de consoles."), 23)
+        line(UiText.text("Você também pode concluir a configuração no site oficial do Xbox."), 22)
+        guide.addAction(UiText.text("Voltar")) {}
+        guide.addPersistentAction(UiText.text("Obter ajuda")) { openPage(HELP) }
+        guide.focusFirst(guide.addPersistentAction(UiText.text("Configurar no Xbox.com")) { openPage(OFFICIAL_PLAY) })
+        guide.setOnDismissListener {
+            if (setupPage === guide) setupPage = null
+            if (dialog.isShowing) {
+                refresh.visibility = View.VISIBLE
+                help.visibility = View.GONE
+                refresh.requestFocus()
+            }
+        }
+        guide.show()
+    }
+
+    companion object {
+        private const val OFFICIAL_PLAY = "https://www.xbox.com/pt-br/play/consoles"
+        private const val HELP = "https://support.xbox.com/pt-BR/help/games-apps/game-setup-and-play/how-to-set-up-remote-play"
+    }
+}
+
+private class RemotePlayArtwork(context: Context) : View(context) {
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val icons = ConsoleIcons()
+
+    override fun onDraw(canvas: Canvas) {
+        val scale = minOf(width / 312f, height / 180f)
+        val saved = canvas.save()
+        canvas.translate((width - 312f * scale) / 2, (height - 180f * scale) / 2)
+        canvas.scale(scale, scale)
+        val accent = DashboardTheme.accent
+        paint.color = DashboardTheme.color(UiColor.LOGO_BACKGROUND)
+        paint.style = Paint.Style.FILL
+        canvas.drawRoundRect(22f, 24f, 214f, 127f, 9f, 9f, paint)
+        canvas.drawRoundRect(232f, 37f, 289f, 151f, 9f, 9f, paint)
+        paint.color = accent
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2.5f
+        canvas.drawRoundRect(22f, 24f, 214f, 127f, 9f, 9f, paint)
+        canvas.drawRoundRect(232f, 37f, 289f, 151f, 9f, 9f, paint)
+        canvas.drawCircle(260.5f, 69f, 17f, paint)
+        canvas.drawLine(39f, 148f, 121f, 148f, paint)
+        canvas.drawLine(79f, 127f, 79f, 148f, paint)
+        paint.style = Paint.Style.FILL
+        canvas.drawCircle(260.5f, 133f, 2.7f, paint)
+        icons.draw(canvas, ConsoleGlyph.DISPLAY, 91f, 48f, 55f, accent)
+        canvas.drawRoundRect(137f, 103f, 225f, 165f, 14f, 14f,
+            paint.apply { color = DashboardTheme.surface })
+        icons.draw(canvas, ConsoleGlyph.CONTROLLER, 153f, 109f, 57f, accent)
+        canvas.restoreToCount(saved)
     }
 }

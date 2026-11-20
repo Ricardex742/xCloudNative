@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"Keine Konsolen gefunden. Öffne auf der Xbox Einstellungen › Geräte und Verbindungen › Remotefunktionen."</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"Deine Xbox-Konsolen konnten nicht abgerufen werden. Versuche es erneut."</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"Zurück zu deinen Konsolen."</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"Remote Play"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"Mach dich bereit zum Spielen"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Spiele die auf deiner Xbox installierten Titel."</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"Was du brauchst"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"Internetverbindung mit mindestens 10 Mbit/s"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Microsoft-Konto mit Xbox-Profil"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"Xbox Series X|S oder Xbox One mit aktivierten Remotefunktionen"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Bluetooth-Controller empfohlen"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"Konsole einrichten"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"Hilfe erhalten"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"Remotefunktionen aktivieren"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"Melde dich auf deiner Xbox mit demselben Microsoft-Konto an und öffne die folgenden Einstellungen."</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"Einstellungen › Geräte und Verbindungen › Remotefunktionen"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"Aktiviere die Remotefunktionen. Kehre dann zur App zurück und aktualisiere die Konsolenliste."</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"Du kannst die Einrichtung auch auf der offiziellen Xbox-Website abschließen."</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Auf Xbox.com einrichten"</string>
 </resources>

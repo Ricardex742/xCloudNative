@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"Nenhum console encontrado. No Xbox, abra Configurações › Dispositivos e conexões › Recursos remotos."</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"Não foi possível consultar seus consoles Xbox. Tente novamente."</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"Voltando aos seus consoles."</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"Reprodução remota"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"Prepare-se para jogar"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Jogue os títulos instalados no seu Xbox."</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"O que você precisa"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"Internet de pelo menos 10 Mbps"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Conta Microsoft com perfil Xbox"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"Xbox Series X|S ou Xbox One com recursos remotos ativos"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Controle Bluetooth recomendado"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"Configurar console"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"Obter ajuda"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"Habilite os recursos remotos"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"No Xbox, entre com a mesma conta Microsoft e abra o caminho abaixo."</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"Configurações › Dispositivos e conexões › Recursos remotos"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"Ative os recursos remotos. Depois, volte ao app e atualize a lista de consoles."</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"Você também pode concluir a configuração no site oficial do Xbox."</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Configurar no Xbox.com"</string>
 </resources>

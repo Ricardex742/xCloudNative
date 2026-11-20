@@ -30,7 +30,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 data class ConsoleAction(val label: String, val action: () -> Unit) { var longAction: (() -> Unit)?=null }
-enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER, PROFILE, GAME_SESSION, NETWORK_STATS }
+enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER, PROFILE, GAME_SESSION, NETWORK_STATS, REMOTE_PLAY }
 
 /** Shared native panels for search, account menus and messages. No platform alert buttons/rows. */
 class ConsoleDialog(context: Context, private val heading: String,private val purpose: ConsolePanelPurpose=ConsolePanelPurpose.GENERAL) : Dialog(context, R.style.ConsoleDialog) {
@@ -40,7 +40,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val skin=ConsolePanelSkin()
     private val sessionSidebar=purpose==ConsolePanelPurpose.GAME_SESSION
     private val compactNetwork=purpose==ConsolePanelPurpose.NETWORK_STATS
-    private val fullScreen=skin.scene.playStation && !sessionSidebar && !compactNetwork && purpose !in listOf(ConsolePanelPurpose.GUIDE,ConsolePanelPurpose.CONTROL_CENTER) && !(purpose==ConsolePanelPurpose.PROFILE && skin.scene==ConsoleScene.PS5)
+    private val remotePlayPage=purpose==ConsolePanelPurpose.REMOTE_PLAY
+    private val fullScreen=remotePlayPage || skin.scene.playStation && !sessionSidebar && !compactNetwork && purpose !in listOf(ConsolePanelPurpose.GUIDE,ConsolePanelPurpose.CONTROL_CENTER) && !(purpose==ConsolePanelPurpose.PROFILE && skin.scene==ConsoleScene.PS5)
     private val networkCutout=Rect()
     private val screenWidth = activity?.window?.decorView?.width?.takeIf { it > 0 }
         ?: context.resources.displayMetrics.widthPixels
@@ -60,21 +61,22 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         }
     }.apply {
         orientation = LinearLayout.VERTICAL
-        background = if(skin.enabled) skin.background() else DashboardTheme.panel(16*scale)
+        background = if(skin.enabled) skin.background() else if(remotePlayPage) DashboardBackground() else DashboardTheme.panel(16*scale)
         if (compactNetwork) setPadding(px(14),px(4),px(8),px(10))
+        else if(remotePlayPage) setPadding(px(28),px(16),px(28),px(16))
         else setPadding(px(if(fullScreen) 64 else 32), px(if(fullScreen) 32 else 26), px(if(fullScreen) 64 else 32), px(if(phone) 20 else 26))
     }
     val body = object: LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
     }.apply {
         orientation = LinearLayout.VERTICAL
-        if(fullScreen) setPadding(px(100),0,px(100),0)
+        if(fullScreen && !remotePlayPage) setPadding(px(100),0,px(100),0)
     }
     private val actions = object: LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
     }.apply { orientation = LinearLayout.HORIZONTAL;isBaselineAligned=false }
     private val scroll = ScrollView(context).apply {
-        isVerticalScrollBarEnabled = sessionSidebar || compactNetwork || skin.scene.playStation
+        isVerticalScrollBarEnabled = sessionSidebar || compactNetwork || skin.scene.playStation || remotePlayPage
         if(sessionSidebar) {
             isVerticalFadingEdgeEnabled=true
             setFadingEdgeLength(px(18))
@@ -92,6 +94,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         private val visiblePanels=mutableListOf<java.lang.ref.WeakReference<ConsoleDialog>>()
     }
     private fun closePanels() {
+        if (remotePlayPage) { dismiss(); return }
         // Some previews keep their parent open. X closes the entire owned panel group;
         // dismiss never invokes the back/cancel callback or a destructive action.
         visiblePanels.mapNotNull { it.get() }.filter {
@@ -113,7 +116,13 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         activity?.let(::setOwnerActivity)
         val headingContent=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
-        if (compactNetwork) {
+        if (remotePlayPage) {
+            headingContent.addView(text(heading,27,true).apply {
+                maxLines=2
+                gravity=Gravity.CENTER_VERTICAL
+                minHeight=touchSize()
+            },LinearLayout.LayoutParams(-1,-2))
+        } else if (compactNetwork) {
             headingContent.addView(text(heading,16,true).apply { textSize=16f;maxLines=2 },LinearLayout.LayoutParams(-1,-2))
         } else if(sessionSidebar || purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
             headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { if(!sessionSidebar) bottomMargin=px(14) })
@@ -151,7 +160,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         val close=keyButton("×") { closePanels() }.apply {
             tag="close-settings"
             if(skin.scene.playStation) background=ConsoleControlPlate(skin.scene,ConsoleControl.TAB)
-            contentDescription=UiText.text("Fechar ajustes e voltar")
+            contentDescription=UiText.text(if(remotePlayPage) "Fechar" else "Fechar ajustes e voltar")
             if(compactNetwork) textSize=24f
             else if(skin.scene.playStation) setTextSize(TypedValue.COMPLEX_UNIT_PX,28*scale) else setTextSize(TypedValue.COMPLEX_UNIT_SP,28f)
             setPadding(0,0,0,0)
@@ -159,9 +168,9 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         val closeSize=if(skin.scene.playStation && !sessionSidebar && !compactNetwork) px(48) else touchSize()
         header.addView(close,LinearLayout.LayoutParams(closeSize,closeSize).apply { marginStart=px(if(compactNetwork) 4 else 10) })
         if(compactNetwork) focusFirst(close)
-        panel.addView(header,LinearLayout.LayoutParams(-1,-2))
+        panel.addView(header,LinearLayout.LayoutParams(-1,-2).apply { if(remotePlayPage) bottomMargin=px(16) })
         panel.addView(scroll, LinearLayout.LayoutParams(-1, -2, 1f))
-        panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(if(compactNetwork) 0 else 22) })
+        panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(if(compactNetwork || remotePlayPage) 0 else 22) })
         if(skin.scene.playStation) ConsoleHitTargets.install(panel,listOf(close))
         if(!compactNetwork) ImmersiveWindow.protectContent(panel,avoidKeyboard=fullScreen)
         setContentView(panel)

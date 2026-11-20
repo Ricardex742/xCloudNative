@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"Консоли не найдены. На Xbox откройте Параметры › Устройства и подключения › Удалённые функции."</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"Не удалось получить список консолей Xbox. Попробуйте ещё раз."</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"Возврат к списку консолей."</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"Удалённое воспроизведение"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"Подготовьтесь к игре"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Играйте в игры, установленные на Xbox."</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"Что вам понадобится"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"Интернет со скоростью от 10 Мбит/с"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Учётная запись Microsoft с профилем Xbox"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"Xbox Series X|S или Xbox One с включёнными удалёнными функциями"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Рекомендуется геймпад Bluetooth"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"Настроить консоль"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"Получить помощь"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"Включите удалённые функции"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"Войдите на Xbox с той же учётной записью Microsoft и откройте указанные ниже параметры."</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"Параметры › Устройства и подключения › Удалённые функции"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"Включите удалённые функции, затем вернитесь в приложение и обновите список консолей."</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"Настройку можно также завершить на официальном сайте Xbox."</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Настроить на Xbox.com"</string>
 </resources>

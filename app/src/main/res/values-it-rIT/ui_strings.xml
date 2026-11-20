@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"Nessuna console trovata. Su Xbox, apri Impostazioni › Dispositivi e connessioni › Funzionalità remote."</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"Impossibile trovare le tue console Xbox. Riprova."</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"Ritorno alle tue console."</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"Riproduzione remota"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"Preparati a giocare"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Gioca ai titoli installati sulla tua Xbox."</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"Cosa ti serve"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"Connessione Internet di almeno 10 Mbps"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Account Microsoft con profilo Xbox"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"Xbox Series X|S o Xbox One con funzionalità remote attive"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Controller Bluetooth consigliato"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"Configura la console"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"Ottieni assistenza"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"Attiva le funzionalità remote"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"Sulla Xbox accedi con lo stesso account Microsoft e apri le impostazioni indicate qui sotto."</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"Impostazioni › Dispositivi e connessioni › Funzionalità remote"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"Attiva le funzionalità remote, poi torna all’app e aggiorna l’elenco delle console."</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"Puoi anche completare la configurazione sul sito ufficiale Xbox."</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Configura su Xbox.com"</string>
 </resources>

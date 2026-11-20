@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"Konsol bulunamadı. Xbox üzerinde Ayarlar › Cihazlar ve bağlantılar › Uzaktan erişim özellikleri bölümünü açın."</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"Xbox konsollarınız sorgulanamadı. Tekrar deneyin."</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"Konsol listenize dönülüyor."</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"Uzaktan oynatma"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"Oynamaya hazırlanın"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"Xbox’ınıza yüklediğiniz oyunları oynayın."</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"Gerekenler"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"En az 10 Mbps internet bağlantısı"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"Xbox profili olan bir Microsoft hesabı"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"Uzaktan erişim özellikleri açık bir Xbox Series X|S veya Xbox One"</string>
+    <string name="ui_cf98967060894648" formatted="false">"Bluetooth oyun kumandası önerilir"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"Konsolu ayarla"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"Yardım al"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"Uzaktan erişim özelliklerini etkinleştirin"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"Xbox’ta aynı Microsoft hesabıyla oturum açın ve aşağıdaki ayarları açın."</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"Ayarlar › Cihazlar ve bağlantılar › Uzaktan erişim özellikleri"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"Uzaktan erişim özelliklerini açın. Ardından uygulamaya dönüp konsol listesini yenileyin."</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"Kurulumu resmi Xbox web sitesinde de tamamlayabilirsiniz."</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Xbox.com’da ayarla"</string>
 </resources>

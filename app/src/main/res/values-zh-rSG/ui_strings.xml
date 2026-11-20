@@ -1291,4 +1291,20 @@
     <string name="ui_3eefdc5ca039c407" formatted="false">"未找到主机。请在 Xbox 上打开“设置 › 设备和连接 › 远程功能”。"</string>
     <string name="ui_a4cce898b81db2e3" formatted="false">"无法查询你的 Xbox 主机。请重试。"</string>
     <string name="ui_39d837c995cdba6a" formatted="false">"正在返回主机列表。"</string>
+    <string name="ui_d43ffd96501e34ea" formatted="false">"远程游戏"</string>
+    <string name="ui_857dbb031510341a" formatted="false">"准备开始游戏"</string>
+    <string name="ui_f942b18b3de24a18" formatted="false">"畅玩已安装在 Xbox 主机上的游戏。"</string>
+    <string name="ui_eb0b1c4cd4f48f9a" formatted="false">"所需条件"</string>
+    <string name="ui_4e17b1d997961657" formatted="false">"至少 10 Mbps 的互联网连接"</string>
+    <string name="ui_294ba2401b25517f" formatted="false">"具有 Xbox 档案的 Microsoft 帐户"</string>
+    <string name="ui_93e677df4cb754ab" formatted="false">"已开启远程功能的 Xbox Series X|S 或 Xbox One"</string>
+    <string name="ui_cf98967060894648" formatted="false">"建议使用蓝牙手柄"</string>
+    <string name="ui_5b274e910ffcda3b" formatted="false">"设置主机"</string>
+    <string name="ui_dd4d5480c961fc67" formatted="false">"获取帮助"</string>
+    <string name="ui_3bc045a3c41fbe2b" formatted="false">"启用远程功能"</string>
+    <string name="ui_419e1d66249aca80" formatted="false">"在 Xbox 上使用同一 Microsoft 帐户登录，并打开以下设置。"</string>
+    <string name="ui_7b03a7d45c982175" formatted="false">"设置 › 设备和连接 › 远程功能"</string>
+    <string name="ui_6718310f3c04b1fd" formatted="false">"开启远程功能后，返回应用并刷新主机列表。"</string>
+    <string name="ui_4282713ae57e7130" formatted="false">"你也可以在 Xbox 官方网站完成设置。"</string>
+    <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"在 Xbox.com 上设置"</string>
 </resources>
