@@ -18,7 +18,7 @@ O usuário prefere execução autônoma, comunicação em português e conclusõ
 - Repositório: `Ricardex742/xCloudNative`.
 - Última release pública confirmada no histórico desta conversa: **v0.38.0**. README deve listar recursos atuais, sem comparação obrigatória com 0.36.0 e sem histórico de testes pessoais.
 - Esta implementação está na branch `feat/quick-settings-navigation`, baseada em `fix/primary-controller-startup-order` (`2482b45e35c5c89acf70d274e0544c1b8a1ffb05`). Inclui, portanto, a correção experimental de ordem dos controles descrita abaixo.
-- Versão no código desta branch **0.40.15-shortcut-network**, versionCode **110**, usando a identidade de atualização existente.
+- Versão no código desta branch **0.40.16-network-indicator**, versionCode **111**, usando a identidade de atualização existente.
 - Não presumir que a branch foi publicada ou que há release nova: conferir `git status`, remotos e releases no ambiente atual.
 
 ## Implementação da navegação
@@ -308,3 +308,11 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - Os testes direcionados cobrem as preferências, as duas rotas do interruptor, os dados ausentes e a navegação do painel. As capturas nativas do menu e do editor foram inspecionadas. O gesto sobre o aviso em uma transmissão no aparelho continua pendente.
 - A versão **0.40.15-shortcut-network**, código **110**, foi compilada no commit `f82b77bbbf67deb0d3311e661159aa17c9e114b4`. Passaram 871 testes JVM, lint, traduções e verificações gráficas. [Build 44664772165](https://github.com/Ricardex742/xCloudNative/actions/runs/44664772165)
 - O APK baixado mantém o certificado permanente e declara `userLandscape`. SHA-256 `43fb33a56d996033f465200bd6057d76a419f751e5ca65eb737a1f362bc37b48`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44664772165/artifacts/14597513473)
+
+## Indicador de qualidade de rede no canto superior direito
+
+- Com Avisos de rede ativo, o indicador mostra três sinais verdes para rede estável, dois amarelos para rede moderada e um vermelho para rede ruim. Um ponto cinza indica que a avaliação ainda está pendente. Usa RTT, jitter e perda da transmissão. A confirmação em três amostras reduz mudanças por picos isolados.
+- O painel nativo de Estatísticas da rede tem até 248 dp de largura, altura ajustada ao conteúdo e posição no canto superior direito. O indicador e o painel respeitam o recorte. O toque no indicador e o item em Mais opções continuam abrindo o painel.
+- Passaram 55 testes direcionados. As capturas simuladas dos três estados e do painel foram inspecionadas. A nova posição ainda depende de confirmação em aparelho físico.
+- A versão **0.40.16-network-indicator**, código **111**, foi compilada no commit `67b0ad29bbae3e6eba600b838b3da4bdcc91842b`. Passaram 872 testes JVM, lint, traduções e verificações gráficas. [Build 44670381233](https://github.com/Ricardex742/xCloudNative/actions/runs/44670381233)
+- O APK baixado mantém o certificado permanente e declara `userLandscape`. SHA-256 `c679f17c6875f3de85068c92e2bdffbfb4e01cf397a94be7dee8def4fae6384a`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44670381233/artifacts/14600601362)
