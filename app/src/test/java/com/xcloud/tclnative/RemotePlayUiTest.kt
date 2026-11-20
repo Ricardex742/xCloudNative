@@ -5,9 +5,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.widget.LinearLayout
 import android.widget.TextView
 import com.xcloud.tclnative.catalog.GameLibrary
 import com.xcloud.tclnative.catalog.XboxProfile
@@ -17,7 +17,7 @@ import com.xcloud.tclnative.settings.UiTheme
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.signaling.RemoteConsole
 import com.xcloud.tclnative.ui.dashboard.DashboardTheme
-import com.xcloud.tclnative.ui.dashboard.CloudServiceHeader
+import com.xcloud.tclnative.ui.dashboard.ConsoleBrandView
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialog
 import com.xcloud.tclnative.ui.dashboard.GameDashboardView
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
@@ -68,32 +68,35 @@ class RemotePlayUiTest {
             {"serverId":"s2","deviceName":"Xbox do quarto","consoleType":"XboxOne","powerState":"Off"}]}""")
         var connected: RemoteConsole? = null
         var panel: RemotePlayPanel? = null
-        val dashboard = GameDashboardView(activity, GameLibrary(activity, "remote-play-test"), {}, {}, {}, {})
-        val header = CloudServiceHeader(activity) {
-            panel = RemotePlayPanel(activity) {}.also {
-                it.dialog.show()
-                it.showConsoles(consoles, null, {}) { console -> connected = console }
-            }
-        }
+        val dashboard = GameDashboardView(activity, GameLibrary(activity, "remote-play-test"),
+            {}, {}, {}, {}, onRemotePlay = {
+                panel = RemotePlayPanel(activity) {}.also {
+                    it.dialog.show()
+                    it.showConsoles(consoles, null, {}) { console -> connected = console }
+                }
+            })
         try {
-            val home = LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(header, LinearLayout.LayoutParams(-1, -2))
-                addView(dashboard, LinearLayout.LayoutParams(-1, 0, 1f))
-            }
-            activity.setContentView(home)
-            layout(home)
-            val selector = children(header).filterIsInstance<TextView>().single()
-            header.restoreFocus()
+            activity.setContentView(dashboard)
+            layout(dashboard)
+            val selector = children(dashboard).single { it.contentDescription == "Cloud Gaming" } as TextView
+            val brand = children(dashboard).filterIsInstance<ConsoleBrandView>().single()
+            assertEquals(View.VISIBLE, brand.visibility)
+            assertEquals("▾", selector.text.toString())
+            assertTrue(selector.left >= brand.left + brand.artworkRight(brand.width, brand.height))
+            assertTrue(selector.left - (brand.left + brand.artworkRight(brand.width, brand.height)) < 12f)
+            assertTrue(selector.top < brand.bottom && selector.bottom > brand.top)
+            assertEquals(0, dashboard.top)
+            snapshot(dashboard, "series-selector")
+            dashboard.focusServiceSelector()
             assertTrue(selector.hasFocus())
             val accept = KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BUTTON_A)
-            assertTrue(header.handleKey(accept))
+            assertTrue(dashboard.handleKey(accept))
             assertTrue(selector.isSelected)
-            assertTrue(header.handleKey(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BUTTON_B)))
+            assertTrue(dashboard.handleKey(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BUTTON_B)))
             assertFalse(selector.isSelected)
             assertNull(panel)
-            assertTrue(header.handleKey(accept))
-            assertTrue(header.handleKey(accept))
+            assertTrue(dashboard.handleKey(accept))
+            assertTrue(dashboard.handleKey(accept))
             val cards = children(panel!!.dialog.body).filterIsInstance<TextView>()
             val connect = cards.single { it.text == "Conectar" }
             assertNull(connected)
@@ -105,7 +108,6 @@ class RemotePlayUiTest {
             assertSame(consoles[0], connected)
             assertFalse(selector.isSelected)
         } finally {
-            header.closeMenu()
             panel?.dialog?.dismiss()
             dashboard.close()
             DashboardTheme.apply(activity, UiTheme.GREEN)
@@ -163,16 +165,12 @@ class RemotePlayUiTest {
         val activity = lifecycle.get()
         UiText.apply(activity, AppLanguage.PORTUGUESE)
         DashboardTheme.apply(activity, UiTheme.GREEN)
-        val dashboard = GameDashboardView(activity, GameLibrary(activity, "compact-profile"), {}, {}, {}, {})
+        val dashboard = GameDashboardView(activity, GameLibrary(activity, "compact-profile"),
+            {}, {}, {}, {}, onRemotePlay = {})
         try {
-            val home = LinearLayout(activity).apply {
-                orientation = LinearLayout.VERTICAL
-                addView(CloudServiceHeader(activity) {}, LinearLayout.LayoutParams(-1,-2))
-                addView(dashboard, LinearLayout.LayoutParams(-1,0,1f))
-            }
-            activity.setContentView(home)
+            activity.setContentView(dashboard)
             dashboard.setProfile(XboxProfile(displayName="Demo Xbox", gamertag="Perfil Demo", subscription="ULTIMATE"))
-            layout(home)
+            layout(dashboard)
             val account = children(dashboard).filterIsInstance<TextView>().single { it.text == "DEMO XBOX" }
             val profile = account.parent as View
             val gear = children(profile).single { it.contentDescription == "Configurações" }
@@ -180,8 +178,23 @@ class RemotePlayUiTest {
             assertTrue(profile.width < 380)
             assertEquals(22f, account.textSize)
             assertTrue(gear.right <= profile.width)
-            assertTrue(dashboard.top >= home.getChildAt(0).bottom)
-            snapshot(home, "compact-profile")
+            val selector = children(dashboard).single { it.contentDescription == "Cloud Gaming" } as TextView
+            assertEquals("Cloud Gaming   ▾", selector.text.toString())
+            assertEquals(0, dashboard.top)
+            assertSame(dashboard, selector.parent)
+            assertTrue(selector.left > profile.left + account.right)
+            assertTrue(selector.top < profile.top + account.bottom)
+            assertTrue(selector.right <= dashboard.width)
+            assertEquals(selector.id, profile.nextFocusRightId)
+            snapshot(dashboard, "compact-profile")
+            val x = (selector.left + selector.right) / 2f
+            val y = (selector.top + selector.bottom) / 2f
+            for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
+                val tap = MotionEvent.obtain(0, 0, action, x, y, 0)
+                try { assertTrue(dashboard.dispatchTouchEvent(tap)) } finally { tap.recycle() }
+            }
+            shadowOf(Looper.getMainLooper()).idle()
+            assertTrue(selector.isSelected)
         } finally {
             dashboard.close()
             lifecycle.pause().stop().destroy()

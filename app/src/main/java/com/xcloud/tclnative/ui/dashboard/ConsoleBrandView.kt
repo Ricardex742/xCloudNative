@@ -3,6 +3,7 @@ package com.xcloud.tclnative.ui.dashboard
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.graphics.Paint
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -49,6 +50,24 @@ internal class ConsoleBrandView(context: Context): FrameLayout(context) {
         if(key!=geometry) { geometry=key;layoutArtwork(w,h) }
         super.onMeasure(widthMeasureSpec,heightMeasureSpec)
     }
+    /** Right edge of the fitted artwork, which can be narrower than the brand view. */
+    fun artworkRight(w: Int, h: Int): Float {
+        if (scene.playStation) {
+            val paint = Paint(nativeWord.paint).apply { textSize = h * .58f }
+            return paint.measureText(nativeWord.text.toString()).coerceAtMost(w.toFloat())
+        }
+        val start = if (word.visibility == View.VISIBLE) wordLeft(w, h) else 0f
+        val slot = w - start
+        val drawable = (if (word.visibility == View.VISIBLE) word else mark).drawable
+        val artwork = if (drawable != null && drawable.intrinsicHeight > 0) {
+            minOf(slot, h.toFloat() * drawable.intrinsicWidth / drawable.intrinsicHeight)
+        } else slot
+        return start + (slot + artwork) / 2
+    }
+
+    private fun wordLeft(w: Int, h: Int) =
+        if (scene == ConsoleScene.XBOX_SERIES) w * .52f else minOf(h.toFloat(), w * .25f) * 1.15f
+
     private fun layoutArtwork(w: Int,h: Int) {
         nativeWord.setTextSize(TypedValue.COMPLEX_UNIT_PX,h*.58f)
         nativeWord.layoutParams=LayoutParams(w,h)
@@ -56,10 +75,11 @@ internal class ConsoleBrandView(context: Context): FrameLayout(context) {
             v.layoutParams=LayoutParams(width.roundToInt(),height.roundToInt()).apply { leftMargin=x.roundToInt();topMargin=y.roundToInt() }
         }
         if(scene==ConsoleScene.XBOX_360 || scene==ConsoleScene.XBOX_360_NXE || scene==ConsoleScene.XBOX_360_METRO) {
-            val ball=minOf(h.toFloat(),w*.25f);val gap=ball*.15f
-            item(mark,0f,0f,ball,h.toFloat());item(word,ball+gap,0f,w-ball-gap,h.toFloat())
+            val ball=minOf(h.toFloat(),w*.25f);val wordStart=wordLeft(w,h)
+            item(mark,0f,0f,ball,h.toFloat());item(word,wordStart,0f,w-wordStart,h.toFloat())
         } else if(scene==ConsoleScene.XBOX_SERIES) {
-            item(mark,0f,0f,w*.46f,h.toFloat());item(word,w*.52f,0f,w*.48f,h.toFloat())
+            val wordStart=wordLeft(w,h)
+            item(mark,0f,0f,w*.46f,h.toFloat());item(word,wordStart,0f,w-wordStart,h.toFloat())
         } else item(mark,0f,0f,w.toFloat(),h.toFloat())
     }
 }

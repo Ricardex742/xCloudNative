@@ -73,7 +73,6 @@ import com.xcloud.tclnative.renderer.AiPqSurfaceRenderer
 import com.xcloud.tclnative.signaling.XCloudSignalingClient
 import com.xcloud.tclnative.signaling.RemoteConsole
 import com.xcloud.tclnative.ui.dashboard.RemotePlayPanel
-import com.xcloud.tclnative.ui.dashboard.CloudServiceHeader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.*
@@ -197,7 +196,6 @@ open class MainActivity : Activity() {
     private var currentSignaling: XCloudSignalingClient? = null
     private var playbackSignaling: XCloudSignalingClient? = null
     private var remotePlayPanel: RemotePlayPanel? = null
-    private var cloudServiceHeader: CloudServiceHeader? = null
     private var remotePlayReturn: (() -> Unit)? = null
     private var currentSession: XCloudSession? = null
     private lateinit var transitionPanel: SessionTransitionView
@@ -443,8 +441,6 @@ open class MainActivity : Activity() {
     }
 
     private fun renderLoginMenu() {
-        cloudServiceHeader?.closeMenu()
-        cloudServiceHeader = null
         remotePlayPanel?.dialog?.dismiss()
         remotePlayPanel = null
         remotePlayReturn = null
@@ -635,17 +631,15 @@ open class MainActivity : Activity() {
                 onPlayProduct = { product -> playGalleryProduct(signaling,product) },
                 onOwnershipNeeded = { requestOwnership() },onGameShortcut={ showGameShortcut(it) },
                 onFriends={ showFriends { dashboard?.restoreFocus() } },
-                onThemeSettings={ page -> showSettings(session,page) { dashboard?.restoreFocus() } })
+                onThemeSettings={ page -> showSettings(session,page) { dashboard?.restoreFocus() } },
+                onRemotePlay={ showRemotePlay() })
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)
             controlPanel.setBackgroundColor(Color.TRANSPARENT)
             controlPanel.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT)
-            val serviceHeader = CloudServiceHeader(this@MainActivity) { showRemotePlay() }
-            cloudServiceHeader = serviceHeader
-            controlPanel.addView(serviceHeader, LinearLayout.LayoutParams(-1, -2))
-            controlPanel.addView(view, LinearLayout.LayoutParams(-1, 0, 1f))
+            controlPanel.addView(view, LinearLayout.LayoutParams(-1, -1))
             controlPanel.visibility = View.VISIBLE
             hudTextView.visibility = View.GONE
             view.setGames(allGames)
@@ -746,7 +740,7 @@ open class MainActivity : Activity() {
             if (remotePlayPanel === panel) {
                 remotePlayPanel = null
                 if (!connecting && !isFinishing && !isDestroyed) {
-                    if (onBack != null) onBack() else cloudServiceHeader?.restoreFocus()
+                    if (onBack != null) onBack() else dashboard?.focusServiceSelector()
                 }
             }
         }
@@ -1441,19 +1435,18 @@ open class MainActivity : Activity() {
                 AndroidGamepadPolicy.supportsGamepad(event.source) &&
                 (!televisionInput || AndroidGamepadPolicy.confirmsGamepad(event) ||
                     event.device?.let(AndroidGamepadPolicy::canReserveTvSlot)==true)) preferredControllerId=event.deviceId
-            if (cloudServiceHeader?.handleKey(event) == true) return true
+            if (view.handleKey(event)) return true
             if (event.keyCode == KeyEvent.KEYCODE_BACK) {
                 if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) view.back()
                 return true
             }
-            if (view.handleKey(event)) return true
         }
         return super.dispatchKeyEvent(event)
     }
 
     private fun launchCloudGame(signaling: XCloudSignalingClient, game: GameTitle,
                                 touchChoice: TouchMode? = null, fromShortcut: Boolean = false) {
-        cloudServiceHeader?.closeMenu()
+        dashboard?.closeServiceMenu()
         remotePlayPanel?.let { panel -> remotePlayPanel = null; panel.dialog.dismiss() }
         remotePlayReturn = null
         launchPlayback(signaling, game, if (fromShortcut) PlaybackOrigin.SHORTCUT else PlaybackOrigin.CATALOG, touchChoice)
@@ -2363,7 +2356,7 @@ open class MainActivity : Activity() {
     }
     override fun onStop() {
         activityVisible = false
-        cloudServiceHeader?.closeMenu()
+        dashboard?.closeServiceMenu()
         renderNetworkStatus()
         videoVisibilityEpoch++
         shortcutSwitchDialog?.dismiss()

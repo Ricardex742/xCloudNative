@@ -331,8 +331,14 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 
 ### Cabeçalho e guia de configuração
 
-- A versão `0.41.1-remote-setup`, código 113, abre **Reprodução remota** pelo seletor **Cloud Gaming** no cabeçalho. O seletor é comum aos temas e devolve o foco ao fechar. A tela nativa em tela cheia mostra **Meus consoles** com a conta configurada ou **Prepare-se para jogar** quando a lista está vazia.
+- A versão `0.41.1-remote-setup`, código 113, introduziu **Reprodução remota** pelo seletor **Cloud Gaming**. O seletor devolve o foco ao fechar. A posição atual está abaixo. A tela nativa em tela cheia mostra **Meus consoles** com a conta configurada ou **Prepare-se para jogar** quando a lista está vazia.
 - **Configurar console** abre o guia nativo com o caminho de Recursos remotos e as ações de ajuda e configuração no site do Xbox. Ao voltar do guia, **Atualizar** consulta os consoles novamente. O app mantém a transmissão pela sessão nativa `xhome`. [Configuração oficial](https://www.xbox.com/pt-br/play/consoles)
 - Nas paletas com o layout genérico, o bloco de perfil ficou mais compacto. A dimensão de referência do avatar passou de 80 para 64. Nome, gamertag, selos e engrenagem acompanham o tamanho do bloco.
 - Os testes de interface exercitam o seletor por controle, a preparação com lista vazia, o guia, a volta à tela anterior, a conexão com console de exemplo e as dimensões do perfil. A confirmação em aparelho está pendente.
 - O APK da versão 113 foi compilado no commit `50e7e3fac9074e9c58bde5997651f56f9999ec60`. Passaram **881 testes JVM**, lint, traduções, assinatura e validadores gráficos. O arquivo baixado preserva a identidade de atualização, minSdk 24 e launcher Android TV. APK SHA-256 `3b1d4b28b9ba7fbab2b01f4df3208afb0714a4078705f78880e4f7412c0bbeed`. ZIP SHA-256 `a4a68c95a6b0781fbb3202b341cdc898358bee6be6efb0645436e5b185a1749f`. [Build 44760914796](https://github.com/Ricardex742/xCloudNative/actions/runs/44760914796) · [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44760914796/artifacts/14642112286)
+
+### Acesso à Reprodução remota por tema
+
+- Desde **0.41.2-remote-menu**, código 114, o catálogo volta a ocupar o painel inteiro. Nas paletas genéricas, **Cloud Gaming** fica no canto superior direito junto ao perfil compacto. Nos temas Xbox, uma seta abre o mesmo menu ao lado da marca do tema. Nos temas PlayStation, fica junto à marca xCLOUD.
+- A ilustração de **Prepare-se para jogar** usa o arquivo oficial `brand_logo.png` no primeiro plano, com o monitor e o console ao fundo.
+- A suíte de interface cobre a posição nos layouts genérico e Xbox Series, a abertura do seletor por toque e controle, o fechamento com B e a conexão explícita. A revisão em celular e TV físicos permanece pendente.

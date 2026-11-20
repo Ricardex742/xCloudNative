@@ -2,11 +2,15 @@ package com.xcloud.tclnative.ui.dashboard
 
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
+import com.xcloud.tclnative.R
 import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.signaling.RemoteConsole
 import kotlin.math.roundToInt
@@ -219,6 +223,11 @@ internal class RemotePlayPanel(private val context: Context, private val openPag
 private class RemotePlayArtwork(context: Context) : View(context) {
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val icons = ConsoleIcons()
+    private val logo = BitmapFactory.decodeResource(resources, R.drawable.brand_logo,
+        BitmapFactory.Options().apply { inSampleSize = 8; inScaled = false })
+    private val logoPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+    private val logoBounds = RectF(145f, 96f, 217f, 168f)
+    private val logoClip = Path().apply { addRoundRect(logoBounds, 12f, 12f, Path.Direction.CW) }
 
     override fun onDraw(canvas: Canvas) {
         val scale = minOf(width / 312f, height / 180f)
@@ -241,9 +250,8 @@ private class RemotePlayArtwork(context: Context) : View(context) {
         paint.style = Paint.Style.FILL
         canvas.drawCircle(260.5f, 133f, 2.7f, paint)
         icons.draw(canvas, ConsoleGlyph.DISPLAY, 91f, 48f, 55f, accent)
-        canvas.drawRoundRect(137f, 103f, 225f, 165f, 14f, 14f,
-            paint.apply { color = DashboardTheme.surface })
-        icons.draw(canvas, ConsoleGlyph.CONTROLLER, 153f, 109f, 57f, accent)
+        canvas.clipPath(logoClip)
+        canvas.drawBitmap(logo, null, logoBounds, logoPaint)
         canvas.restoreToCount(saved)
     }
 }

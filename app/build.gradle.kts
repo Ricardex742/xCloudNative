@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 113
-        versionName = "0.41.1-remote-setup"
+        versionCode = 114
+        versionName = "0.41.2-remote-menu"
     }
 
     signingConfigs {

@@ -74,7 +74,8 @@ class GameDashboardView(
     private val onOwnershipNeeded: () -> Unit = {},
     private val onGameShortcut: ((GameTitle) -> Unit)?=null,
     private val onFriends: (() -> Unit)?=null,
-    private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() }
+    private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() },
+    onRemotePlay: (() -> Unit)? = null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -228,6 +229,7 @@ class GameDashboardView(
     private val heroBackdrop=FixedArtworkView(context).apply { scaleType=ImageView.ScaleType.CENTER_CROP;importantForAccessibility=IMPORTANT_FOR_ACCESSIBILITY_NO }
     private val consoleChrome=ConsoleDashboardChrome { activeTab.ordinal }
     private val consoleBrand=ConsoleBrandView(context)
+    private val serviceSelector = onRemotePlay?.let { CloudServiceSelector(context, it) }
     private val dashboardClock=TextClock(context).apply { setTextColor(Color.WHITE);format12Hour="h:mm a";format24Hour="HH:mm";isFocusable=false }
     private val shortcutSkins=List(4) { SeriesShortcutBackground(it) }
     private var selectionRefreshPosted=false
@@ -356,6 +358,7 @@ class GameDashboardView(
         grid.adapter = adapter
         addView(grid); addView(emptyState)
         addView(footer); addView(catalogNote); addView(metadataNote)
+        serviceSelector?.let { addView(it.button) }
         hint("A", UiText.text("SELECIONAR")) { selectedCard?.let(::playCard) }
         hint("B", UiText.text("VOLTAR")) { back() }
         hint("Y", UiText.text("FAVORITAR")) { toggleSelectedFavorite() }
@@ -643,7 +646,8 @@ class GameDashboardView(
             }
             if(designScene.playStation || designScene==ConsoleScene.XBOX_360 || designScene==ConsoleScene.XBOX_360_NXE || designScene==ConsoleScene.XBOX_360_METRO) { lastGeometry=0L;requestLayout() }
         }
-        profilePanel.nextFocusDownId = categoryFocus().id
+        profilePanel.nextFocusDownId = if (designScene == ConsoleScene.XBOX_SERIES && serviceSelector != null)
+            serviceSelector.button.id else categoryFocus().id
         LibraryTab.entries.forEachIndexed { index, tab ->
             tabPlates[index].highlighted = activeTab == tab
             tabs[index].isSelected = activeTab == tab
@@ -906,8 +910,12 @@ class GameDashboardView(
             else -> onExit()
         }
     }
+    internal fun closeServiceMenu() { serviceSelector?.closeMenu() }
+    internal fun focusServiceSelector() { serviceSelector?.restoreFocus() }
+
     /** Handle gamepad keys only while the catalog is visible, before the native gameplay route. */
     fun handleKey(event: KeyEvent): Boolean {
+        if (serviceSelector?.handleKey(event) == true) return true
         if(handleGridKey(event)) return true
         if(handleCarouselKey(event)) return true
         val key = event.keyCode
@@ -945,7 +953,11 @@ class GameDashboardView(
     }
     private fun textSize(view: TextView, value: Float) = view.setTextSize(TypedValue.COMPLEX_UNIT_PX, value * scale)
     private fun layoutGeometry(w: Int, h: Int) {
-        if(designScene!=ConsoleScene.NONE) { layoutConsole(w,h);return }
+        if (designScene != ConsoleScene.NONE) {
+            layoutConsole(w,h)
+            layoutConsoleServiceSelector(w)
+            return
+        }
         listOf(headerIcon,headerTitle,profilePanel,searchButton,navigation,lb,rb,grid).forEach { it.visibility=VISIBLE }
         metadataNote.visibility=GONE
         settingsButton.visibility=VISIBLE;headerTitle.gravity=Gravity.START
@@ -969,13 +981,24 @@ class GameDashboardView(
         textSize(headerTitle, 46f)
         if (android.os.Build.VERSION.SDK_INT >= 26) headerTitle.setAutoSizeTextTypeUniformWithConfiguration(
             (24*s).roundToInt().coerceAtLeast(1), (46*s).roundToInt().coerceAtLeast(2), 1, TypedValue.COMPLEX_UNIT_PX)
-        place(profilePanel, w-388*s, headerTop+8*s, 336*s, 94*s)
+        val profileLeft = w-388*s
+        place(profilePanel, profileLeft, headerTop+8*s, 336*s, 94*s)
         val a = 64*s
         place(avatarLetter, 5*s, 9*s, a, a); place(avatar, 5*s, 9*s, a, a)
         place(connected, 5*s+a-14*s, 9*s+a-14*s, 11*s, 11*s)
         val tx = 81*s
-        place(accountName, tx, 0f, 206*s, 24*s)
-        place(gamertag, tx, 24*s, 206*s, 20*s)
+        val selectorWidth = 170*s
+        val selectorLeft = w - 22*s - selectorWidth
+        val accountWidth = if (serviceSelector == null) 206*s else selectorLeft - profileLeft - tx - 8*s
+        place(accountName, tx, 0f, accountWidth, 24*s)
+        place(gamertag, tx, 24*s, accountWidth, 20*s)
+        serviceSelector?.let { selector ->
+            selector.configure(arrowOnly = false, scale = s, ink = Color.WHITE)
+            place(selector.button, selectorLeft, headerTop+6*s, selectorWidth, 41*s)
+            profilePanel.nextFocusRightId = selector.button.id
+            selector.button.nextFocusLeftId = profilePanel.id
+            selector.button.nextFocusDownId = settingsButton.id
+        }
         place(subscription, tx, 47*s, 200*s, 21*s)
         place(remainingTime,tx,70*s,200*s,18*s);textSize(remainingTime,14f)
         place(settingsButton, tx+208*s, 40*s, 47*s, 42*s)
@@ -1005,6 +1028,36 @@ class GameDashboardView(
         place(catalogNote, w-380*s, footerTop+s, 320*s, 32*s); textSize(catalogNote, 18f)
         renderProfile()
         adapter.notifyDataSetChanged()
+    }
+
+    private fun layoutConsoleServiceSelector(w: Int) {
+        val selector = serviceSelector ?: return
+        val button = selector.button
+        val brand = consoleBrand.layoutParams as LayoutParams
+        val s = scale
+        val height = 40*s
+        val top = brand.topMargin + (brand.height - height)/2
+        val left = brand.leftMargin + consoleBrand.artworkRight(brand.width, brand.height) + 4*s
+        val right = listOf(searchButton, profilePanel, navigation, playStationFriends)
+            .filter { it.visibility == VISIBLE }
+            .mapNotNull { it.layoutParams as? LayoutParams }
+            .filter { it.leftMargin > left && it.topMargin < top+height && it.topMargin+it.height > top }
+            .minOfOrNull { it.leftMargin } ?: w
+        selector.configure(arrowOnly = true, scale = s, ink = consoleTextColor())
+        place(button, left, top, minOf(38*s, right-left-2*s), height)
+        button.nextFocusLeftId = View.NO_ID
+        button.nextFocusDownId = View.NO_ID
+        when (designScene) {
+            ConsoleScene.XBOX_SERIES -> {
+                button.nextFocusUpId = profilePanel.id
+                button.nextFocusRightId = categoryFocus().id
+            }
+            ConsoleScene.XBOX_360 -> launchButton.nextFocusDownId = button.id
+            ConsoleScene.XBOX_360_NXE -> tabs.first().nextFocusUpId = button.id
+            ConsoleScene.XBOX_ONE, ConsoleScene.PS5 -> searchButton.nextFocusLeftId = button.id
+            ConsoleScene.PS4 -> tabs[LibraryTab.RECENT.ordinal].nextFocusLeftId = button.id
+            else -> Unit
+        }
     }
 
     private fun refreshSeriesSelection() {
@@ -1058,10 +1111,18 @@ class GameDashboardView(
     internal fun refreshAppearance() {
         val next=DashboardTheme.palette.theme.scene
         playStationBrowseTab.visibility=if(next.playStation) VISIBLE else GONE
-        if(!next.playStation) { playStationMobile=false;touchDelegate=null }
+        if(!next.playStation) playStationMobile=false
+        if (!next.playStation || designScene != next) {
+            val selectorButton = serviceSelector?.button
+            if (selectorButton != null) ConsoleHitTargets.install(this, listOf(selectorButton)) else touchDelegate = null
+        }
+        profilePanel.nextFocusRightId = View.NO_ID
+        searchButton.nextFocusLeftId = View.NO_ID
+        launchButton.nextFocusDownId = View.NO_ID
+        serviceSelector?.button?.let { it.nextFocusUpId = View.NO_ID; it.nextFocusRightId = View.NO_ID }
         val focused=grid.hasFocus();val position=positions[selectedCard?.key] ?: 0
         val changed=designScene!=next
-        if(changed) { catalogFocus.cancelLayout();originalBrowsing=next==ConsoleScene.XBOX_ORIGINAL && focused }
+        if(changed) { closeServiceMenu();catalogFocus.cancelLayout();originalBrowsing=next==ConsoleScene.XBOX_ORIGINAL && focused }
         if(next!=ConsoleScene.PS5) playStationHome=null
         designScene=next
         seriesPreferences=seriesStore.read()
@@ -1405,7 +1466,7 @@ class GameDashboardView(
             launchButton.visibility=GONE;playStationFavorite.visibility=GONE
             controls.forEach { it.nextFocusDownId=if(ps5) playStationLibrary.id else searchButton.id }
         }
-        ConsoleHitTargets.install(this,controls+listOf(searchButton,settingsButton,profilePanel,playStationFriends,playStationFavorite,launchButton,playStationLibrary,playStationAllGames))
+        ConsoleHitTargets.install(this,controls+listOf(searchButton,settingsButton,profilePanel,playStationFriends,playStationFavorite,launchButton,playStationLibrary,playStationAllGames)+listOfNotNull(serviceSelector?.button))
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
     }
 
@@ -1431,7 +1492,7 @@ class GameDashboardView(
         coverHeight=cell+(28*s).roundToInt()
         val side=cell-(16*s).roundToInt()
         coverArtSize=ArtworkSize.forDisplay(side,side)
-        ConsoleHitTargets.install(this,tabs+listOf(searchButton,settingsButton,profilePanel,consoleBack))
+        ConsoleHitTargets.install(this,tabs+listOf(searchButton,settingsButton,profilePanel,consoleBack)+listOfNotNull(serviceSelector?.button))
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
     }
 
@@ -2117,9 +2178,9 @@ class GameDashboardView(
         }
     }
     override fun onAttachedToWindow() { super.onAttachedToWindow();appearancePrefs.registerOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=true;refreshSeriesPreferences() }
-    override fun onDetachedFromWindow() { if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false };super.onDetachedFromWindow() }
+    override fun onDetachedFromWindow() { closeServiceMenu();if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false };super.onDetachedFromWindow() }
     fun close() { if (!closed) {
-        closed = true;if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false }
+        closed = true;closeServiceMenu();if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false }
         consoleBackdrop.close();shortcutSkins.forEach { it.clear() };scope.cancel(); posters.close(); grid.adapter = null
     } }
     companion object { const val COLUMNS = 6 }
