@@ -8,6 +8,8 @@ Leia também `CODEX_THEME_BUILD_CONTEXT.md`. Ele documenta a arquitetura nativa 
 
 ## Objetivo atual e limites
 
+O Remote Play está em desenvolvimento na branch `feat/remote-play`, criada a partir de `feat/quick-settings-navigation` em `ef56126`. Consulte a seção “Remote Play experimental” ao final para os pontos de integração e o roteiro de validação.
+
 Manter a navegação simplificada e os atalhos nativos da partida. O usuário retomou PS4/PS5 e pediu seguir `CODEX_THEME_BUILD_CONTEXT.md`, usando as simulações apenas como referência visual e a arquitetura nativa dos Xbox. `html-ps4-home.jpg` e `html-ps5-home.jpg` orientam a composição da home. Fotos reais continuam como apoio dos painéis. Priorizar a composição dos consoles em home, fila, transições e painéis internos. Não recuperar a integração HTML/WebView descartada.
 
 O usuário prefere execução autônoma, comunicação em português e conclusões baseadas em evidência. Não pedir novamente autorização para ações já incluídas no pedido. Não dizer que um problema foi resolvido em aparelho real apenas porque testes locais passaram.
@@ -316,3 +318,11 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - Passaram 55 testes direcionados. As capturas simuladas dos três estados e do painel foram inspecionadas. A nova posição ainda depende de confirmação em aparelho físico.
 - A versão **0.40.16-network-indicator**, código **111**, foi compilada no commit `67b0ad29bbae3e6eba600b838b3da4bdcc91842b`. Passaram 872 testes JVM, lint, traduções e verificações gráficas. [Build 44670381233](https://github.com/Ricardex742/xCloudNative/actions/runs/44670381233)
 - O APK baixado mantém o certificado permanente e declara `userLandscape`. SHA-256 `c679f17c6875f3de85068c92e2bdffbfb4e01cf397a94be7dee8def4fae6384a`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44670381233/artifacts/14600601362)
+
+## Remote Play experimental
+
+- A branch usa a versão `0.41.0-remote-play`, código 112. **Meus consoles** aparece depois de **Todos os jogos** no Xbox Series e na navegação das paletas simples. Os temas PlayStation têm a entrada em **Biblioteca**. **Configurações → Conta e amigos** oferece outra entrada em todos os temas. Quando a autorização ou o catálogo cloud falha, a tela de conexão oferece o painel de consoles para a conta salva.
+- `XalAuthenticator.authenticateToRemotePlay` solicita o bearer da oferta `xhome` com o login Xbox da conta. A descoberta consulta os consoles associados a esse bearer. `XCloudSignalingClient` reaproveita o transporte de sinalização com rota própria de sessões home, identidade do console, espera limitada, negociação SDP/ICE e limpeza da alocação. Se a sessão pedir `ReadyToConnect`, a credencial de transferência é solicitada naquele momento. [Referência de autenticação e sinalização](https://github.com/unknownskl/greenlight) · [Referência do cliente Android](https://github.com/Geocld/XStreaming)
+- O perfil inicial usa o player nativo, H.264 em 720p ou 1080p, reprodução de áudio, gamepad e controle virtual. Os diagnósticos têm origem `REMOTE_PLAY` e usam o nome genérico Remote Play. Fechar a sessão cancela ou libera a alocação e restaura o painel.
+- Passaram 92 testes JVM direcionados, incluindo interface nativa, foco, autenticação, identificação da sessão home, cancelamento durante a criação e a espera, reconexão e regressões de catálogo, atalhos e sinalização cloud. Passaram também o lint obrigatório, os 10 testes Python e a verificação das traduções nos 15 idiomas.
+- Na primeira validação física, habilitar **Recursos remotos** no Xbox Series, usar a mesma conta Microsoft no console e no app e começar na mesma rede. Confirmar descoberta, primeiro quadro, áudio, gamepad desde o primeiro comando, cancelamento durante a preparação, desconexão e nova conexão. Em seguida repetir no Android 10 e na Android TV, no Xbox One, em espera e fora da rede local. Os testes automatizados usam um servidor simulado. Compatibilidade e qualidade da conexão com o serviço exigem Xbox físico.

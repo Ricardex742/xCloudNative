@@ -3,6 +3,8 @@ package com.xcloud.tclnative.signaling
 import com.xcloud.tclnative.i18n.UiText
 
 import com.xcloud.tclnative.auth.AuthenticationRequiredException
+import com.xcloud.tclnative.auth.RemotePlaySession
+import com.xcloud.tclnative.auth.StreamingAuthorization
 import com.xcloud.tclnative.auth.XCloudSession
 import com.xcloud.tclnative.diagnostics.PlaybackStage
 import com.xcloud.tclnative.settings.SessionOptions
@@ -49,12 +51,12 @@ data class GameTitle(
 )
 
 class XCloudSignalingClient(
-    private val session: XCloudSession,
+    private val session: StreamingAuthorization,
     private val httpClient: OkHttpClient = OkHttpClient.Builder().callTimeout(25, TimeUnit.SECONDS).build(),
     private val pause: suspend (Long) -> Unit = { delay(it) },
     private val clockMs: () -> Long = { System.nanoTime() / 1_000_000 },
     private val queueTimeoutMs: Long = 60 * 60_000,
-    private val transferTokenProvider: suspend () -> String = { session.transferToken }
+    private val transferTokenProvider: suspend () -> String = { (session as? XCloudSession)?.transferToken.orEmpty() }
 ) {
     private data class SessionProfile(
         val baseUri: String, val region: String, val locale: String, val resolution: StreamResolution
@@ -70,13 +72,19 @@ class XCloudSignalingClient(
         var sdpRequest = 1
     }
 
+    private val cloudSession = session as? XCloudSession
+    private val remotePlay = session is RemotePlaySession
+    private val sessionRoot = if (remotePlay) "/v5/sessions/home" else "/v5/sessions/cloud"
+    private val requestClient = if (remotePlay) httpClient.newBuilder()
+        .followRedirects(false).followSslRedirects(false).retryOnConnectionFailure(false).build() else httpClient
     private val defaultProfile = SessionProfile(session.baseUri, UiText.text("Automático"),
         "pt-BR", StreamResolution.HD_1080_HQ)
     @Volatile private var lastAttempt = Attempt(defaultProfile)
     private val allocationLock = Mutex()
     private val active = AtomicReference<Allocation?>(null)
-    private val waitTimeClient = httpClient.newBuilder().callTimeout(3, TimeUnit.SECONDS).build()
-    private val keepAliveClient = httpClient.newBuilder().callTimeout(5, TimeUnit.SECONDS).build()
+    private val waitTimeClient = requestClient.newBuilder().callTimeout(3, TimeUnit.SECONDS).build()
+    private val keepAliveClient = requestClient.newBuilder().callTimeout(5, TimeUnit.SECONDS).build()
+    private val remoteStartClient = requestClient.newBuilder().callTimeout(10, TimeUnit.SECONDS).build()
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
     fun resetStartupDiagnostics() = lastAttempt.startupTrace.reset()
@@ -84,10 +92,11 @@ class XCloudSignalingClient(
     fun profileDiagnostics(): String {
         val profile = lastAttempt.profile
         val resolution = profile.resolution
+        val cloud = cloudSession ?: return "Remote Play • ${resolution.width}×${resolution.height} • ${profile.locale}"
         return UiText.text("Perfil de vídeo solicitado: {0}×{1} • {2}\nRegião solicitada: {3} | Idioma solicitado: {4}",
             UiText.nested(resolution.width), UiText.nested(resolution.height), UiText.nested(resolution.osName),
             UiText.nested(profile.region), UiText.nested(profile.locale)) + "\n" +
-            UiText.text("Bypass de região solicitado no login: {0}", UiText.nested(session.regionBypass.label))
+            UiText.text("Bypass de região solicitado no login: {0}", UiText.nested(cloud.regionBypass.label))
     }
 
     private fun deviceInfo(resolution: StreamResolution) = JSONObject().put("appInfo", JSONObject().put("env", JSONObject()
@@ -99,8 +108,9 @@ class XCloudSignalingClient(
                 .put("pixelDensity", JSONObject().put("dpiX", 1).put("dpiY", 1)))).toString()
 
     private suspend fun request(path: String, stage: String, method: String = "GET", body: JSONObject? = null,
-                                client: OkHttpClient = httpClient, query: Map<String,String> = emptyMap(),
+                                client: OkHttpClient = requestClient, query: Map<String,String> = emptyMap(),
                                 base: String = session.baseUri, resolution: StreamResolution = defaultProfile.resolution): String {
+        if (remotePlay) check(path == "/v6/servers/home" || path.startsWith("$sessionRoot/"))
         val url=CloudProtocol.sessionUrl(base,path).newBuilder().apply {
             query.forEach { (key,value) -> addQueryParameter(key,value) }
         }.build()
@@ -122,6 +132,11 @@ class XCloudSignalingClient(
         } catch(error: IOException) {
             throw CloudRequestException(stage,error)
         }
+    }
+
+    internal suspend fun fetchRemoteConsoles(): List<RemoteConsole> {
+        check(remotePlay)
+        return RemoteConsole.parse(request("/v6/servers/home", "REMOTE_PLAY_CONSOLES", query = mapOf("mr" to "50")))
     }
 
     suspend fun fetchCatalogGames(): List<GameTitle> = withContext(Dispatchers.IO) {
@@ -188,7 +203,7 @@ class XCloudSignalingClient(
 
     private suspend fun sessionRequest(
         allocation: Allocation, path: String, stage: String, method: String = "GET",
-        body: JSONObject? = null, client: OkHttpClient = httpClient
+        body: JSONObject? = null, client: OkHttpClient = requestClient
     ): String {
         requireActive(allocation)
         val profile = allocation.attempt.profile
@@ -233,7 +248,9 @@ class XCloudSignalingClient(
                         }
                         onProgress("PROVISIONING: Aguardando confirmação da sessão Xbox (${elapsed}s). Voltar cancela.")
                     }
-                    "WaitingForResources" -> {
+                    "WaitingForResources" -> if (remotePlay) {
+                        onProgress("PROVISIONING: Aguardando o console Xbox.")
+                    } else {
                         val confirmedAt = clockMs()
                         if (queue == null) onStage(PlaybackStage.QUEUE_CONFIRMED)
                         queue = (queue ?: QueueStatus(confirmedAt, confirmedAt, limitMs = queueTimeoutMs))
@@ -264,7 +281,12 @@ class XCloudSignalingClient(
                             }
                         }
                     }
-                    "Provisioning", "New" -> onProgress("PROVISIONING: Preparando o jogo (${elapsed}s). Voltar cancela.")
+                    "WaitingForServerToRegister" -> {
+                        if (!remotePlay) throw IOException("SESSION_STATE: estado não reconhecido")
+                        onProgress("PROVISIONING: Aguardando o console Xbox.")
+                    }
+                    "Provisioning", "New" -> onProgress(if (remotePlay) "PROVISIONING: Conectando ao console Xbox."
+                        else "PROVISIONING: Preparando o jogo (${elapsed}s). Voltar cancela.")
                     "Failed", "Error", "Ended", "Cancelled", "Closed" -> {
                         val code = state.optJSONObject("errorDetails")?.optString("code")
                             ?.takeIf { it.matches(Regex("[A-Za-z0-9_.-]{1,80}")) }
@@ -275,8 +297,10 @@ class XCloudSignalingClient(
                 if (connectSentAt != null && clockMs() - connectSentAt >= 60_000) {
                     throw IOException("CONSOLE_CONNECT: o serviço não confirmou Provisioned após autenticar a sessão.")
                 }
-                if (clockMs() - started >= queueTimeoutMs) throw IOException(
-                    "QUEUE_TIMEOUT: o serviço continua em $name após ${elapsed}s. Nenhum vídeo foi iniciado; tente novamente mais tarde.")
+                if (clockMs() - started >= if (remotePlay) minOf(queueTimeoutMs, 90_000) else queueTimeoutMs) {
+                    if (remotePlay) throw IOException("REMOTE_PLAY_TIMEOUT: $name (${elapsed}s)")
+                    throw IOException("QUEUE_TIMEOUT: o serviço continua em $name após ${elapsed}s. Nenhum vídeo foi iniciado; tente novamente mais tarde.")
+                }
                 pause(1500)
             }
         } finally {
@@ -300,8 +324,24 @@ class XCloudSignalingClient(
         resolution: StreamResolution = StreamResolution.HD_1080_HQ, nativeTouch: Boolean=false,
         options: SessionOptions=SessionOptions(),microphone: Boolean=false,
         onStage: (PlaybackStage) -> Unit = {}, onProgress: (String) -> Unit
+    ): Result<String> {
+        check(!remotePlay)
+        return startSession(titleId, "", peer, onQueueStatus, resolution, options, microphone, onStage, onProgress)
+    }
+
+    internal suspend fun startRemotePlay(console: RemoteConsole, peer: StreamingPeer, resolution: StreamResolution,
+                                         options: SessionOptions, onStage: (PlaybackStage) -> Unit,
+                                         onProgress: (String) -> Unit): Result<String> {
+        check(remotePlay && console.canConnect)
+        return startSession("", console.serverId, peer, {}, resolution, options, false, onStage, onProgress)
+    }
+
+    private suspend fun startSession(
+        titleId: String, serverId: String, peer: StreamingPeer, onQueueStatus: (QueueStatus?) -> Unit,
+        resolution: StreamResolution, options: SessionOptions, microphone: Boolean,
+        onStage: (PlaybackStage) -> Unit, onProgress: (String) -> Unit
     ): Result<String> = withContext(Dispatchers.IO) {
-        val selected = session.regions.firstOrNull { it.name == options.region && options.region.isNotEmpty() }
+        val selected = cloudSession?.regions?.firstOrNull { it.name == options.region && options.region.isNotEmpty() }
         val region = selected?.name ?: if (options.region.isBlank()) UiText.text("Automático")
             else UiText.text("Automático — região salva não oferecida à conta")
         val profile = SessionProfile(selected?.baseUri ?: session.baseUri, region, options.normalized().locale, resolution)
@@ -313,22 +353,32 @@ class XCloudSignalingClient(
                 active.get()?.let { deleteAllocation(it) }
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 lastAttempt = attempt
-                val play = JSONObject().put("clientSessionId", java.util.UUID.randomUUID().toString())
-                    .put("titleId", titleId).put("systemUpdateGroup", "").put("serverId", "")
+                val play = JSONObject().put("clientSessionId", if (remotePlay) "" else java.util.UUID.randomUUID().toString())
+                    .put("titleId", titleId).put("systemUpdateGroup", "").put("serverId", serverId)
                     .put("fallbackRegionNames", org.json.JSONArray()).put("settings", JSONObject()
                         .put("nanoVersion", "V3;WebrtcTransport.dll").put("enableOptionalDataCollection", false)
                         .put("enableTextToSpeech", false).put("highContrast", 0).put("locale", profile.locale)
                         .put("useIceConnection", false).put("timezoneOffsetMinutes", -180).put("sdkType", "web")
                         .put("osName", profile.resolution.osName))
                 onStage(PlaybackStage.PLAY_REQUEST)
-                val response = JSONObject(request("/v5/sessions/cloud/play", "PLAY", "POST", play,
-                    base = profile.baseUri, resolution = profile.resolution))
-                val path = CloudProtocol.sessionUrl(profile.baseUri, response.getString("sessionPath")).encodedPath.trimEnd('/')
-                Allocation(attempt, path).also {
-                    owned = it
-                    active.set(it)
+                suspend fun allocate(): Allocation {
+                    val response = JSONObject(request("$sessionRoot/play", "PLAY", "POST", play,
+                        client = if (remotePlay) remoteStartClient else requestClient,
+                        base = profile.baseUri, resolution = profile.resolution))
+                    val path = CloudProtocol.sessionUrl(profile.baseUri, response.getString("sessionPath")).encodedPath.trimEnd('/')
+                    val allocatedPath = if (remotePlay && path.startsWith("/sessions/home/")) "/v5$path" else path
+                    if (remotePlay) require(allocatedPath.startsWith("$sessionRoot/") &&
+                        allocatedPath.removePrefix("$sessionRoot/").matches(Regex("[A-Za-z0-9_-]{1,100}")) &&
+                        allocatedPath != "$sessionRoot/play") { "REMOTE_PLAY: caminho de sessão inválido" }
+                    return Allocation(attempt, allocatedPath).also {
+                        owned = it
+                        active.set(it)
+                    }
                 }
+                // The console can allocate before PLAY returns. Capture its path even on cancel, within the HTTP timeout.
+                if (remotePlay) withContext(NonCancellable) { allocate() } else allocate()
             }
+            kotlinx.coroutines.currentCoroutineContext().ensureActive()
             awaitProvisioned(allocation, titleId, onQueueStatus, onProgress, onStage)
 
             onProgress("SDP: Sessão provisionada. Negociando vídeo nativo...")

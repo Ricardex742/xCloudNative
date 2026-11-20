@@ -29,12 +29,23 @@ import java.util.concurrent.TimeUnit
 
 data class CloudRegion(val name: String,val baseUri: String,val isDefault: Boolean=false)
 
+sealed interface StreamingAuthorization {
+    val gssvToken: String
+    val baseUri: String
+}
+
+class RemotePlaySession internal constructor(
+    override val gssvToken: String,
+    override val baseUri: String,
+    internal val credentialGeneration: Long
+) : StreamingAuthorization
+
 data class XCloudSession(
-    val gssvToken: String, val baseUri: String, val userHash: String,
+    override val gssvToken: String, override val baseUri: String, val userHash: String,
     val expiresAtMs: Long = System.currentTimeMillis() + 3600_000L, val transferToken: String = "",
     val xuid: String? = null,val regions: List<CloudRegion> = emptyList(),
     val regionBypass: RegionBypass = RegionBypass.OFF, val credentialGeneration: Long? = null
-) {
+) : StreamingAuthorization {
     val libraryAccountId: String get() = xuid?.let { "xuid:$it" } ?: userHash
 }
 data class AuthEndpoints(
@@ -45,7 +56,8 @@ data class AuthEndpoints(
     val xcloudLoginUrl: String = "https://xgpuweb.gssv-play-prod.xboxlive.com/v2/login/user",
     val transferTokenUrl: String = "https://login.live.com/oauth20_token.srf",
     val profileUrl: String = "https://profile.xboxlive.com/users/me/profile/settings?settings=GameDisplayName,GameDisplayPicRaw,Gamertag",
-    val authorizeUrl: String = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize"
+    val authorizeUrl: String = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize",
+    val remotePlayLoginUrl: String = "https://xhome.gssv-play-prod.xboxlive.com/v2/login/user"
 )
 data class DeviceCodeInfo(
     val userCode: String, val deviceCode: String, val verificationUri: String,
@@ -62,7 +74,7 @@ class XalAuthenticator(
     private val pause: suspend (Long) -> Unit = { delay(it) },
     private val regionBypass: () -> RegionBypass = { RegionBypass.OFF }
 ) {
-    private val bypassLoginClient = httpClient.newBuilder().followRedirects(false).followSslRedirects(false).build()
+    private val directLoginClient = httpClient.newBuilder().followRedirects(false).followSslRedirects(false).build()
     private data class ProfileGrant(val token: String, val hash: String, val generation: Long)
 
     private val credentials = AccountCredentials(store)
@@ -94,8 +106,9 @@ class XalAuthenticator(
     }
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     private fun json(value: JSONObject) = value.toString().toRequestBody(jsonType)
-    private suspend fun post(url: String, stage: String, body: RequestBody, forwardedFor: String? = null): String =
-        (if (forwardedFor == null) httpClient else bypassLoginClient).newCall(Request.Builder().url(url).header("Accept", "application/json")
+    private suspend fun post(url: String, stage: String, body: RequestBody, forwardedFor: String? = null,
+                             direct: Boolean = false): String =
+        (if (forwardedFor == null && !direct) httpClient else directLoginClient).newCall(Request.Builder().url(url).header("Accept", "application/json")
             .header("x-xbl-contract-version", "1").header("X-Gssv-Client", "XboxComBrowser")
             .apply { forwardedFor?.let { header("X-Forwarded-For", it) } }
             .post(body).build()).readResponse { it.checkedBody(stage) }
@@ -211,28 +224,11 @@ class XalAuthenticator(
         if (!rpsTicketInput.isNullOrBlank() && snapshot.token?.let { normalizeRpsTicket(it.ticket) } != normalizeRpsTicket(rpsTicketInput)) {
             snapshot = saveCredentials(rpsTicketInput, expectedGeneration = snapshot.generation)
         }
-        val generation = snapshot.generation
-        var current = snapshot.token ?: throw AuthenticationRequiredException()
-        if (current.expiresAtMs?.let { it <= clockMs() } == true) current = refresh(generation, current)
-        onProgress("AUTH_XBL: Autenticando na Xbox Live...")
-        suspend fun userTicket(token: OAuthToken): JSONObject {
-            val ticket = if (token.clientId == DEVICE_CLIENT_ID || token.clientId == XCLOUD_CLIENT_ID)
-                "d=" + token.ticket.removePrefix("t=").removePrefix("d=")
-                else normalizeRpsTicket(token.ticket)
-            return JSONObject(post(endpoints.userAuthUrl, "AUTH_XBL", json(JSONObject()
-                .put("RelyingParty", "http://auth.xboxlive.com").put("TokenType", "JWT").put("Properties", JSONObject()
-                    .put("AuthMethod", "RPS").put("SiteName", "user.auth.xboxlive.com").put("RpsTicket", ticket)))))
-        }
-        val user = try { userTicket(current) } catch (error: CloudHttpException) {
-            if (error.status != 401) throw error
-            current = refresh(generation, current)
-            userTicket(current)
-        }
+        val grant = streamingGrant(snapshot,onProgress)
+        val generation = grant.generation
+        val user = grant.user
+        val xsts = grant.xsts
         val hash = user.getJSONObject("DisplayClaims").getJSONArray("xui").getJSONObject(0).getString("uhs")
-        onProgress("AUTH_XSTS: Autorizando o acesso à nuvem...")
-        val xsts = JSONObject(post(endpoints.xstsAuthorizeUrl, "AUTH_XSTS", json(JSONObject()
-            .put("RelyingParty", "http://gssv.xboxlive.com/").put("TokenType", "JWT").put("Properties", JSONObject()
-                .put("SandboxId", "RETAIL").put("UserTokens", JSONArray().put(user.getString("Token")))))))
         val xuid = listOf(xsts, user).firstNotNullOfOrNull { response ->
             response.optJSONObject("DisplayClaims")?.optJSONArray("xui")?.optJSONObject(0)
                 ?.optString("xid")?.takeIf { it.matches(Regex("[0-9]{1,20}")) }
@@ -255,6 +251,59 @@ class XalAuthenticator(
                     (parsed.scheme!="https" && !(parsed.scheme=="http" && parsed.host in listOf("localhost","127.0.0.1","::1")))) null
                 else CloudRegion(item.optString("name").ifBlank { parsed.host }.take(100),uri,item.optBoolean("isDefault"))
             }.distinctBy { it.name })
+    }
+
+    suspend fun authenticateToRemotePlay(): Result<RemotePlaySession> = result {
+        val grant = streamingGrant(credentials.snapshot())
+        val home = JSONObject(post(endpoints.remotePlayLoginUrl, "REMOTE_PLAY_AUTH", json(JSONObject()
+            .put("token", grant.xsts.getString("Token")).put("offeringId", "xhome")), direct = true))
+        val regions = home.getJSONObject("offeringSettings").getJSONArray("regions")
+        val region = (0 until regions.length()).map { regions.getJSONObject(it) }.firstOrNull { it.optBoolean("isDefault") }
+            ?: throw java.io.IOException("REMOTE_PLAY_AUTH: região padrão ausente")
+        val uri = java.net.URI(region.getString("baseUri"))
+        val host = uri.host.orEmpty().lowercase(java.util.Locale.ROOT)
+        val localTest = java.net.URI(endpoints.remotePlayLoginUrl).let {
+            it.scheme == "http" && it.host in listOf("localhost", "127.0.0.1", "[::1]") &&
+                uri.scheme == it.scheme && uri.host == it.host && uri.port == it.port
+        }
+        require((localTest || uri.scheme == "https" && uri.port in listOf(-1, 443) &&
+            host.endsWith(".gssv-play-prodxhome.xboxlive.com")) && uri.userInfo == null &&
+            uri.query == null && uri.fragment == null && uri.path in listOf("", "/")) {
+            "REMOTE_PLAY_AUTH: região inválida"
+        }
+        val token = home.optString("gsToken").takeIf { it.isNotBlank() && it != "null" }
+            ?: throw java.io.IOException("REMOTE_PLAY_AUTH: credencial ausente")
+        credentials.requireCurrent(grant.generation)
+        RemotePlaySession(token, uri.toString().trimEnd('/'), grant.generation)
+    }
+
+    private class StreamingGrant(val user: JSONObject, val xsts: JSONObject, val generation: Long)
+
+    private suspend fun streamingGrant(snapshot: AccountCredentials.Snapshot,
+                                       onProgress: (String) -> Unit = {}): StreamingGrant {
+        val generation = snapshot.generation
+        var current = snapshot.token ?: throw AuthenticationRequiredException()
+        if (current.expiresAtMs?.let { it <= clockMs() } == true) current = refresh(generation, current)
+        onProgress("AUTH_XBL: Autenticando na Xbox Live...")
+        suspend fun userTicket(token: OAuthToken): JSONObject {
+            val ticket = if (token.clientId == DEVICE_CLIENT_ID || token.clientId == XCLOUD_CLIENT_ID)
+                "d=" + token.ticket.removePrefix("t=").removePrefix("d=")
+                else normalizeRpsTicket(token.ticket)
+            return JSONObject(post(endpoints.userAuthUrl, "AUTH_XBL", json(JSONObject()
+                .put("RelyingParty", "http://auth.xboxlive.com").put("TokenType", "JWT").put("Properties", JSONObject()
+                    .put("AuthMethod", "RPS").put("SiteName", "user.auth.xboxlive.com").put("RpsTicket", ticket)))))
+        }
+        val user = try { userTicket(current) } catch (error: CloudHttpException) {
+            if (error.status != 401) throw error
+            current = refresh(generation, current)
+            userTicket(current)
+        }
+        onProgress("AUTH_XSTS: Autorizando o acesso à nuvem...")
+        val xsts = JSONObject(post(endpoints.xstsAuthorizeUrl, "AUTH_XSTS", json(JSONObject()
+            .put("RelyingParty", "http://gssv.xboxlive.com/").put("TokenType", "JWT").put("Properties", JSONObject()
+                .put("SandboxId", "RETAIL").put("UserTokens", JSONArray().put(user.getString("Token")))))))
+        credentials.requireCurrent(generation)
+        return StreamingGrant(user, xsts, generation)
     }
 
     /** Store rights use the Microsoft commerce audience, never the cloud bearer. Optional and read-only. */

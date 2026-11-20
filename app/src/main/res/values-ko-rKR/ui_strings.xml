@@ -1272,4 +1272,23 @@
     <string name="ui_ed5ca6abcc5e84c1" formatted="false">"보통 네트워크 상태"</string>
     <string name="ui_fd346cca9bbfda65" formatted="false">"불량한 네트워크 상태"</string>
     <string name="ui_207961515be647c8" formatted="false">"네트워크 데이터 대기 중"</string>
+    <string name="ui_7f49444bd70aff77" formatted="false">"영상이 준비되면 콘솔 화면이 표시됩니다."</string>
+    <string name="ui_ead4a2dd146771a6" formatted="false">"Xbox 화면을 엽니다."</string>
+    <string name="ui_efe36c606002f678" formatted="false">"Xbox 콘솔을 기다리는 중입니다."</string>
+    <string name="ui_07d39fae712beebe" formatted="false">"콘솔에 연결 중"</string>
+    <string name="ui_c36ed287e72b4a8b" formatted="false">"콘솔 연결 취소"</string>
+    <string name="ui_3b0b0fdfe2e3a691" formatted="false">"연결"</string>
+    <string name="ui_8ca7dd51d2a92430" formatted="false">"Xbox 콘솔을 찾는 중…"</string>
+    <string name="ui_9b3f7be32b6c239e" formatted="false">"콘솔 연결 해제 중…"</string>
+    <string name="ui_89130f77b7fa436b" formatted="false">"연결 해제"</string>
+    <string name="ui_48700f8dedfa3768" formatted="false">"Xbox 연결을 해제하고 콘솔 목록으로 돌아갈까요?"</string>
+    <string name="ui_20324fbd274a1b47" formatted="false">"꺼짐"</string>
+    <string name="ui_0289f93d6d1af7ec" formatted="false">"대기 모드"</string>
+    <string name="ui_aff948967bc08af4" formatted="false">"상태 알 수 없음"</string>
+    <string name="ui_ba2e4f095b95a550" formatted="false">"켜짐"</string>
+    <string name="ui_863ee5c4e2cff13a" formatted="false">"Xbox를 켜고 원격 기능을 확인하세요."</string>
+    <string name="ui_15c117762e68c0bf" formatted="false">"내 콘솔"</string>
+    <string name="ui_3eefdc5ca039c407" formatted="false">"콘솔을 찾을 수 없습니다. Xbox에서 설정 › 장치 및 연결 › 원격 기능을 여세요."</string>
+    <string name="ui_a4cce898b81db2e3" formatted="false">"Xbox 콘솔을 가져올 수 없습니다. 다시 시도하세요."</string>
+    <string name="ui_39d837c995cdba6a" formatted="false">"콘솔 목록으로 돌아가는 중입니다."</string>
 </resources>

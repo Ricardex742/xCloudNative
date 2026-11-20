@@ -1272,4 +1272,23 @@
     <string name="ui_ed5ca6abcc5e84c1" formatted="false">"Mittlere Verbindungsqualität"</string>
     <string name="ui_fd346cca9bbfda65" formatted="false">"Schlechte Verbindung"</string>
     <string name="ui_207961515be647c8" formatted="false">"Warte auf Netzwerkdaten"</string>
+    <string name="ui_7f49444bd70aff77" formatted="false">"Der Konsolenbildschirm wird angezeigt, sobald das Video bereit ist."</string>
+    <string name="ui_ead4a2dd146771a6" formatted="false">"Öffne den Bildschirm deiner Xbox."</string>
+    <string name="ui_efe36c606002f678" formatted="false">"Warten auf die Xbox-Konsole."</string>
+    <string name="ui_07d39fae712beebe" formatted="false">"VERBINDUNG ZUR KONSOLE"</string>
+    <string name="ui_c36ed287e72b4a8b" formatted="false">"Verbindung zur Konsole abbrechen"</string>
+    <string name="ui_3b0b0fdfe2e3a691" formatted="false">"Verbinden"</string>
+    <string name="ui_8ca7dd51d2a92430" formatted="false">"Deine Xbox-Konsolen werden gesucht…"</string>
+    <string name="ui_9b3f7be32b6c239e" formatted="false">"Verbindung zur Konsole wird getrennt…"</string>
+    <string name="ui_89130f77b7fa436b" formatted="false">"Trennen"</string>
+    <string name="ui_48700f8dedfa3768" formatted="false">"Verbindung zur Xbox trennen und zu deinen Konsolen zurückkehren?"</string>
+    <string name="ui_20324fbd274a1b47" formatted="false">"Aus"</string>
+    <string name="ui_0289f93d6d1af7ec" formatted="false">"Standby"</string>
+    <string name="ui_aff948967bc08af4" formatted="false">"Status unbekannt"</string>
+    <string name="ui_ba2e4f095b95a550" formatted="false">"Ein"</string>
+    <string name="ui_863ee5c4e2cff13a" formatted="false">"Schalte deine Xbox ein und prüfe die Remotefunktionen."</string>
+    <string name="ui_15c117762e68c0bf" formatted="false">"Meine Konsolen"</string>
+    <string name="ui_3eefdc5ca039c407" formatted="false">"Keine Konsolen gefunden. Öffne auf der Xbox Einstellungen › Geräte und Verbindungen › Remotefunktionen."</string>
+    <string name="ui_a4cce898b81db2e3" formatted="false">"Deine Xbox-Konsolen konnten nicht abgerufen werden. Versuche es erneut."</string>
+    <string name="ui_39d837c995cdba6a" formatted="false">"Zurück zu deinen Konsolen."</string>
 </resources>

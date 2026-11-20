@@ -9,7 +9,8 @@ data class ChannelMessage(val channel: String, val bytes: ByteArray, val binary:
 class ChannelHandshake(private val nativeTouch: Boolean = false,
                        private val resolution: StreamResolution = StreamResolution.HD_1080_HQ,
                        private val synchronizeGamepad: Boolean = true,
-                       clockMs: () -> Long = { System.nanoTime()/1_000_000 }) {
+                       clockMs: () -> Long = { System.nanoTime()/1_000_000 },
+                       private val activateCloudTitle: Boolean = true) {
     val sessionMessages=StreamingSessionMessages()
     val gamepadSync=GamepadStartupSync(synchronizeGamepad,clockMs)
     private val opened = mutableSetOf<String>()
@@ -33,7 +34,7 @@ class ChannelHandshake(private val nativeTouch: Boolean = false,
     @Synchronized fun onGamepadSyncDue(): List<ChannelMessage> {
         val registration=gamepadSync.due()
         // Preserve registration before title activation when startup synchronization is delayed.
-        return if(registration.isEmpty()) emptyList() else registration+sessionMessages.activateTitle()
+        return if(registration.isEmpty() || !activateCloudTitle) registration else registration+sessionMessages.activateTitle()
     }
     private fun startIfReady(): List<ChannelMessage> {
         if (started || !acknowledged || !opened.containsAll(listOf("message", "control", "input"))) return emptyList()
@@ -49,7 +50,7 @@ class ChannelHandshake(private val nativeTouch: Boolean = false,
             config("/streaming/characteristics/touchinputenabledchanged", JSONObject().put("touchInputEnabled", nativeTouch)),
             config("/streaming/characteristics/clientdevicecapabilities", JSONObject())
         ) + listOfNotNull(displayDimensions?.let(::dimensions)) +
-            (if(synchronizeGamepad) emptyList() else listOf(sessionMessages.activateTitle())) + resolutionRequest(resolution)
+            (if(synchronizeGamepad || !activateCloudTitle) emptyList() else listOf(sessionMessages.activateTitle())) + resolutionRequest(resolution)
     }
     private fun config(target: String, content: JSONObject) = encode("message", JSONObject()
         .put("type", "Message").put("target", target).put("id", UUID.randomUUID().toString()).put("cv", "")

@@ -1272,4 +1272,23 @@
     <string name="ui_ed5ca6abcc5e84c1" formatted="false">"網絡狀況一般"</string>
     <string name="ui_fd346cca9bbfda65" formatted="false">"網絡狀況欠佳"</string>
     <string name="ui_207961515be647c8" formatted="false">"正在等待網絡數據"</string>
+    <string name="ui_7f49444bd70aff77" formatted="false">"影片就緒後將顯示主機畫面。"</string>
+    <string name="ui_ead4a2dd146771a6" formatted="false">"開啟你的 Xbox 畫面。"</string>
+    <string name="ui_efe36c606002f678" formatted="false">"正在等待 Xbox 主機。"</string>
+    <string name="ui_07d39fae712beebe" formatted="false">"正在連線至主機"</string>
+    <string name="ui_c36ed287e72b4a8b" formatted="false">"取消主機連線"</string>
+    <string name="ui_3b0b0fdfe2e3a691" formatted="false">"連線"</string>
+    <string name="ui_8ca7dd51d2a92430" formatted="false">"正在尋找你的 Xbox 主機…"</string>
+    <string name="ui_9b3f7be32b6c239e" formatted="false">"正在中斷主機連線…"</string>
+    <string name="ui_89130f77b7fa436b" formatted="false">"中斷連線"</string>
+    <string name="ui_48700f8dedfa3768" formatted="false">"中斷 Xbox 連線並返回主機清單？"</string>
+    <string name="ui_20324fbd274a1b47" formatted="false">"已關機"</string>
+    <string name="ui_0289f93d6d1af7ec" formatted="false">"待命中"</string>
+    <string name="ui_aff948967bc08af4" formatted="false">"狀態未知"</string>
+    <string name="ui_ba2e4f095b95a550" formatted="false">"已開機"</string>
+    <string name="ui_863ee5c4e2cff13a" formatted="false">"開啟 Xbox 並檢查遠端功能。"</string>
+    <string name="ui_15c117762e68c0bf" formatted="false">"我的主機"</string>
+    <string name="ui_3eefdc5ca039c407" formatted="false">"找不到主機。請在 Xbox 上開啟「設定 › 裝置與連線 › 遠端功能」。"</string>
+    <string name="ui_a4cce898b81db2e3" formatted="false">"無法查詢你的 Xbox 主機。請再試一次。"</string>
+    <string name="ui_39d837c995cdba6a" formatted="false">"正在返回主機清單。"</string>
 </resources>

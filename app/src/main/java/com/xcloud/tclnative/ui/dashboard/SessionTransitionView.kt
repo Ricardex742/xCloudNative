@@ -83,6 +83,10 @@ class SessionTransitionView(context: Context) : FrameLayout(context) {
         show(value,if(wasPlaying) UiText.text("Saindo do jogo…") else UiText.text("Voltando ao catálogo…"),
             UiText.text("Preparando seu catálogo."))
     }
+    fun showRemotePlayExit(value: GameTitle?) {
+        exiting = true
+        show(value, UiText.text("Desconectando do console…"), UiText.text("Voltando aos seus consoles."))
+    }
     private fun show(value: GameTitle?,message: String,description: String) {
         refreshAppearance()
         visibility=VISIBLE; detail.text=description; setGame(value); updateStatus(message)

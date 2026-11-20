@@ -1272,4 +1272,23 @@
     <string name="ui_ed5ca6abcc5e84c1" formatted="false">"Orta bağlantı kalitesi"</string>
     <string name="ui_fd346cca9bbfda65" formatted="false">"Zayıf bağlantı"</string>
     <string name="ui_207961515be647c8" formatted="false">"Ağ verileri bekleniyor"</string>
+    <string name="ui_7f49444bd70aff77" formatted="false">"Video hazır olduğunda konsol ekranı görünecek."</string>
+    <string name="ui_ead4a2dd146771a6" formatted="false">"Xbox ekranınızı açın."</string>
+    <string name="ui_efe36c606002f678" formatted="false">"Xbox konsolu bekleniyor."</string>
+    <string name="ui_07d39fae712beebe" formatted="false">"KONSOLA BAĞLANILIYOR"</string>
+    <string name="ui_c36ed287e72b4a8b" formatted="false">"Konsol bağlantısını iptal et"</string>
+    <string name="ui_3b0b0fdfe2e3a691" formatted="false">"Bağlan"</string>
+    <string name="ui_8ca7dd51d2a92430" formatted="false">"Xbox konsollarınız aranıyor…"</string>
+    <string name="ui_9b3f7be32b6c239e" formatted="false">"Konsol bağlantısı kesiliyor…"</string>
+    <string name="ui_89130f77b7fa436b" formatted="false">"Bağlantıyı kes"</string>
+    <string name="ui_48700f8dedfa3768" formatted="false">"Xbox bağlantısı kesilsin ve konsol listenize dönülsün mü?"</string>
+    <string name="ui_20324fbd274a1b47" formatted="false">"Kapalı"</string>
+    <string name="ui_0289f93d6d1af7ec" formatted="false">"Beklemede"</string>
+    <string name="ui_aff948967bc08af4" formatted="false">"Durum bilinmiyor"</string>
+    <string name="ui_ba2e4f095b95a550" formatted="false">"Açık"</string>
+    <string name="ui_863ee5c4e2cff13a" formatted="false">"Xbox’ınızı açın ve uzaktan erişim özelliklerini kontrol edin."</string>
+    <string name="ui_15c117762e68c0bf" formatted="false">"Konsollarım"</string>
+    <string name="ui_3eefdc5ca039c407" formatted="false">"Konsol bulunamadı. Xbox üzerinde Ayarlar › Cihazlar ve bağlantılar › Uzaktan erişim özellikleri bölümünü açın."</string>
+    <string name="ui_a4cce898b81db2e3" formatted="false">"Xbox konsollarınız sorgulanamadı. Tekrar deneyin."</string>
+    <string name="ui_39d837c995cdba6a" formatted="false">"Konsol listenize dönülüyor."</string>
 </resources>

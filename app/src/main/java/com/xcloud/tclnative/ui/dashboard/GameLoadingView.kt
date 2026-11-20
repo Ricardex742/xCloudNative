@@ -73,6 +73,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
     var phase = LoadingPhase.PREPARING
         private set
     private var queue: QueueStatus? = null
+    private var remotePlay = false
     private var geometry = 0L
 
     init {
@@ -91,8 +92,12 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         maxLines = 1
     }
     private fun rounded(color: UiColor)=DashboardTheme.shape(color,9f,1,UiColor.QUEUE_BORDER)
-    fun begin(value: GameTitle, nowMs: Long = System.nanoTime()/1_000_000) {
+    fun begin(value: GameTitle, nowMs: Long = System.nanoTime()/1_000_000, remotePlay: Boolean = false) {
         art.resume()
+        this.remotePlay = remotePlay
+        steps.first().visibility = if (remotePlay) GONE else VISIBLE
+        cancelButton.contentDescription = if (remotePlay) UiText.text("Cancelar conexão com o console") else
+            UiText.text("Cancelar espera e voltar ao catálogo")
         queue = null; phase = LoadingPhase.PREPARING; startedAt = nowMs
         setGame(value); visibility = View.VISIBLE
         render(nowMs)
@@ -147,19 +152,19 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         val snapshot = queue?.takeIf { phase == LoadingPhase.QUEUED }
         status.text = when (phase) {
             LoadingPhase.QUEUED -> UiText.text("AGUARDANDO UMA VAGA")
-            LoadingPhase.PREPARING -> UiText.text("PREPARANDO SEU JOGO")
+            LoadingPhase.PREPARING -> if (remotePlay) UiText.text("CONECTANDO AO CONSOLE") else UiText.text("PREPARANDO SEU JOGO")
             LoadingPhase.CONNECTING -> UiText.text("CONECTANDO A TRANSMISSÃO")
             LoadingPhase.VIDEO -> UiText.text("RECEBENDO A IMAGEM")
         }
-        estimateLabel.text = if (phase == LoadingPhase.QUEUED) UiText.text("PREVISÃO DO XBOX") else UiText.text("SUA SESSÃO")
+        estimateLabel.text = if (remotePlay) "Remote Play" else if (phase == LoadingPhase.QUEUED) UiText.text("PREVISÃO DO XBOX") else UiText.text("SUA SESSÃO")
         estimate.text = if (phase == LoadingPhase.QUEUED) snapshot?.estimate?.let {
             if (it.seconds < 60) UiText.text("Menos de 1 min") else UiText.text("Cerca de {0}",UiText.nested(QueueStatus.duration(it.seconds)))
-        } ?: UiText.text("Consultando…") else if (phase == LoadingPhase.PREPARING) UiText.text("Vamos jogar") else UiText.text("Quase pronto")
+        } ?: UiText.text("Consultando…") else if (phase == LoadingPhase.PREPARING && !remotePlay) UiText.text("Vamos jogar") else UiText.text("Quase pronto")
         elapsedLabel.text = if (snapshot != null) UiText.text("NA FILA HÁ") else UiText.text("TEMPO DECORRIDO")
         elapsed.text = QueueStatus.duration((nowMs-(snapshot?.enteredAtMs ?: startedAt)).coerceAtLeast(0)/1000)
         explanation.text = when (phase) {
             LoadingPhase.QUEUED -> UiText.text("Seu jogo abrirá assim que o Xbox liberar uma sessão.")
-            LoadingPhase.PREPARING -> UiText.text("O Xbox está reservando e preparando a sua sessão.")
+            LoadingPhase.PREPARING -> if (remotePlay) UiText.text("Aguardando o console Xbox.") else UiText.text("O Xbox está reservando e preparando a sua sessão.")
             LoadingPhase.CONNECTING -> UiText.text("Conectando áudio, vídeo e controle ao Xbox.")
             LoadingPhase.VIDEO -> UiText.text("Conexão estabelecida. Aguardando o primeiro quadro do jogo.")
         }
@@ -178,7 +183,8 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
         val step = when (phase) { LoadingPhase.QUEUED -> 0; LoadingPhase.PREPARING -> 1; else -> 2 }
         val labels = listOf(UiText.text("FILA"), UiText.text("PREPARAÇÃO"), UiText.text("CONEXÃO"))
         steps.forEachIndexed { index, label ->
-            label.text=if(scene==ConsoleScene.XBOX_SERIES) labels[index] else "${if(index<step) "✓" else "${index+1}"}   ${labels[index]}"
+            label.text=if(scene==ConsoleScene.XBOX_SERIES) labels[index] else
+                "${if(index<step) "✓" else (if(remotePlay) index else index+1).toString()}   ${labels[index]}"
             if(scene==ConsoleScene.NONE) {
                 label.setTextColor(if(index<=step) Color.WHITE else DashboardTheme.color(UiColor.QUEUE_MUTED))
                 label.background=DashboardTheme.shape(if(index==step) UiColor.QUEUE_ACTIVE else UiColor.QUEUE_INACTIVE,
@@ -193,6 +199,7 @@ class GameLoadingView(context: Context, private val cancel: () -> Unit) : FrameL
             }
         }
         note.text = if (snapshot != null) UiText.text("A previsão pode mudar. Limite da tentativa: {0}.",UiText.nested(QueueStatus.duration(snapshot.limitMs/1000)))
+            else if (remotePlay) UiText.text("A tela do console será exibida assim que o vídeo estiver pronto.")
             else UiText.text("A partida será exibida assim que o vídeo estiver pronto.")
     }
     fun cancelFromController() { cancelButton.performClick() }

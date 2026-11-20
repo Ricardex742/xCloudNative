@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 111
-        versionName = "0.40.16-network-indicator"
+        versionCode = 112
+        versionName = "0.41.0-remote-play"
     }
 
     signingConfigs {

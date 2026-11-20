@@ -54,7 +54,8 @@ object GameMenuPanel {
             xbox?.let { GameMenuShortcut(XBOX,ConsoleGlyph.XBOX,ConsoleAction(UiText.text("Botão Xbox — experimental"),it),"Xbox") }
         )
 
-    internal fun show(context: Context, shortcuts: List<GameMenuShortcut>, disconnect: () -> Unit): ConsoleDialog {
+    internal fun show(context: Context, shortcuts: List<GameMenuShortcut>, disconnect: () -> Unit,
+                      remotePlay: Boolean = false): ConsoleDialog {
         val device=InputDeviceProfile.read(context)
         val window=(context as? Activity)?.window?.decorView
         val width=window?.width?.takeIf { it>0 } ?: context.resources.displayMetrics.widthPixels
@@ -79,17 +80,21 @@ object GameMenuPanel {
                 }
             } else addShortcuts(shortcuts.map { it.icon to it.action })
             addAction(UiText.text("Retomar partida")) {}
-            addAction(UiText.text("Encerrar partida")) {
-                confirmExit(context,disconnect)
+            addAction(exitLabel(remotePlay)) {
+                confirmExit(context,disconnect,remotePlay=remotePlay)
             }
             show()
         }
     }
 
-    internal fun confirmExit(context: Context, disconnect: () -> Unit, onBack: (() -> Unit)? = null): ConsoleDialog {
-        val end=ConsoleAction(UiText.text("Encerrar partida"),disconnect)
+    internal fun exitLabel(remotePlay: Boolean) = if (remotePlay) UiText.text("Desconectar") else UiText.text("Encerrar partida")
+
+    internal fun confirmExit(context: Context, disconnect: () -> Unit, onBack: (() -> Unit)? = null,
+                             remotePlay: Boolean = false): ConsoleDialog {
+        val end=ConsoleAction(exitLabel(remotePlay),disconnect)
         val resume=ConsoleAction(UiText.text("Retomar partida")) {}
-        return ConsoleDialogs.message(context,UiText.text("Encerrar partida"),UiText.text("Encerrar a partida e voltar ao catálogo?"),
+        return ConsoleDialogs.message(context,end.label,if (remotePlay) UiText.text("Desconectar do Xbox e voltar aos seus consoles?")
+            else UiText.text("Encerrar a partida e voltar ao catálogo?"),
             if(onBack==null) listOf(end,resume) else listOf(resume,end),onCancel=onBack)
     }
 }

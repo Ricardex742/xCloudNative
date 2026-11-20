@@ -32,6 +32,7 @@ internal class GameShortcutBar(
     disconnect: () -> Unit,
     onBackFromAction: () -> Unit,
     slots: List<GameShortcutId?> = GameShortcutSettings.DEFAULT_SLOTS,
+    remotePlay: Boolean = false,
     editShortcuts: (() -> Unit)? = null
 ) : Dialog(activity, R.style.ConsoleDialog) {
     data class Position(val more: Boolean = false, val actionLabel: String? = null, val shortcutId: GameShortcutId? = null)
@@ -85,8 +86,8 @@ internal class GameShortcutBar(
             addView(bar, LinearLayout.LayoutParams(-2, px(60)))
             addView(morePanel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = px(6) })
         }
-        addRow(ConsoleGlyph.EXIT, ConsoleAction(UiText.text("Encerrar partida")) {
-            GameMenuPanel.confirmExit(activity, disconnect, onBackFromAction)
+        addRow(ConsoleGlyph.EXIT, ConsoleAction(GameMenuPanel.exitLabel(remotePlay)) {
+            GameMenuPanel.confirmExit(activity, disconnect, onBackFromAction, remotePlay)
         })
         editShortcuts?.let { addRow(ConsoleGlyph.SETTINGS, ConsoleAction(UiText.text("Editar atalhos"), it)) }
         shortcuts.filter { it !in pinned }.forEach { item -> addRow(item.icon, item.action, item.id) }

@@ -1272,4 +1272,23 @@
     <string name="ui_ed5ca6abcc5e84c1" formatted="false">"接続品質は普通"</string>
     <string name="ui_fd346cca9bbfda65" formatted="false">"接続品質が低い"</string>
     <string name="ui_207961515be647c8" formatted="false">"ネットワークデータを待機中"</string>
+    <string name="ui_7f49444bd70aff77" formatted="false">"映像の準備ができると、本体の画面が表示されます。"</string>
+    <string name="ui_ead4a2dd146771a6" formatted="false">"Xbox の画面を開きます。"</string>
+    <string name="ui_efe36c606002f678" formatted="false">"Xbox 本体を待機中です。"</string>
+    <string name="ui_07d39fae712beebe" formatted="false">"本体に接続中"</string>
+    <string name="ui_c36ed287e72b4a8b" formatted="false">"本体への接続をキャンセル"</string>
+    <string name="ui_3b0b0fdfe2e3a691" formatted="false">"接続"</string>
+    <string name="ui_8ca7dd51d2a92430" formatted="false">"Xbox 本体を確認中…"</string>
+    <string name="ui_9b3f7be32b6c239e" formatted="false">"本体から切断中…"</string>
+    <string name="ui_89130f77b7fa436b" formatted="false">"切断"</string>
+    <string name="ui_48700f8dedfa3768" formatted="false">"Xbox から切断して本体一覧に戻りますか？"</string>
+    <string name="ui_20324fbd274a1b47" formatted="false">"電源オフ"</string>
+    <string name="ui_0289f93d6d1af7ec" formatted="false">"スタンバイ"</string>
+    <string name="ui_aff948967bc08af4" formatted="false">"状態不明"</string>
+    <string name="ui_ba2e4f095b95a550" formatted="false">"電源オン"</string>
+    <string name="ui_863ee5c4e2cff13a" formatted="false">"Xbox の電源を入れ、リモート機能を確認してください。"</string>
+    <string name="ui_15c117762e68c0bf" formatted="false">"マイ Xbox 本体"</string>
+    <string name="ui_3eefdc5ca039c407" formatted="false">"本体が見つかりません。Xbox で［設定］›［デバイスと接続］›［リモート機能］を開いてください。"</string>
+    <string name="ui_a4cce898b81db2e3" formatted="false">"Xbox 本体を取得できませんでした。もう一度お試しください。"</string>
+    <string name="ui_39d837c995cdba6a" formatted="false">"本体一覧に戻ります。"</string>
 </resources>

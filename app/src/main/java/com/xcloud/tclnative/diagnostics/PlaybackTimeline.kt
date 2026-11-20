@@ -3,7 +3,7 @@ package com.xcloud.tclnative.diagnostics
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class PlaybackOrigin { CATALOG, SHORTCUT }
+enum class PlaybackOrigin { CATALOG, SHORTCUT, REMOTE_PLAY }
 enum class PlaybackStage {
     RENDERER_READY, PLAY_REQUEST, QUEUE_CONFIRMED, PROVISIONED, OFFER_POSTED, ANSWER_APPLIED,
     TRANSPORT_READY, FIRST_TRACK_FRAME, FIRST_EGL_SUBMISSION

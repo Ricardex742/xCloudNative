@@ -33,7 +33,8 @@ class PlaybackSettingsPanel(
     private val currentDiagnostics: (() -> Unit)?=null,private val microphone: (() -> Unit)?=null,
     private val statisticsChanged: () -> Unit={},
     private val microphoneLabel: () -> String={ UiText.text("Ativar microfone") },
-    private val liveVideoMode: VideoMode?=null
+    private val liveVideoMode: VideoMode?=null,
+    private val remotePlay: (() -> Unit)?=null
 ) {
     private var videoSection=0
     private var currentPage=SettingsPage.ROOT
@@ -322,6 +323,7 @@ class PlaybackSettingsPanel(
         ))
     }
     fun showAccount(): ConsoleDialog = category(SettingsPage.ACCOUNT,UiText.text("Conta e amigos"),listOfNotNull(
+        remotePlay?.let { ConsoleAction(UiText.text("Meus consoles"),it) },
         friends?.let { ConsoleAction(UiText.text("Amigos"),it) },
         gameShortcut?.let { ConsoleAction(UiText.text("Atalho do jogo selecionado"),it) },
         ConsoleAction(UiText.text("Atalhos dos favoritos"),homeShortcuts),ConsoleAction(UiText.text("Gerenciar assinatura Microsoft"),subscription),

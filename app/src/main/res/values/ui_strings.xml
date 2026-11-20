@@ -1272,4 +1272,23 @@
     <string name="ui_ed5ca6abcc5e84c1" formatted="false">"Rede moderada"</string>
     <string name="ui_fd346cca9bbfda65" formatted="false">"Rede ruim"</string>
     <string name="ui_207961515be647c8" formatted="false">"Aguardando dados da rede"</string>
+    <string name="ui_7f49444bd70aff77" formatted="false">"A tela do console será exibida assim que o vídeo estiver pronto."</string>
+    <string name="ui_ead4a2dd146771a6" formatted="false">"Abra a tela do seu Xbox."</string>
+    <string name="ui_efe36c606002f678" formatted="false">"Aguardando o console Xbox."</string>
+    <string name="ui_07d39fae712beebe" formatted="false">"CONECTANDO AO CONSOLE"</string>
+    <string name="ui_c36ed287e72b4a8b" formatted="false">"Cancelar conexão com o console"</string>
+    <string name="ui_3b0b0fdfe2e3a691" formatted="false">"Conectar"</string>
+    <string name="ui_8ca7dd51d2a92430" formatted="false">"Consultando seus consoles Xbox…"</string>
+    <string name="ui_9b3f7be32b6c239e" formatted="false">"Desconectando do console…"</string>
+    <string name="ui_89130f77b7fa436b" formatted="false">"Desconectar"</string>
+    <string name="ui_48700f8dedfa3768" formatted="false">"Desconectar do Xbox e voltar aos seus consoles?"</string>
+    <string name="ui_20324fbd274a1b47" formatted="false">"Desligado"</string>
+    <string name="ui_0289f93d6d1af7ec" formatted="false">"Em espera"</string>
+    <string name="ui_aff948967bc08af4" formatted="false">"Estado desconhecido"</string>
+    <string name="ui_ba2e4f095b95a550" formatted="false">"Ligado"</string>
+    <string name="ui_863ee5c4e2cff13a" formatted="false">"Ligue o Xbox e confira os recursos remotos."</string>
+    <string name="ui_15c117762e68c0bf" formatted="false">"Meus consoles"</string>
+    <string name="ui_3eefdc5ca039c407" formatted="false">"Nenhum console encontrado. No Xbox, abra Configurações › Dispositivos e conexões › Recursos remotos."</string>
+    <string name="ui_a4cce898b81db2e3" formatted="false">"Não foi possível consultar seus consoles Xbox. Tente novamente."</string>
+    <string name="ui_39d837c995cdba6a" formatted="false">"Voltando aos seus consoles."</string>
 </resources>

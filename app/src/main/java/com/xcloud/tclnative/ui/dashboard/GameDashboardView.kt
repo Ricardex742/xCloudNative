@@ -74,7 +74,8 @@ class GameDashboardView(
     private val onOwnershipNeeded: () -> Unit = {},
     private val onGameShortcut: ((GameTitle) -> Unit)?=null,
     private val onFriends: (() -> Unit)?=null,
-    private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() }
+    private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() },
+    private val onRemotePlay: (() -> Unit)? = null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -252,6 +253,16 @@ class GameDashboardView(
         clipChildren = false; clipToPadding = false
     }
     private val consoleTabRow=FrameLayout(context).apply { clipChildren=false;clipToPadding=false }
+    private val consolesButton = DashboardTheme.button(context, UiText.text("Meus consoles")) {
+        onRemotePlay?.invoke()
+    }.apply {
+        id = generateViewId()
+        visibility = GONE
+        contentDescription = UiText.text("Meus consoles")
+        setOnFocusChangeListener { _, focused ->
+            if (designScene == ConsoleScene.XBOX_SERIES) text = if (focused) UiText.text("Meus consoles") else ""
+        }
+    }
     private val lb = label(24f).apply { text = "LB"; gravity = Gravity.CENTER }
     private val rb = label(24f).apply { text = "RB"; gravity = Gravity.CENTER }
     private val grid = object : RecyclerView(context) {
@@ -658,7 +669,12 @@ class GameDashboardView(
                 if(designScene==ConsoleScene.PS5) openPlayStationCatalog(tab,playStationBrowseTab)
                 else focusFirstCover()
             }
-        },onBack={ categoryFocus().requestFocus() })
+        } + listOfNotNull(onRemotePlay?.let { ConsoleAction(UiText.text("Meus consoles"), it) }),
+            onBack={ categoryFocus().requestFocus() })
+    }
+    internal fun restoreRemotePlayFocus() {
+        if (consolesButton.visibility == VISIBLE) consolesButton.requestFocus()
+        else categoryFocus().requestFocus()
     }
     private fun openPlayStationCatalog(tab: LibraryTab, opener: View=playStationAllGames) {
         val selectedKey=selectedCard?.key
@@ -948,6 +964,23 @@ class GameDashboardView(
         listOf(headerIcon,headerTitle,profilePanel,searchButton,navigation,lb,rb,grid).forEach { it.visibility=VISIBLE }
         metadataNote.visibility=GONE
         settingsButton.visibility=VISIBLE;headerTitle.gravity=Gravity.START
+        if (onRemotePlay != null) {
+            if (consolesButton.parent !== tabRow || tabRow.indexOfChild(consolesButton) != tabRow.childCount - 1) {
+                (consolesButton.parent as? ViewGroup)?.removeView(consolesButton)
+                tabRow.addView(consolesButton, LinearLayout.LayoutParams(0, -1, 1.5f))
+            }
+            consolesButton.visibility = VISIBLE
+            consolesButton.background = FocusPlate(7f, 4f)
+            consolesButton.text = UiText.text("Meus consoles")
+            consolesButton.setTextColor(Color.WHITE)
+            consolesButton.gravity = Gravity.CENTER
+            consolesButton.setPadding(0, 0, 0, 0)
+            consolesButton.maxLines = 2
+            consolesButton.nextFocusLeftId = tabs.last().id
+            consolesButton.nextFocusDownId = grid.id
+            tabs.last().nextFocusRightId = consolesButton.id
+            textSize(consolesButton, 19f)
+        }
         cardWidth=0;cardColumns=COLUMNS;cardHorizontal=false
         val s = scale
         // Reserve the full header for the game and profile. The portrait grid scrolls below it.
@@ -1089,6 +1122,8 @@ class GameDashboardView(
         if(next!=ConsoleScene.XBOX_SERIES && next!=ConsoleScene.PS5) { posters.cancel(heroBackdrop);consoleBackdrop.setArtwork(null) }
         tabRow.visibility=if(console) GONE else VISIBLE
         val parent=if(console) consoleTabRow else tabRow
+        consolesButton.visibility = GONE
+        tabs.last().nextFocusRightId = View.NO_ID
         tabs.forEachIndexed { i,view ->
             view.visibility=VISIBLE
             if(android.os.Build.VERSION.SDK_INT>=26) view.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
@@ -1710,11 +1745,29 @@ class GameDashboardView(
                 pos(dashboardClock,wide-250f,43f,130f,35f);text(dashboardClock,22f)
                 dashboardClock.typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)
                 pos(navigation,350f,26f,wide-650f,94f);pos(consoleTabRow,0f,0f,wide-650f,94f)
-                val tw=(wide-650f)/6f
+                val tw=(wide-650f)/(tabs.size + if (onRemotePlay != null) 1 else 0)
                 tabs.forEachIndexed { i,v ->
                     pos(v,i*tw,0f,tw-5f,94f);v.text=if(i==activeTab.ordinal) LibraryTab.entries[i].label else ""
                     v.gravity=Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL;v.maxLines=2
                     v.setPadding((3*s).roundToInt(),(59*s).roundToInt(),(3*s).roundToInt(),(2*s).roundToInt());text(v,14f)
+                }
+                if (onRemotePlay != null) {
+                    if (consolesButton.parent !== consoleTabRow) {
+                        (consolesButton.parent as? ViewGroup)?.removeView(consolesButton)
+                        consoleTabRow.addView(consolesButton)
+                    }
+                    consolesButton.visibility = VISIBLE
+                    consolesButton.background = ConsoleControlPlate(designScene, ConsoleControl.TAB, false, ConsoleGlyph.DISPLAY)
+                    consolesButton.setTextColor(consoleTextColor())
+                    consolesButton.text = if (consolesButton.hasFocus()) UiText.text("Meus consoles") else ""
+                    consolesButton.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+                    consolesButton.maxLines = 2
+                    consolesButton.setPadding((3*s).roundToInt(), (59*s).roundToInt(), (3*s).roundToInt(), (2*s).roundToInt())
+                    consolesButton.nextFocusLeftId = tabs.last().id
+                    consolesButton.nextFocusDownId = grid.id
+                    tabs.last().nextFocusRightId = consolesButton.id
+                    pos(consolesButton, tabs.size*tw, 0f, tw-5f, 94f)
+                    text(consolesButton, 14f)
                 }
                 pos(headerIcon,wide-420f,139f,320f,174f);headerIcon.visibility=INVISIBLE
                 pos(sectionTitle,58f,292f,wide-116f,32f);text(sectionTitle,22f)

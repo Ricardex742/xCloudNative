@@ -1272,4 +1272,23 @@
     <string name="ui_ed5ca6abcc5e84c1" formatted="false">"Rete discreta"</string>
     <string name="ui_fd346cca9bbfda65" formatted="false">"Rete scadente"</string>
     <string name="ui_207961515be647c8" formatted="false">"In attesa dei dati di rete"</string>
+    <string name="ui_7f49444bd70aff77" formatted="false">"La schermata della console apparirà appena il video sarà pronto."</string>
+    <string name="ui_ead4a2dd146771a6" formatted="false">"Apri la schermata della tua Xbox."</string>
+    <string name="ui_efe36c606002f678" formatted="false">"In attesa della console Xbox."</string>
+    <string name="ui_07d39fae712beebe" formatted="false">"CONNESSIONE ALLA CONSOLE"</string>
+    <string name="ui_c36ed287e72b4a8b" formatted="false">"Annulla la connessione alla console"</string>
+    <string name="ui_3b0b0fdfe2e3a691" formatted="false">"Connetti"</string>
+    <string name="ui_8ca7dd51d2a92430" formatted="false">"Ricerca delle tue console Xbox…"</string>
+    <string name="ui_9b3f7be32b6c239e" formatted="false">"Disconnessione dalla console…"</string>
+    <string name="ui_89130f77b7fa436b" formatted="false">"Disconnetti"</string>
+    <string name="ui_48700f8dedfa3768" formatted="false">"Disconnetterti da Xbox e tornare alle tue console?"</string>
+    <string name="ui_20324fbd274a1b47" formatted="false">"Spenta"</string>
+    <string name="ui_0289f93d6d1af7ec" formatted="false">"In standby"</string>
+    <string name="ui_aff948967bc08af4" formatted="false">"Stato sconosciuto"</string>
+    <string name="ui_ba2e4f095b95a550" formatted="false">"Accesa"</string>
+    <string name="ui_863ee5c4e2cff13a" formatted="false">"Accendi la Xbox e controlla le funzionalità remote."</string>
+    <string name="ui_15c117762e68c0bf" formatted="false">"Le mie console"</string>
+    <string name="ui_3eefdc5ca039c407" formatted="false">"Nessuna console trovata. Su Xbox, apri Impostazioni › Dispositivi e connessioni › Funzionalità remote."</string>
+    <string name="ui_a4cce898b81db2e3" formatted="false">"Impossibile trovare le tue console Xbox. Riprova."</string>
+    <string name="ui_39d837c995cdba6a" formatted="false">"Ritorno alle tue console."</string>
 </resources>

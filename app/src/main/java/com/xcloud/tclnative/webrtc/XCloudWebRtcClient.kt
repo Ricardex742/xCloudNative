@@ -30,7 +30,8 @@ class XCloudWebRtcClient(
     internal val maxBitrateKbps: Int = 0,private val ipPreference: IpPreference = IpPreference.AUTO,
     private val nativeKeyboardMouse: Boolean = false,private val microphoneAllowed: Boolean = false,outputGain: Int = 100,
     private val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD,
-    private val onServerDisconnect: (XboxServerDisconnect) -> Unit = {}
+    private val onServerDisconnect: (XboxServerDisconnect) -> Unit = {},
+    remotePlay: Boolean = false
 ) : StreamingPeer {
     private val appContext=context.applicationContext
     private val factory: PeerConnectionFactory
@@ -42,7 +43,8 @@ class XCloudWebRtcClient(
     private val preferredProbeFailed=CompletableDeferred<Unit>()
     @Volatile private var probingPreferredFamily: Int?=null
     private val channelsReady = CompletableDeferred<Unit>()
-    private val handshake = ChannelHandshake(nativeTouch,streamResolution,synchronizeGamepad=!nativeKeyboardMouse)
+    private val handshake = ChannelHandshake(nativeTouch,streamResolution,synchronizeGamepad=!nativeKeyboardMouse,
+        activateCloudTitle = !remotePlay)
     private val channels = java.util.concurrent.ConcurrentHashMap<String, DataChannel>()
     private val closed = AtomicBoolean(false)
     private val serverEnded=java.util.concurrent.atomic.AtomicReference<XboxServerDisconnect?>(null)
