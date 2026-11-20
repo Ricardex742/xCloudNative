@@ -1256,4 +1256,17 @@
     <string name="ui_80b26f920e37575b">"Commandes"</string>
     <string name="ui_5d951376c42f3cf3">"Plus d’options"</string>
     <string name="ui_97ed90f5456061da">"Modifier le débit recharge le flux de la partie en cours. Xbox détermine le débit reçu."</string>
+    <string name="ui_d9d4c8afe769b3da" formatted="false">"Manette virtuelle"</string>
+    <string name="ui_25c7658bb9289d92" formatted="false">"Réseau"</string>
+    <string name="ui_ba5cd3342c5fccc9" formatted="false">"Commandes tactiles natives"</string>
+    <string name="ui_0038516d938d969a" formatted="false">"Statistiques"</string>
+    <string name="ui_f89f198e56146fe2" formatted="false">"Réseau instable"</string>
+    <string name="ui_c3a95f580eaac571" formatted="false">"État du réseau"</string>
+    <string name="ui_0e3c6b93b24d002b" formatted="false">"Modifier les raccourcis"</string>
+    <string name="ui_1aedb34b9afee3d6" formatted="false">"Débit reçu"</string>
+    <string name="ui_27eb4efb834cab52" formatted="false">"Alertes réseau"</string>
+    <string name="ui_e1aaa5d3e42849d5" formatted="false">"Les raccourcis indisponibles pendant cette session sont masqués."</string>
+    <string name="ui_4d95c2ae7fe1cca2" formatted="false">"Raccourci {0} : {1}"</string>
+    <string name="ui_d2b6d472fee2ff5d" formatted="false">"Raccourci {0}"</string>
+    <string name="ui_307b27476b8f31ea" formatted="false">"Sans raccourci"</string>
 </resources>

@@ -42,6 +42,8 @@ import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
 import com.xcloud.tclnative.ui.dashboard.GameMenuPanel
 import com.xcloud.tclnative.ui.dashboard.GameShortcutBar
+import com.xcloud.tclnative.ui.dashboard.GameShortcutEditor
+import com.xcloud.tclnative.ui.dashboard.GameNetworkPanel
 import com.xcloud.tclnative.ui.dashboard.SessionOptionsPanel
 import com.xcloud.tclnative.ui.dashboard.ConsoleLoginView
 import com.xcloud.tclnative.ui.dashboard.MicrosoftLoginDialog
@@ -85,6 +87,12 @@ open class MainActivity : Activity() {
     private lateinit var surfaceRenderer: AiPqSurfaceRenderer
     private lateinit var hudTextView: TextView
     private lateinit var statsView: TextView
+    private lateinit var networkNotice: TextView
+    private val shortcutSettings by lazy { GameShortcutSettings(this) }
+    private var shortcutEditor: GameShortcutEditor? = null
+    private var networkPanel: GameNetworkPanel? = null
+    private val networkWarning = NetworkWarning()
+    private var networkWarningsEnabled = false
     private val statistics = StatisticsVisibility()
     private val statisticsStore by lazy { StatisticsSettingsStore(this) }
     private var statisticsSettings=StatisticsSettings()
@@ -311,10 +319,28 @@ open class MainActivity : Activity() {
         rootLayout.addView(statsView, FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.TOP or Gravity.START
         ).apply { topMargin = (56 * resources.displayMetrics.density).toInt(); marginStart = 12 })
+        networkWarningsEnabled = shortcutSettings.networkWarnings
+        val noticePadding = (8 * resources.displayMetrics.density).toInt()
+        networkNotice = com.xcloud.tclnative.i18n.LocalizedTextView(this).apply {
+            text = UiText.text("Rede instável")
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            background = com.xcloud.tclnative.ui.dashboard.DashboardTheme.panel(noticePadding.toFloat())
+            setPadding(noticePadding * 2, noticePadding, noticePadding * 2, noticePadding)
+            visibility = View.GONE
+            accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
+        }
+        rootLayout.addView(networkNotice, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+            .apply { bottomMargin = noticePadding })
         ImmersiveWindow.observeCutout(rootLayout) { cutout ->
             if(displayCutout!=cutout) {
                 displayCutout=cutout
                 (gameMenuDialog as? GameShortcutBar)?.setCutout(cutout)
+                networkNotice.layoutParams = (networkNotice.layoutParams as FrameLayout.LayoutParams).apply {
+                    bottomMargin = noticePadding + cutout.bottom
+                    leftMargin = cutout.left
+                    rightMargin = cutout.right
+                }
                 com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout)
                 renderStatistics()
             }
@@ -1080,7 +1106,9 @@ open class MainActivity : Activity() {
     }
 
     private fun showGameMenu(position: GameShortcutBar.Position?) {
-        if (transitionPanel.visibility==View.VISIBLE || gameMenuDialog?.isShowing == true || (webrtcClient == null && reloadTransmission==null) || queuePanel.visibility == View.VISIBLE) return
+        if (transitionPanel.visibility==View.VISIBLE || gameMenuDialog?.isShowing == true ||
+            shortcutEditor?.isShowing == true || networkPanel?.dialog?.isShowing == true ||
+            (webrtcClient == null && reloadTransmission==null) || queuePanel.visibility == View.VISIBLE) return
         resetController()
         val generation=playbackGeneration
         var toolbar: GameShortcutBar? = null
@@ -1106,6 +1134,7 @@ open class MainActivity : Activity() {
             hudVisible=touchView.controlsVisible,
             nativeTouch=if(active && currentTouchMode!=TouchMode.NATIVE && webrtcClient?.canUseNativeTouch()==true) ({ enableNativeTouch() }) else null,
             diagnostics={ showLiveDiagnostics(back) },
+            network={ showNetworkConditions(back) },
             hud=if(touch) ({ showGameHudSettings(back) }) else null,
             bitrate=if(active && client!=null && reload!=null) ({
                 SessionOptionsPanel.liveBitrate(this,client.maxBitrateKbps,back) { kbps ->
@@ -1119,7 +1148,9 @@ open class MainActivity : Activity() {
             }))
         touchView.setMenuCovered(position!=null)
         val dialog = if(position==null) GameMenuPanel.show(this,shortcuts,::cancelPlayback) else {
-            GameShortcutBar(this,shortcuts,position,displayCutout,::cancelPlayback,back).also {
+            GameShortcutBar(this,shortcuts,position,displayCutout,::cancelPlayback,back,shortcutSettings.slots()) {
+                GameShortcutEditor(this,shortcutSettings,back).also { shortcutEditor=it }.show()
+            }.also {
                 toolbar=it
                 it.show()
             }
@@ -1131,6 +1162,23 @@ open class MainActivity : Activity() {
                 touchView.setMenuCovered(false)
             }
         }
+    }
+    private fun showNetworkConditions(back: () -> Unit) {
+        val panel = GameNetworkPanel(this, networkWarningsEnabled, { enabled ->
+            shortcutSettings.networkWarnings = enabled
+            networkWarningsEnabled = enabled
+            networkWarning.reset()
+            renderNetworkStatus()
+        }, back)
+        networkPanel = panel
+        panel.dialog.addCleanup { if (networkPanel === panel) networkPanel = null }
+        renderNetworkStatus()
+        panel.dialog.show()
+    }
+
+    private fun closeGameTools() {
+        shortcutEditor?.close(); shortcutEditor = null
+        networkPanel?.dialog?.dismiss(); networkPanel = null
     }
     private fun videoDiagnostics()=ImmersiveWindow.diagnostics(window,rootLayout)+"\n"+surfaceRenderer.diagnostics()
     private fun showLiveDiagnostics(onBack: () -> Unit) {
@@ -1255,6 +1303,9 @@ open class MainActivity : Activity() {
     private fun showCatalogReturn(game: GameTitle?,wasPlaying: Boolean) {
         startupArtJob?.cancel(); startupArtJob=null
         gameMenuDialog?.dismiss()
+        closeGameTools()
+        networkWarning.reset()
+        networkNotice.visibility = View.GONE
         val fresh=currentGames.firstOrNull { it.titleId==game?.titleId } ?: game
         transitionPanel.showExit(fresh,wasPlaying)
         controlPanel.visibility=View.GONE; statsView.visibility=View.GONE; hudTextView.visibility=View.GONE
@@ -1329,6 +1380,8 @@ open class MainActivity : Activity() {
     private fun launchCloudGame(signaling: XCloudSignalingClient, game: GameTitle,
                                 touchChoice: TouchMode? = null, fromShortcut: Boolean = false) {
         shortcutSwitchDialog?.dismiss()
+        closeGameTools()
+        networkWarning.reset()
         friendsPanel?.close();friendsPanel=null
         playtimeJob?.cancel();playtimeJob=null
         recentHistoryJob?.cancel(); recentHistoryJob=null
@@ -1471,6 +1524,7 @@ open class MainActivity : Activity() {
                                         firstFrame.isCompleted && activityVisible && gameplayInputEnabled())
                                     latestMetrics = metrics
                                     latestInput = input
+                                    if (networkWarningsEnabled && transmissionReady && activityVisible) networkWarning.observe(metrics)
                                     if (activityVisible) renderStatistics()
                                 }
                             }
@@ -1982,6 +2036,7 @@ open class MainActivity : Activity() {
         if(::statsView.isInitialized) { com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout);renderStatistics() }
     }
     private fun renderStatistics() {
+        renderNetworkStatus()
         if(!::statsView.isInitialized) return
         statsView.visibility=if(statistics.mode!=0 && transmissionReady) View.VISIBLE else View.GONE
         if(statsView.visibility!=View.VISIBLE) return
@@ -1994,6 +2049,13 @@ open class MainActivity : Activity() {
         statsView.text=surfaceRenderer.frameGenerationSummary()?.let { "$it\n" }.orEmpty()+if(statistics.mode==2) playtime.label+"\n"+metrics.overlay(latestInput,"",settings.resolution,settings.videoMode==VideoMode.COMPATIBILITY,webrtcClient?.maxBitrateKbps ?: 0)+
             surfaceRenderer.diagnostics()+"\n"+(webrtcClient?.latencyDiagnostics() ?: "")
             else CustomStatistics.format(metrics,latestInput,statisticsSettings,playtime)
+    }
+    private fun renderNetworkStatus() {
+        if (!::networkNotice.isInitialized) return
+        val live = transmissionReady && activityVisible
+        if (!live) networkWarning.reset()
+        networkPanel?.update(latestMetrics.takeIf { live })
+        networkNotice.visibility = if (live && networkWarningsEnabled && networkWarning.active && hasWindowFocus()) View.VISIBLE else View.GONE
     }
     private fun showTransmissionRecovery() = showTransmissionRecovery(::showGameMenu)
     private fun showTransmissionRecovery(onBack: () -> Unit) {
@@ -2127,6 +2189,7 @@ open class MainActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        renderNetworkStatus()
         updateJoystickDispatch()
         if (!hasFocus) resetController()
         else {
@@ -2186,6 +2249,7 @@ open class MainActivity : Activity() {
     }
     override fun onStop() {
         activityVisible = false
+        renderNetworkStatus()
         videoVisibilityEpoch++
         shortcutSwitchDialog?.dismiss()
         friendsPanel?.close();friendsPanel=null
@@ -2199,6 +2263,7 @@ open class MainActivity : Activity() {
 
     override fun onDestroy() {
         activityVisible = false
+        closeGameTools()
         shortcutSwitchDialog?.dismiss()
         friendsPanel?.close();friendsPanel=null
         transmissionRecovery?.close()

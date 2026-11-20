@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 109
-        versionName = "0.40.14-tv-shortcut"
+        versionCode = 110
+        versionName = "0.40.15-shortcut-network"
     }
 
     signingConfigs {

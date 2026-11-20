@@ -15,6 +15,10 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.view.WindowManager.LayoutParams
 import android.widget.TextView
+import com.xcloud.tclnative.i18n.AppLanguage
+import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.settings.GameShortcutId
+import com.xcloud.tclnative.settings.GameShortcutSettings
 import com.xcloud.tclnative.settings.TouchMode
 import com.xcloud.tclnative.settings.UiTheme
 import com.xcloud.tclnative.signaling.GameTitle
@@ -23,7 +27,10 @@ import com.xcloud.tclnative.ui.dashboard.ConsoleDialog
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialogs
 import com.xcloud.tclnative.ui.dashboard.DashboardTheme
 import com.xcloud.tclnative.ui.dashboard.GameMenuPanel
+import com.xcloud.tclnative.ui.dashboard.GameNetworkPanel
 import com.xcloud.tclnative.ui.dashboard.GameShortcutBar
+import com.xcloud.tclnative.ui.dashboard.GameShortcutEditor
+import com.xcloud.tclnative.webrtc.StreamMetrics
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -92,6 +99,98 @@ class GameShortcutBarTest {
         } finally {
             scene.recycle()
             screen.recycle()
+        }
+    }
+
+    @Test fun editToolbarPersistsSlotsAndNetworkPanelShowsLiveNumbersWithOptionalWarnings() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        UiText.apply(activity, AppLanguage.PORTUGUESE)
+        DashboardTheme.apply(activity, UiTheme.XBOX_SERIES)
+        val settings = GameShortcutSettings(activity)
+        val insets = WindowInsets.Builder().build()
+        val game = View(activity)
+        activity.setContentView(game)
+        layout(activity.window.decorView, insets)
+        lateinit var bar: GameShortcutBar
+        lateinit var network: GameNetworkPanel
+        var statistics = 0
+        fun open(position: GameShortcutBar.Position) {
+            val back = { open(bar.position) }
+            val shortcuts = GameMenuPanel.shortcuts(image = {}, audio = {}, hudToggle = {}, statistics = { statistics++ },
+                diagnostics = {}, network = {
+                    network = GameNetworkPanel(activity, settings.networkWarnings, { settings.networkWarnings = it }, back)
+                    network.dialog.show()
+                })
+            bar = GameShortcutBar(activity, shortcuts, position, Rect(), {}, back, settings.slots()) {
+                GameShortcutEditor(activity, settings, back).show()
+            }.apply { show() }
+            layout(bar.window!!.decorView, insets)
+        }
+        fun barControl(label: String) = control(bar.window!!.decorView, label)
+        fun clickPanel(label: String) {
+            val dialog = ShadowDialog.getLatestDialog() as ConsoleDialog
+            assertTrue(all(dialog.panel).filterIsInstance<TextView>().single { it.isClickable && it.text.toString() == label }.performClick())
+            idle()
+        }
+        fun capturePanel(name: String, dialog: ConsoleDialog) {
+            val window = dialog.window!!
+            val root = window.decorView
+            root.measure(View.MeasureSpec.makeMeasureSpec(window.attributes.width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.AT_MOST))
+            root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+            capture(name, game, root)
+        }
+        try {
+            settings.restoreSlots()
+            settings.networkWarnings = false
+            open(GameShortcutBar.Position())
+            assertTrue(barControl("Condições de rede").isShown)
+            capture("live-shortcuts-with-network", game, bar.window!!.decorView)
+            barControl("Condições de rede").performClick()
+            val readings = all(network.dialog.body).filterIsInstance<TextView>()
+            assertEquals(4, readings.count { it.text == "—" })
+            network.update(StreamMetrics(rttMs = 44.0, jitterMs = 3.0, packetLossPercent = 0.0, bitrateMbps = 5.5))
+            assertTrue(readings.map { it.text.toString() }.containsAll(listOf("44 ms", "3 ms", "0%", "5,5 Mbps")))
+            assertFalse(settings.networkWarnings)
+            clickPanel("Avisos de rede: Desativados")
+            assertTrue(settings.networkWarnings)
+            capturePanel("live-network-conditions", network.dialog)
+            network.update(null)
+            assertEquals(4, readings.count { it.text == "—" })
+            network.dialog.cancel(); idle()
+            assertEquals("Condições de rede", bar.currentFocus?.contentDescription)
+
+            barControl("Mais opções").performClick()
+            barControl("Editar atalhos").performClick()
+            clickPanel("Atalho 1: Imagem")
+            clickPanel("○  Estatísticas")
+            clickPanel("Atalho 2: Áudio")
+            clickPanel("○  Rede")
+            clickPanel("Atalho 3: Controle virtual")
+            clickPanel("○  Sem atalho")
+            assertEquals(listOf(GameShortcutId.STATISTICS, GameShortcutId.NETWORK, null, GameShortcutId.AUDIO),
+                GameShortcutSettings(activity).slots())
+            capturePanel("live-shortcut-editor", ShadowDialog.getLatestDialog() as ConsoleDialog)
+            clickPanel("VOLTAR")
+            assertTrue(bar.position.more)
+            assertTrue(barControl("Imagem e tela").isShown)
+            press(bar, KeyEvent.KEYCODE_BUTTON_B)
+            assertFalse(barControl("Imagem e tela").isShown)
+            assertTrue(barControl("Mostrar / ocultar estatísticas").isShown)
+            barControl("Mostrar / ocultar estatísticas").performClick()
+            assertEquals(1, statistics)
+            open(GameShortcutBar.Position(more = true))
+            barControl("Editar atalhos").performClick()
+            clickPanel("Restaurar padrão")
+            assertEquals(GameShortcutSettings.DEFAULT_SLOTS, settings.slots())
+            assertTrue(settings.networkWarnings)
+        } finally {
+            settings.restoreSlots()
+            settings.networkWarnings = false
+            ShadowDialog.getLatestDialog()?.dismiss()
+            controller.pause().stop().destroy()
+            DashboardTheme.apply(activity, UiTheme.GREEN)
         }
     }
 

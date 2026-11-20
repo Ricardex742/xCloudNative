@@ -5,8 +5,11 @@ import android.content.Context
 import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.settings.ConsoleScene
 import com.xcloud.tclnative.settings.InputDeviceProfile
+import com.xcloud.tclnative.settings.GameShortcutId
+import com.xcloud.tclnative.settings.GameShortcutId.*
 
-internal data class GameMenuShortcut(val icon: ConsoleGlyph, val action: ConsoleAction, val barLabel: String? = null)
+internal data class GameMenuShortcut(val id: GameShortcutId, val icon: ConsoleGlyph,
+    val action: ConsoleAction, val barLabel: String = id.label)
 
 /** Actions that control or inspect the current session. */
 object GameMenuPanel {
@@ -25,23 +28,24 @@ object GameMenuPanel {
              controllerProfiles: (() -> Unit)?=null,statisticsOptions: (() -> Unit)?=null,
              recovery: (() -> Unit)?=null,hudToggle: (() -> Unit)?=null,hudVisible: Boolean=false,
              nativeTouch: (() -> Unit)?=null,xbox: (() -> Unit)?=null,
-             bitrate: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
-            image?.let { GameMenuShortcut(ConsoleGlyph.IMAGE,ConsoleAction(UiText.text("Imagem e tela"),it),UiText.text("Imagem")) },
-            audio?.let { GameMenuShortcut(ConsoleGlyph.AUDIO,ConsoleAction(UiText.text("Áudio e microfone"),it),UiText.text("Áudio")) },
+             bitrate: (() -> Unit)?=null,network: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
+            image?.let { GameMenuShortcut(IMAGE,ConsoleGlyph.IMAGE,ConsoleAction(UiText.text("Imagem e tela"),it)) },
+            audio?.let { GameMenuShortcut(AUDIO,ConsoleGlyph.AUDIO,ConsoleAction(UiText.text("Áudio e microfone"),it)) },
             hudToggle?.let { toggle ->
                 val label=UiText.text(if(hudVisible) "Ocultar controle virtual" else "Mostrar controle virtual")
-                GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(label,toggle),label)
+                GameMenuShortcut(VIRTUAL_CONTROL,ConsoleGlyph.CONTROLLER,ConsoleAction(label,toggle),label)
             },
-            hud?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("HUD e controles deste jogo"),it)) },
-            bitrate?.let { GameMenuShortcut(ConsoleGlyph.NETWORK,ConsoleAction(UiText.text("Bitrate máximo"),it)) },
-            nativeTouch?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Usar toque nativo nesta partida"),it)) },
-            controllerProfiles?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Calibração e remapeamento do controle"),it)) },
-            mouse?.let { GameMenuShortcut(ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Capturar / soltar mouse e teclado — F8"),it)) },
-            GameMenuShortcut(ConsoleGlyph.DIAGNOSTICS,ConsoleAction(UiText.text("Mostrar / ocultar estatísticas"),statistics).apply { longAction=statisticsOptions }),
-            statisticsOptions?.let { GameMenuShortcut(ConsoleGlyph.SETTINGS,ConsoleAction(UiText.text("Personalizar estatísticas"),it)) },
-            GameMenuShortcut(ConsoleGlyph.DIAGNOSTICS,ConsoleAction(UiText.text("Diagnóstico da partida"),diagnostics)),
-            recovery?.let { GameMenuShortcut(ConsoleGlyph.DISPLAY,ConsoleAction(UiText.text("Recuperar / recarregar transmissão"),it)) },
-            xbox?.let { GameMenuShortcut(ConsoleGlyph.XBOX,ConsoleAction(UiText.text("Botão Xbox — experimental"),it)) }
+            network?.let { GameMenuShortcut(NETWORK,ConsoleGlyph.NETWORK,ConsoleAction(UiText.text("Condições de rede"),it)) },
+            hud?.let { GameMenuShortcut(HUD,ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("HUD e controles deste jogo"),it)) },
+            bitrate?.let { GameMenuShortcut(BITRATE,ConsoleGlyph.NETWORK,ConsoleAction(UiText.text("Bitrate máximo"),it)) },
+            nativeTouch?.let { GameMenuShortcut(NATIVE_TOUCH,ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Usar toque nativo nesta partida"),it)) },
+            controllerProfiles?.let { GameMenuShortcut(REMAPPING,ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Calibração e remapeamento do controle"),it)) },
+            mouse?.let { GameMenuShortcut(MOUSE_CAPTURE,ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Capturar / soltar mouse e teclado — F8"),it)) },
+            GameMenuShortcut(STATISTICS,ConsoleGlyph.DIAGNOSTICS,ConsoleAction(UiText.text("Mostrar / ocultar estatísticas"),statistics).apply { longAction=statisticsOptions }),
+            statisticsOptions?.let { GameMenuShortcut(STATISTICS_LAYOUT,ConsoleGlyph.SETTINGS,ConsoleAction(UiText.text("Personalizar estatísticas"),it)) },
+            GameMenuShortcut(DIAGNOSTICS,ConsoleGlyph.DIAGNOSTICS,ConsoleAction(UiText.text("Diagnóstico da partida"),diagnostics)),
+            recovery?.let { GameMenuShortcut(RECOVERY,ConsoleGlyph.DISPLAY,ConsoleAction(UiText.text("Recuperar / recarregar transmissão"),it)) },
+            xbox?.let { GameMenuShortcut(XBOX,ConsoleGlyph.XBOX,ConsoleAction(UiText.text("Botão Xbox — experimental"),it),"Xbox") }
         )
 
     internal fun show(context: Context, shortcuts: List<GameMenuShortcut>, disconnect: () -> Unit): ConsoleDialog {
@@ -60,7 +64,7 @@ object GameMenuPanel {
         }
         return ConsoleDialog(context,UiText.text("Atalhos da partida"),purpose).apply {
             if(purpose==ConsolePanelPurpose.GAME_SESSION) {
-                shortcuts.forEach { (icon,action) ->
+                shortcuts.forEach { (_,icon,action) ->
                     val row=addMenuItem(action.label,action.action)
                     row.setCompoundDrawablesRelativeWithIntrinsicBounds(
                         ConsoleIconDrawable(icon,maxOf(px(24),touchSize()/3),row.textColors),null,null,null)

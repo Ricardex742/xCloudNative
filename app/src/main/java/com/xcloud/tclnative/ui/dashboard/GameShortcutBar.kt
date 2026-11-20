@@ -17,6 +17,8 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import com.xcloud.tclnative.R
 import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.settings.GameShortcutId
+import com.xcloud.tclnative.settings.GameShortcutSettings
 import com.xcloud.tclnative.ui.ImmersiveWindow
 import com.xcloud.tclnative.webrtc.AndroidControllerMonitor
 import kotlin.math.roundToInt
@@ -28,7 +30,9 @@ internal class GameShortcutBar(
     initial: Position,
     cutout: Rect,
     disconnect: () -> Unit,
-    onBackFromAction: () -> Unit
+    onBackFromAction: () -> Unit,
+    slots: List<GameShortcutId?> = GameShortcutSettings.DEFAULT_SLOTS,
+    editShortcuts: (() -> Unit)? = null
 ) : Dialog(activity, R.style.ConsoleDialog) {
     data class Position(val more: Boolean = false, val actionLabel: String? = null)
 
@@ -56,15 +60,21 @@ internal class GameShortcutBar(
 
     init {
         setOwnerActivity(activity)
+        val available = shortcuts.associateBy { it.id }
+        val pinned = slots.filterNotNull().mapNotNull(available::get)
         val bar = LinearLayout(activity).apply {
             orientation = LinearLayout.HORIZONTAL
             isBaselineAligned = false
             background = DashboardTheme.panel(px(12).toFloat())
             addView(collapse, LinearLayout.LayoutParams(px(48), -1))
-            shortcuts.filter { it.barLabel != null }.forEach { item ->
-                val button = toolbarButton(item.icon, item.barLabel, item.action.label) { open(item.action, false) }
+            pinned.forEach { item ->
+                val button = toolbarButton(item.icon, item.barLabel, item.action.label) { open(item.action, false) }.apply {
+                    item.action.longAction?.let { action ->
+                        setOnLongClickListener { open(ConsoleAction(item.action.label, action), false); true }
+                    }
+                }
                 actions.add(button)
-                val preferredWidth=if(item.icon==ConsoleGlyph.CONTROLLER) 94 else 76
+                val preferredWidth=if(item.barLabel.length>13 || item.id==GameShortcutId.VIRTUAL_CONTROL) 94 else 76
                 addView(button, LinearLayout.LayoutParams(px(preferredWidth), -1, 1f))
             }
             addView(more, LinearLayout.LayoutParams(px(80), -1, 1f))
@@ -77,7 +87,8 @@ internal class GameShortcutBar(
         addRow(ConsoleGlyph.EXIT, ConsoleAction(UiText.text("Encerrar partida")) {
             GameMenuPanel.confirmExit(activity, disconnect, onBackFromAction)
         })
-        shortcuts.filter { it.barLabel == null }.forEach { item -> addRow(item.icon, item.action) }
+        editShortcuts?.let { addRow(ConsoleGlyph.SETTINGS, ConsoleAction(UiText.text("Editar atalhos"), it)) }
+        shortcuts.filter { it !in pinned }.forEach { item -> addRow(item.icon, item.action) }
         overlay.apply {
             setOnClickListener { dismiss() }
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO

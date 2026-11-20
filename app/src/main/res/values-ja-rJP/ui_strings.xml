@@ -1256,4 +1256,17 @@
     <string name="ui_80b26f920e37575b">"操作"</string>
     <string name="ui_5d951376c42f3cf3">"その他のオプション"</string>
     <string name="ui_97ed90f5456061da">"ビットレートを変更すると、現在のプレイのストリーミングが再読み込みされます。受信ビットレートは Xbox が決定します。"</string>
+    <string name="ui_d9d4c8afe769b3da" formatted="false">"仮想コントローラー"</string>
+    <string name="ui_25c7658bb9289d92" formatted="false">"ネットワーク"</string>
+    <string name="ui_ba5cd3342c5fccc9" formatted="false">"ネイティブタッチ"</string>
+    <string name="ui_0038516d938d969a" formatted="false">"統計"</string>
+    <string name="ui_f89f198e56146fe2" formatted="false">"ネットワークが不安定です"</string>
+    <string name="ui_c3a95f580eaac571" formatted="false">"ネットワークの状態"</string>
+    <string name="ui_0e3c6b93b24d002b" formatted="false">"ショートカットを編集"</string>
+    <string name="ui_1aedb34b9afee3d6" formatted="false">"受信ビットレート"</string>
+    <string name="ui_27eb4efb834cab52" formatted="false">"ネットワーク警告"</string>
+    <string name="ui_e1aaa5d3e42849d5" formatted="false">"このセッションで使用できないショートカットは非表示になります。"</string>
+    <string name="ui_4d95c2ae7fe1cca2" formatted="false">"ショートカット {0}：{1}"</string>
+    <string name="ui_d2b6d472fee2ff5d" formatted="false">"ショートカット {0}"</string>
+    <string name="ui_307b27476b8f31ea" formatted="false">"ショートカットなし"</string>
 </resources>

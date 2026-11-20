@@ -1256,4 +1256,17 @@
     <string name="ui_80b26f920e37575b">"Управление"</string>
     <string name="ui_5d951376c42f3cf3">"Другие параметры"</string>
     <string name="ui_97ed90f5456061da">"Изменение битрейта перезагружает трансляцию текущей игры. Получаемый битрейт определяет Xbox."</string>
+    <string name="ui_d9d4c8afe769b3da" formatted="false">"Виртуальный геймпад"</string>
+    <string name="ui_25c7658bb9289d92" formatted="false">"Сеть"</string>
+    <string name="ui_ba5cd3342c5fccc9" formatted="false">"Сенсорное управление"</string>
+    <string name="ui_0038516d938d969a" formatted="false">"Статистика"</string>
+    <string name="ui_f89f198e56146fe2" formatted="false">"Нестабильная сеть"</string>
+    <string name="ui_c3a95f580eaac571" formatted="false">"Состояние сети"</string>
+    <string name="ui_0e3c6b93b24d002b" formatted="false">"Изменить ярлыки"</string>
+    <string name="ui_1aedb34b9afee3d6" formatted="false">"Входящий битрейт"</string>
+    <string name="ui_27eb4efb834cab52" formatted="false">"Предупреждения о сети"</string>
+    <string name="ui_e1aaa5d3e42849d5" formatted="false">"Ярлыки, недоступные в этом сеансе, скрыты."</string>
+    <string name="ui_4d95c2ae7fe1cca2" formatted="false">"Ярлык {0}: {1}"</string>
+    <string name="ui_d2b6d472fee2ff5d" formatted="false">"Ярлык {0}"</string>
+    <string name="ui_307b27476b8f31ea" formatted="false">"Без ярлыка"</string>
 </resources>
