@@ -322,16 +322,21 @@ open class MainActivity : Activity() {
         networkWarningsEnabled = shortcutSettings.networkWarnings
         val noticePadding = (8 * resources.displayMetrics.density).toInt()
         networkNotice = com.xcloud.tclnative.i18n.LocalizedTextView(this).apply {
-            text = UiText.text("Rede instável")
+            text = UiText.join(UiText.text("Rede instável"), "  ›")
             textSize = 13f
             setTextColor(Color.WHITE)
             background = com.xcloud.tclnative.ui.dashboard.DashboardTheme.panel(noticePadding.toFloat())
             setPadding(noticePadding * 2, noticePadding, noticePadding * 2, noticePadding)
+            gravity = Gravity.CENTER
+            minimumHeight = noticePadding * 6
+            contentDescription = UiText.join(UiText.text("Rede instável"), ". ", UiText.text("Estatísticas da rede"))
+            setOnClickListener { if (gameplayInputEnabled()) { resetController(); showNetworkDetails {} } }
+            isFocusable = false
             visibility = View.GONE
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }
-        rootLayout.addView(networkNotice, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
-            .apply { bottomMargin = noticePadding })
+        networkNotice.layoutParams = FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL)
+            .apply { bottomMargin = noticePadding }
         ImmersiveWindow.observeCutout(rootLayout) { cutout ->
             if(displayCutout!=cutout) {
                 displayCutout=cutout
@@ -366,6 +371,7 @@ open class MainActivity : Activity() {
             com.xcloud.tclnative.ui.dashboard.HudActionDialogs.gestures(this,gestures) { touchView.setEditedGestures(id,it) }
         }
         rootLayout.addView(touchView,FrameLayout.LayoutParams(-1,-1))
+        rootLayout.addView(networkNotice)
         transitionPanel=SessionTransitionView(this)
         rootLayout.addView(transitionPanel,FrameLayout.LayoutParams(-1,-1))
         setContentView(rootLayout)
@@ -1134,7 +1140,15 @@ open class MainActivity : Activity() {
             hudVisible=touchView.controlsVisible,
             nativeTouch=if(active && currentTouchMode!=TouchMode.NATIVE && webrtcClient?.canUseNativeTouch()==true) ({ enableNativeTouch() }) else null,
             diagnostics={ showLiveDiagnostics(back) },
-            network={ showNetworkConditions(back) },
+            network={
+                networkWarningsEnabled = !networkWarningsEnabled
+                shortcutSettings.networkWarnings = networkWarningsEnabled
+                networkWarning.reset()
+                renderNetworkStatus()
+                back()
+            },
+            networkWarningsEnabled=networkWarningsEnabled,
+            networkDetails={ showNetworkDetails(back) },
             hud=if(touch) ({ showGameHudSettings(back) }) else null,
             bitrate=if(active && client!=null && reload!=null) ({
                 SessionOptionsPanel.liveBitrate(this,client.maxBitrateKbps,back) { kbps ->
@@ -1163,13 +1177,8 @@ open class MainActivity : Activity() {
             }
         }
     }
-    private fun showNetworkConditions(back: () -> Unit) {
-        val panel = GameNetworkPanel(this, networkWarningsEnabled, { enabled ->
-            shortcutSettings.networkWarnings = enabled
-            networkWarningsEnabled = enabled
-            networkWarning.reset()
-            renderNetworkStatus()
-        }, back)
+    private fun showNetworkDetails(back: () -> Unit) {
+        val panel = GameNetworkPanel(this, back)
         networkPanel = panel
         panel.dialog.addCleanup { if (networkPanel === panel) networkPanel = null }
         renderNetworkStatus()
@@ -2054,7 +2063,7 @@ open class MainActivity : Activity() {
         if (!::networkNotice.isInitialized) return
         val live = transmissionReady && activityVisible
         if (!live) networkWarning.reset()
-        networkPanel?.update(latestMetrics.takeIf { live })
+        networkPanel?.update(latestMetrics.takeIf { live }, networkWarning.active)
         networkNotice.visibility = if (live && networkWarningsEnabled && networkWarning.active && hasWindowFocus()) View.VISIBLE else View.GONE
     }
     private fun showTransmissionRecovery() = showTransmissionRecovery(::showGameMenu)

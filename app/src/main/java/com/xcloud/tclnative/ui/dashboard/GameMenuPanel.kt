@@ -28,14 +28,20 @@ object GameMenuPanel {
              controllerProfiles: (() -> Unit)?=null,statisticsOptions: (() -> Unit)?=null,
              recovery: (() -> Unit)?=null,hudToggle: (() -> Unit)?=null,hudVisible: Boolean=false,
              nativeTouch: (() -> Unit)?=null,xbox: (() -> Unit)?=null,
-             bitrate: (() -> Unit)?=null,network: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
+             bitrate: (() -> Unit)?=null,network: (() -> Unit)?=null,networkWarningsEnabled: Boolean=false,
+             networkDetails: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
             image?.let { GameMenuShortcut(IMAGE,ConsoleGlyph.IMAGE,ConsoleAction(UiText.text("Imagem e tela"),it)) },
             audio?.let { GameMenuShortcut(AUDIO,ConsoleGlyph.AUDIO,ConsoleAction(UiText.text("Áudio e microfone"),it)) },
             hudToggle?.let { toggle ->
                 val label=UiText.text(if(hudVisible) "Ocultar controle virtual" else "Mostrar controle virtual")
                 GameMenuShortcut(VIRTUAL_CONTROL,ConsoleGlyph.CONTROLLER,ConsoleAction(label,toggle),label)
             },
-            network?.let { GameMenuShortcut(NETWORK,ConsoleGlyph.NETWORK,ConsoleAction(UiText.text("Condições de rede"),it)) },
+            network?.let {
+                val state = if (networkWarningsEnabled) UiText.text("Ativados") else UiText.text("Desativados")
+                val label = UiText.text("{0}: {1}", UiText.nested(NETWORK.label), UiText.nested(state))
+                GameMenuShortcut(NETWORK,ConsoleGlyph.NETWORK,ConsoleAction(label,it),label)
+            },
+            networkDetails?.let { GameMenuShortcut(NETWORK_DETAILS,ConsoleGlyph.DIAGNOSTICS,ConsoleAction(NETWORK_DETAILS.label,it)) },
             hud?.let { GameMenuShortcut(HUD,ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("HUD e controles deste jogo"),it)) },
             bitrate?.let { GameMenuShortcut(BITRATE,ConsoleGlyph.NETWORK,ConsoleAction(UiText.text("Bitrate máximo"),it)) },
             nativeTouch?.let { GameMenuShortcut(NATIVE_TOUCH,ConsoleGlyph.CONTROLLER,ConsoleAction(UiText.text("Usar toque nativo nesta partida"),it)) },

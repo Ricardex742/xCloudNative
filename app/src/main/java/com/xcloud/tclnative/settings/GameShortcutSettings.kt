@@ -4,7 +4,8 @@ import android.content.Context
 import com.xcloud.tclnative.i18n.UiText
 
 internal enum class GameShortcutId(private val source: String) {
-    IMAGE("Imagem"), AUDIO("Áudio"), VIRTUAL_CONTROL("Controle virtual"), NETWORK("Rede"),
+    IMAGE("Imagem"), AUDIO("Áudio"), VIRTUAL_CONTROL("Controle virtual"), NETWORK("Avisos de rede"),
+    NETWORK_DETAILS("Estatísticas da rede"),
     HUD("Controles"), BITRATE("Bitrate máximo"), NATIVE_TOUCH("Toque nativo"),
     REMAPPING("Perfis de controle"), MOUSE_CAPTURE("Mouse e teclado"), STATISTICS("Estatísticas"),
     STATISTICS_LAYOUT("Escolher indicadores"), DIAGNOSTICS("Diagnóstico da partida"),
@@ -40,6 +41,6 @@ internal class GameShortcutSettings(context: Context) {
 
     companion object {
         val DEFAULT_SLOTS = listOf(GameShortcutId.IMAGE, GameShortcutId.AUDIO,
-            GameShortcutId.VIRTUAL_CONTROL, GameShortcutId.NETWORK)
+            GameShortcutId.VIRTUAL_CONTROL, null)
     }
 }

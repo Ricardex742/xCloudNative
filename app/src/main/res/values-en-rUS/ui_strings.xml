@@ -1257,16 +1257,15 @@
     <string name="ui_5d951376c42f3cf3">"More options"</string>
     <string name="ui_97ed90f5456061da">"Changing the bitrate reloads the current stream. Xbox decides the bitrate you receive."</string>
     <string name="ui_d9d4c8afe769b3da" formatted="false">"Virtual controller"</string>
-    <string name="ui_25c7658bb9289d92" formatted="false">"Network"</string>
     <string name="ui_ba5cd3342c5fccc9" formatted="false">"Native touch"</string>
     <string name="ui_0038516d938d969a" formatted="false">"Statistics"</string>
     <string name="ui_f89f198e56146fe2" formatted="false">"Unstable network"</string>
-    <string name="ui_c3a95f580eaac571" formatted="false">"Network conditions"</string>
     <string name="ui_0e3c6b93b24d002b" formatted="false">"Edit shortcuts"</string>
-    <string name="ui_1aedb34b9afee3d6" formatted="false">"Received bitrate"</string>
     <string name="ui_27eb4efb834cab52" formatted="false">"Network warnings"</string>
     <string name="ui_e1aaa5d3e42849d5" formatted="false">"Shortcuts unavailable in this session are hidden."</string>
     <string name="ui_4d95c2ae7fe1cca2" formatted="false">"Shortcut {0}: {1}"</string>
     <string name="ui_d2b6d472fee2ff5d" formatted="false">"Shortcut {0}"</string>
     <string name="ui_307b27476b8f31ea" formatted="false">"No shortcut"</string>
+    <string name="ui_1aedb34b9afee3d6" formatted="false">"Received bitrate"</string>
+    <string name="ui_3999bf0070131d88" formatted="false">"Network statistics"</string>
 </resources>

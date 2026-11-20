@@ -1257,16 +1257,15 @@
     <string name="ui_5d951376c42f3cf3">"Mehr Optionen"</string>
     <string name="ui_97ed90f5456061da">"Eine Änderung der Bitrate lädt den Stream der aktuellen Sitzung neu. Xbox bestimmt die empfangene Bitrate."</string>
     <string name="ui_d9d4c8afe769b3da" formatted="false">"Virtueller Controller"</string>
-    <string name="ui_25c7658bb9289d92" formatted="false">"Netzwerk"</string>
     <string name="ui_ba5cd3342c5fccc9" formatted="false">"Native Touchsteuerung"</string>
     <string name="ui_0038516d938d969a" formatted="false">"Statistiken"</string>
     <string name="ui_f89f198e56146fe2" formatted="false">"Instabiles Netzwerk"</string>
-    <string name="ui_c3a95f580eaac571" formatted="false">"Netzwerkstatus"</string>
     <string name="ui_0e3c6b93b24d002b" formatted="false">"Kurzbefehle bearbeiten"</string>
-    <string name="ui_1aedb34b9afee3d6" formatted="false">"Empfangene Bitrate"</string>
     <string name="ui_27eb4efb834cab52" formatted="false">"Netzwerkwarnungen"</string>
     <string name="ui_e1aaa5d3e42849d5" formatted="false">"In dieser Sitzung nicht verfügbare Kurzbefehle werden ausgeblendet."</string>
     <string name="ui_4d95c2ae7fe1cca2" formatted="false">"Kurzbefehl {0}: {1}"</string>
     <string name="ui_d2b6d472fee2ff5d" formatted="false">"Kurzbefehl {0}"</string>
     <string name="ui_307b27476b8f31ea" formatted="false">"Kein Kurzbefehl"</string>
+    <string name="ui_1aedb34b9afee3d6" formatted="false">"Empfangene Bitrate"</string>
+    <string name="ui_3999bf0070131d88" formatted="false">"Netzwerkstatistiken"</string>
 </resources>

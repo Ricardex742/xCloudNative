@@ -102,7 +102,7 @@ class GameShortcutBarTest {
         }
     }
 
-    @Test fun editToolbarPersistsSlotsAndNetworkPanelShowsLiveNumbersWithOptionalWarnings() {
+    @Test fun editToolbarPersistsSlotsAndNetworkWarningsToggleDirectlyInEitherMenu() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
         UiText.apply(activity, AppLanguage.PORTUGUESE)
@@ -118,8 +118,9 @@ class GameShortcutBarTest {
         fun open(position: GameShortcutBar.Position) {
             val back = { open(bar.position) }
             val shortcuts = GameMenuPanel.shortcuts(image = {}, audio = {}, hudToggle = {}, statistics = { statistics++ },
-                diagnostics = {}, network = {
-                    network = GameNetworkPanel(activity, settings.networkWarnings, { settings.networkWarnings = it }, back)
+                diagnostics = {}, network = { settings.networkWarnings = !settings.networkWarnings; back() },
+                networkWarningsEnabled = settings.networkWarnings, networkDetails = {
+                    network = GameNetworkPanel(activity, back)
                     network.dialog.show()
                 })
             bar = GameShortcutBar(activity, shortcuts, position, Rect(), {}, back, settings.slots()) {
@@ -145,28 +146,33 @@ class GameShortcutBarTest {
             settings.restoreSlots()
             settings.networkWarnings = false
             open(GameShortcutBar.Position())
-            assertTrue(barControl("Condições de rede").isShown)
-            capture("live-shortcuts-with-network", game, bar.window!!.decorView)
-            barControl("Condições de rede").performClick()
+            assertFalse(barControl("Avisos de rede: Desativados").isShown)
+            barControl("Mais opções").performClick()
+            assertTrue(barControl("Avisos de rede: Desativados").isShown)
+            assertFalse(settings.networkWarnings)
+            barControl("Avisos de rede: Desativados").performClick()
+            assertTrue(settings.networkWarnings)
+            assertEquals("Avisos de rede: Ativados", bar.currentFocus?.contentDescription)
+            capture("live-network-warnings", game, bar.window!!.decorView)
+            barControl("Estatísticas da rede").performClick()
             val readings = all(network.dialog.body).filterIsInstance<TextView>()
             assertEquals(4, readings.count { it.text == "—" })
-            network.update(StreamMetrics(rttMs = 44.0, jitterMs = 3.0, packetLossPercent = 0.0, bitrateMbps = 5.5))
-            assertTrue(readings.map { it.text.toString() }.containsAll(listOf("44 ms", "3 ms", "0%", "5,5 Mbps")))
-            assertFalse(settings.networkWarnings)
-            clickPanel("Avisos de rede: Desativados")
-            assertTrue(settings.networkWarnings)
-            capturePanel("live-network-conditions", network.dialog)
-            network.update(null)
+            network.update(StreamMetrics(rttMs = 124.0, jitterMs = 20.0, packetLossPercent = 0.0, bitrateMbps = 5.5), true)
+            assertTrue(readings.map { it.text.toString() }.containsAll(listOf("124 ms", "20 ms", "0%", "5,5 Mbps")))
+            assertTrue(readings.single { it.text == "Rede instável" }.isShown)
+            capturePanel("live-network-details", network.dialog)
+            network.update(null, false)
             assertEquals(4, readings.count { it.text == "—" })
             network.dialog.cancel(); idle()
-            assertEquals("Condições de rede", bar.currentFocus?.contentDescription)
+            assertEquals("Estatísticas da rede", bar.currentFocus?.contentDescription)
 
-            barControl("Mais opções").performClick()
             barControl("Editar atalhos").performClick()
             clickPanel("Atalho 1: Imagem")
             clickPanel("○  Estatísticas")
+            clickPanel("Atalho 4: Sem atalho")
+            clickPanel("○  Avisos de rede")
             clickPanel("Atalho 2: Áudio")
-            clickPanel("○  Rede")
+            clickPanel("○  Avisos de rede")
             clickPanel("Atalho 3: Controle virtual")
             clickPanel("○  Sem atalho")
             assertEquals(listOf(GameShortcutId.STATISTICS, GameShortcutId.NETWORK, null, GameShortcutId.AUDIO),
@@ -178,13 +184,25 @@ class GameShortcutBarTest {
             press(bar, KeyEvent.KEYCODE_BUTTON_B)
             assertFalse(barControl("Imagem e tela").isShown)
             assertTrue(barControl("Mostrar / ocultar estatísticas").isShown)
+            barControl("Avisos de rede: Ativados").performClick()
+            assertEquals("Avisos de rede: Desativados", bar.currentFocus?.contentDescription)
+            assertFalse(settings.networkWarnings)
+            capture("live-shortcuts-custom", game, bar.window!!.decorView)
             barControl("Mostrar / ocultar estatísticas").performClick()
             assertEquals(1, statistics)
             open(GameShortcutBar.Position(more = true))
             barControl("Editar atalhos").performClick()
             clickPanel("Restaurar padrão")
             assertEquals(GameShortcutSettings.DEFAULT_SLOTS, settings.slots())
-            assertTrue(settings.networkWarnings)
+            assertFalse(settings.networkWarnings)
+            clickPanel("VOLTAR")
+            bar.dismiss()
+            settings.slots().indices.forEach { settings.assign(it, null) }
+            open(GameShortcutBar.Position(more = true))
+            assertEquals(listOf(null, null, null, null), GameShortcutSettings(activity).slots())
+            val edit = barControl("Editar atalhos")
+            assertTrue("More options shrank to ${edit.width} px", edit.width >= 250 * activity.resources.displayMetrics.density)
+            assertTrue(barControl("Avisos de rede: Desativados").isShown)
         } finally {
             settings.restoreSlots()
             settings.networkWarnings = false

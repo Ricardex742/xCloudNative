@@ -34,7 +34,7 @@ internal class GameShortcutBar(
     slots: List<GameShortcutId?> = GameShortcutSettings.DEFAULT_SLOTS,
     editShortcuts: (() -> Unit)? = null
 ) : Dialog(activity, R.style.ConsoleDialog) {
-    data class Position(val more: Boolean = false, val actionLabel: String? = null)
+    data class Position(val more: Boolean = false, val actionLabel: String? = null, val shortcutId: GameShortcutId? = null)
 
     var position = initial
         private set
@@ -51,6 +51,7 @@ internal class GameShortcutBar(
         orientation = LinearLayout.VERTICAL
         setPadding(px(4), px(4), px(4), px(4))
     }
+    private val panel = LinearLayout(activity).apply { orientation = LinearLayout.VERTICAL }
     private val morePanel = ScrollView(activity).apply {
         background = DashboardTheme.panel(px(12).toFloat())
         overScrollMode = View.OVER_SCROLL_NEVER
@@ -68,9 +69,10 @@ internal class GameShortcutBar(
             background = DashboardTheme.panel(px(12).toFloat())
             addView(collapse, LinearLayout.LayoutParams(px(48), -1))
             pinned.forEach { item ->
-                val button = toolbarButton(item.icon, item.barLabel, item.action.label) { open(item.action, false) }.apply {
+                val button = toolbarButton(item.icon, item.barLabel, item.action.label) { open(item.action, false, item.id) }.apply {
+                    tag = item.id
                     item.action.longAction?.let { action ->
-                        setOnLongClickListener { open(ConsoleAction(item.action.label, action), false); true }
+                        setOnLongClickListener { open(ConsoleAction(item.action.label, action), false, item.id); true }
                     }
                 }
                 actions.add(button)
@@ -79,8 +81,7 @@ internal class GameShortcutBar(
             }
             addView(more, LinearLayout.LayoutParams(px(80), -1, 1f))
         }
-        val panel = LinearLayout(activity).apply {
-            orientation = LinearLayout.VERTICAL
+        panel.apply {
             addView(bar, LinearLayout.LayoutParams(-2, px(60)))
             addView(morePanel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = px(6) })
         }
@@ -88,7 +89,7 @@ internal class GameShortcutBar(
             GameMenuPanel.confirmExit(activity, disconnect, onBackFromAction)
         })
         editShortcuts?.let { addRow(ConsoleGlyph.SETTINGS, ConsoleAction(UiText.text("Editar atalhos"), it)) }
-        shortcuts.filter { it !in pinned }.forEach { item -> addRow(item.icon, item.action) }
+        shortcuts.filter { it !in pinned }.forEach { item -> addRow(item.icon, item.action, item.id) }
         overlay.apply {
             setOnClickListener { dismiss() }
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -149,8 +150,9 @@ internal class GameShortcutBar(
             }
         }
 
-    private fun addRow(icon: ConsoleGlyph, action: ConsoleAction) {
-        val row = button(action.label) { open(action, true) }.apply {
+    private fun addRow(icon: ConsoleGlyph, action: ConsoleAction, id: GameShortcutId? = null) {
+        val row = button(action.label) { open(action, true, id) }.apply {
+            tag = id
             contentDescription = action.label
             gravity = Gravity.START or Gravity.CENTER_VERTICAL
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
@@ -160,24 +162,25 @@ internal class GameShortcutBar(
             setCompoundDrawablesRelativeWithIntrinsicBounds(ConsoleIconDrawable(icon, px(20), ink), null, null, null)
             compoundDrawablePadding = px(10)
             action.longAction?.let { longAction ->
-                setOnLongClickListener { open(ConsoleAction(action.label, longAction), true); true }
+                setOnLongClickListener { open(ConsoleAction(action.label, longAction), true, id); true }
             }
         }
         actions.add(row)
         rows.addView(row, LinearLayout.LayoutParams(-1, -2))
     }
 
-    private fun open(action: ConsoleAction, fromMore: Boolean) {
-        position = Position(fromMore, action.label)
+    private fun open(action: ConsoleAction, fromMore: Boolean, id: GameShortcutId? = null) {
+        position = Position(fromMore, action.label, id)
         dismiss()
         action.action()
     }
 
-    private fun setMoreVisible(visible: Boolean, actionLabel: String? = null) {
-        position = Position(visible, actionLabel)
+    private fun setMoreVisible(visible: Boolean, actionLabel: String? = null, id: GameShortcutId? = null) {
+        position = Position(visible, actionLabel, id)
+        panel.minimumWidth = if (visible) px(270) else 0
         morePanel.visibility = if (visible) View.VISIBLE else View.GONE
         more.isSelected = visible
-        val target = actions.firstOrNull { it.contentDescription == actionLabel }
+        val target = actions.firstOrNull { if (id != null) it.tag == id else it.contentDescription == actionLabel }
         val defaultTarget = if (visible) rows.getChildAt(1) ?: more else more
         (target ?: defaultTarget).requestFocus()
     }
@@ -198,7 +201,7 @@ internal class GameShortcutBar(
         }
         super.show()
         window?.let { AppControllerWindows.attach(activity, it) }
-        if (position.more || position.actionLabel != null) setMoreVisible(position.more, position.actionLabel)
+        if (position.more || position.actionLabel != null) setMoreVisible(position.more, position.actionLabel, position.shortcutId)
         else collapse.requestFocus()
     }
 
