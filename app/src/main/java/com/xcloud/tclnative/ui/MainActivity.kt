@@ -1401,7 +1401,7 @@ open class MainActivity : Activity() {
                 resetController()
                 controllers.beginSession(settings.localCoOp,touchMode!=TouchMode.OFF || sessionDesktopMode!=DesktopInputMode.OFF)
                 usbDirect.source?.let { controllers.slot(it) }
-                InputDevice.getDeviceIds().mapNotNull(InputDevice::getDevice).filter { !usbDirect.ownsAndroid(it.id) }.filter {
+                InputDevice.getDeviceIds().asSequence().mapNotNull(InputDevice::getDevice).filter { !usbDirect.ownsAndroid(it.id) }.filter {
                     AndroidGamepadPolicy.supportsGamepad(it.sources) && (!televisionInput ||
                         it.id==preferredControllerId || AndroidGamepadPolicy.canReserveTvSlot(it))
                 }.sortedWith(compareBy<InputDevice> { it.id!=preferredControllerId }.thenBy { it.id }).forEach { controllers.slot(it.id) }
