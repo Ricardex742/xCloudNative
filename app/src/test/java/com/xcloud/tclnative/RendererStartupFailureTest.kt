@@ -64,8 +64,10 @@ class RendererStartupFailureTest {
         val gamepadSource=InputDevice.SOURCE_GAMEPAD or InputDevice.SOURCE_JOYSTICK
         ReflectionHelpers.setField(remote,"mSources",remoteSource)
         ReflectionHelpers.setField(remote,"mId",1)
+        ReflectionHelpers.setField(remote,"mMotionRanges",ArrayList<InputDevice.MotionRange>())
         ReflectionHelpers.setField(gamepad,"mSources",gamepadSource)
         ReflectionHelpers.setField(gamepad,"mId",8)
+        ReflectionHelpers.setField(gamepad,"mMotionRanges",ArrayList<InputDevice.MotionRange>())
         listOf(MotionEvent.AXIS_X,MotionEvent.AXIS_Y).forEach { axis ->
             ReflectionHelpers.callInstanceMethod<Unit>(InputDevice::class.java,gamepad,"addMotionRange",
                 ClassParameter.from(Int::class.javaPrimitiveType,axis),
