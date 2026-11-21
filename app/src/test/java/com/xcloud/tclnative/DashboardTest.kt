@@ -67,7 +67,7 @@ class DashboardTest {
             assertTrue(all(view).filterIsInstance<TextView>().any { it.text.contains("Não foi possível consultar") })
         } finally { view.close(); controller.pause().stop().destroy() }
     }
-    @Test fun magnifierOpensThePhoneKeyboardAndSearchesTheCatalogWithoutStartingAGame() {
+    @Test fun magnifierOpensSearchAndOnlyActivatingTheFieldShowsTheKeyboard() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val activity=controller.get()
         shadowOf(activity.packageManager).setSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN,true)
@@ -87,6 +87,8 @@ class DashboardTest {
         val field=all(dialog.body).filterIsInstance<android.widget.EditText>().single()
         assertTrue(field.hasFocus())
         val ime=activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+        assertFalse(shadowOf(ime).isSoftInputVisible)
+        field.performClick(); shadowOf(Looper.getMainLooper()).idle()
         assertTrue(shadowOf(ime).isSoftInputVisible)
         field.setText("Halo Infinite"); field.onEditorAction(android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH)
         layout(view,1280,720)
