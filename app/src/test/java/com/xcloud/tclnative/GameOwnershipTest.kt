@@ -5,38 +5,30 @@ import com.xcloud.tclnative.signaling.GameTitle
 import kotlinx.coroutines.*
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import org.json.JSONObject
+import okio.Buffer
 import org.junit.Assert.*
 import org.junit.Test
 
 class GameOwnershipTest {
     private val a="AAA000000001";private val b="BBB000000002";private val c="CCC000000003"
-    private fun record(id: String,owned: Boolean,trial: Boolean=false,status: String="Active",end: String="")=
-        JSONObject().put("productId",id).put("isOwned",owned).put("isTrial",trial).put("status",status).put("endDate",end)
-    private fun data(vararg records: JSONObject)=JSONObject().put("entitlements",JSONObject().apply {
-        records.forEach { put(it.getString("productId"),it) }
-    })
-    private fun parse(body: JSONObject,ids: List<String> = listOf(a,b,c))=GameOwnershipService.parse(body,ids,1_800_000_000_000L)
-    @Test fun subscriptionAccessAndFreeToPlayDoNotProveOwnership() {
-        val subscription=record(b,false).put("isSatisfyingEntitlement",true)
-        val result=parse(data(record(a,true),subscription))
-        assertEquals(Ownership.OWNED,result[a]);assertEquals(Ownership.NOT_OWNED,result[b]);assertEquals(Ownership.UNKNOWN,result[c])
-        assertEquals(Ownership.NOT_OWNED,parse(data(record(a,false).put("freeToPlay",true)))[a])
+    private fun mapEntry(field: Int, key: String, value: Buffer): Buffer = Buffer().apply {
+        val entry = Buffer()
+        entry.writeByte(10).writeByte(key.length).writeUtf8(key)
+        entry.writeByte(18).writeByte(value.size.toInt()).writeAll(value)
+        writeByte(field * 8 + 2).writeByte(entry.size.toInt()).writeAll(entry)
     }
-    @Test fun missingMalformedPartialAndOtherEditionResultsStayUnknown() {
-        assertEquals(Ownership.UNKNOWN,parse(JSONObject())[a])
-        assertEquals(Ownership.UNKNOWN,parse(data(record(a,true).put("isOwned","true")))[a])
-        assertEquals(Ownership.UNKNOWN,parse(data(record(a,true)).put("continuationToken","more"))[a])
-        assertEquals(Ownership.UNKNOWN,parse(data(record(b,true)))[a])
-        assertEquals(Ownership.UNKNOWN,parse(data(record(a,true,status="FutureStatus")))[a])
-        assertEquals(Ownership.UNKNOWN,parse(data(record(a,true,end="not-a-date")))[a])
+    private fun product(id: String, direct: Int, combined: Int = direct, account: String = "12345"): Buffer =
+        mapEntry(2, id, mapEntry(2, account, Buffer().writeByte(8).writeByte(direct)
+            .writeByte(16).writeByte(combined)))
+    private fun account(id: String = "12345") = mapEntry(3, id, Buffer())
+    @Test fun directOwnedFlagMarksOnlyTheRequestedEditionAndSkipsAggregateAccess() {
+        val response = account()
+        response.writeAll(product(a, direct = 3))
+        response.writeAll(product(b, direct = 2, combined = 3))
+        val rights = ContentAccessOwnership.decode(response.readByteArray(), setOf(a, b, c))
+        assertEquals(mapOf(a to Ownership.OWNED, b to Ownership.NOT_OWNED), rights)
     }
-    @Test fun trialsAndExpiredOrRevokedRightsAreNotCurrentOwnership() {
-        for(r in listOf(record(a,true,trial=true),record(a,true,status="Revoked"),record(a,true,end="2020-01-01T00:00:00Z")))
-            assertEquals(Ownership.NOT_OWNED,parse(data(r))[a])
-        for(end in listOf("9999-12-31T23:59:59Z","2099-01-01T00:00:00.1234567+03:00"))
-            assertEquals(Ownership.OWNED,parse(data(record(a,true,end=end)))[a])
-    }
+
     private fun input(filter: OwnershipFilter,rights: Map<String,Ownership>,query: String="",tab: LibraryTab=LibraryTab.ALL): CatalogInput {
         val games=listOf(GameTitle("A","Alpha",a,gamePass=true),GameTitle("B","Beta",b),GameTitle("C","Gamma",c))
         return CatalogInput(games,emptyMap(),emptyMap(),null,emptySet(),tab,setOf("A","B","C"),null,listOf("A","B","C"),query,filter,rights)
@@ -58,39 +50,62 @@ class GameOwnershipTest {
         assertEquals(b,card.ownershipProductId())
         assertNull(CatalogCard(base.copy(productId=null)).ownershipProductId())
     }
-    @Test fun networkErrorsRemainUnknownAndAccountsNeverShareAResultCache()=runBlocking {
+    @Test fun contentAccessLookupMatchesTheSignedInAccountAcrossAllRequestedIdsInOneCall() = runBlocking {
         MockWebServer().use { server ->
-            server.enqueue(MockResponse().setBody(data(record(a,true)).toString()))
-            server.enqueue(MockResponse().setBody(data(record(a,false)).toString()))
+            val missingIds = (1..3860).map { "T"+it.toString().padStart(11,'0') }
+            val response = account().apply { writeAll(product(a, direct = 1)); writeAll(product(b, direct = 2)) }
+            server.enqueue(MockResponse().setBody(response))
+            server.enqueue(MockResponse().setBody(account().apply { writeAll(product(a, direct = 2)) }))
             server.enqueue(MockResponse().setResponseCode(503))
-            suspend fun fetch(auth: String): Map<String,Ownership> {
-                val result=mutableMapOf<String,Ownership>()
-                GameOwnershipService({auth},endpoint=server.url("/licenses").toString()).fetch(listOf(a)) { result.putAll(it) }
-                assertEquals(auth,server.takeRequest().getHeader("Authorization"))
+            suspend fun fetch(auth: String): Map<String, Ownership> {
+                val result = CloudPlaytimeService({ auth }, endpoint = server.url("/all/v1").toString(), market = "BR")
+                    .fetchOwnership((missingIds + listOf(a, b)).toSet())
+                val request = server.takeRequest()
+                assertEquals(auth, request.getHeader("Authorization"))
+                assertEquals("GET", request.method)
+                assertEquals("/all/v1?market=BR&offering=xgpuweb", request.path)
                 return result
             }
-            assertEquals(Ownership.OWNED,fetch("account-A")[a])
-            assertEquals(Ownership.NOT_OWNED,fetch("account-B")[a])
-            assertEquals(Ownership.UNKNOWN,fetch("account-B")[a])
+            val first = fetch("account-A")
+            assertEquals(Ownership.OWNED, first[a])
+            assertEquals(Ownership.NOT_OWNED, first[b])
+            assertEquals(Ownership.UNKNOWN, first[missingIds.last()])
+            assertEquals(Ownership.NOT_OWNED, fetch("account-B")[a])
+            assertEquals(Ownership.UNKNOWN, fetch("account-B")[a])
+            assertEquals(3, server.requestCount)
         }
     }
-    @Test fun requestsAreBatchedBoundedAndWaitForTheCatalogGate()=runBlocking {
+
+    @Test fun mixedAccountsAndTruncatedPayloadLeaveOwnershipUnconfirmed() = runBlocking {
         MockWebServer().use { server ->
-            val ids=(1..51).map { "T"+it.toString().padStart(11,'0') }
-            server.dispatcher=object: okhttp3.mockwebserver.Dispatcher() {
-                override fun dispatch(request: okhttp3.mockwebserver.RecordedRequest): MockResponse {
-                    val products=JSONObject(request.body.readUtf8()).getJSONArray("ProductIds")
-                    assertTrue(products.length()<=50)
-                    return MockResponse().setBody(data(*(0 until products.length()).map {record(products.getString(it),true)}.toTypedArray()).toString())
-                }
+            server.enqueue(MockResponse().setBody(account().apply {
+                writeAll(product(a, direct = 1))
+                writeAll(product(b, direct = 1, account = "67890"))
+            }))
+            val truncated = account().apply { writeAll(product(a, direct = 1)) }.readByteArray().dropLast(1).toByteArray()
+            server.enqueue(MockResponse().setBody(Buffer().write(truncated)))
+            val service = CloudPlaytimeService({ "account-A" }, endpoint = server.url("/all/v1").toString())
+            repeat(2) {
+                assertEquals(mapOf(a to Ownership.UNKNOWN, b to Ownership.UNKNOWN), service.fetchOwnership(setOf(a, b)))
             }
-            val gate=CatalogWorkGate().apply { pause() };var tokenRequests=0
-            val results=java.util.concurrent.ConcurrentHashMap<String,Ownership>()
-            val work=launch { GameOwnershipService({tokenRequests++;"token"},gate::await,endpoint=server.url("/licenses").toString())
-                .fetch(ids+ids) { results.putAll(it) } }
-            delay(50);assertEquals(0,tokenRequests);assertEquals(0,server.requestCount)
-            gate.resume();work.join();assertEquals(2,server.requestCount);assertEquals(51,results.size)
-            assertTrue(results.values.all { it==Ownership.OWNED })
+        }
+    }
+
+    @Test fun catalogGateDelaysAuthorizationAndLookup() = runBlocking {
+        MockWebServer().use { server ->
+            server.enqueue(MockResponse().setBody(account().apply { writeAll(product(a, direct = 1)) }))
+            val gate = CatalogWorkGate().apply { pause() }
+            var tokenRequests = 0
+            val work = async {
+                CloudPlaytimeService({ tokenRequests++; "token" }, gate::await, endpoint = server.url("/all/v1").toString())
+                    .fetchOwnership(setOf(a))
+            }
+            delay(50)
+            assertEquals(0, tokenRequests)
+            assertEquals(0, server.requestCount)
+            gate.resume()
+            assertEquals(Ownership.OWNED, work.await()[a])
+            assertEquals(1, server.requestCount)
         }
     }
 }

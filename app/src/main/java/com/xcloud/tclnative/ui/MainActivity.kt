@@ -53,7 +53,6 @@ import com.xcloud.tclnative.catalog.CatalogService
 import com.xcloud.tclnative.catalog.GalleryProduct
 import com.xcloud.tclnative.catalog.OfficialGalleryKind
 import com.xcloud.tclnative.catalog.GameLibrary
-import com.xcloud.tclnative.catalog.GameOwnershipService
 import com.xcloud.tclnative.catalog.CloudPlaytimeService
 import com.xcloud.tclnative.catalog.CloudPlaytime
 import com.xcloud.tclnative.catalog.CloudPlaytimeStatus
@@ -816,10 +815,10 @@ open class MainActivity : Activity() {
         if(ids.isEmpty()) return
         ownershipJob=mainScope.launch {
             try {
-                GameOwnershipService(authorization={ authenticator.loadStoreAuthorization().getOrThrow() },awaitCatalog=catalogWork::await)
-                    .fetch(ids) { batch -> withContext(Dispatchers.Main) {
-                        if(dashboard===view) view.updateOwnership(batch)
-                    } }
+                val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
+                val rights = CloudPlaytimeService({ authenticator.loadStoreAuthorization().getOrThrow() },
+                    catalogWork::await, appVersion = version).fetchOwnership(ids)
+                if (dashboard === view) view.updateOwnership(rights)
             } finally {
                 if(dashboard===view) { ownershipJob=null;view.finishOwnershipRequest() }
             }

@@ -2,6 +2,7 @@ package com.xcloud.tclnative.ui.dashboard
 
 import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.ui.ImmersiveWindow
+import com.xcloud.tclnative.ui.dispatchPhoneTouch
 
 import android.content.Context
 import com.xcloud.tclnative.settings.ConsoleScene
@@ -21,6 +22,7 @@ import android.text.style.ForegroundColorSpan
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -630,6 +632,14 @@ class GameDashboardView(
                 UiText.nested(if(ownershipLoading) UiText.text("Consultando as licenças da conta…") else
                     "${OwnershipFilter.UNKNOWN.label}: ${ownershipProducts().count { ownership[it]==null || ownership[it]==Ownership.UNKNOWN }}"))
             searchQuery.isNotBlank() -> UiText.text("BUSCA: {0}  •  {1} JOGOS",UiText.nested(searchQuery),UiText.nested(count))
+            activeTab == LibraryTab.PURCHASED && gallery != null && ownershipLoading ->
+                UiText.text("Consultando as licenças da conta…")
+            activeTab == LibraryTab.PURCHASED && purchaseProductIds.isNotEmpty() -> {
+                val acquired = purchaseProductIds.count { ownership[it] == Ownership.OWNED }
+                if (acquired > 0 || purchaseProductIds.any { ownership[it] == Ownership.NOT_OWNED })
+                    "$acquired ${UiText.uppercase(OwnershipFilter.OWNED.label)} • ${UiText.text("{0} JOGOS", UiText.nested(count))}"
+                else OwnershipFilter.UNKNOWN.label
+            }
             activeTab == LibraryTab.GAME_PASS && !gamePassLoaded -> UiText.text("{0} JOGOS • ATUALIZANDO GAME PASS…",UiText.nested(count))
             activeTab == LibraryTab.RECENT && recentLoading -> UiText.text("{0} JOGOS • ATUALIZANDO HISTÓRICO…",UiText.nested(count))
             activeTab == LibraryTab.RECENT && recentFailed && recent!=null -> UiText.text("{0} JOGOS • HISTÓRICO SALVO • ATUALIZAÇÃO INDISPONÍVEL",UiText.nested(count))
@@ -2005,6 +2015,7 @@ class GameDashboardView(
     }
     private class CoverHolder(val card: GameCard) : RecyclerView.ViewHolder(card)
     private inner class GameCard(context: Context) : FrameLayout(context) {
+        override fun onTouchEvent(event: MotionEvent) = dispatchPhoneTouch(event) { super.onTouchEvent(event) }
         private val cover = FrameLayout(context).apply {
             background = DashboardTheme.gradient(GradientDrawable.Orientation.TL_BR, arrayOf(UiColor.COVER_TOP, UiColor.COVER_BOTTOM))
                 .apply { cornerRadius = 7*scale }

@@ -1,25 +1,6 @@
 package com.xcloud.tclnative.catalog
 
 import com.xcloud.tclnative.i18n.UiText
-import com.xcloud.tclnative.net.readResponse
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
-import java.text.ParsePosition
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.concurrent.TimeUnit
 
 enum class Ownership { OWNED, NOT_OWNED, UNKNOWN }
 enum class OwnershipFilter(private val source: String) {
@@ -38,74 +19,75 @@ private val ownershipId=Regex("[A-Z0-9]{12}")
 internal fun ownershipProductKey(id: String?): String?=id?.let(GamePassCatalog::productKey)?.takeIf(ownershipId::matches)
 fun CatalogCard.ownershipProductId(): String?=ownershipProductKey(product?.productId ?: game?.productId)
 
-/** Read-only, lazy account lookup. Callers own the account-scoped result; no credentials or purchases are logged. */
-class GameOwnershipService(
-    private val authorization: suspend () -> String,
-    private val awaitCatalog: suspend () -> Unit = {},
-    private val client: OkHttpClient=OkHttpClient.Builder().callTimeout(20,TimeUnit.SECONDS)
-        .followRedirects(false).followSslRedirects(false).build(),
-    private val endpoint: String="https://emerald.xboxservices.com/xboxcomfd/entitlements/bulk",
-    private val now: () -> Long=System::currentTimeMillis
-) {
-    suspend fun fetch(productIds: Collection<String>,onBatch: suspend (Map<String,Ownership>) -> Unit): Unit=withContext(Dispatchers.IO) {
-        val ids=productIds.mapNotNull(::ownershipProductKey).distinct()
-        if(ids.isEmpty()) return@withContext
-        awaitCatalog()
-        val auth=try { authorization() } catch(cancelled: CancellationException) { throw cancelled }
-            catch(_: Exception) { onBatch(ids.associateWith { Ownership.UNKNOWN });return@withContext }
-        val slots=Semaphore(2)
-        coroutineScope { ids.chunked(50).map { batch -> async { slots.withPermit {
-            awaitCatalog()
-            val result=try {
-                val body=JSONObject().put("ProductIds",JSONArray(batch)).toString()
-                val request=Request.Builder().url("$endpoint?locale=en-US&getRecurrenceInfo=false&pageSize=50")
-                    .header("Authorization",auth).header("Accept","application/json")
-                    .header("X-MS-Api-Version","1.0")
-                    .post(body.toRequestBody("application/json; charset=utf-8".toMediaType())).build()
-                client.newCall(request).readResponse { response ->
-                    check(response.isSuccessful) { "OWNERSHIP_HTTP_${response.code}" }
-                    val source=response.body?.source() ?: error("OWNERSHIP_EMPTY")
-                    check(!source.request(1_048_577)) { "OWNERSHIP_TOO_LARGE" }
-                    parse(JSONObject(source.readUtf8()),batch,now())
+/** Reads direct purchase rights from ContentAccessAllV1Response.productsByProductId. */
+internal object ContentAccessOwnership {
+    private const val OWNED = 1L
+    private val accountId = Regex("[1-9][0-9]{0,19}")
+
+    fun decode(bytes: ByteArray, requested: Set<String>): Map<String, Ownership> {
+        require(bytes.isNotEmpty() && bytes.size <= ContentAccessPlaytime.MAX_BYTES)
+        val root = ContentAccessWire(bytes)
+        val accounts = mutableSetOf<String>()
+        val seen = mutableSetOf<String>()
+        val rights = mutableMapOf<String, Ownership>()
+        while (root.more()) {
+            val tag = root.tag()
+            when (tag ushr 3) {
+                2 -> {
+                    val (key, product) = root.message(tag).entry(maxKeyBytes = 128)
+                    val id = ownershipProductKey(key) ?: continue
+                    check(seen.add(id))
+                    val access = product.directAccess(accounts)
+                    if (id in requested && access != null)
+                        rights[id] = if (access and OWNED != 0L) Ownership.OWNED else Ownership.NOT_OWNED
                 }
-            } catch(cancelled: CancellationException) { throw cancelled }
-              catch(_: Exception) { batch.associateWith { Ownership.UNKNOWN } }
-            onBatch(result)
-        } } }.awaitAll() }
-    }
-    companion object {
-        /** Missing, partial, malformed or ambiguous results stay unknown, never inferred as unowned. */
-        internal fun parse(data: JSONObject,requested: List<String>,now: Long): Map<String,Ownership> {
-            val records=data.optJSONObject("entitlements") ?: return requested.associateWith { Ownership.UNKNOWN }
-            val partial=!data.optString("continuationToken").isBlank()
-            return requested.associateWith { id ->
-                val record=records.optJSONObject(id) ?: records.optJSONObject(id.lowercase(Locale.ROOT))
-                if(record==null || !record.optString("productId").equals(id,true) || record.opt("isOwned") !is Boolean ||
-                    record.opt("isTrial") !is Boolean) Ownership.UNKNOWN
-                else {
-                    val status=record.optString("status");val owned=record.getBoolean("isOwned")
-                    val trial=record.getBoolean("isTrial")
-                    val end=record.optString("endDate")
-                    val expires=parseExpiry(end)
-                    when {
-                        partial -> Ownership.UNKNOWN
-                        status.isNotBlank() && status !in setOf("Active","Expired","Revoked","Banned","Suspended") -> Ownership.UNKNOWN
-                        owned && !trial && (status.isBlank() || status=="Active") &&
-                            (end.isBlank() || expires?.let { it>now }==true) -> Ownership.OWNED
-                        !owned || trial || status in setOf("Expired","Revoked","Banned","Suspended") || expires?.let { it<=now }==true -> Ownership.NOT_OWNED
-                        else -> Ownership.UNKNOWN
-                    }
-                }
+                else -> root.skip(tag)
             }
         }
-        private fun parseExpiry(value: String): Long? {
-            val match=Regex("(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})(?:\\.(\\d{1,9}))?(Z|[+-]\\d{2}:\\d{2})").matchEntire(value) ?: return null
-            val fraction=match.groupValues[2].padEnd(3,'0').take(3)
-            val zone=match.groupValues[3].let { if(it=="Z") "+0000" else it.replace(":","") }
-            val normalized="${match.groupValues[1]}.$fraction$zone"
-            val parser=SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ",Locale.US).apply { isLenient=false }
-            val position=ParsePosition(0)
-            return parser.parse(normalized,position)?.time?.takeIf { position.index==normalized.length }
+        return rights
+    }
+
+    private fun MutableSet<String>.addAccount(id: String) {
+        require(accountId.matches(id) && (id.length < 20 || id <= "18446744073709551615"))
+        add(id)
+        check(size == 1)
+    }
+
+    private fun ContentAccessWire.directAccess(accounts: MutableSet<String>): Long? {
+        var flags: Long? = null
+        while (more()) {
+            val tag = tag()
+            if (tag ushr 3 != 2) {
+                skip(tag)
+                continue
+            }
+            check(flags == null)
+            val (account, access) = message(tag).entry()
+            accounts.addAccount(account)
+            var direct: Long? = null
+            while (access.more()) {
+                val field = access.tag()
+                if (field ushr 3 == 1) {
+                    check(direct == null)
+                    direct = access.number(field).also { require(it in 0..0xffffffffL) }
+                } else access.skip(field)
+            }
+            flags = direct ?: 0L
         }
+        return flags
+    }
+
+    private fun ContentAccessWire.entry(maxKeyBytes: Int = 20): Pair<String, ContentAccessWire> {
+        var key: String? = null
+        var value: ContentAccessWire? = null
+        while (more()) {
+            val tag = tag()
+            when (tag ushr 3) {
+                1 -> { require(key == null); key = this.key(tag, maxKeyBytes) }
+                2 -> { require(value == null); value = message(tag) }
+                else -> skip(tag)
+            }
+        }
+        return checkNotNull(key) to checkNotNull(value)
     }
 }

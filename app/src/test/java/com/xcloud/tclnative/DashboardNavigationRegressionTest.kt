@@ -51,6 +51,54 @@ class DashboardNavigationRegressionTest {
         val b=Bitmap.createBitmap(v.width,v.height,Bitmap.Config.ARGB_8888);v.draw(Canvas(b))
         File("build/reports/themes/regression-$name.png").apply { parentFile!!.mkdirs() }.outputStream().use { b.compress(Bitmap.CompressFormat.PNG,100,it) };b.recycle()
     }
+    @Test fun onePhoneTapActivatesAnUnfocusedSettingsRowAndGameCover() {
+        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        instrumentation.setInTouchMode(true)
+        val lifecycle = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = lifecycle.get()
+        DashboardTheme.apply(activity, UiTheme.XBOX_SERIES)
+        val played = mutableListOf<String>()
+        val view = GameDashboardView(activity, GameLibrary(activity, "first-tap"), { played += it.titleId }, {}, {}, {})
+        try {
+            activity.setContentView(view)
+            view.setGames(games())
+            view.selectTab(LibraryTab.ALL)
+            layout(view)
+            fun tap(target: View, finish: Int = MotionEvent.ACTION_UP) {
+                val now = android.os.SystemClock.uptimeMillis()
+                for (action in listOf(MotionEvent.ACTION_DOWN, finish)) {
+                    val event = MotionEvent.obtain(now, now + 16, action, target.width / 2f, target.height / 2f, 0)
+                    event.source = InputDevice.SOURCE_TOUCHSCREEN
+                    try { assertTrue(target.dispatchTouchEvent(event)) } finally { event.recycle() }
+                }
+                shadowOf(Looper.getMainLooper()).idleFor(100, java.util.concurrent.TimeUnit.MILLISECONDS)
+            }
+            val cover = grid(view).findViewHolderForAdapterPosition(1)!!.itemView
+            assertTrue(cover.isInTouchMode)
+            assertFalse(cover.isFocused)
+            tap(cover, MotionEvent.ACTION_CANCEL)
+            assertTrue(played.isEmpty())
+            tap(cover)
+            assertEquals(listOf("NAV-1"), played)
+            assertTrue(cover.isFocusableInTouchMode)
+
+            var opened = 0
+            val dialog = ConsoleDialogs.menu(activity, "Configurações", listOf(
+                ConsoleAction("Vídeo e conexão") {}, ConsoleAction("Controles e toque") { opened++ }
+            ))
+            shadowOf(Looper.getMainLooper()).idle()
+            val row = all(dialog.body).filterIsInstance<TextView>().single { it.text == "Controles e toque" }
+            assertTrue(row.isInTouchMode)
+            assertFalse(row.isFocused)
+            tap(row)
+            assertEquals(1, opened)
+            assertFalse(dialog.isShowing)
+        } finally {
+            view.close()
+            lifecycle.pause().stop().destroy()
+            instrumentation.setInTouchMode(false)
+        }
+    }
     @Test fun savedSessionActionKeepsCatalogUsableAndReturnsFocusToTheSession() {
         val lifecycle = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = lifecycle.get()

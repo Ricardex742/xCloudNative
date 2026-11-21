@@ -7,9 +7,11 @@ import android.os.LocaleList
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import com.xcloud.tclnative.ui.dispatchPhoneTouch
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
 
@@ -106,6 +108,7 @@ interface LocaleAwareView { fun refreshLanguage() }
 open class LocalizedTextView(context: Context): TextView(context) {
     private var translation: UiText.Message?=null
     private var refreshing=false
+    override fun onTouchEvent(event: MotionEvent) = dispatchPhoneTouch(event) { super.onTouchEvent(event) }
     override fun setText(value: CharSequence?,type: BufferType?) {
         if(!refreshing) translation=UiText.message(value) ?: translation?.takeIf { value?.toString()==text?.toString() }
         super.setText(value,type)

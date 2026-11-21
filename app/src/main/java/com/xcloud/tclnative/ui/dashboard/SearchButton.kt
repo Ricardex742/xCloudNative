@@ -6,7 +6,9 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.view.MotionEvent
 import android.view.View
+import com.xcloud.tclnative.ui.dispatchPhoneTouch
 import kotlin.math.min
 
 /** Vector magnifier with a larger transparent touch target than its visible plate. */
@@ -20,6 +22,7 @@ internal class SearchButton(context: Context,search: () -> Unit): View(context) 
         setOnClickListener { search() }
         setOnFocusChangeListener { _,_ -> invalidate() }
     }
+    override fun onTouchEvent(event: MotionEvent) = dispatchPhoneTouch(event) { super.onTouchEvent(event) }
     override fun drawableStateChanged() { super.drawableStateChanged(); invalidate() }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)

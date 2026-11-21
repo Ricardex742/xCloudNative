@@ -84,13 +84,7 @@ class CloudPlaytimeService(
             val token=authorization()
             authorizing=false
             beforeRequest()
-            val url=endpoint.toHttpUrl().newBuilder().addQueryParameter("market",market.uppercase(Locale.ROOT))
-                .addQueryParameter("offering","xgpuweb").build()
-            val request=Request.Builder().url(url).header("Authorization",token)
-                .header("Calling-App-Name","xCloudNative").header("Calling-App-Version",CloudPlaytimeContract.version(appVersion))
-                .header("MS-CV",CloudPlaytimeContract.correlationVector())
-                .get().build()
-            client.newCall(request).readResponse { response ->
+            client.newCall(contentAccessRequest(token)).readResponse { response ->
                 if(!response.isSuccessful) {
                     val rejection=runCatching { CloudPlaytimeContract.rejection(response.peekBody(8192).string(),response.header("x-ms-error-code")) }
                         .getOrDefault(CloudPlaytimeContract.Rejection())
@@ -105,6 +99,36 @@ class CloudPlaytimeService(
           catch(error: Exception) { CloudPlaytime(failure=if(authorizing) PlaytimeFailure.AUTHORIZATION else PlaytimeFailure.NETWORK,
               httpStatus=(error as? CloudHttpException)?.status) }
     }
+
+    /** The same signed-in Content Access snapshot also describes the account's product rights. */
+    suspend fun fetchOwnership(productIds: Set<String>): Map<String, Ownership> = withContext(Dispatchers.IO) {
+        if (productIds.isEmpty()) return@withContext emptyMap()
+        val confirmed = try {
+            beforeRequest()
+            val token = authorization()
+            beforeRequest()
+            client.newCall(contentAccessRequest(token)).readResponse { response ->
+                check(response.isSuccessful)
+                val source = checkNotNull(response.body?.source())
+                check(!source.request(ContentAccessPlaytime.MAX_BYTES + 1L))
+                ContentAccessOwnership.decode(source.readByteArray(), productIds)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            emptyMap()
+        }
+        productIds.associateWith { confirmed[it] ?: Ownership.UNKNOWN }
+    }
+
+    private fun contentAccessRequest(token: String): Request {
+        val url = endpoint.toHttpUrl().newBuilder()
+            .addQueryParameter("market", market.uppercase(Locale.ROOT))
+            .addQueryParameter("offering", "xgpuweb").build()
+        return Request.Builder().url(url).header("Authorization", token)
+            .header("Calling-App-Name", "xCloudNative").header("Calling-App-Version", CloudPlaytimeContract.version(appVersion))
+            .header("MS-CV", CloudPlaytimeContract.correlationVector()).get().build()
+    }
 }
 
 /** Small bounded reader for ContentAccessAllV1Response's quota fields. Product data is skipped. */
@@ -114,7 +138,7 @@ internal object ContentAccessPlaytime {
     private data class Quota(val periodic: Budget?,val persistent: Budget?)
     fun decode(bytes: ByteArray): CloudPlaytime = try {
         require(bytes.isNotEmpty() && bytes.size<=MAX_BYTES)
-        val root=Wire(bytes);val accounts=mutableSetOf<String>();val quotas=mutableMapOf<String,Quota>()
+        val root=ContentAccessWire(bytes);val accounts=mutableSetOf<String>();val quotas=mutableMapOf<String,Quota>()
         while(root.more()) {
             val tag=root.tag()
             if(tag ushr 3==1 || tag ushr 3==3) {
@@ -152,7 +176,7 @@ internal object ContentAccessPlaytime {
         else -> PlaytimeFailure.INVALID_RESPONSE
     }) }
 
-    private fun readQuota(message: Wire): Quota {
+    private fun readQuota(message: ContentAccessWire): Quota {
         var periodic: Budget?=null;var persistent: Budget?=null
         while(message.more()) {
             val tag=message.tag()
@@ -164,7 +188,7 @@ internal object ContentAccessPlaytime {
         }
         return Quota(periodic,persistent)
     }
-    private fun readBudget(message: Wire): Budget {
+    private fun readBudget(message: ContentAccessWire): Budget {
         var remaining=0;var maximum=0;var leftSeen=false;var maxSeen=false
         while(message.more()) {
             val tag=message.tag()
@@ -176,41 +200,42 @@ internal object ContentAccessPlaytime {
         }
         return Budget(remaining,maximum,leftSeen||maxSeen)
     }
-    private class Wire(val bytes: ByteArray,var at: Int=0,val end: Int=bytes.size) {
-        fun more()=at<end
-        private fun varint(): Long {
-            var value=0L
-            for(shift in 0..63 step 7) {
-                require(at<end);val b=bytes[at++].toInt() and 255
-                if(shift==63) require(b and 254==0)
-                value=value or ((b and 127).toLong() shl shift)
-                if(b and 128==0)return value
-            }
-            error("PLAYTIME_VARINT")
+}
+
+internal class ContentAccessWire(val bytes: ByteArray,var at: Int=0,val end: Int=bytes.size) {
+    fun more()=at<end
+    private fun varint(): Long {
+        var value=0L
+        for(shift in 0..63 step 7) {
+            require(at<end);val b=bytes[at++].toInt() and 255
+            if(shift==63) require(b and 254==0)
+            value=value or ((b and 127).toLong() shl shift)
+            if(b and 128==0)return value
         }
-        fun tag(): Int=varint().also { require(it in 8..0xfffffffDL) }.toInt()
-        fun number(tag: Int): Long { require(tag and 7==0);return varint() }
-        fun int32(tag: Int): Int {
-            val raw=number(tag);val value=raw.toInt()
-            require(raw==value.toLong() || raw==(value.toLong() and 0xffffffffL))
-            return value
-        }
-        private fun length(): Int=varint().also { require(it>=0 && it<=end-at) }.toInt()
-        fun message(tag: Int): Wire {
-            require(tag and 7==2);val size=length();val child=Wire(bytes,at,at+size);at+=size;return child
-        }
-        fun key(tag: Int): String {
-            val child=message(tag);require(child.end-child.at in 1..20)
-            return bytes.copyOfRange(child.at,child.end).toString(Charsets.UTF_8)
-        }
-        fun skip(tag: Int) {
-            when(tag and 7) {
-                0 -> varint()
-                1 -> { require(end-at>=8);at+=8 }
-                2 -> { val size=length();at+=size }
-                5 -> { require(end-at>=4);at+=4 }
-                else -> error("PLAYTIME_WIRE_TYPE")
-            }
+        error("PLAYTIME_VARINT")
+    }
+    fun tag(): Int=varint().also { require(it in 8..0xfffffffDL) }.toInt()
+    fun number(tag: Int): Long { require(tag and 7==0);return varint() }
+    fun int32(tag: Int): Int {
+        val raw=number(tag);val value=raw.toInt()
+        require(raw==value.toLong() || raw==(value.toLong() and 0xffffffffL))
+        return value
+    }
+    private fun length(): Int=varint().also { require(it>=0 && it<=end-at) }.toInt()
+    fun message(tag: Int): ContentAccessWire {
+        require(tag and 7==2);val size=length();val child=ContentAccessWire(bytes,at,at+size);at+=size;return child
+    }
+    fun key(tag: Int, maxBytes: Int = 20): String {
+        val child=message(tag);require(child.end-child.at in 1..maxBytes)
+        return bytes.copyOfRange(child.at,child.end).toString(Charsets.UTF_8)
+    }
+    fun skip(tag: Int) {
+        when(tag and 7) {
+            0 -> varint()
+            1 -> { require(end-at>=8);at+=8 }
+            2 -> { val size=length();at+=size }
+            5 -> { require(end-at>=4);at+=4 }
+            else -> error("PLAYTIME_WIRE_TYPE")
         }
     }
 }
