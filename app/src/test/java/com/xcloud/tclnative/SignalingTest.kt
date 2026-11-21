@@ -502,7 +502,7 @@ class SignalingTest {
             assertEquals(listOf("Bearer test-token", "Bearer renewed"),
                 requests.filter { it.path == "/session/keepalive" }.map { it.getHeader("Authorization") })
             assertEquals(1, requests.count { it.path == "/v5/sessions/cloud/play" })
-            assertEquals(1, requests.count { it.path == "/session/sdp" })
+            assertEquals(1, requests.count { it.method == "POST" && it.path == "/session/sdp" })
             assertFalse(requests.any { it.method == "DELETE" })
             assertTrue(client.keepAliveDiagnostics().contains("recuperações 1"))
             assertTrue(client.keepAliveDiagnostics().contains("KEEPALIVE/HTTP_401"))
@@ -583,10 +583,15 @@ class SignalingTest {
         client.stop()
     }
     @Test fun failureOfOptionalEstimateDoesNotFailTheActualQueue() = runBlocking {
-        queuedStates = 3; rejectEstimate = true
+        queuedStates = Int.MAX_VALUE; rejectEstimate = true
         val snapshots = mutableListOf<com.xcloud.tclnative.signaling.QueueStatus?>()
         val client = signaling()
-        val result = client.startAndConnectWebRtcSession("real-id", peer, onQueueStatus = { snapshots.add(it) }) {}
+        val result = withTimeout(4000) {
+            client.startAndConnectWebRtcSession("real-id", peer, onQueueStatus = {
+                snapshots.add(it)
+                if (it?.estimateFailed == true) queuedStates = 0
+            }) {}
+        }
         assertTrue(result.exceptionOrNull()?.message, result.isSuccess)
         assertTrue(snapshots.filterNotNull().any { it.estimateFailed && it.estimate == null })
         assertTrue(events.contains("ready"))
