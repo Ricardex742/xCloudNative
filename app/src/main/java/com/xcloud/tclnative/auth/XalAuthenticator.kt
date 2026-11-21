@@ -26,6 +26,10 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.IOException
+import java.io.InterruptedIOException
+import java.net.SocketException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 data class CloudRegion(val name: String,val baseUri: String,val isDefault: Boolean=false)
@@ -168,14 +172,21 @@ class XalAuthenticator(
             data.optLong("interval", 5).coerceAtLeast(1), clockMs() + data.getLong("expires_in") * 1000, bitmap, generation)
     }
 
-    suspend fun pollForDeviceCodeLogin(info: DeviceCodeInfo): Result<String> = result {
+    suspend fun pollForDeviceCodeLogin(
+        info: DeviceCodeInfo,
+        onConnectionInterrupted: suspend (Boolean) -> Unit = {}
+    ): Result<String> = result {
         val generation = info.credentialGeneration ?: credentials.snapshot().generation
         var interval = info.intervalSeconds.coerceAtLeast(1) * 1000
-        while (clockMs() < info.expiresAtMs) {
-            pause(minOf(interval, info.expiresAtMs - clockMs()))
+        var nextDelay = interval
+        var backoff = 0L
+        while (true) {
+            val remaining = info.expiresAtMs - clockMs()
+            if (remaining <= 0) break
+            pause(minOf(nextDelay, remaining))
             if (clockMs() >= info.expiresAtMs) break
             credentials.requireCurrent(generation)
-            try {
+            val retryAfter = try {
                 val data = JSONObject(post(endpoints.tokenUrl, "AUTH_TOKEN", FormBody.Builder()
                     .add("client_id", XCLOUD_CLIENT_ID).add("grant_type", "urn:ietf:params:oauth:grant-type:device_code")
                     .add("device_code", info.deviceCode).build()))
@@ -184,15 +195,31 @@ class XalAuthenticator(
                 return@result checkNotNull(saveCredentials(data.getString("access_token"), refresh,
                     data.getLong("expires_in"), XCLOUD_CLIENT_ID, generation).token).ticket
             } catch (error: CloudHttpException) {
-                when (error.serviceCode) {
-                    "authorization_pending" -> Unit
-                    "slow_down" -> interval += 5000
-                    "authorization_declined", "access_denied", "expired_token" -> throw AuthenticationRequiredException("AUTH_TOKEN: aprovação negada ou expirada.")
+                when {
+                    error.serviceCode == "authorization_pending" -> null
+                    error.serviceCode == "slow_down" -> { interval += 5000; null }
+                    error.serviceCode == "expired_token" ->
+                        throw AuthenticationRequiredException(UiText.text("O código expirou. Gere um novo código para continuar."))
+                    error.serviceCode in setOf("authorization_declined", "access_denied") ->
+                        throw AuthenticationRequiredException("AUTH_TOKEN: aprovação negada.")
+                    error.status in setOf(408, 429, 500, 502, 503, 504) -> error.retryAfterMs ?: 0L
                     else -> throw error
                 }
+            } catch (error: IOException) {
+                if (error !is UnknownHostException && error !is SocketException && error !is InterruptedIOException) throw error
+                0L
+            }
+            if (retryAfter != null) {
+                if (backoff == 0L) onConnectionInterrupted(true)
+                backoff = maxOf(interval, backoff).coerceAtMost(15_000L) * 2
+                nextDelay = maxOf(interval, backoff, retryAfter)
+            } else {
+                if (backoff != 0L) onConnectionInterrupted(false)
+                backoff = 0L
+                nextDelay = interval
             }
         }
-        throw AuthenticationRequiredException("AUTH_TOKEN: o código expirou; solicite outro QR Code.")
+        throw AuthenticationRequiredException(UiText.text("O código expirou. Gere um novo código para continuar."))
     }
 
     private suspend fun refresh(generation: Long, previous: OAuthToken): OAuthToken =

@@ -1315,4 +1315,5 @@
     <string name="ui_8f8affe0a3a4e987" formatted="false">"KODU KOPYALA VE AÇ"</string>
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Kodu Microsoft sayfasına yapıştırıp uygulamaya dönün."</string>
     <string name="ui_04528db174865b6f" formatted="false">", satın alındı"</string>
+    <string name="ui_c2de4a5b6d5d5573" formatted="false">"Microsoft’a bağlanılamıyor. Aynı kodla yeniden deneniyor…"</string>
 </resources>

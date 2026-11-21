@@ -1315,4 +1315,5 @@
     <string name="ui_8f8affe0a3a4e987" formatted="false">"CODE KOPIEREN UND ÖFFNEN"</string>
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Füge den Code auf der Microsoft-Seite ein und kehre zur App zurück."</string>
     <string name="ui_04528db174865b6f" formatted="false">", gekauft"</string>
+    <string name="ui_c2de4a5b6d5d5573" formatted="false">"Keine Verbindung zu Microsoft. Erneuter Versuch mit demselben Code…"</string>
 </resources>

@@ -15,6 +15,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.net.Proxy
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 class MemoryTokens(var token: OAuthToken? = null) : OAuthTokenStore {
@@ -31,8 +32,8 @@ class AuthTest {
     private val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY).callTimeout(3, TimeUnit.SECONDS).build()
     @Before fun setup() { server = MockWebServer().apply { start() }; store = MemoryTokens(); now = 0; waits.clear() }
     @After fun cleanup() { server.shutdown() }
-    private fun auth(pause: suspend (Long) -> Unit = { waits.add(it); now += it }): XalAuthenticator =
-        XalAuthenticator(store, client, AuthEndpoints(server.url("/device").toString(), server.url("/token").toString(),
+    private fun auth(httpClient: OkHttpClient = client, pause: suspend (Long) -> Unit = { waits.add(it); now += it }): XalAuthenticator =
+        XalAuthenticator(store, httpClient, AuthEndpoints(server.url("/device").toString(), server.url("/token").toString(),
             server.url("/user").toString(), server.url("/xsts").toString(), server.url("/cloud").toString(), server.url("/transfer").toString(),
             server.url("/profile").toString()), { now }, pause)
     private fun enqueue(body: String, code: Int = 200) { server.enqueue(MockResponse().setResponseCode(code).setBody(body)) }
@@ -242,6 +243,43 @@ class AuthTest {
         assertEquals(listOf(1000L, 6000L, 6000L), waits)
         assertEquals("qr-refresh", store.token?.refreshToken)
         assertEquals(XalAuthenticator.XCLOUD_CLIENT_ID, store.token?.clientId)
+    }
+    @Test fun temporaryDnsLossRetriesTheOriginalDeviceCodeUntilMicrosoftApprovesIt() = runBlocking {
+        var failuresRemaining = 2
+        val interrupted = mutableListOf<Boolean>()
+        val unstableClient = client.newBuilder().addInterceptor { chain ->
+            if (failuresRemaining-- > 0) throw UnknownHostException("test DNS outage")
+            chain.proceed(chain.request())
+        }.build()
+        enqueue("""{"error":"authorization_pending"}""", 400)
+        enqueue("""{"access_token":"qr-access","refresh_token":"qr-refresh","expires_in":3600}""")
+        val ticket = auth(unstableClient).pollForDeviceCodeLogin(info()) { interrupted += it }.getOrThrow()
+        assertEquals("t=qr-access", ticket)
+        assertEquals(listOf(1000L, 2000L, 4000L, 1000L), waits)
+        assertEquals(listOf(true, false), interrupted)
+        assertEquals(2, server.requestCount)
+        repeat(2) {
+            val request = server.takeRequest()
+            assertEquals("/token", request.path)
+            assertTrue(request.body.readUtf8().contains("device_code=DEVICE"))
+        }
+    }
+    @Test fun retryAfterForDevicePollingIsRespected() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(429).addHeader("Retry-After", "12"))
+        enqueue("""{"access_token":"qr-access","refresh_token":"qr-refresh","expires_in":3600}""")
+        assertEquals("t=qr-access", auth().pollForDeviceCodeLogin(info()).getOrThrow())
+        assertEquals(listOf(1000L, 12000L), waits)
+    }
+    @Test fun persistentDnsLossStopsAtDeviceCodeExpiryAndPreservesTheCurrentAccount() = runBlocking {
+        val previous = fresh()
+        store.token = previous
+        val interrupted = mutableListOf<Boolean>()
+        val offlineClient = client.newBuilder().addInterceptor { throw UnknownHostException("test DNS outage") }.build()
+        assertTrue(auth(offlineClient).pollForDeviceCodeLogin(info(2500)) { interrupted += it }
+            .exceptionOrNull() is AuthenticationRequiredException)
+        assertEquals(listOf(1000L, 1500L), waits)
+        assertEquals(listOf(true), interrupted)
+        assertEquals(previous, store.token)
     }
     @Test fun deviceExpiryStopsPollingAtTheServerDeadline() = runBlocking {
         repeat(2) { enqueue("""{"error":"authorization_pending"}""", 400) }

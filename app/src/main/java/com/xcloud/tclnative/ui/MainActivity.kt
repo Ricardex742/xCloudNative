@@ -530,7 +530,11 @@ open class MainActivity : Activity() {
             qrRes.onSuccess { info ->
                 if (loginView !== view) return@onSuccess
                 view.showQr(info)
-                authenticator.pollForDeviceCodeLogin(info).onSuccess {
+                authenticator.pollForDeviceCodeLogin(info) { interrupted ->
+                    withContext(Dispatchers.Main) {
+                        if (loginView === view) view.showApprovalConnection(interrupted)
+                    }
+                }.onSuccess {
                     if (loginView === view) connectToXboxCloud()
                 }.onFailure { error ->
                     if (loginView === view) view.showError(UiText.text("Não foi possível concluir o login. {0}",UiText.nested(error.message.orEmpty())))

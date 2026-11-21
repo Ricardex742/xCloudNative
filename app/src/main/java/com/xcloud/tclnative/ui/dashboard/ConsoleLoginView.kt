@@ -151,7 +151,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
             instructions.text = UiText.text("Cole o código na página da Microsoft e volte ao app.")
             primary.text = UiText.text("COPIAR CÓDIGO E ABRIR")
         }
-        status.text=UiText.text("Aguardando sua aprovação na Microsoft…"); status.setTextColor(DashboardTheme.muted)
+        showApprovalConnection(interrupted = false)
         primary.isEnabled=true; spinner.visibility=VISIBLE
         if (browserApproval) post { if (info === value && !connecting && !failed) primary.requestFocus() }
         ticker?.cancel()
@@ -160,6 +160,12 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
             validity.text=if (seconds > 0) UiText.text("Código válido por {0} min {1}s.",UiText.nested(seconds/60),UiText.nested(seconds%60)) else UiText.text("O código expirou. Gere um novo código para continuar.")
             delay(1000)
         } }
+    }
+    fun showApprovalConnection(interrupted: Boolean) {
+        if (info == null || failed || connecting) return
+        status.text = if (interrupted) UiText.text("Sem conexão com a Microsoft. Tentando novamente com o mesmo código…")
+            else UiText.text("Aguardando sua aprovação na Microsoft…")
+        status.setTextColor(DashboardTheme.muted)
     }
     fun showConnecting(message: String) {
         connecting=true; ticker?.cancel()

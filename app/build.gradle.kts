@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 118
-        versionName = "0.41.6-catalog-session"
+        versionCode = 119
+        versionName = "0.41.7-login-retry"
     }
 
     signingConfigs {

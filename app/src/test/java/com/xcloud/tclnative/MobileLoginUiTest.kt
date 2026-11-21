@@ -87,6 +87,14 @@ class MobileLoginUiTest {
                 val approval = shadowOf(activity).nextStartedActivity
                 assertEquals(Intent.ACTION_VIEW, approval.action)
                 assertEquals("https://www.microsoft.com/link", approval.dataString)
+                view.showApprovalConnection(interrupted = true)
+                val labels = all(view).filterIsInstance<TextView>()
+                assertTrue(labels.any { it.isShown && it.text.contains("Tentando novamente com o mesmo código") })
+                assertTrue(labels.any { it.isShown && it.text == "DEMO1234" })
+                assertTrue(checkNotNull(action("COPIAR CÓDIGO E ABRIR")).isEnabled)
+                assertNull(action("GERAR NOVO CÓDIGO"))
+                view.showApprovalConnection(interrupted = false)
+                assertTrue(labels.any { it.isShown && it.text == "Aguardando sua aprovação na Microsoft…" })
                 assertEquals(1, server.requestCount)
             } finally {
                 lifecycle.pause().stop().destroy()

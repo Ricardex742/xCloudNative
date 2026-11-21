@@ -1315,4 +1315,5 @@
     <string name="ui_8f8affe0a3a4e987" formatted="false">"COPIA CODICE E APRI"</string>
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Incolla il codice nella pagina Microsoft e torna all’app."</string>
     <string name="ui_04528db174865b6f" formatted="false">", acquistato"</string>
+    <string name="ui_c2de4a5b6d5d5573" formatted="false">"Connessione a Microsoft non disponibile. Nuovo tentativo con lo stesso codice…"</string>
 </resources>

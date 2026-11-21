@@ -1315,4 +1315,5 @@
     <string name="ui_8f8affe0a3a4e987" formatted="false">"複製代碼並開啟"</string>
     <string name="ui_bd0c36713bffd1ec" formatted="false">"在 Microsoft 頁面貼上代碼，再返回應用程式。"</string>
     <string name="ui_04528db174865b6f" formatted="false">"，已購買"</string>
+    <string name="ui_c2de4a5b6d5d5573" formatted="false">"無法連線至 Microsoft。正在使用同一組代碼重試…"</string>
 </resources>

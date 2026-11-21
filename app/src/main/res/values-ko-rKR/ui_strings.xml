@@ -1315,4 +1315,5 @@
     <string name="ui_8f8affe0a3a4e987" formatted="false">"코드 복사 및 열기"</string>
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Microsoft 페이지에 코드를 붙여넣고 앱으로 돌아오세요."</string>
     <string name="ui_04528db174865b6f" formatted="false">", 구매 완료"</string>
+    <string name="ui_c2de4a5b6d5d5573" formatted="false">"Microsoft에 연결할 수 없습니다. 같은 코드로 다시 시도하는 중…"</string>
 </resources>
