@@ -61,7 +61,8 @@ internal object CatalogFocusPolicy {
             CatalogDirection.LEFT -> if (position % columns == 0) return CatalogFocusDestination.Stay else position - 1
             CatalogDirection.RIGHT -> if (position % columns == columns - 1) return CatalogFocusDestination.Stay else position + 1
             CatalogDirection.UP -> if (position < columns) return CatalogFocusDestination.Category else position - columns
-            CatalogDirection.DOWN -> position + columns
+            CatalogDirection.DOWN -> if (position / columns < (count - 1) / columns)
+                minOf(position + columns, count - 1) else return CatalogFocusDestination.Stay
         }
         return if (next in 0 until count) CatalogFocusDestination.Cover(next) else CatalogFocusDestination.Stay
     }

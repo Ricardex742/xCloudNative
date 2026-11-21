@@ -13,15 +13,19 @@ import android.graphics.drawable.StateListDrawable
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.util.TypedValue
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.xcloud.tclnative.R
 import com.xcloud.tclnative.settings.ConsoleScene
 import com.xcloud.tclnative.settings.SeriesGuideSide
@@ -390,10 +394,13 @@ object ConsoleDialogs {
     fun search(context: Context, query: String, filter: ConsoleAction?=null, onSearch: (String) -> Unit): ConsoleDialog = searchField(context,query,
         UiText.text("Pesquisar jogos"),UiText.text("Nome do jogo"),UiText.text("Encontre um jogo pelo nome."),onSearch,filter)
     fun searchWallpapers(context: Context,query: String,onSearch: (String) -> Unit): ConsoleDialog = searchField(context,query,
-        UiText.text("Pesquisar fundos"),UiText.text("Nome do fundo"),UiText.text("Encontre um fundo pelo nome."),onSearch)
-    private fun searchField(context: Context,query: String,title: String,placeholder: String,help: String,onSearch: (String) -> Unit,filter: ConsoleAction?=null): ConsoleDialog {
+        UiText.text("Pesquisar fundos"),UiText.text("Nome do fundo"),UiText.text("Encontre um fundo pelo nome."),onSearch,
+        openKeyboard = true)
+    private fun searchField(context: Context,query: String,title: String,placeholder: String,help: String,onSearch: (String) -> Unit,
+                            filter: ConsoleAction?=null, openKeyboard: Boolean = false): ConsoleDialog {
         val dialog = ConsoleDialog(context,title,ConsolePanelPurpose.SEARCH)
         val localKeyboard=AppControllerWindows.usbActive(context as? Activity)
+        val ime = context.getSystemService(InputMethodManager::class.java)
         val skin=ConsolePanelSkin()
         val field = EditText(dialog.context).apply {
             setText(query); hint=placeholder; isSingleLine=true
@@ -410,7 +417,10 @@ object ConsoleDialogs {
             }
             if(skin.enabled) background=skin.input(dialog.scale)
             imeOptions=EditorInfo.IME_ACTION_SEARCH
-            if(localKeyboard) showSoftInputOnFocus=false
+            showSoftInputOnFocus = openKeyboard && !localKeyboard
+            if (!localKeyboard && !openKeyboard) setOnClickListener {
+                if (requestFocus()) ime?.showSoftInput(this, InputMethodManager.SHOW_IMPLICIT)
+            }
             setOnEditorActionListener { _, action, _ ->
                 if (action == EditorInfo.IME_ACTION_SEARCH) { dialog.dismiss(); onSearch(text.toString()); true } else false
             }
@@ -421,22 +431,36 @@ object ConsoleDialogs {
         if(filter!=null) dialog.addMenuItem(filter.label) { onSearch(field.text.toString());filter.action() }
         dialog.body.addView(field, LinearLayout.LayoutParams(-1,dialog.px(65)))
         val keyboard=if(localKeyboard) ControllerSearchKeyboard.attach(dialog,field) else null
-        dialog.addAction(UiText.text("Limpar busca")) { onSearch("") }
+        val clear = dialog.addAction(UiText.text("Limpar busca")) { onSearch("") }
         dialog.addAction(UiText.text("Voltar")) {}
         dialog.addAction(UiText.text("Buscar")) { onSearch(field.text.toString()) }
-        dialog.shortcut={ event ->
-            if(event.keyCode==KeyEvent.KEYCODE_BUTTON_X) {
-                if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount>0) { field.text.clear();field.requestFocus() }
-                true
-            } else false
+        var searchKeyDownAt: Long? = null
+        dialog.shortcut = shortcut@{ event ->
+            if (event.keyCode == KeyEvent.KEYCODE_BUTTON_X) {
+                if (event.action == KeyEvent.ACTION_DOWN) {
+                    if (event.repeatCount == 0) searchKeyDownAt = event.eventTime
+                    else { field.text.clear(); searchKeyDownAt = null }
+                } else if (event.action == KeyEvent.ACTION_UP) {
+                    val started = searchKeyDownAt.also { searchKeyDownAt = null }
+                    if (started != null && !event.isCanceled &&
+                        event.eventTime - started >= ViewConfiguration.getLongPressTimeout()) field.text.clear()
+                }
+                return@shortcut true
+            }
+            val back = event.keyCode == KeyEvent.KEYCODE_BACK || event.keyCode == KeyEvent.KEYCODE_BUTTON_B
+            if (back && event.action == KeyEvent.ACTION_DOWN &&
+                ViewCompat.getRootWindowInsets(field)?.isVisible(WindowInsetsCompat.Type.ime()) == true) {
+                if (event.repeatCount == 0) ime?.hideSoftInputFromWindow(field.windowToken, 0)
+                return@shortcut true
+            }
+            false
         }
-        dialog.focusFirst(keyboard ?: field)
+        dialog.focusFirst(if (!openKeyboard && query.isNotBlank()) clear else keyboard ?: field)
         dialog.show()
-        if(!localKeyboard && context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)) {
+        if(openKeyboard && !localKeyboard && context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_TOUCHSCREEN)) {
             dialog.window?.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE)
             field.post {
-                if(dialog.isShowing) (context.getSystemService(Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
-                    .showSoftInput(field,android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                if(dialog.isShowing) ime?.showSoftInput(field,InputMethodManager.SHOW_IMPLICIT)
             }
         }
         return dialog

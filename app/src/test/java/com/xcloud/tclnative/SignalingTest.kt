@@ -473,6 +473,63 @@ class SignalingTest {
             assertTrue(client.keepAliveDiagnostics().contains("falhas 2"))
         } finally { maintenance.cancelAndJoin();client.stop() }
     }
+    @Test fun keepAliveReauthorizesTheSameAllocationOnceAndRecordsRecovery() = runBlocking {
+        val original = server.dispatcher
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.path != "/session/keepalive") return original.dispatch(request)
+                requests.add(request)
+                return if (request.getHeader("Authorization") == "Bearer renewed") response("", 204) else response("{}", 401)
+            }
+        }
+        val confirmed = CompletableDeferred<Unit>()
+        val session = XCloudSession("test-token", server.url("/").toString(), "hash",
+            transferToken = "console-token", credentialGeneration = 3L)
+        val client = XCloudSignalingClient(session, OkHttpClient.Builder().proxy(Proxy.NO_PROXY).build(), { wait ->
+            now += wait
+            if (wait == 30_000L && requests.count { it.path == "/session/keepalive" } >= 2) {
+                confirmed.complete(Unit)
+                awaitCancellation()
+            }
+        }, { now }, renewCloudAuthorization = {
+            assertSame(session, it)
+            it.copy(gssvToken = "renewed")
+        })
+        assertTrue(client.startAndConnectWebRtcSession("real-id", peer) {}.isSuccess)
+        val maintenance = launch { client.maintainSession() }
+        try {
+            withTimeout(4000) { confirmed.await() }
+            assertEquals(listOf("Bearer test-token", "Bearer renewed"),
+                requests.filter { it.path == "/session/keepalive" }.map { it.getHeader("Authorization") })
+            assertEquals(1, requests.count { it.path == "/v5/sessions/cloud/play" })
+            assertEquals(1, requests.count { it.path == "/session/sdp" })
+            assertFalse(requests.any { it.method == "DELETE" })
+            assertTrue(client.keepAliveDiagnostics().contains("recuperações 1"))
+            assertTrue(client.keepAliveDiagnostics().contains("KEEPALIVE/HTTP_401"))
+        } finally {
+            maintenance.cancelAndJoin()
+            client.stop()
+        }
+    }
+    @Test fun aRenewedBearerFromAnotherAccountIsNeverSentToTheAllocation() = runBlocking {
+        val original = server.dispatcher
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse {
+                if (request.path != "/session/keepalive") return original.dispatch(request)
+                requests.add(request)
+                return response("{}", 401)
+            }
+        }
+        val session = XCloudSession("test-token", server.url("/").toString(), "hash", transferToken = "console-token")
+        val client = XCloudSignalingClient(session, OkHttpClient.Builder().proxy(Proxy.NO_PROXY).build(), { now += it },
+            { now }, renewCloudAuthorization = { it.copy(gssvToken = "other", userHash = "other") })
+        assertTrue(client.startAndConnectWebRtcSession("real-id", peer) {}.isSuccess)
+        val failure = runCatching { client.keepAlive() }.exceptionOrNull()
+        assertEquals("KEEPALIVE/HTTP_401", com.xcloud.tclnative.diagnostics.SessionFailure.from(failure!!).code)
+        assertEquals(listOf("Bearer test-token"),
+            requests.filter { it.path == "/session/keepalive" }.map { it.getHeader("Authorization") })
+        client.stop()
+    }
     @Test fun queueLongerThanNinetySecondsCanStillProvisionAndConnect() = runBlocking {
         queuedStates = 70
         val progress = mutableListOf<String>()

@@ -46,12 +46,7 @@ class CatalogService(
                     beforeRequest()
                     var enriched = batch
                     try {
-                        val url = "$storeBaseUrl/v7.0/products".toHttpUrl().newBuilder()
-                            .addQueryParameter("bigIds", batch.mapNotNull { it.productId }.distinct().joinToString(","))
-                            .addQueryParameter("market", "BR").addQueryParameter("languages", "pt-br,en-us")
-                            .addQueryParameter("fieldsTemplate", "details").addQueryParameter("actionFilter", "Browse").build()
-                        val data = client.newCall(Request.Builder().url(url).header("Accept", "application/json").build())
-                            .readResponse { JSONObject(it.checkedBody("STORE_ART")) }
+                        val data = storeProducts(batch.mapNotNull { it.productId }.distinct(), "pt-br,en-us")
                         enriched = merge(enriched, data)
                     } catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { /* Retry missing art using the older Game Pass provider. */ }
@@ -131,8 +126,18 @@ class CatalogService(
         }
     }
 
+    private suspend fun storeProducts(ids: List<String>, languages: String): JSONObject {
+        val url = "$storeBaseUrl/v7.0/products".toHttpUrl().newBuilder()
+            .addQueryParameter("bigIds", ids.joinToString(","))
+            .addQueryParameter("market", "BR").addQueryParameter("languages", languages)
+            .addQueryParameter("fieldsTemplate", "details").addQueryParameter("actionFilter", "Browse").build()
+        return client.newCall(Request.Builder().url(url).header("Accept", "application/json").build())
+            .readResponse { JSONObject(it.checkedBody("STORE_ART")) }
+    }
+
     /** Hydrate unmatched public products without inserting them into the authenticated native catalog. */
     suspend fun hydrateOfficialGallery(gallery: OfficialGallery, knownProducts: Set<String>,
+                                      knownEnglishProducts: Set<String> = emptySet(),
                                       onBatch: suspend (OfficialGallery) -> Unit) = withContext(Dispatchers.IO) {
         var current = gallery
         var failed = false
@@ -160,7 +165,25 @@ class CatalogService(
             catch (_: Exception) { failed = true }
             onBatch(current)
         }
-        onBatch(current.copy(metadataComplete = true, metadataFailed = failed))
+        current = current.copy(metadataComplete = true, metadataFailed = failed)
+        onBatch(current)
+        if (gallery.kind == OfficialGalleryKind.PURCHASED) {
+            val needsEnglish = current.products.filter { it.englishName == null && it.productId !in knownEnglishProducts }
+            for (batch in needsEnglish.chunked(50)) {
+                beforeRequest()
+                val names = try {
+                    StoreMetadata.products(storeProducts(batch.map { it.productId }, "en-us"))
+                        .mapNotNull(StoreMetadata::galleryProduct).associate { it.productId to (it.englishName ?: it.name) }
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (_: Exception) { emptyMap() }
+                val wanted = batch.map { it.productId }.toSet()
+                current = current.copy(products = current.products.map { product ->
+                    val english = names[product.productId]
+                    if (product.productId in wanted && english != null) product.copy(englishName = english) else product
+                })
+                onBatch(current)
+            }
+        }
     }
     companion object {
         const val RECENTLY_ADDED = "44a55037-770f-4bbf-bde5-a9fa27dba1da"

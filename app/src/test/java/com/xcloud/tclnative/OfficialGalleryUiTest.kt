@@ -130,6 +130,14 @@ class OfficialGalleryUiTest {
             assertNotNull("Focused product must remain reachable after hydration changes its position",focused)
             focused.performClick();assertEquals(wanted,selected!!.productId)
             assertTrue(selected!!.name!!.startsWith("Nome"))
+            assertFalse(focused.contentDescription.toString().contains("comprado"))
+            view.updateOwnership(mapOf(wanted to Ownership.OWNED))
+            layout(view)
+            val purchased = grid.findViewHolderForAdapterPosition(0)!!.itemView
+            assertSame(purchased, grid.focusedChild)
+            assertTrue(purchased.contentDescription.toString().endsWith(", comprado"))
+            purchased.performClick()
+            assertEquals(wanted, selected!!.productId)
         } finally { view.close();controller.pause().stop().destroy() }
     }
 

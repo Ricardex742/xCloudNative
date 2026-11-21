@@ -47,7 +47,8 @@ data class GameTitle(
     val userSubscriptions: List<String> = emptyList(), val heroUrl: String? = null,
     val seriesOptimized: Boolean = false, val xboxTitleId: String? = null,
     val programs: List<String> = emptyList(), val userPrograms: List<String> = emptyList(),
-    val freeToPlay: Boolean = false, val supportedInputTypes: Set<String> = emptySet()
+    val freeToPlay: Boolean = false, val supportedInputTypes: Set<String> = emptySet(),
+    val englishName: String? = null
 )
 
 class XCloudSignalingClient(
@@ -56,7 +57,8 @@ class XCloudSignalingClient(
     private val pause: suspend (Long) -> Unit = { delay(it) },
     private val clockMs: () -> Long = { System.nanoTime() / 1_000_000 },
     private val queueTimeoutMs: Long = 60 * 60_000,
-    private val transferTokenProvider: suspend () -> String = { (session as? XCloudSession)?.transferToken.orEmpty() }
+    private val transferTokenProvider: suspend () -> String = { (session as? XCloudSession)?.transferToken.orEmpty() },
+    private val renewCloudAuthorization: (suspend (XCloudSession) -> XCloudSession)? = null
 ) {
     private data class SessionProfile(
         val baseUri: String, val region: String, val locale: String, val resolution: StreamResolution
@@ -81,6 +83,8 @@ class XCloudSignalingClient(
         "pt-BR", StreamResolution.HD_1080_HQ)
     @Volatile private var lastAttempt = Attempt(defaultProfile)
     private val allocationLock = Mutex()
+    private val authorizationLock = Mutex()
+    @Volatile private var authorization = session
     private val active = AtomicReference<Allocation?>(null)
     private val waitTimeClient = requestClient.newBuilder().callTimeout(3, TimeUnit.SECONDS).build()
     private val keepAliveClient = requestClient.newBuilder().callTimeout(5, TimeUnit.SECONDS).build()
@@ -109,13 +113,14 @@ class XCloudSignalingClient(
 
     private suspend fun request(path: String, stage: String, method: String = "GET", body: JSONObject? = null,
                                 client: OkHttpClient = requestClient, query: Map<String,String> = emptyMap(),
-                                base: String = session.baseUri, resolution: StreamResolution = defaultProfile.resolution): String {
+                                base: String = session.baseUri, resolution: StreamResolution = defaultProfile.resolution,
+                                bearer: String = authorization.gssvToken): String {
         if (remotePlay) check(path == "/v6/servers/home" || path.startsWith("$sessionRoot/"))
         val url=CloudProtocol.sessionUrl(base,path).newBuilder().apply {
             query.forEach { (key,value) -> addQueryParameter(key,value) }
         }.build()
         val builder = Request.Builder().url(url)
-            .header("Authorization", "Bearer ${session.gssvToken}")
+            .header("Authorization", "Bearer $bearer")
             .header("Accept", "application/json").header("X-Gssv-Client", "XboxComBrowser")
             .header("X-MS-Device-Info", deviceInfo(resolution))
         when (method) {
@@ -203,11 +208,11 @@ class XCloudSignalingClient(
 
     private suspend fun sessionRequest(
         allocation: Allocation, path: String, stage: String, method: String = "GET",
-        body: JSONObject? = null, client: OkHttpClient = requestClient
+        body: JSONObject? = null, client: OkHttpClient = requestClient, bearer: String = authorization.gssvToken
     ): String {
         requireActive(allocation)
         val profile = allocation.attempt.profile
-        val response = request(path, stage, method, body, client, base = profile.baseUri, resolution = profile.resolution)
+        val response = request(path, stage, method, body, client, base = profile.baseUri, resolution = profile.resolution, bearer = bearer)
         requireActive(allocation)
         return response
     }
@@ -411,7 +416,7 @@ class XCloudSignalingClient(
         return withContext(Dispatchers.IO) {
             allocation.transportLock.withLock {
                 try {
-                    sessionRequest(allocation, "${allocation.path}/keepalive", "RECONNECT_KEEPALIVE", "POST", client = keepAliveClient)
+                    sendKeepAlive(allocation, "RECONNECT_KEEPALIVE")
                     val ready = negotiateTransport(allocation, peer, microphone, (++allocation.sdpRequest).toString(), onProgress, onStage)
                     Result.success(ready)
                 } catch(timeout: kotlinx.coroutines.TimeoutCancellationException) {
@@ -480,9 +485,7 @@ class XCloudSignalingClient(
 
     suspend fun keepAlive() {
         val allocation = active.get() ?: return
-        withContext(Dispatchers.IO) {
-            sessionRequest(allocation, "${allocation.path}/keepalive", "KEEPALIVE", "POST", client = keepAliveClient)
-        }
+        withContext(Dispatchers.IO) { sendKeepAlive(allocation, "KEEPALIVE") }
     }
 
     fun keepAliveDiagnostics() = lastAttempt.keepAlive.diagnostics()
@@ -492,8 +495,35 @@ class XCloudSignalingClient(
         withContext(Dispatchers.IO) {
             allocation.attempt.keepAlive.run {
                 if (active.get() !== allocation) throw CancellationException(UiText.text("Manutenção da sessão substituída"))
-                sessionRequest(allocation, "${allocation.path}/keepalive", "KEEPALIVE", "POST", client = keepAliveClient)
+                sendKeepAlive(allocation, "KEEPALIVE", allocation.attempt.keepAlive::recordFailure)
             }
+        }
+    }
+
+    private suspend fun sendKeepAlive(allocation: Allocation, stage: String,
+                                      onAuthorizationRejected: (CloudHttpException) -> Unit = {}) {
+        val current = authorization
+        val path = "${allocation.path}/keepalive"
+        try {
+            sessionRequest(allocation, path, stage, "POST", client = keepAliveClient, bearer = current.gssvToken)
+        } catch (rejected: CloudHttpException) {
+            val renew = renewCloudAuthorization
+            if (rejected.status != 401 || current !is XCloudSession || renew == null) throw rejected
+            onAuthorizationRejected(rejected)
+            val replacement = authorizationLock.withLock {
+                requireActive(allocation)
+                val latest = authorization
+                if (latest !== current) return@withLock latest
+                val renewed = withTimeoutOrNull(20_000) { renew(current) } ?: throw rejected
+                requireActive(allocation)
+                val base = allocation.attempt.profile.baseUri.trimEnd('/')
+                if (renewed.credentialGeneration != current.credentialGeneration ||
+                    renewed.libraryAccountId != current.libraryAccountId || renewed.gssvToken.isBlank() ||
+                    (renewed.baseUri.trimEnd('/') != base && renewed.regions.none { it.baseUri.trimEnd('/') == base })) throw rejected
+                authorization = renewed
+                renewed
+            }
+            sessionRequest(allocation, path, stage, "POST", client = keepAliveClient, bearer = replacement.gssvToken)
         }
     }
 

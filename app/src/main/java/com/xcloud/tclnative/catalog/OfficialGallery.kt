@@ -18,7 +18,7 @@ data class GalleryProduct(
     val productId: String, val name: String? = null,
     val posterUrl: String? = null, val tileUrl: String? = null, val heroUrl: String? = null,
     val seriesOptimized: Boolean = false, val cloudSupported: Boolean? = null,
-    val cloudTitleId: String? = null
+    val cloudTitleId: String? = null, val englishName: String? = null
 )
 
 data class OfficialGallery(
@@ -45,7 +45,8 @@ data class OfficialGallery(
 
 /** A browse card may have no launch binding yet; a Store product never fabricates a titleId. */
 data class CatalogCard(val game: GameTitle? = null, val product: GalleryProduct? = null,
-                       val gamePass: Boolean = game?.gamePass == true, val nativeIdentity: Boolean = false) {
+                       val gamePass: Boolean = game?.gamePass == true, val nativeIdentity: Boolean = false,
+                       val purchased: Boolean = false) {
     init { require(game != null || product != null);require(!nativeIdentity || game!=null) }
     // A native row keeps its identity when official names/art arrive; gallery editions keep product IDs.
     val key = if(nativeIdentity) "title:${game!!.titleId}" else product?.let { "product:${it.productId}" } ?: "title:${game!!.titleId}"

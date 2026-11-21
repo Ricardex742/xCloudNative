@@ -59,7 +59,14 @@ class GameOwnershipUiTest {
             all(search.body).filterIsInstance<TextView>().single {it.isClickable&&it.text.toString()=="Games"}.performClick()
             assertEquals("Forza",query);assertEquals(1,filters)
             val next=ConsoleDialogs.search(a,query) { query=it }
-            all(next.window!!.decorView).filterIsInstance<TextView>().single {it.isClickable&&it.text.toString().equals("Limpar busca",true)}.performClick()
+            val window = next.window!!
+            assertEquals(android.view.WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN,
+                window.attributes.softInputMode and android.view.WindowManager.LayoutParams.SOFT_INPUT_MASK_STATE)
+            assertFalse(all(next.body).filterIsInstance<EditText>().single().showSoftInputOnFocus)
+            val clear = all(window.decorView).filterIsInstance<TextView>()
+                .single { it.isClickable && it.text.toString().equals("Limpar busca", true) }
+            assertTrue(clear.hasFocus())
+            clear.performClick()
             assertEquals("",query)
         } finally { controller.pause().stop().destroy() }
     }

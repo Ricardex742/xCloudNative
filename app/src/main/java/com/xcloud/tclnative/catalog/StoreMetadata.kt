@@ -21,7 +21,8 @@ object StoreMetadata {
                 val programs=offerings.optJSONObject(key)?.optJSONArray("Programs") ?: return@let null
                 if((0 until programs.length()).any { programs.opt(it) !is String }) return@let null
                 programs.length()>0
-            }, (data.opt("XCloudTitleId") as? String)?.trim()?.takeIf { it.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,255}")) })
+            }, (data.opt("XCloudTitleId") as? String)?.trim()?.takeIf { it.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,255}")) },
+            englishName(data))
     }
     private fun JSONObject.text(key: String) = optString(key).takeIf { it.isNotBlank() && it != "null" }
     fun products(response: JSONObject): List<JSONObject> = when (val data = response.opt("Products")) {
@@ -37,6 +38,14 @@ object StoreMetadata {
         val list = data.optJSONArray("LocalizedProperties") ?: return null
         return (0 until list.length()).mapNotNull { list.optJSONObject(it) }
             .firstOrNull { it.optString("Language").equals("pt-BR", true) } ?: list.optJSONObject(0)
+    }
+    private fun englishName(data: JSONObject): String? {
+        val list = data.optJSONArray("LocalizedProperties")
+        val english = (0 until (list?.length() ?: 0)).mapNotNull { list?.optJSONObject(it) }
+            .filter { it.optString("Language").substringBefore('-').equals("en", true) }
+        return english.firstOrNull { it.optString("Language").equals("en-US", true) }?.text("ProductTitle")
+            ?: english.firstNotNullOfOrNull { it.text("ProductTitle") }
+            ?: data.text("EnglishProductTitle")
     }
     private fun artwork(localized: JSONObject?, purposes: List<String>): String? {
         val list = localized?.optJSONArray("Images") ?: return null
@@ -64,6 +73,7 @@ object StoreMetadata {
         return game.copy(
             productId = data.text("ProductId") ?: data.text("StoreId") ?: game.productId,
             name = local?.text("ProductTitle") ?: data.text("ProductTitle") ?: game.name,
+            englishName = englishName(data) ?: game.englishName,
             posterUrl = artwork(local, listOf("Poster", "BoxArt", "BrandedKeyArt", "Portrait"))
                 ?: direct(data, "Image_Poster") ?: game.posterUrl,
             tileUrl = artwork(local, listOf("SquareTile", "Tile", "BoxArt")) ?: direct(data, "Image_Tile") ?: game.tileUrl,
@@ -82,6 +92,7 @@ object StoreMetadata {
 /** A partial response can fill gaps without erasing artwork from another request. */
 internal fun GameTitle.withMetadataFallback(previous: GameTitle) = copy(
     name = if (name == titleId) previous.name else name,
+    englishName = englishName ?: previous.englishName,
     productId = productId ?: previous.productId,
     posterUrl = posterUrl ?: previous.posterUrl,
     tileUrl = tileUrl ?: previous.tileUrl,
@@ -103,7 +114,8 @@ class CatalogCache(private val file: File) {
             games.zip(restore(games)) { fresh, cached -> fresh.withMetadataFallback(cached) }
                 .filter { it.productId != null && (it.posterUrl != null || it.tileUrl != null) }.forEach { game ->
                 products.put(JSONObject().put("StoreId", game.productId).put("XCloudTitleId", game.titleId)
-                    .put("ProductTitle", game.name).put("Image_Poster", game.posterUrl).put("Image_Tile", game.tileUrl)
+                    .put("ProductTitle", game.name).put("EnglishProductTitle", game.englishName)
+                    .put("Image_Poster", game.posterUrl).put("Image_Tile", game.tileUrl)
                     .put("Image_Hero", game.heroUrl).put("SeriesOptimized", game.seriesOptimized))
             }
             file.parentFile?.mkdirs()

@@ -43,7 +43,8 @@ class CatalogFocusTest {
         assertEquals(Stay, CatalogFocusPolicy.grid(4, LEFT, 4, 10))
         assertEquals(Cover(9), CatalogFocusPolicy.grid(5, DOWN, 4, 10))
         assertEquals(Cover(5), CatalogFocusPolicy.grid(9, UP, 4, 10))
-        assertEquals(Stay, CatalogFocusPolicy.grid(6, DOWN, 4, 10))
+        assertEquals(Cover(9), CatalogFocusPolicy.grid(6, DOWN, 4, 10))
+        assertEquals(Stay, CatalogFocusPolicy.grid(9, DOWN, 4, 10))
     }
 
     @Test fun referenceCompositionFitsTheAvailableAreaOnTvAndWithPhoneInsets() {

@@ -95,6 +95,55 @@ class DashboardNavigationRegressionTest {
             assertTrue(card.performLongClick());assertEquals("NAV-8",shortcut);assertEquals(0,plays)
         } finally { v.close();c.pause().stop().destroy() }
     }
+    @Test fun downReachesTheThirdRowAndKeepsTheTabWhenCoversAreOffScreen() {
+        for (theme in listOf(UiTheme.GREEN, UiTheme.XBOX_ONE, UiTheme.XBOX_360_METRO)) {
+            DashboardTheme.apply(RuntimeEnvironment.getApplication(), theme)
+            val controller = Robolectric.buildActivity(Activity::class.java).setup()
+            val activity = controller.get()
+            val view = GameDashboardView(activity, GameLibrary(activity, "vertical-${theme.name}"), {}, {}, {}, {})
+            try {
+                val games = games().mapIndexed { index, game -> game.copy(productId = "P%011d".format(index)) }
+                val gallery = OfficialGallery(OfficialGalleryKind.PURCHASED,
+                    games.map { GalleryProduct(it.productId!!, it.name) })
+                activity.setContentView(view)
+                view.setGames(games)
+                view.setOfficialGallery(gallery.kind, gallery)
+                for (tab in listOf(LibraryTab.PURCHASED, LibraryTab.ALL)) {
+                    view.selectTab(tab)
+                    layout(view)
+                    view.restoreFocus()
+                    layout(view)
+                    selected(view, 0)
+                    repeat(2) { assertTrue(view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN))) }
+                    layout(view)
+                    val third = when(theme) { UiTheme.GREEN -> 12; UiTheme.XBOX_ONE -> 6; else -> 5 }
+                    selected(view, third)
+                    assertEquals(tab, view.activeTab)
+                }
+            } finally { view.close(); controller.pause().stop().destroy() }
+        }
+    }
+    @Test fun searchShortcutOpensOnShortPressAndClearsTheAppliedQueryWhenHeld() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        var searches = 0
+        val view = GameDashboardView(activity, GameLibrary(activity, "search-press"), {}, { searches++ }, {}, {})
+        try {
+            activity.setContentView(view)
+            view.setGames(games())
+            view.setSearch("Game 20")
+            layout(view)
+            val x = KeyEvent.KEYCODE_BUTTON_X
+            assertTrue(view.handleKey(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, x, 0)))
+            assertEquals(0, searches)
+            assertTrue(view.handleKey(KeyEvent(0, 50, KeyEvent.ACTION_UP, x, 0)))
+            assertEquals(1, searches)
+            view.handleKey(KeyEvent(1000, 1000, KeyEvent.ACTION_DOWN, x, 0))
+            view.handleKey(KeyEvent(1000, 2000, KeyEvent.ACTION_UP, x, 0))
+            assertEquals("", view.searchQuery)
+            assertEquals(1, searches)
+        } finally { view.close(); controller.pause().stop().destroy() }
+    }
     @Test fun horizontalDpadReachesEveryGameInBothDirectionsIncludingKeyRepeatsAndSpatialSearch() {
         for(theme in listOf(UiTheme.XBOX_360_NXE,UiTheme.XBOX_SERIES)) {
             DashboardTheme.apply(RuntimeEnvironment.getApplication(),theme)
@@ -171,7 +220,7 @@ class DashboardNavigationRegressionTest {
         } finally { v.close();c.pause().stop().destroy() }
     }
     @Test fun favoriteMarkerHasDistinctScalableArtworkForEveryConsoleIdentity() {
-        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();val view=FavoriteBadgeView(a);val signatures=mutableSetOf<Int>()
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();val view=CoverMarkerView(a);val signatures=mutableSetOf<Int>()
         try {
             for(theme in UiTheme.entries.filter { it.scene!=ConsoleScene.NONE }) {
                 DashboardTheme.apply(a,theme);view.refresh()

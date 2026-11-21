@@ -1,6 +1,8 @@
 package com.xcloud.tclnative.catalog
 
 import com.xcloud.tclnative.signaling.GameTitle
+import java.text.Collator
+import java.util.Locale
 
 /** Immutable inputs captured on Main; all catalog-sized work runs on the catalog worker. */
 internal data class CatalogInput(
@@ -23,7 +25,8 @@ internal data class CatalogPresentation(
     val cards: List<CatalogCard>,
     val positions: Map<String, Int>,
     val subscription: String?,
-    val gamePassProducts: Set<String>?
+    val gamePassProducts: Set<String>?,
+    val purchaseProducts: Set<String>
 ) {
     companion object {
         fun build(input: CatalogInput): CatalogPresentation = CatalogPresentationEngine().build(input)
@@ -36,11 +39,21 @@ internal class CatalogPresentationEngine {
     fun build(input: CatalogInput): CatalogPresentation {
         val catalog=data?.takeIf { it.matches(input) } ?: IndexedCatalog(input).also { data=it }
         val search=CatalogQuery(input.query)
-        val matching=catalog.select(input).asSequence().filter { card ->
-            search.matches(card) && input.ownershipFilter.accepts(input.ownership[card.ownershipProductId()] ?: Ownership.UNKNOWN)
+        fun ownership(card: CatalogCard) = input.ownership[card.ownershipProductId()] ?: Ownership.UNKNOWN
+        val eligible=catalog.select(input).asSequence().filter { card ->
+            search.matches(card) && input.ownershipFilter.accepts(ownership(card))
         }
+        val matching = if (input.tab == LibraryTab.PURCHASED) {
+            val groups = eligible.groupBy(::ownership)
+            Ownership.entries.asSequence().flatMap { status ->
+                groups[status].orEmpty().asSequence().map {
+                    if (status == Ownership.OWNED) it.copy(purchased = true) else it
+                }
+            }
+        } else eligible
         val visible=(input.limit?.let(matching::take) ?: matching).toList()
-        return CatalogPresentation(visible,visible.withIndex().associate { it.value.key to it.index },catalog.subscription,catalog.products)
+        return CatalogPresentation(visible,visible.withIndex().associate { it.value.key to it.index },catalog.subscription,
+            catalog.products,catalog.purchaseProducts)
     }
     private class IndexedCatalog(private val source: CatalogInput) {
         val products=if(source.galleries.containsKey(OfficialGalleryKind.GAME_PASS))
@@ -55,8 +68,11 @@ internal class CatalogPresentationEngine {
         val subscription=XboxProfile.subscription(source.games.flatMap { it.userSubscriptions+it.userPrograms })
         private val index=CloudTitleIndex(games)
         private val galleries=source.galleries.mapNotNull { (kind,gallery) -> gallery?.let {
-            kind to OfficialGalleryCards.matching(it,index,source.bindings,membership,"").sortedBy { it.sortKey }.toList()
+            val cards = OfficialGalleryCards.matching(it,index,source.bindings,membership,"")
+            kind to if (kind == OfficialGalleryKind.PURCHASED) sortByEnglishTitle(cards) else cards.sortedBy { it.sortKey }.toList()
         } }.toMap()
+        val purchaseProducts = galleries[OfficialGalleryKind.PURCHASED].orEmpty()
+            .mapNotNull(CatalogCard::ownershipProductId).toSet()
         private val official=galleries.values.flatten().distinctBy { it.key }
         private val byProduct=official.associateBy { it.product!!.productId }
         private val byTitle=official.filter { it.game!=null }.groupBy { GamePassCatalog.productKey(it.game!!.titleId) }
@@ -81,6 +97,13 @@ internal class CatalogPresentationEngine {
             if(input.tab==LibraryTab.ALL)return all
             return GameLibrary.select(games,input.tab,input.favorites,emptyMap(),products?.toList(),input.added,"",titles,input.recent)
                 .map { native.getValue(it.titleId) }
+        }
+        private fun sortByEnglishTitle(cards: Sequence<CatalogCard>): List<CatalogCard> {
+            val alphabet = Collator.getInstance(Locale.US).apply { strength = Collator.PRIMARY }
+            return cards.map { card ->
+                alphabet.getCollationKey(card.product?.englishName ?: card.game?.englishName ?: card.name) to card
+            }.sortedWith(compareBy { (key, _) -> key })
+                .map { (_, card) -> card }.toList()
         }
     }
 }

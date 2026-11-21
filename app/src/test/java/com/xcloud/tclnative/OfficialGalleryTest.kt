@@ -98,6 +98,8 @@ class OfficialGalleryTest {
             server.enqueue(MockResponse().setBody("""{"Products":[
                 {"ProductId":"BBBBBBBBBBBB","XCloudOfferings":{"XGPUWEB":{"Programs":["GPULTIMATE"]}},"LocalizedProperties":[{"Language":"pt-BR","ProductTitle":"Meu jogo","Images":[{"ImagePurpose":"Poster","Uri":"https://example.com/poster.png"}]}]},
                 {"ProductId":"CCCCCCCCCCCC","ProductTitle":"Not in this gallery"}]}"""))
+            server.enqueue(MockResponse().setBody("""{"Products":[{"ProductId":"BBBBBBBBBBBB",
+                "LocalizedProperties":[{"Language":"en-US","ProductTitle":"My game"}]}]}"""))
             var loaded=source
             service.hydrateOfficialGallery(source,setOf("AAAAAAAAAAAA")) { loaded=it }
             assertEquals(listOf("AAAAAAAAAAAA","BBBBBBBBBBBB"),loaded.products.map { it.productId })
@@ -108,7 +110,10 @@ class OfficialGalleryTest {
             assertEquals("BBBBBBBBBBBB",JSONObject(request.body.readUtf8()).getJSONArray("Products").getString(0))
             assertTrue(request.getHeader("MS-CV")!!.matches(Regex("[A-Za-z0-9+/]{22}[.]0")))
             assertNull(request.getHeader("Authorization"))
+            assertEquals("en-us",server.takeRequest().requestUrl!!.queryParameter("languages"))
+            assertEquals("My game", loaded.products.last().englishName)
             server.enqueue(MockResponse().setResponseCode(503))
+            server.enqueue(MockResponse().setBody("""{"Products":[]}"""))
             service.hydrateOfficialGallery(source,setOf("AAAAAAAAAAAA")) { loaded=it }
             assertEquals(2,loaded.products.size);assertTrue(loaded.metadataFailed)
         } finally { server.shutdown() }

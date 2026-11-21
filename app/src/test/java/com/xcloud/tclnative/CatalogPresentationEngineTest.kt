@@ -6,6 +6,26 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CatalogPresentationEngineTest {
+    @Test fun purchaseGallerySortsEachLicenseGroupByEnglishTitleAndMarksOnlyPurchases() {
+        val products = listOf(
+            GalleryProduct("AAAAAAAAAAAA", "Abelha", englishName = "Zebra"),
+            GalleryProduct("BBBBBBBBBBBB", "Zíper", englishName = "Apple"),
+            GalleryProduct("CCCCCCCCCCCC", "Abacaxi", englishName = "Yellow"),
+            GalleryProduct("DDDDDDDDDDDD", "Voo", englishName = "Blue"),
+            GalleryProduct("EEEEEEEEEEEE", "A confirmar")
+        )
+        val gallery = OfficialGallery(OfficialGalleryKind.PURCHASED, products)
+        val rights = mapOf("AAAAAAAAAAAA" to Ownership.OWNED, "BBBBBBBBBBBB" to Ownership.OWNED,
+            "CCCCCCCCCCCC" to Ownership.NOT_OWNED, "DDDDDDDDDDDD" to Ownership.NOT_OWNED)
+        val input = CatalogInput(emptyList(), mapOf(gallery.kind to gallery), emptyMap(), null, emptySet(),
+            LibraryTab.PURCHASED, emptySet(), null, null, "", ownership = rights)
+        val result = CatalogPresentation.build(input).cards
+        assertEquals(listOf("Zíper", "Abelha", "Voo", "Abacaxi", "A confirmar"), result.map { it.name })
+        assertEquals(listOf(true, true, false, false, false), result.map { it.purchased })
+        assertEquals(listOf("Voo", "Abacaxi"), CatalogPresentation.build(
+            input.copy(ownershipFilter = OwnershipFilter.NOT_OWNED)).cards.map { it.name })
+    }
+
     @Test fun immutableArtworkJoinsAreReusedWhileFiltersAndHistoryStayCurrent() {
         val games=(0 until 4000).map { GameTitle("G$it","Game %04d".format(it),"P"+it.toString().padStart(11,'0')) }
         val input=CatalogInput(games,emptyMap(),emptyMap(),null,emptySet(),LibraryTab.ALL,emptySet(),null,null,"")

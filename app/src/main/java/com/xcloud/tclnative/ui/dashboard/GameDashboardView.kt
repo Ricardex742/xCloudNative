@@ -127,6 +127,7 @@ class GameDashboardView(
     private var ownershipGames: List<GameTitle>?=null
     private var ownershipGalleries: List<OfficialGallery>?=null
     private var ownershipIds=emptySet<String>()
+    private var purchaseProductIds = emptySet<String>()
     fun setOwnershipFilter(value: OwnershipFilter) { ownershipFilter=value;refresh();focusFirstCover() }
     private fun ownershipProducts(): Set<String> {
         val galleries=officialGalleries.values.filterNotNull()
@@ -139,7 +140,12 @@ class GameDashboardView(
     }
     fun beginOwnershipRequest(retry: Boolean=false): Set<String> {
         if(retry) { ownershipRequested.clear();ownership.clear() }
-        return (ownershipProducts()-ownershipRequested).also { ownershipRequested+=it;ownershipLoading=it.isNotEmpty() }
+        return (ownershipScope(retry)-ownershipRequested).also { ownershipRequested+=it;ownershipLoading=it.isNotEmpty() }
+    }
+    private fun ownershipScope(retry: Boolean = false): Set<String> = when {
+        retry || ownershipFilter != OwnershipFilter.ALL -> ownershipProducts()
+        activeTab == LibraryTab.PURCHASED -> purchaseProductIds
+        else -> emptySet()
     }
     fun updateOwnership(batch: Map<String,Ownership>) { ownership.putAll(batch);refresh() }
     fun finishOwnershipRequest() { ownershipLoading=false;refresh() }
@@ -245,7 +251,10 @@ class GameDashboardView(
         DashboardTheme.button(context,LibraryTab.PURCHASED.label) { selectTab(LibraryTab.PURCHASED);focusFirstCover() },
         DashboardTheme.button(context,UiText.text("Configurações")) { if(designScene==ConsoleScene.PS5) onThemeSettings(SettingsPage.VIDEO) else onOptions() }
     ).onEach { it.id=generateViewId();shortcuts.addView(it) }
-    private val searchButton = SearchButton(context,onSearch)
+    private var searchKeyDownAt: Long? = null
+    private val searchButton = SearchButton(context,onSearch).apply {
+        setOnLongClickListener { clearSearch() }
+    }
     private val connected = View(context).apply { background = rounded(0xff22b444.toInt(), 1000f) }
     private val navigation = FrameLayout(context).apply { clipChildren = false; clipToPadding = false }
     private val tabRow = LinearLayout(context).apply {
@@ -258,12 +267,12 @@ class GameDashboardView(
     private val rb = label(24f).apply { text = "RB"; gravity = Gravity.CENTER }
     private val grid = object : RecyclerView(context) {
         override fun focusSearch(focused: View, direction: Int): View? {
-            if((seriesGrid || playStationGrid) && hasFocus()) {
+            if(!cardHorizontal && hasFocus()) {
                 val key=when(direction) {
                     FOCUS_LEFT -> KeyEvent.KEYCODE_DPAD_LEFT;FOCUS_RIGHT -> KeyEvent.KEYCODE_DPAD_RIGHT
                     FOCUS_UP -> KeyEvent.KEYCODE_DPAD_UP;FOCUS_DOWN -> KeyEvent.KEYCODE_DPAD_DOWN;else -> null
                 }
-                if(key!=null) { handleGridKey(KeyEvent(KeyEvent.ACTION_DOWN,key));return findFocus() ?: focused }
+                if(key != null && handleGridKey(KeyEvent(KeyEvent.ACTION_DOWN,key))) return findFocus() ?: focused
             }
             // Spatial search can prefer the header over an off-screen, differently sized tile.
             if(cardHorizontal && hasFocus() && direction in listOf(FOCUS_LEFT,FOCUS_RIGHT)) {
@@ -282,6 +291,8 @@ class GameDashboardView(
     }.apply {
         id = generateViewId()
         DashboardTheme.customFocus(this)
+        isFocusable = true
+        isFocusableInTouchMode = true
         layoutManager = GridLayoutManager(context, COLUMNS)
         clipToPadding = false
         itemAnimator = null
@@ -524,9 +535,14 @@ class GameDashboardView(
         if(searchQuery.isNotBlank() && activeTab!=LibraryTab.ALL) selectTab(LibraryTab.ALL) else refresh()
         focusFirstCover()
     }
+    private fun clearSearch(): Boolean {
+        if (searchQuery.isBlank()) return false
+        setSearch("")
+        return true
+    }
     fun refresh() {
         if(closed) return
-        if(ownershipFilter!=OwnershipFilter.ALL && (ownershipProducts()-ownershipRequested).isNotEmpty()) onOwnershipNeeded()
+        if(ownershipFilter!=OwnershipFilter.ALL && ownershipScope().any { it !in ownershipRequested }) onOwnershipNeeded()
         if(artworkPaused) return
         val limit=homeCoverLimit()
         val categoryChanged=renderedTab!=activeTab || renderedQuery!=searchQuery || renderedOwnershipFilter!=ownershipFilter
@@ -570,6 +586,9 @@ class GameDashboardView(
         } ?: 0
         positions=presentation.positions
         gamePassProducts=presentation.gamePassProducts
+        purchaseProductIds=presentation.purchaseProducts
+        if (activeTab == LibraryTab.PURCHASED && ownershipFilter == OwnershipFilter.ALL &&
+            purchaseProductIds.any { it !in ownershipRequested }) onOwnershipNeeded()
         val updated=profile.copy(subscription=presentation.subscription ?: profile.subscription)
         if(updated!=profile) { profile=updated; renderProfile() }
         adapter.submit(presentation.cards,changes)
@@ -726,13 +745,12 @@ class GameDashboardView(
         val request = catalogFocus.beginLayout()
         if(adapter.itemCount==0) { catalogFocus.targetKey=null; if(designScene==ConsoleScene.XBOX_ORIGINAL && originalBrowsing) consoleBack.requestFocus() else categoryFocus().requestFocus();return }
         val target=adapter.items[position.coerceIn(0,adapter.itemCount-1)].key
-        if(cardHorizontal) catalogFocus.targetKey=target
+        catalogFocus.targetKey=target
         fun focus(attempt: Int) {
             if(closed || !catalogFocus.isCurrent(request)) return
             val index=positions[target] ?: run { catalogFocus.targetKey=null;return }
             val card=grid.findViewHolderForAdapterPosition(index)?.itemView
-            if(card!=null) {
-                card.requestFocus()
+            if(card != null && card.requestFocus()) {
                 // Selection changes the tile's width; reveal it after that layout, too.
                 grid.doOnNextLayout {
                     if(!closed && catalogFocus.isCurrent(request) && card.hasFocus())
@@ -741,6 +759,13 @@ class GameDashboardView(
                 grid.requestLayout()
                 catalogFocus.targetKey=null
             } else if(attempt<3) {
+                // Keep focus inside the grid while RecyclerView detaches the old row.
+                if (grid.hasFocus() && !grid.isFocused) {
+                    val previous = grid.descendantFocusability
+                    grid.descendantFocusability = ViewGroup.FOCUS_BLOCK_DESCENDANTS
+                    grid.requestFocus()
+                    grid.descendantFocusability = previous
+                }
                 grid.doOnNextLayout { focus(attempt+1) }
                 grid.scrollToPosition(index);grid.requestLayout()
             } else catalogFocus.targetKey=null
@@ -771,7 +796,7 @@ class GameDashboardView(
         return false
     }
     private fun handleGridKey(event: KeyEvent): Boolean {
-        if((!seriesGrid && !playStationGrid) || !grid.hasFocus()) return false
+        if(cardHorizontal || !grid.hasFocus()) return false
         val direction = when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT -> CatalogDirection.LEFT
             KeyEvent.KEYCODE_DPAD_RIGHT -> CatalogDirection.RIGHT
@@ -779,18 +804,43 @@ class GameDashboardView(
             KeyEvent.KEYCODE_DPAD_DOWN -> CatalogDirection.DOWN
             else -> return false
         }
+        val vertical = direction == CatalogDirection.UP || direction == CatalogDirection.DOWN
+        if (!vertical && !seriesGrid && !playStationGrid) return false
         if (event.action == KeyEvent.ACTION_DOWN) {
             val position = positions[catalogFocus.targetKey ?: selectedCard?.key] ?: return true
-            when (val destination = CatalogFocusPolicy.grid(position, direction, cardColumns, adapter.itemCount)) {
-                CatalogFocusDestination.Category -> { catalogFocus.cancel(); categoryFocus().requestFocus() }
+            val destination = if (designScene == ConsoleScene.XBOX_360_METRO) metroVerticalFocus(position, direction)
+                else CatalogFocusPolicy.grid(position, direction, cardColumns, adapter.itemCount)
+            when (destination) {
+                CatalogFocusDestination.Category -> {
+                    catalogFocus.cancel()
+                    if (designScene == ConsoleScene.XBOX_ORIGINAL) consoleBack.requestFocus() else categoryFocus().requestFocus()
+                }
                 is CatalogFocusDestination.Cover -> {
-                    catalogFocus.targetKey = adapter.items[destination.position].key
                     focusCoverAt(destination.position)
                 }
                 else -> Unit
             }
         }
         return true
+    }
+    private fun metroVerticalFocus(position: Int, direction: CatalogDirection): CatalogFocusDestination {
+        val spans = (grid.layoutManager as GridLayoutManager).spanSizeLookup
+        val row = spans.getSpanGroupIndex(position, cardColumns)
+        val step = if (direction == CatalogDirection.UP) -1 else 1
+        if (row + step < 0) return CatalogFocusDestination.Category
+        val column = spans.getSpanIndex(position, cardColumns)
+        var next = position + step
+        var closest: Int? = null
+        while (next in 0 until adapter.itemCount) {
+            val nextRow = spans.getSpanGroupIndex(next, cardColumns)
+            if (nextRow == row + step) {
+                closest = next
+                val start = spans.getSpanIndex(next, cardColumns)
+                if (column in start until (start + spans.getSpanSize(next))) break
+            } else if (nextRow != row) break
+            next += step
+        }
+        return closest?.let { CatalogFocusDestination.Cover(it) } ?: CatalogFocusDestination.Stay
     }
     override fun dispatchKeyEvent(event: KeyEvent): Boolean = handleGridKey(event) || handleCarouselKey(event) || super.dispatchKeyEvent(event)
     internal fun setSavedSession(resume: (() -> Unit)?) {
@@ -945,8 +995,24 @@ class GameDashboardView(
         if(handleGridKey(event)) return true
         if(handleCarouselKey(event)) return true
         val key = event.keyCode
+        if (key == KeyEvent.KEYCODE_DPAD_DOWN && categoryFocus().isFocused && categoryFocus().nextFocusDownId == grid.id &&
+            (adapter.itemCount > 0 || isCatalogUpdating)) {
+            if (event.action == KeyEvent.ACTION_DOWN) focusFirstCover()
+            return true
+        }
+        if (key == KeyEvent.KEYCODE_BUTTON_X) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) searchKeyDownAt = event.eventTime
+            if (event.action == KeyEvent.ACTION_UP) {
+                val started = searchKeyDownAt.also { searchKeyDownAt = null }
+                if (started != null && !event.isCanceled) {
+                    if (event.eventTime - started >= android.view.ViewConfiguration.getLongPressTimeout()) clearSearch()
+                    else onSearch()
+                }
+            }
+            return true
+        }
         val handled = key in setOf(KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_R1,
-            KeyEvent.KEYCODE_BUTTON_Y, KeyEvent.KEYCODE_BUTTON_X, KeyEvent.KEYCODE_BUTTON_START,
+            KeyEvent.KEYCODE_BUTTON_Y, KeyEvent.KEYCODE_BUTTON_START,
             KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_BUTTON_B) ||
             key==KeyEvent.KEYCODE_BUTTON_SELECT && onGameShortcut!=null && selectedGame!=null
         if (!handled) return false
@@ -954,7 +1020,6 @@ class GameDashboardView(
             KeyEvent.KEYCODE_BUTTON_L1 -> cycleTab(-1)
             KeyEvent.KEYCODE_BUTTON_R1 -> cycleTab(1)
             KeyEvent.KEYCODE_BUTTON_Y -> toggleSelectedFavorite()
-            KeyEvent.KEYCODE_BUTTON_X -> onSearch()
             KeyEvent.KEYCODE_BUTTON_START -> if(designScene.playStation) onOptions() else openGuideOrOptions()
             KeyEvent.KEYCODE_BUTTON_SELECT -> selectedGame?.let { onGameShortcut?.invoke(it) }
             KeyEvent.KEYCODE_BUTTON_A -> findFocus()?.performClick()
@@ -1957,7 +2022,8 @@ class GameDashboardView(
         private val reflectionPaint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
         private val reflectionSrc=Rect()
         private val reflectionDst=RectF()
-        private val favorite = FavoriteBadgeView(context)
+        private val favorite = CoverMarkerView(context)
+        private val purchase = CoverMarkerView(context, purchase = true)
         var focused = false
             set(value) {
                 field=value
@@ -1979,6 +2045,7 @@ class GameDashboardView(
             cover.addView(fallback, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
             cover.addView(image, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
             cover.addView(badges)
+            cover.addView(purchase)
             addView(cover);addView(rowBadges);addView(caption); addView(favorite)
         }
         fun bind(game: CatalogCard) {
@@ -2142,8 +2209,20 @@ class GameDashboardView(
         }
         fun bindFavorite(game: CatalogCard) {
             val starred=game.game?.let { library.isFavorite(it.titleId) } == true
-            contentDescription = game.name + if(starred) UiText.text(", favorito") else ""
+            contentDescription = game.name + (if(starred) UiText.text(", favorito") else "") +
+                (if(game.purchased) UiText.text(", comprado") else "")
             favorite.visibility=if(starred) View.VISIBLE else View.GONE
+            purchase.visibility = if (game.purchased) View.VISIBLE else View.GONE
+            if (game.purchased) {
+                purchase.refresh()
+                cover.bringChildToFront(purchase)
+                val side = (22 * scale).roundToInt().coerceAtLeast(1)
+                val list = designScene == ConsoleScene.XBOX_360 || designScene == ConsoleScene.XBOX_ORIGINAL
+                purchase.layoutParams = LayoutParams(side, side, Gravity.TOP or Gravity.END).apply {
+                    topMargin = (4 * scale).roundToInt()
+                    marginEnd = ((if (starred && !list) 33 else 4) * scale).roundToInt()
+                }
+            }
         }
         fun bindArtwork(game: CatalogCard) {
             fallback.visibility=VISIBLE

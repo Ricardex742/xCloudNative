@@ -578,7 +578,7 @@ open class MainActivity : Activity() {
         recentHistoryJob?.cancel(); recentHistoryJob=null
         val signaling = XCloudSignalingClient(session, transferTokenProvider = {
             authenticator.getConsoleTransferToken(session.credentialGeneration)
-        })
+        }, renewCloudAuthorization = authenticator::renewCloudAuthorization)
         dashboardJob = mainScope.launch {
             val allGames = try {
                 validatedGames ?: signaling.fetchCatalogGames().let { raw ->
@@ -654,7 +654,9 @@ open class MainActivity : Activity() {
                     nativeMetadata.await()
                     val known=currentGames.filter { it.name!=it.titleId && (it.posterUrl!=null || it.tileUrl!=null) }
                         .mapNotNull { it.productId?.let(com.xcloud.tclnative.catalog.GamePassCatalog::productKey) }.toSet()
-                    catalog.hydrateOfficialGallery(gallery,known) { hydrated -> withContext(Dispatchers.Main) {
+                    val knownEnglish = currentGames.filter { it.englishName != null }
+                        .mapNotNull { it.productId?.let(com.xcloud.tclnative.catalog.GamePassCatalog::productKey) }.toSet()
+                    catalog.hydrateOfficialGallery(gallery, known, knownEnglish) { hydrated -> withContext(Dispatchers.Main) {
                         if(dashboard===view) view.updateOfficialGallery(hydrated)
                     } }
                 }

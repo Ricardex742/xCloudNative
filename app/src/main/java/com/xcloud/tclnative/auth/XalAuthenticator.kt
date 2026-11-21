@@ -215,12 +215,22 @@ class XalAuthenticator(
         }
 
     suspend fun authenticateToXCloud(rpsTicketInput: String? = null, onProgress: (String) -> Unit = {}): Result<XCloudSession> = result {
-        val bypass = regionBypass()
         profileGrant = null
         var snapshot = credentials.snapshot()
         if (!rpsTicketInput.isNullOrBlank() && snapshot.token?.let { normalizeRpsTicket(it.ticket) } != normalizeRpsTicket(rpsTicketInput)) {
             snapshot = saveCredentials(rpsTicketInput, expectedGeneration = snapshot.generation)
         }
+        cloudAuthorization(snapshot, regionBypass(), onProgress, forDashboard = true)
+    }
+
+    internal suspend fun renewCloudAuthorization(previous: XCloudSession): XCloudSession {
+        val snapshot = credentials.snapshot()
+        if (snapshot.generation != previous.credentialGeneration) throw AuthenticationRequiredException()
+        return cloudAuthorization(snapshot, previous.regionBypass, {}, forDashboard = false)
+    }
+
+    private suspend fun cloudAuthorization(snapshot: AccountCredentials.Snapshot, bypass: RegionBypass,
+                                           onProgress: (String) -> Unit, forDashboard: Boolean): XCloudSession {
         val grant = streamingGrant(snapshot,onProgress)
         val generation = grant.generation
         val user = grant.user
@@ -237,8 +247,8 @@ class XalAuthenticator(
         val region = (0 until regions.length()).map { regions.getJSONObject(it) }.firstOrNull { it.optBoolean("isDefault") }
             ?: throw java.io.IOException("AUTH_GSSV: o serviço não informou uma região padrão")
         credentials.requireCurrent(generation)
-        profileGrant = ProfileGrant(user.getString("Token"), hash, generation)
-        XCloudSession(cloud.getString("gsToken"), region.getString("baseUri").trimEnd('/'), hash,
+        if (forDashboard) profileGrant = ProfileGrant(user.getString("Token"), hash, generation)
+        return XCloudSession(cloud.getString("gsToken"), region.getString("baseUri").trimEnd('/'), hash,
             clockMs() + cloud.optLong("durationInSeconds", 3600) * 1000, xuid = xuid, regionBypass = bypass, credentialGeneration = generation,
             regions=(0 until regions.length()).mapNotNull { index ->
                 val item=regions.getJSONObject(index)

@@ -51,9 +51,7 @@ class SessionKeepAlive(
                 throw cancelled
             } catch(error: Exception) {
                 currentCoroutineContext().ensureActive()
-                val old=status
-                status=old.copy(failures=old.failures+1,consecutiveFailures=old.consecutiveFailures+1,
-                    lastFailure=SessionFailure.from(error).code)
+                recordFailure(error)
                 if(!retryable(error)) throw error
                 val start=firstFailureMs ?: clockMs().also { firstFailureMs=it }
                 val remaining=RETRY_WINDOW_MS-(clockMs()-start).coerceAtLeast(0)
@@ -67,6 +65,12 @@ class SessionKeepAlive(
                 if(clockMs()-start>=RETRY_WINDOW_MS) throw error
             }
         }
+    }
+
+    internal fun recordFailure(error: Exception) {
+        val old = status
+        status = old.copy(failures = old.failures + 1, consecutiveFailures = old.consecutiveFailures + 1,
+            lastFailure = SessionFailure.from(error).code)
     }
 
     private fun retryable(error: Exception): Boolean = when(error) {

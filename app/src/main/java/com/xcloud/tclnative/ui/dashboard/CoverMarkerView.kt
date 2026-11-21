@@ -8,8 +8,8 @@ import com.xcloud.tclnative.settings.UiTheme
 import kotlin.math.cos
 import kotlin.math.sin
 
-/** Resolution-independent favorite marker. Its shape and finish follow the dashboard generation. */
-internal class FavoriteBadgeView(context: Context): View(context) {
+/** Resolution-independent marker whose finish follows the dashboard theme. */
+internal class CoverMarkerView(context: Context, private val purchase: Boolean = false): View(context) {
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
     private val star=Path().apply {
         repeat(10) { i ->
@@ -19,6 +19,7 @@ internal class FavoriteBadgeView(context: Context): View(context) {
             if(i==0) moveTo(x,y) else lineTo(x,y)
         };close()
     }
+    private val check = Path().apply { moveTo(6f, 12f); lineTo(10f, 16f); lineTo(18f, 8f) }
     private var theme: UiTheme?=null
     private var scene=ConsoleScene.NONE
     private var top=0;private var bottom=0;private var ink=0;private var rim=0
@@ -66,7 +67,16 @@ internal class FavoriteBadgeView(context: Context): View(context) {
         canvas.drawRoundRect(.5f,.5f,23.5f,23.5f,radius,radius,paint)
         paint.shader=null
         if(rim!=Color.TRANSPARENT) { paint.color=rim;paint.style=Paint.Style.STROKE;paint.strokeWidth=.8f;canvas.drawRoundRect(.5f,.5f,23.5f,23.5f,radius,radius,paint) }
-        paint.style=Paint.Style.FILL;paint.color=ink;canvas.drawPath(star,paint)
+        if (purchase) {
+            paint.color = if (scene == ConsoleScene.XBOX_360) ink else Color.WHITE
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2.7f
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeJoin = Paint.Join.ROUND
+            canvas.drawPath(check, paint)
+        } else {
+            paint.style=Paint.Style.FILL;paint.color=ink;canvas.drawPath(star,paint)
+        }
         canvas.restoreToCount(save)
     }
 }
