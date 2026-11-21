@@ -47,7 +47,6 @@ import com.xcloud.tclnative.ui.dashboard.GameNetworkPanel
 import com.xcloud.tclnative.ui.dashboard.NetworkIndicator
 import com.xcloud.tclnative.ui.dashboard.SessionOptionsPanel
 import com.xcloud.tclnative.ui.dashboard.ConsoleLoginView
-import com.xcloud.tclnative.ui.dashboard.MicrosoftLoginDialog
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialogs
 import com.xcloud.tclnative.ui.dashboard.ConsoleAction
 import com.xcloud.tclnative.catalog.CatalogService
@@ -193,7 +192,6 @@ open class MainActivity : Activity() {
     private var playtimeCheckedAt: Long?=null
     private var gameLibrary: GameLibrary? = null
     private var loginView: ConsoleLoginView? = null
-    private var browserLogin: MicrosoftLoginDialog? = null
     private var accountJob: Job? = null
     private var currentSignaling: XCloudSignalingClient? = null
     private var playbackSignaling: XCloudSignalingClient? = null
@@ -457,7 +455,6 @@ open class MainActivity : Activity() {
         friendsPanel?.close();friendsPanel=null
         playtimeJob?.cancel();playtimeJob=null;playtimeCheckedAt=null
         ownershipJob?.cancel();ownershipJob=null
-        browserLogin?.close();browserLogin=null
         galleryLaunchJob?.cancel(); galleryLaunchJob=null
         recentHistoryJob?.cancel(); recentHistoryJob=null
         accountJob?.cancel()
@@ -477,9 +474,10 @@ open class MainActivity : Activity() {
         controlPanel.layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT)
         val view = ConsoleLoginView(this,
-            signIn = { startQrCodeLoginFlow() },
+            signIn = { startDeviceCodeLoginFlow(openInBrowser = false) },
             back = { if (loginView?.isQr == true) renderLoginMenu() else showExitDialog() },
-            openApproval = { uri -> openAccountPage(uri) },browserSignIn = { startBrowserLoginFlow() })
+            openApproval = ::openAccountPage,
+            browserSignIn = { startDeviceCodeLoginFlow(openInBrowser = true) })
         loginView = view
         controlPanel.addView(view, LinearLayout.LayoutParams(-1,-1))
         controlPanel.visibility = View.VISIBLE
@@ -523,11 +521,10 @@ open class MainActivity : Activity() {
         }
     }
 
-    private fun startQrCodeLoginFlow() {
-        browserLogin?.close();browserLogin=null
+    private fun startDeviceCodeLoginFlow(openInBrowser: Boolean) {
         qrPollingJob?.cancel()
         val view = loginView ?: return
-        view.beginQr()
+        view.beginQr(openInBrowser)
         qrPollingJob = mainScope.launch {
             val qrRes = authenticator.requestDeviceCodeQr()
             qrRes.onSuccess { info ->
@@ -541,34 +538,6 @@ open class MainActivity : Activity() {
             }.onFailure { error ->
                 if (loginView === view) view.showError(UiText.text("Não foi possível gerar o QR Code. {0}",UiText.nested(error.message.orEmpty())))
             }
-        }
-    }
-
-    private fun startBrowserLoginFlow() {
-        qrPollingJob?.cancel();browserLogin?.close();browserLogin=null
-        val view=loginView ?: return
-        val authorization=authenticator.beginBrowserLogin()
-        view.showConnecting(UiText.text("Abrindo o login da Microsoft…"))
-        try {
-            browserLogin=MicrosoftLoginDialog(this,authorization,authorized={ code ->
-                browserLogin=null
-                if(loginView===view) {
-                    view.showConnecting(UiText.text("Conectando sua conta ao Xbox…"))
-                    qrPollingJob=mainScope.launch {
-                        authenticator.completeBrowserLogin(authorization,code).onSuccess {
-                            if(loginView===view) connectToXboxCloud()
-                        }.onFailure {
-                            if(loginView===view) view.showError(UiText.text("Não foi possível concluir o login. Tente novamente ou use o QR Code."))
-                        }
-                    }
-                }
-            },cancelled={ browserLogin=null;if(loginView===view) view.landing() },failed={ message ->
-                browserLogin=null;if(loginView===view) view.showError(message)
-            })
-            browserLogin?.show()
-        } catch(_: Exception) {
-            browserLogin?.close();browserLogin=null
-            view.showError(UiText.text("Não foi possível abrir o login da Microsoft. Tente novamente ou use o QR Code."))
         }
     }
 
@@ -2537,7 +2506,6 @@ open class MainActivity : Activity() {
         shortcutSwitchDialog?.dismiss()
         friendsPanel?.close();friendsPanel=null
         transmissionRecovery?.close()
-        browserLogin?.close();browserLogin=null
         joystickDispatch.request(false)
         playbackDisplay.restore()
         reportTracker?.finish(android.os.SystemClock.elapsedRealtime(),SessionEnd.APP_CLOSED,webrtcClient?.currentInputMetrics())

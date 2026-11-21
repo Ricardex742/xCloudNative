@@ -3,7 +3,12 @@ package com.xcloud.tclnative.ui.dashboard
 import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.ui.ImmersiveWindow
 
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
 import android.content.Context
+import android.os.Build
+import android.os.PersistableBundle
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.text.SpannableString
@@ -32,6 +37,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
     var isQr = false
         private set
     private var info: DeviceCodeInfo? = null
+    private var browserApproval = false
     private var failed = false
     private var connecting = false
     private var geometry = 0L
@@ -61,8 +67,11 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
     private val primary = DashboardTheme.button(context,UiText.text("ENTRAR COM QR CODE")) {
         if (!connecting) {
             val current = info
-            if (current != null && !failed) openApproval(current.verificationUriComplete ?: current.verificationUri)
-            else if(!isQr && preferBrowser && browserSignIn!=null) browserSignIn.invoke() else signIn()
+            when {
+                current != null && !failed && System.currentTimeMillis() < current.expiresAtMs -> openDeviceApproval(current)
+                browserSignIn != null && (if (isQr) browserApproval else preferBrowser) -> browserSignIn.invoke()
+                else -> signIn()
+            }
         }
     }
     private val alternate = DashboardTheme.button(context,UiText.text("ENTRAR COM QR CODE")) {
@@ -90,11 +99,23 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
         text=value; typeface=DashboardTheme.font(context,heavy); includeFontPadding=false
         setTextColor(Color.WHITE); setTextSize(TypedValue.COMPLEX_UNIT_PX,size.toFloat()); maxLines=1
     }
+    private fun openDeviceApproval(current: DeviceCodeInfo) {
+        if (browserApproval && current.verificationUriComplete == null) {
+            val clip = ClipData.newPlainText("Microsoft", current.userCode)
+            if (Build.VERSION.SDK_INT >= 33) {
+                clip.description.extras = PersistableBundle().apply { putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true) }
+            }
+            context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(clip)
+        }
+        openApproval(current.verificationUriComplete ?: current.verificationUri)
+    }
+
     private fun bypassLabel() {
         bypass.text = UiText.uppercase(UiText.text("Bypass de região: {0}", UiText.nested(RegionBypassStore(context).read().label)))
     }
     fun landing() {
         ticker?.cancel(); info=null; failed=false; connecting=false; isQr=false
+        browserApproval=false
         bypass.isEnabled=true; bypassLabel()
         headline.visibility=VISIBLE; description.visibility=VISIBLE
         cardTitle.text=UiText.text("ENTRE PARA JOGAR")
@@ -106,8 +127,9 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
         listOf(qr,code,secondary,validity,spinner).forEach { it.visibility=GONE }
         geometry=0; requestLayout(); post { primary.requestFocus() }
     }
-    fun beginQr() {
+    fun beginQr(openInBrowser: Boolean = false) {
         ticker?.cancel(); info=null; failed=false; connecting=false; isQr=true
+        browserApproval=openInBrowser
         bypass.isEnabled=true
         alternate.visibility=GONE
         headline.visibility=GONE; description.visibility=GONE
@@ -125,8 +147,13 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
         info=value; failed=false
         qr.setImageBitmap(value.qrBitmap); code.text=value.userCode
         instructions.text=UiText.text("Escaneie o QR Code ou acesse\n{0} e informe o código:",UiText.nested(value.verificationUri))
+        if (browserApproval && value.verificationUriComplete == null) {
+            instructions.text = UiText.text("Cole o código na página da Microsoft e volte ao app.")
+            primary.text = UiText.text("COPIAR CÓDIGO E ABRIR")
+        }
         status.text=UiText.text("Aguardando sua aprovação na Microsoft…"); status.setTextColor(DashboardTheme.muted)
         primary.isEnabled=true; spinner.visibility=VISIBLE
+        if (browserApproval) post { if (info === value && !connecting && !failed) primary.requestFocus() }
         ticker?.cancel()
         ticker=scope.launch { while (isActive && isQr && !failed && !connecting) {
             val seconds=((value.expiresAtMs-System.currentTimeMillis())/1000).coerceAtLeast(0)

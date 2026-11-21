@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -56,7 +57,6 @@ data class AuthEndpoints(
     val xcloudLoginUrl: String = "https://xgpuweb.gssv-play-prod.xboxlive.com/v2/login/user",
     val transferTokenUrl: String = "https://login.live.com/oauth20_token.srf",
     val profileUrl: String = "https://profile.xboxlive.com/users/me/profile/settings?settings=GameDisplayName,GameDisplayPicRaw,Gamertag",
-    val authorizeUrl: String = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize",
     val remotePlayLoginUrl: String = "https://xhome.gssv-play-prod.xboxlive.com/v2/login/user"
 )
 data class DeviceCodeInfo(
@@ -145,26 +145,23 @@ class XalAuthenticator(
         it.clientId == XCLOUD_CLIENT_ID && !it.refreshToken.isNullOrBlank()
     } == true
 
-    fun beginBrowserLogin() = BrowserAuthorization.create(clockMs(), endpoints.authorizeUrl, credentials.snapshot().generation)
-    suspend fun completeBrowserLogin(request: BrowserAuthorization,code: String): Result<String> = result {
-        val generation = request.credentialGeneration ?: credentials.snapshot().generation
-        credentials.requireCurrent(generation)
-        val data=JSONObject(post(endpoints.tokenUrl,"AUTH_BROWSER",request.exchangeForm(code,clockMs())))
-        val access=data.getString("access_token").takeIf { it.isNotBlank() }
-            ?: throw AuthenticationRequiredException("AUTH_BROWSER: access token missing")
-        val refresh=data.optString("refresh_token").takeIf { it.isNotBlank() }
-            ?: throw AuthenticationRequiredException("AUTH_BROWSER: refresh token missing")
-        val expires=data.getLong("expires_in").takeIf { it in 1..86_400 }
-            ?: throw AuthenticationRequiredException("AUTH_BROWSER: invalid token lifetime")
-        checkNotNull(saveCredentials(access, refresh, expires, XCLOUD_CLIENT_ID, generation).token).ticket
+    private fun microsoftApprovalUrl(value: String): String? {
+        val url = value.toHttpUrlOrNull() ?: return null
+        if (!url.isHttps || url.port != 443 || url.username.isNotEmpty() || url.password.isNotEmpty()) return null
+        val host = url.host
+        return url.takeIf {
+            host == "login.live.com" || host == "microsoft.com" ||
+                host.endsWith(".microsoft.com") || host == "login.microsoftonline.com"
+        }?.toString()
     }
 
     suspend fun requestDeviceCodeQr(): Result<DeviceCodeInfo> = result {
         val generation = credentials.snapshot().generation
         val data = JSONObject(post(endpoints.deviceCodeUrl, "AUTH_DEVICE_CODE", FormBody.Builder()
             .add("client_id", XCLOUD_CLIENT_ID).add("scope", MSAL_SCOPE).build()))
-        val uri = data.getString("verification_uri")
-        val complete = data.optString("verification_uri_complete").takeIf { it.isNotBlank() }
+        val uri = microsoftApprovalUrl(data.getString("verification_uri"))
+            ?: throw AuthenticationRequiredException("AUTH_DEVICE_CODE: endereço de aprovação inválido")
+        val complete = microsoftApprovalUrl(data.optString("verification_uri_complete"))
         // The provider's URI is authoritative; display the separate user code when no complete URI exists.
         val bitmap = runCatching { generateQrCodeBitmap(complete ?: uri) }.getOrNull()
         DeviceCodeInfo(data.getString("user_code"), data.getString("device_code"), uri, complete,

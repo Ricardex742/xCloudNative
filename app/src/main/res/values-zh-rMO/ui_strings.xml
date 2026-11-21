@@ -1312,4 +1312,6 @@
     <string name="ui_8d925c5a9bc7ef22" formatted="false">"瀏覽選單時，遊戲可能繼續在 Xbox 上運行。請在服務結束工作階段前繼續遊玩。"</string>
     <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"無法要求新的解像度。"</string>
     <string name="ui_a01008a72688bbf8" formatted="false">"保留的工作階段已無法使用。"</string>
+    <string name="ui_8f8affe0a3a4e987" formatted="false">"複製代碼並開啟"</string>
+    <string name="ui_bd0c36713bffd1ec" formatted="false">"在 Microsoft 頁面貼上代碼，再返回應用程式。"</string>
 </resources>

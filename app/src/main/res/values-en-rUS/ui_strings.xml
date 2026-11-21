@@ -1312,4 +1312,6 @@
     <string name="ui_8d925c5a9bc7ef22" formatted="false">"The game may keep running on Xbox while you browse. Resume before the service ends the session."</string>
     <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"Could not request the new resolution."</string>
     <string name="ui_a01008a72688bbf8" formatted="false">"The saved session is no longer available."</string>
+    <string name="ui_8f8affe0a3a4e987" formatted="false">"COPY CODE AND OPEN"</string>
+    <string name="ui_bd0c36713bffd1ec" formatted="false">"Paste the code on the Microsoft page, then return to the app."</string>
 </resources>

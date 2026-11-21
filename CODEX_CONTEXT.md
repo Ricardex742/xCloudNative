@@ -361,3 +361,9 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - A sessão existe na Activity e no serviço Xbox. O recurso não cria save do jogo, não pausa o jogo no servidor e não mantém a alocação após o encerramento do processo. Testar alterações de resolução e manutenção da posição com serviço e aparelho reais.
 - Passaram 53 testes direcionados e lint locais. O build do commit `e481b68dcc27a542c3bddfbdf67cfcefb3748fde` passou 883 testes JVM, lint, traduções e validadores gráficos. [Build 44847165182](https://github.com/Ricardex742/xCloudNative/actions/runs/44847165182)
 - O APK baixado mantém o certificado permanente, minSdk 24, launcher Android TV e depuração desabilitada. APK SHA-256 `9c7c1bab769b404384971a060f0a039c2979a6adb10e371dcc59ab01b7008377`. ZIP SHA-256 `accd531c6de087927885b8413b0fa2d0c769ef877d69c7de013d364e3f83778c`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44847165182/artifacts/14683389977)
+
+## Login Microsoft pelo navegador e por QR Code
+
+- A versão **0.41.5-device-login**, código 117, usa a autorização por código de dispositivo também em **Entrar com Microsoft**. A tela mostra o código e permite copiá-lo e abrir a página oficial no navegador do aparelho. O QR Code continua disponível em **Entrar com QR Code**.
+- O fluxo anterior enviava uma URI de retorno sem correspondência no cadastro do cliente OAuth. A nova solicitação usa o endpoint de código de dispositivo sem `redirect_uri`. Uma consulta sem credenciais ao endpoint de produção retornou HTTP 200 e uma página de verificação da Microsoft. A aprovação com uma conta real permanece pendente.
+- Endereços de aprovação precisam usar HTTPS e um host da Microsoft. O código só vai para a área de transferência após a ação do usuário. As credenciais salvas continuam usando o cliente e a renovação existentes.

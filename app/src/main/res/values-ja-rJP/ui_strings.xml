@@ -1312,4 +1312,6 @@
     <string name="ui_8d925c5a9bc7ef22" formatted="false">"メニューの操作中も Xbox でゲームが進行する場合があります。サービスがセッションを終了する前に再開してください。"</string>
     <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"新しい解像度をリクエストできませんでした。"</string>
     <string name="ui_a01008a72688bbf8" formatted="false">"保持したセッションは利用できなくなりました。"</string>
+    <string name="ui_8f8affe0a3a4e987" formatted="false">"コードをコピーして開く"</string>
+    <string name="ui_bd0c36713bffd1ec" formatted="false">"Microsoft のページにコードを貼り付けてから、アプリに戻ってください。"</string>
 </resources>

@@ -225,6 +225,15 @@ class AuthTest {
         assertEquals("https://microsoft.com/link", info.verificationUri)
         assertNull(info.verificationUriComplete); assertEquals(90_000L, info.expiresAtMs); assertEquals(4, info.intervalSeconds)
     }
+    @Test fun deviceApprovalUsesOnlyMicrosoftHttpsUrls() = runBlocking {
+        enqueue("""{"user_code":"U","device_code":"D","verification_uri":"https://www.microsoft.com.example.org/link","expires_in":90}""")
+        assertTrue(auth().requestDeviceCodeQr().exceptionOrNull() is AuthenticationRequiredException)
+        enqueue("""{"user_code":"U","device_code":"D","verification_uri":"https://www.microsoft.com/link",
+            "verification_uri_complete":"http://www.microsoft.com/link?code=U","expires_in":90}""")
+        val grant = auth().requestDeviceCodeQr().getOrThrow()
+        assertEquals("https://www.microsoft.com/link", grant.verificationUri)
+        assertNull(grant.verificationUriComplete)
+    }
     @Test fun slowDownIncreasesEverySubsequentPollingInterval() = runBlocking {
         enqueue("""{"error":"slow_down"}""", 400)
         enqueue("""{"error":"authorization_pending"}""", 400)
