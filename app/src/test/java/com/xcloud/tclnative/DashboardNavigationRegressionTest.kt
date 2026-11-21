@@ -51,6 +51,36 @@ class DashboardNavigationRegressionTest {
         val b=Bitmap.createBitmap(v.width,v.height,Bitmap.Config.ARGB_8888);v.draw(Canvas(b))
         File("build/reports/themes/regression-$name.png").apply { parentFile!!.mkdirs() }.outputStream().use { b.compress(Bitmap.CompressFormat.PNG,100,it) };b.recycle()
     }
+    @Test fun savedSessionActionKeepsCatalogUsableAndReturnsFocusToTheSession() {
+        val lifecycle = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = lifecycle.get()
+        DashboardTheme.apply(activity, UiTheme.PS5)
+        var resumed = 0
+        val view = GameDashboardView(activity, GameLibrary(activity, "saved-session"), {}, {}, {}, {})
+        try {
+            activity.setContentView(view)
+            view.setGames(games())
+            view.selectTab(LibraryTab.ALL)
+            layout(view)
+            val button = all(view).filterIsInstance<TextView>().single { it.text == "Retomar sessão" }
+            assertEquals(View.GONE, button.visibility)
+            view.setSavedSession { resumed++ }
+            layout(view)
+            assertTrue(button.isShown)
+            assertTrue(button.right <= view.width && button.bottom <= view.height)
+            assertTrue(grid(view).isShown)
+            view.focusSavedSession()
+            assertSame(button, view.findFocus())
+            assertTrue(view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BUTTON_A)))
+            assertEquals(1, resumed)
+            view.setSavedSession(null)
+            assertEquals(View.GONE, button.visibility)
+            assertEquals(LibraryTab.ALL, view.activeTab)
+        } finally {
+            view.close()
+            lifecycle.pause().stop().destroy()
+        }
+    }
     @Test fun shortcutActionsUseTheCurrentSelectionAndRecycledCoverWithoutLaunchingTheGame() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
         var shortcut: String?=null;var plays=0

@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"원격 기능을 켜고 앱으로 돌아와 콘솔 목록을 새로 고치세요."</string>
     <string name="ui_4282713ae57e7130" formatted="false">"Xbox 공식 사이트에서도 설정을 마칠 수 있습니다."</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Xbox.com에서 설정"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"세션 유지"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"세션 재개"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"메뉴를 사용하는 동안에도 Xbox에서 게임이 계속될 수 있습니다. 서비스에서 세션을 종료하기 전에 재개하세요."</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"새 해상도를 요청할 수 없습니다."</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"유지한 세션을 더 이상 사용할 수 없습니다."</string>
 </resources>

@@ -22,6 +22,8 @@ import com.xcloud.tclnative.ui.dashboard.GameLoadingView
 import com.xcloud.tclnative.webrtc.AndroidGamepadPolicy
 import com.xcloud.tclnative.webrtc.ControllerRouter
 import com.xcloud.tclnative.webrtc.GamepadState
+import com.xcloud.tclnative.webrtc.StreamResolution
+import com.xcloud.tclnative.webrtc.TransmissionRecoveryState
 import kotlinx.coroutines.*
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.*
@@ -119,6 +121,38 @@ class RendererStartupFailureTest {
             ReflectionHelpers.setField(inputManager,"mInputDevices",previousDevices)
             (ShadowDialog.getLatestDialog() as? ConsoleDialog)?.dismiss()
             c.pause().stop().destroy()
+        }
+    }
+
+    @Test fun resumingWithNewResolutionRetriesOnlyTheExistingPlayback() {
+        val lifecycle = Robolectric.buildActivity(RejectingRendererActivity::class.java).setup()
+        val activity = lifecycle.get()
+        val previous = PlaybackSettingsStore(activity).read()
+        val recovery = TransmissionRecoveryState().apply {
+            interrupted(epoch, java.io.IOException("synthetic transport loss"))
+        }
+        var reloads = 0
+        val existing = playback(activity)
+        val generation = existing.generation
+        try {
+            ReflectionHelpers.setField(activity, "sessionSaved", true)
+            ReflectionHelpers.setField(activity, "activeGame", GameTitle("existing", "Existing"))
+            ReflectionHelpers.setField(activity, "sessionSettings", PlaybackSettings(resolution = StreamResolution.HD_1080))
+            ReflectionHelpers.setField(activity, "transmissionRecovery", recovery)
+            ReflectionHelpers.setField(activity, "reloadTransmission", { _: Int? -> reloads++; Unit })
+            PlaybackSettingsStore(activity).save(previous.copy(resolution = StreamResolution.HD_720,
+                nativeUpscaling = false, fsr = FsrMode.FSR1))
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "resumeSavedSession")
+            assertFalse(ReflectionHelpers.getField<Boolean>(activity, "sessionSaved"))
+            assertEquals(generation, existing.generation)
+            assertEquals(1, reloads)
+            assertEquals(StreamResolution.HD_720,
+                ReflectionHelpers.getField<StreamResolution>(activity, "pendingResumeResolution"))
+            val renderer = ReflectionHelpers.getField<AiPqSurfaceRenderer>(activity, "surfaceRenderer")
+            assertFalse(renderer.nativeUpscaling)
+        } finally {
+            PlaybackSettingsStore(activity).save(previous)
+            lifecycle.pause().stop().destroy()
         }
     }
 

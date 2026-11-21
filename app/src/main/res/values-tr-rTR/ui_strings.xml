@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"Uzaktan erişim özelliklerini açın. Ardından uygulamaya dönüp konsol listesini yenileyin."</string>
     <string name="ui_4282713ae57e7130" formatted="false">"Kurulumu resmi Xbox web sitesinde de tamamlayabilirsiniz."</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Xbox.com’da ayarla"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"Oturumu sakla"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"Oturumu sürdür"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"Menüye göz atarken oyun Xbox üzerinde çalışmaya devam edebilir. Hizmet oturumu sonlandırmadan önce oyuna dönün."</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"Yeni çözünürlük istenemedi."</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"Saklanan oturum artık kullanılamıyor."</string>
 </resources>

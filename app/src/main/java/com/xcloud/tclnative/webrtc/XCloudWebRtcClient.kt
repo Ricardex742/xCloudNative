@@ -96,13 +96,22 @@ class XCloudWebRtcClient(
     private var chatNegotiated=false
     private val audioLock=Any()
     private val audioTracks=mutableSetOf<AudioTrack>()
+    private var playbackSuppressed = false
     private val audioSession=GameAudioSession(context) { gain -> synchronized(audioLock) {
-        if(!closed.get()) audioTracks.forEach { it.setVolume(gain*peakGuard.effective) }
+        if(!closed.get()) audioTracks.forEach { it.setVolume(playbackVolume(gain)) }
     } }
     fun currentInputMetrics(): InputMetrics = inputPump?.metrics ?: InputMetrics()
     fun audioDiagnostics()=audioSession.diagnostics()+"\n"+AudioPlaybackPolicy.diagnostics(audioMode)+"\n"+audioMetrics.diagnostics()+UiText.text("\n{0}\n{1} • chatStream anunciado: {2} • áudio enviado: {3} B",UiText.nested(peakGuard.diagnostics()),UiText.nested(microphoneStatus),UiText.nested(chatSupported),UiText.nested(micBytes))
     fun setOutputGain(percent: Int) { peakGuard.set(percent);applyAudioGain() }
-    private fun applyAudioGain() { synchronized(audioLock) { if(!closed.get()) audioTracks.forEach { it.setVolume(audioSession.gain*peakGuard.effective) } } }
+    private fun playbackVolume(gain: Double = audioSession.gain) =
+        if (playbackSuppressed) 0.0 else gain * peakGuard.effective
+
+    private fun applyAudioGain() { synchronized(audioLock) { if(!closed.get()) audioTracks.forEach { it.setVolume(playbackVolume()) } } }
+
+    internal fun suppressGameAudio(suppress: Boolean) = synchronized(audioLock) {
+        playbackSuppressed = suppress
+        applyAudioGain()
+    }
     fun microphoneLabel()=if(microphoneActive) "Silenciar microfone" else "Ativar microfone"
     override fun configureChat(supported: Boolean) { chatSupported=supported && microphoneAllowed }
     override fun configureInput(version: Int) {
@@ -320,7 +329,7 @@ class XCloudWebRtcClient(
                 if (track is AudioTrack) {
                     synchronized(audioLock) {
                         if(!current()) return
-                        audioTracks.add(track); track.setVolume(audioSession.gain*peakGuard.effective)
+                        audioTracks.add(track); track.setVolume(playbackVolume())
                     }
                     audioSession.requestFocus()
                 }
@@ -486,6 +495,16 @@ class XCloudWebRtcClient(
         pump.start()
         channelsReady.complete(Unit)
         if(nativeTouch) sendTouchDimensions()
+    }
+
+    internal fun requestResolution(resolution: StreamResolution): Boolean {
+        if (closed.get() || !inputReady) return false
+        val control = channels["control"] ?: return false
+        if (control.state() != DataChannel.State.OPEN) return false
+        val request = ChannelHandshake.resolutionRequest(resolution)
+        val accepted = control.send(DataChannel.Buffer(ByteBuffer.wrap(request.bytes), request.binary))
+        if (accepted) channelTrace.sent(request)
+        return accepted
     }
 
     /** Ask the running Xbox encoder for an IDR without allocating a new cloud session. */

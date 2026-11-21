@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"Aktiviere die Remotefunktionen. Kehre dann zur App zurück und aktualisiere die Konsolenliste."</string>
     <string name="ui_4282713ae57e7130" formatted="false">"Du kannst die Einrichtung auch auf der offiziellen Xbox-Website abschließen."</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Auf Xbox.com einrichten"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"Sitzung vormerken"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"Sitzung fortsetzen"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"Das Spiel kann auf Xbox weiterlaufen, während du das Menü nutzt. Setze es fort, bevor der Dienst die Sitzung beendet."</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"Die neue Auflösung konnte nicht angefordert werden."</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"Die vorgemerkte Sitzung ist nicht mehr verfügbar."</string>
 </resources>

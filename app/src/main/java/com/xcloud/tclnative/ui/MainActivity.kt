@@ -102,6 +102,8 @@ open class MainActivity : Activity() {
     private var latestMetrics: StreamMetrics?=null
     private var latestInput=InputMetrics()
     private var transmissionReady=false
+    private var sessionSaved = false
+    private var pendingResumeResolution: com.xcloud.tclnative.webrtc.StreamResolution? = null
     private var transmissionRecovery: TransmissionRecoveryState?=null
     private var transmissionReloadJob: Job?=null
     private var recoverImage: (() -> Unit)?=null
@@ -409,6 +411,9 @@ open class MainActivity : Activity() {
         } else if (playback.job?.isActive != true) {
             launchCloudGame(signaling, game, fromShortcut = true)
             return true
+        } else if (sessionSaved && remotePlayReturn == null && activeGame?.titleId == game.titleId) {
+            resumeSavedSession()
+            return true
         } else if (activeGame?.titleId != game.titleId && shortcutSwitchDialog == null) {
             val generation = playbackGeneration
             val dialog = ConsoleDialogs.message(this, UiText.text("Trocar de jogo"),
@@ -441,6 +446,11 @@ open class MainActivity : Activity() {
     }
 
     private fun renderLoginMenu() {
+        if (sessionSaved) {
+            playback.cancel()
+            activeGame = null
+            clearSavedSession()
+        }
         remotePlayPanel?.dialog?.dismiss()
         remotePlayPanel = null
         remotePlayReturn = null
@@ -618,7 +628,7 @@ open class MainActivity : Activity() {
             }
             gameLibrary = library
             currentGames=allGames; currentSignaling=signaling
-            if(launchPendingShortcut()) {
+            if(!sessionSaved && launchPendingShortcut()) {
                 loginView?.close(); loginView=null
                 return@launch // No catalog/grid or background galleries while the shortcut enters its game.
             }
@@ -626,7 +636,7 @@ open class MainActivity : Activity() {
                 onPlay = { game -> chooseLaunchMode(signaling, game) },
                 onSearch = { showCatalogSearch() },
                 onOptions = { showSettings(session) },
-                onExit = { showExitDialog() },
+                onExit = { if (sessionSaved) resumeSavedSession() else showExitDialog() },
                 onFavoritesChanged = { syncHomeShortcuts() },
                 onPlayProduct = { product -> playGalleryProduct(signaling,product) },
                 onOwnershipNeeded = { requestOwnership() },onGameShortcut={ showGameShortcut(it) },
@@ -643,13 +653,14 @@ open class MainActivity : Activity() {
             controlPanel.visibility = View.VISIBLE
             hudTextView.visibility = View.GONE
             view.setGames(allGames)
+            showSavedSessionButton(view)
             revealDashboard(view)
             refreshCloudPlaytime(view)
             refreshCloudHistory(view,signaling,library)
             currentGames = allGames
             currentSignaling = signaling
             syncHomeShortcuts()
-            launchPendingShortcut()
+            if (!sessionSaved) launchPendingShortcut()
             val catalog = createCatalogService(catalogCache,catalogWork::await)
             val baseIds=allGames.mapTo(hashSetOf()) { it.titleId }
             val nativeMetadata = async {
@@ -862,10 +873,10 @@ open class MainActivity : Activity() {
             friends={ showFriends(::back) },gameShortcut=game?.let { selected -> ({ showGameShortcut(selected,::back) }) },
             sessionPanel=com.xcloud.tclnative.ui.dashboard.SessionOptionsPanel(this,SessionOptionsStore(this,session.libraryAccountId),session.regions,game?.titleId,game?.name,::back),
             back=onBack,allowAccountChanges=activeGame==null,
-            gameControls=if(activeGame==null) null else ({ showGameHudSettings { showSettings(session,SettingsPage.CONTROLS,onBack) } }),
-            recovery=if(activeGame==null) null else ({ showTransmissionRecovery { showSettings(session,SettingsPage.DIAGNOSTICS,onBack) } }),
+            gameControls=if(activeGame==null || sessionSaved) null else ({ showGameHudSettings { showSettings(session,SettingsPage.CONTROLS,onBack) } }),
+            recovery=if(activeGame==null || sessionSaved) null else ({ showTransmissionRecovery { showSettings(session,SettingsPage.DIAGNOSTICS,onBack) } }),
             currentDiagnostics=if(activeGame==null) null else ({ showLiveDiagnostics { showSettings(session,SettingsPage.DIAGNOSTICS,onBack) } }),
-            microphone=if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ::toggleMicrophone else null,
+            microphone=if(!sessionSaved && transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ::toggleMicrophone else null,
             statisticsChanged=::refreshStatisticsSettings,
             microphoneLabel={ webrtcClient?.microphoneLabel() ?: UiText.text("Ativar microfone") })
     }
@@ -892,7 +903,7 @@ open class MainActivity : Activity() {
             { exportDiagnostic(it.toString(2)) }
         })
     }
-    private suspend fun finishSessionReport(tracker: SessionReportTracker) {
+    private suspend fun finishSessionReport(tracker: SessionReportTracker, showAutomatically: Boolean = true) {
         val report=tracker.takeReport()
         if(report==null) { if(reportTracker===tracker) reportTracker=null; return }
         lastSessionReport=report
@@ -900,7 +911,7 @@ open class MainActivity : Activity() {
         catch(error: java.io.IOException) { if(!isFinishing && !isDestroyed) Toast.makeText(this,error.message,Toast.LENGTH_LONG).show() }
         val current=reportTracker===tracker
         if(current) reportTracker=null
-        if(current && activityVisible && !isFinishing && !isDestroyed && activeGame==null && settingsStore.read().sessionReport &&
+        if(showAutomatically && current && activityVisible && !isFinishing && !isDestroyed && activeGame==null && settingsStore.read().sessionReport &&
             (report.durationMs>=5000 || report.end==SessionEnd.FAILURE)) {
             pendingAutomaticReport=report; showPendingReport()
         }
@@ -1100,6 +1111,11 @@ open class MainActivity : Activity() {
     }
     private fun applyPlaybackSettings(settings: PlaybackSettings) {
         playbackSettings=settings
+        applyLiveVideo(settings)
+        webrtcClient?.setOutputGain(settings.audioGain)
+    }
+
+    private fun applyLiveVideo(settings: PlaybackSettings) {
         if(surfaceRenderer.aspect!=settings.aspect) {
             // End contacts in the old coordinate space before changing the displayed video.
             touchView.releaseInputs()
@@ -1111,7 +1127,6 @@ open class MainActivity : Activity() {
         surfaceRenderer.setImageLab(settings.imageLab)
         surfaceRenderer.setImageComparison(settings.effectiveImageComparison())
         surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
-        webrtcClient?.setOutputGain(settings.audioGain)
     }
     protected open fun prepareSessionRenderer(settings: PlaybackSettings): org.webrtc.EglBase {
         surfaceRenderer.compatibility=settings.videoMode==VideoMode.COMPATIBILITY
@@ -1162,7 +1177,7 @@ open class MainActivity : Activity() {
     }
 
     private fun showGameMenu(position: GameShortcutBar.Position?) {
-        if (transitionPanel.visibility==View.VISIBLE || gameMenuDialog?.isShowing == true ||
+        if (sessionSaved || transitionPanel.visibility==View.VISIBLE || gameMenuDialog?.isShowing == true ||
             shortcutEditor?.isShowing == true || networkPanel?.dialog?.isShowing == true ||
             (webrtcClient == null && reloadTransmission==null) || queuePanel.visibility == View.VISIBLE) return
         resetController()
@@ -1205,6 +1220,7 @@ open class MainActivity : Activity() {
                         transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) reload(kbps)
                 }
             }) else null,
+            saveSession=if(active && transmissionReady && currentSession!=null && reload!=null) ({ confirmSaveSession(back) }) else null,
             controllerProfiles=if(active) ({ showControllerProfiles(back) }) else null,
             mouse=if(!active || sessionDesktopMode==DesktopInputMode.OFF) null else ({
                 auxiliaryHandler.post { setDesktopCapture(!desktopCaptured) }
@@ -1305,8 +1321,129 @@ open class MainActivity : Activity() {
             nativeTouch=if(currentTouchMode==TouchMode.NATIVE || webrtcClient?.canUseNativeTouch()!=true) null else ({ enableNativeTouch() }),back=onBack).show()
     }
     private fun chooseLaunchMode(signaling: XCloudSignalingClient,game: GameTitle) {
-        launchCloudGame(signaling,game)
+        val saved = activeGame
+        if (!sessionSaved || saved == null) {
+            launchCloudGame(signaling, game)
+        } else if (remotePlayReturn == null && saved.titleId == game.titleId) {
+            resumeSavedSession()
+        } else {
+            val generation = playbackGeneration
+            ConsoleDialogs.message(this, UiText.text("Trocar de jogo"),
+                UiText.text("Encerrar a sessão atual e abrir {0}?", UiText.nested(game.name)),
+                listOf(ConsoleAction(UiText.text("Cancelar")) {}, ConsoleAction(UiText.text("Jogar na nuvem")) {
+                    if (generation == playbackGeneration && sessionSaved && currentSignaling === signaling && activityVisible)
+                        launchCloudGame(signaling, game)
+                }))
+        }
     }
+
+    private fun confirmSaveSession(onBack: () -> Unit) {
+        val generation = playbackGeneration
+        ConsoleDialogs.message(this, UiText.text("Salvar sessão"),
+            UiText.text("O jogo pode continuar no Xbox enquanto você navega. Retome antes que o serviço encerre a sessão."),
+            listOf(ConsoleAction(UiText.text("Cancelar"), onBack), ConsoleAction(UiText.text("Salvar sessão")) {
+                if (generation == playbackGeneration) saveSession()
+            }), onCancel = onBack)
+    }
+
+    private fun showSavedSessionButton(view: GameDashboardView) {
+        view.setSavedSession(if (sessionSaved) ::resumeSavedSession else null)
+    }
+
+    private fun saveSession() {
+        val account = currentSession ?: return
+        val client = webrtcClient ?: return
+        if (!activityVisible || sessionSaved || !transmissionReady || reloadTransmission == null ||
+            transmissionRecovery?.phase != TransmissionRecoveryState.Phase.ACTIVE) return
+        sessionSaved = true
+        gameMenuDialog?.dismiss()
+        closeGameTools()
+        videoRecoveryDialog?.dismiss()
+        nativeTouchDialog?.dismiss()
+        joystickDispatch.request(false)
+        resetController()
+        microphoneJob?.cancel()
+        pendingMicrophoneGeneration = null
+        client.setAudioForeground(false)
+        client.suppressGameAudio(true)
+        reportTracker?.setVisible(false)
+        touchView.visibility = View.INVISIBLE
+        surfaceRenderer.visibility = View.INVISIBLE
+        hudTextView.visibility = View.GONE
+        renderStatistics()
+        playbackDisplay.restore()
+        catalogWork.resume()
+        val view = dashboard
+        if (view == null) renderGameDashboard(account, currentGames)
+        else {
+            view.setGames(currentGames)
+            view.resumeArtwork()
+            showSavedSessionButton(view)
+            controlPanel.visibility = View.VISIBLE
+            revealDashboard(view)
+        }
+    }
+
+    private fun clearSavedSession() {
+        if (!sessionSaved) return
+        sessionSaved = false
+        dashboard?.setSavedSession(null)
+        surfaceRenderer.visibility = View.VISIBLE
+    }
+
+    private fun applySavedResolution() {
+        val requested = pendingResumeResolution ?: return
+        if (webrtcClient?.requestResolution(requested) == true) {
+            sessionSettings = sessionSettings?.copy(resolution = requested)
+            pendingResumeResolution = null
+        } else {
+            Toast.makeText(this, UiText.text("Não foi possível solicitar a nova resolução."), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun resumeSavedSession() {
+        if (!sessionSaved || !activityVisible) return
+        val game = activeGame ?: return
+        val settings = sessionSettings ?: return
+        val phase = transmissionRecovery?.phase ?: return
+        if (phase != TransmissionRecoveryState.Phase.ACTIVE && phase != TransmissionRecoveryState.Phase.WAITING_RETRY) return
+        val configured = settingsStore.read()
+        val video = configured.copy(videoMode = settings.videoMode, videoCodec = settings.videoCodec).forSession()
+        val resolution = if (remotePlayReturn != null) remoteResolution(video.resolution) else video.resolution
+        pendingResumeResolution = resolution.takeUnless { it == settings.resolution }
+        controlPanel.visibility = View.GONE
+        dashboard?.closeServiceMenu()
+        dashboard?.pauseArtwork()
+        catalogWork.pause()
+        clearSavedSession()
+        videoVisibilityEpoch++
+        playbackSettings = configured
+        applyLiveVideo(video)
+        surfaceRenderer.nativeUpscaling = video.nativeUpscaling
+        configureVideoOutput(settings.copy(nativeUpscaling = video.nativeUpscaling, fsr = video.fsr), playing = true)
+        reportTracker?.setVisible(true)
+        if (phase == TransmissionRecoveryState.Phase.WAITING_RETRY) {
+            reloadTransmission?.invoke(null)
+            return
+        }
+        applySavedResolution()
+        touchView.configure(currentTouchMode, game, hudStore.read(game.titleId))
+        webrtcClient?.let { client ->
+            client.setAudioForeground(true)
+            client.suppressGameAudio(false)
+            client.resumeAudio()
+            client.requestVideoKeyframe()
+        }
+        rumble.enabled = settings.rumble
+        updateJoystickDispatch()
+        resumeAuxiliaryInput()
+        resynchronizeUsbInput()
+        renderStatistics()
+    }
+
+    private fun remoteResolution(resolution: com.xcloud.tclnative.webrtc.StreamResolution) =
+        if (resolution.width <= 1280) com.xcloud.tclnative.webrtc.StreamResolution.HD_720
+        else com.xcloud.tclnative.webrtc.StreamResolution.HD_1080
 
     private fun showFriends(onBack: () -> Unit) {
         val account=currentSession ?: return
@@ -1319,7 +1456,7 @@ open class MainActivity : Activity() {
                 com.xcloud.tclnative.catalog.XboxFriendsService().load(authorization,UiText.locale.toLanguageTag())
             },games={ currentGames },valid=valid,play={ game ->
                 fun launch() { if(valid()) currentSignaling?.let { chooseLaunchMode(it,game) } }
-                if(activeGame!=null) ConsoleDialogs.message(this,UiText.text("Abrir jogo na nuvem"),
+                if(activeGame!=null && !sessionSaved) ConsoleDialogs.message(this,UiText.text("Abrir jogo na nuvem"),
                     UiText.text("A partida atual será encerrada para abrir {0} na sua própria sessão.",UiText.nested(game.name)),listOf(
                         ConsoleAction(UiText.text("Continuar")) { launch() },
                         ConsoleAction(UiText.text("Voltar")) { showFriends(onBack) }),onCancel={ showFriends(onBack) })
@@ -1361,9 +1498,11 @@ open class MainActivity : Activity() {
     }
     private fun revealDashboard(view: GameDashboardView) {
         view.doOnPreDraw {
-            if(dashboard===view && activeGame==null && controlPanel.visibility==View.VISIBLE) {
+            if(dashboard===view && (activeGame==null || sessionSaved) && controlPanel.visibility==View.VISIBLE) {
                 startupArtJob?.cancel(); startupArtJob=null
-                transitionPanel.dismiss(); view.restoreFocus(refreshCatalog=false); showPendingReport()
+                transitionPanel.dismiss()
+                if (sessionSaved) view.focusSavedSession() else view.restoreFocus(refreshCatalog=false)
+                showPendingReport()
             }
         }
     }
@@ -1454,6 +1593,8 @@ open class MainActivity : Activity() {
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun launchPlayback(signaling: XCloudSignalingClient, game: GameTitle, origin: PlaybackOrigin,
                                touchChoice: TouchMode? = null, remoteConsole: RemoteConsole? = null) {
+        clearSavedSession()
+        pendingResumeResolution = null
         val remote = remoteConsole != null
         val returnToConsoleList = remotePlayReturn
         shortcutSwitchDialog?.dismiss()
@@ -1471,8 +1612,7 @@ open class MainActivity : Activity() {
         microphoneJob?.cancel();pendingMicrophoneGeneration=null
         val playbackProfile = playbackSettings.forSession()
         val settings = if (remote) playbackProfile.copy(
-            resolution = if (playbackProfile.resolution.width <= 1280) com.xcloud.tclnative.webrtc.StreamResolution.HD_720
-                else com.xcloud.tclnative.webrtc.StreamResolution.HD_1080,
+            resolution = remoteResolution(playbackProfile.resolution),
             videoCodec = if (playbackProfile.videoCodec == com.xcloud.tclnative.settings.VideoCodecMode.H264_BASELINE)
                 playbackProfile.videoCodec else com.xcloud.tclnative.settings.VideoCodecMode.H264,
             microphone = false, desktopInput = DesktopInputMode.OFF
@@ -1589,6 +1729,7 @@ open class MainActivity : Activity() {
                 suspend fun buildRtc(): XCloudWebRtcClient {
                     val token=recoveryState.epoch
                     val failure=transportFailure
+                    val resolution=sessionSettings?.resolution ?: settings.resolution
                     fun current()=generation==playbackGeneration && recoveryState.current(token)
                     return withContext(Dispatchers.Default) { XCloudWebRtcClient(this@MainActivity, playbackEgl,
                     onVideoTrackReady = { track ->
@@ -1622,7 +1763,7 @@ open class MainActivity : Activity() {
                                 }
                             }
                         }
-                    }, lowLatencyVideo = settings.videoMode.lowLatency, streamResolution = settings.resolution,
+                    }, lowLatencyVideo = settings.videoMode.lowLatency, streamResolution = resolution,
                     nativeTouch = touchMode==TouchMode.NATIVE,
                     onRumble = { command -> if(current() && recoveryState.phase==TransmissionRecoveryState.Phase.ACTIVE) rumble.play(command) },compatibility=compatible,
                     videoCodec=settings.videoCodec,maxBitrateKbps=maxBitrateKbps,
@@ -1745,6 +1886,7 @@ open class MainActivity : Activity() {
                                 recovery.retry(android.os.SystemClock.elapsedRealtime());recovering=false
                                 currentTouchMode=savedTouch;touchView.configure(savedTouch,game,hudStore.read(titleId))
                                 pendingRecoveryTouch=null
+                                applySavedResolution()
                                 rumble.enabled=settings.rumble
                                 (0..3).filter { controllers.sourceFor(it)!=null }.forEach { publishGamepad(it) }
                                 transmissionReady=true;updateJoystickDispatch();resumeAuxiliaryInput();renderStatistics();resynchronizeUsbInput()
@@ -1772,6 +1914,7 @@ open class MainActivity : Activity() {
                         if(recoveryState.phase!=TransmissionRecoveryState.Phase.ACTIVE || !recoveryState.current(token)) continue
                         if(failure!=null) {
                             if(recoveryState.interrupted(token,failure)) {
+                                if (sessionSaved && recoveryState.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) throw failure
                                 tracker.recordInterruption(failure,rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics())
                                 transmissionReady=false;renderStatistics();resetController()
                                 pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
@@ -1780,7 +1923,7 @@ open class MainActivity : Activity() {
                             }
                             continue
                         }
-                        if (!activityVisible) continue
+                        if (!activityVisible || sessionSaved) continue
                         if (visibilityEpoch != videoVisibilityEpoch) {
                             visibilityEpoch = videoVisibilityEpoch
                             recovery.reset()
@@ -1845,7 +1988,7 @@ open class MainActivity : Activity() {
                 failed=true
                 startupFailure=SessionFailure.from(error).code
                 tracker.recordFailure(error)
-                if (generation == playbackGeneration && (!firstFrame.isCompleted || !settingsStore.read().sessionReport)) {
+                if (generation == playbackGeneration && !sessionSaved && (!firstFrame.isCompleted || !settingsStore.read().sessionReport)) {
                     val details = (error.message ?: UiText.text("Falha na sessão"))+
                         if(!firstFrame.isCompleted) "\nUpscaling=${settings.fsr}; output=${settings.fsrOutput}\n${signaling.startupDiagnostics()}\n${controllerPath.diagnostics()}" else ""
                     hudTextView.text = details
@@ -1855,10 +1998,13 @@ open class MainActivity : Activity() {
             } finally {
                 // Always release the local decoder and server session together.
                 withContext(NonCancellable) {
+                    val expiredWhileSaved = generation == playbackGeneration && sessionSaved
+                    if (expiredWhileSaved) clearSavedSession()
                     recoveryState.close()
                     transmissionReloadJob?.cancelAndJoin();transmissionReloadJob=null
                     if(generation==playbackGeneration) {
                         recoverImage=null;reloadTransmission=null;transmissionReady=false;transmissionRecovery=null
+                        pendingResumeResolution=null
                     }
                     val rtc=allocatedRtc
                     if(!firstFrame.isCompleted) runCatching {
@@ -1874,7 +2020,7 @@ open class MainActivity : Activity() {
                     gyro.stop();setDesktopCapture(false)
                     if(generation==playbackGeneration) { sessionDesktopMode=DesktopInputMode.OFF;sessionSettings=null }
                     if (generation == playbackGeneration) {
-                        showCatalogReturn(game,pendingLoadingGame==null)
+                        if (!expiredWhileSaved) showCatalogReturn(game,pendingLoadingGame==null)
                         finishLoading()
                         statsView.visibility = View.GONE
                     }
@@ -1890,12 +2036,16 @@ open class MainActivity : Activity() {
                     }
                     if (generation == playbackGeneration) {
                         activeGame=null
-                        restoreDashboard(reopenRemote = !failed)
+                        if (expiredWhileSaved && dashboard != null) {
+                            remotePlayReturn = null
+                            if (failed && activityVisible) Toast.makeText(this@MainActivity,
+                                UiText.text("A sessão salva não está mais disponível."), Toast.LENGTH_LONG).show()
+                        } else restoreDashboard(reopenRemote = !failed)
                         remoteError?.takeIf { activityVisible && !isFinishing && !isDestroyed }?.let {
                             showCopyableErrorDialog(gameName, it, onBack = returnToConsoleList)
                         }
                     }
-                    finishSessionReport(tracker)
+                    finishSessionReport(tracker, showAutomatically = !expiredWhileSaved)
                 }
             }
         }
@@ -1942,6 +2092,7 @@ open class MainActivity : Activity() {
     }
 
     private fun toggleMicrophone() {
+        if (sessionSaved) return
         if(transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) return
         val rtc=webrtcClient ?: return
         if(rtc.microphoneActive) { rtc.setMicrophoneMuted(true);return }
@@ -1985,6 +2136,7 @@ open class MainActivity : Activity() {
     }
     private fun cancelPlayback() {
         if(transitionPanel.exiting) return
+        clearSavedSession()
         showCatalogReturn(activeGame ?: pendingLoadingGame,pendingLoadingGame==null)
         reportTracker?.finish(android.os.SystemClock.elapsedRealtime(),SessionEnd.USER,webrtcClient?.currentInputMetrics())
         val (generation, closing) = playback.cancel()
@@ -2019,7 +2171,7 @@ open class MainActivity : Activity() {
             .also { dialog -> if (export != null) dialog.addPersistentAction(UiText.text("Exportar diagnóstico"), export) }
     }
 
-    private fun gameplayInputEnabled() = controlPanel.visibility == View.GONE &&
+    private fun gameplayInputEnabled() = !sessionSaved && controlPanel.visibility == View.GONE &&
         transitionPanel.visibility!=View.VISIBLE && queuePanel.visibility != View.VISIBLE && gameMenuDialog?.isShowing != true && videoRecoveryDialog?.isShowing != true && nativeTouchDialog?.isShowing != true && webrtcClient != null &&
         transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE && !touchView.isEditing && hasWindowFocus()
 
@@ -2146,7 +2298,7 @@ open class MainActivity : Activity() {
     private fun renderStatistics() {
         renderNetworkStatus()
         if(!::statsView.isInitialized) return
-        statsView.visibility=if(statistics.mode!=0 && transmissionReady) View.VISIBLE else View.GONE
+        statsView.visibility=if(statistics.mode!=0 && transmissionReady && !sessionSaved) View.VISIBLE else View.GONE
         if(statsView.visibility!=View.VISIBLE) return
         val metrics=latestMetrics ?: return
         val settings=sessionSettings ?: playbackSettings
@@ -2162,7 +2314,7 @@ open class MainActivity : Activity() {
     }
     private fun renderNetworkStatus() {
         if (!::networkIndicator.isInitialized) return
-        val live = transmissionReady && activityVisible
+        val live = transmissionReady && activityVisible && !sessionSaved
         if (!live) networkQuality.reset()
         networkPanel?.update(latestMetrics.takeIf { live }, networkQuality.quality)
         networkIndicator.showQuality(networkQuality.quality)
@@ -2170,12 +2322,12 @@ open class MainActivity : Activity() {
     }
     private fun showTransmissionRecovery() = showTransmissionRecovery(::showGameMenu)
     private fun showTransmissionRecovery(onBack: () -> Unit) {
-        if(reloadTransmission==null) return
+        if(sessionSaved || reloadTransmission==null) return
         if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) { showTransmissionInterrupted();return }
         com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.show(this,{ recoverImage?.invoke() },{ reloadTransmission?.invoke(null) },onBack)
     }
     private fun showTransmissionInterrupted() {
-        if (!activityVisible) return
+        if (!activityVisible || sessionSaved) return
         (gameMenuDialog as? GameShortcutBar)?.dismiss()
         videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         videoRecoveryDialog=com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.failed(this,
@@ -2307,7 +2459,7 @@ open class MainActivity : Activity() {
         updateJoystickDispatch()
         if (!hasFocus) resetController()
         else {
-            rumble.enabled=playbackSettings.rumble && webrtcClient!=null
+            rumble.enabled=!sessionSaved && playbackSettings.rumble && webrtcClient!=null
             resumeAuxiliaryInput();resynchronizeUsbInput()
             ImmersiveWindow.apply(window,edgeToEdge=true)
         }
@@ -2347,9 +2499,10 @@ open class MainActivity : Activity() {
     }
 
     override fun onStart() {
-        super.onStart(); activityVisible=true; reportTracker?.setVisible(true); webrtcClient?.resumeAudio();webrtcClient?.setAudioForeground(true)
+        super.onStart(); activityVisible=true; reportTracker?.setVisible(!sessionSaved)
+        if (!sessionSaved) { webrtcClient?.resumeAudio();webrtcClient?.setAudioForeground(true) }
         usbRumble.setForeground(true);usbDirect.setForeground(true)
-        rumble.enabled=playbackSettings.rumble && webrtcClient!=null
+        rumble.enabled=!sessionSaved && playbackSettings.rumble && webrtcClient!=null
         updateJoystickDispatch()
         renderStatistics()
         val recoveryPhase = transmissionRecovery?.phase

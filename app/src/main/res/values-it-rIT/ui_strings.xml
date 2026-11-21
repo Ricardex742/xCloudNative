@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"Attiva le funzionalità remote, poi torna all’app e aggiorna l’elenco delle console."</string>
     <string name="ui_4282713ae57e7130" formatted="false">"Puoi anche completare la configurazione sul sito ufficiale Xbox."</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Configura su Xbox.com"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"Conserva la sessione"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"Riprendi la sessione"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"Il gioco può continuare su Xbox mentre navighi. Riprendilo prima che il servizio chiuda la sessione."</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"Impossibile richiedere la nuova risoluzione."</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"La sessione conservata non è più disponibile."</string>
 </resources>

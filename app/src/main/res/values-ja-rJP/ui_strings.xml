@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"リモート機能をオンにしたら、アプリに戻って本体一覧を更新してください。"</string>
     <string name="ui_4282713ae57e7130" formatted="false">"Xbox の公式サイトでも設定を完了できます。"</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Xbox.com で設定"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"セッションを保持"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"セッションを再開"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"メニューの操作中も Xbox でゲームが進行する場合があります。サービスがセッションを終了する前に再開してください。"</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"新しい解像度をリクエストできませんでした。"</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"保持したセッションは利用できなくなりました。"</string>
 </resources>

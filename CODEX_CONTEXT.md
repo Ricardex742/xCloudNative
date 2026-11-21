@@ -352,3 +352,10 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - O teste de regressão simula uma abertura por atalho com um dispositivo inativo que anuncia joystick, um controle de TV e um gamepad. A reprodução em TV física permanece pendente.
 - Passaram 23 testes direcionados e lint localmente. O commit `322975687c96b3f4dfef397e45a1fefcb2bc8094` passou 881 testes JVM, lint, traduções e verificações gráficas. [Build 44817456504](https://github.com/Ricardex742/xCloudNative/actions/runs/44817456504)
 - O APK baixado preserva o certificado permanente e declara launcher Android TV, minSdk 24 e depuração desabilitada. APK SHA-256 `9e746c6ac2262a43284a649a61aed80a3634ee9f6f1c0ff1950e8ba945bbe245`. ZIP SHA-256 `bd33249fe7d0cf3793853948b0515b03fa4df1c1d419d262e9a0f08f4e245305`. [Artefato assinado](https://github.com/Ricardex742/xCloudNative/actions/runs/44817456504/artifacts/14670791689)
+
+## Salvar e retomar a sessão aberta
+
+- A versão **0.41.4-saved-session**, código 116, oferece **Salvar sessão** nos atalhos da partida. O catálogo mostra **Retomar sessão**, inclusive depois de entrar direto por um atalho externo. Selecionar outro título exige confirmação.
+- O app mantém a alocação Xbox e o transporte atual, interrompe os comandos locais, esconde a superfície e silencia áudio e microfone enquanto o catálogo está à frente. A retomada volta à mesma alocação. Se o transporte cair, usa a recarga existente da mesma sessão. Se a alocação expirar, o botão de retomada é removido.
+- Na retomada, o upscaling nativo e o FSR usam as preferências atualizadas. A mudança de resolução envia a solicitação `userRequestedResolutionUpdate` no canal de controle. O tamanho real depende do vídeo devolvido pelo serviço. As opções de vídeo que dependem de outra sessão continuam sujeitas à configuração ativa.
+- A sessão existe na Activity e no serviço Xbox. O recurso não cria save do jogo, não pausa o jogo no servidor e não mantém a alocação após o encerramento do processo. Testar alterações de resolução e manutenção da posição com serviço e aparelho reais.

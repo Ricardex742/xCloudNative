@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"Turn on remote features. Then return to the app and refresh the console list."</string>
     <string name="ui_4282713ae57e7130" formatted="false">"You can also complete setup on the official Xbox website."</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Set up on Xbox.com"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"Save session"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"Resume session"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"The game may keep running on Xbox while you browse. Resume before the service ends the session."</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"Could not request the new resolution."</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"The saved session is no longer available."</string>
 </resources>

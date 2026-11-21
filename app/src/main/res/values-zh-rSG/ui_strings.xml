@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"开启远程功能后，返回应用并刷新主机列表。"</string>
     <string name="ui_4282713ae57e7130" formatted="false">"你也可以在 Xbox 官方网站完成设置。"</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"在 Xbox.com 上设置"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"保留会话"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"恢复会话"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"浏览菜单时，游戏可能继续在 Xbox 上运行。请在服务结束会话之前恢复。"</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"无法请求新的分辨率。"</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"保留的会话已不可用。"</string>
 </resources>

@@ -296,6 +296,19 @@ class GameDashboardView(
     }
     private val footer = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
     private val metadataNote = label(17f, false).apply { setTextColor(DashboardTheme.muted) }
+    private var resumeSession: (() -> Unit)? = null
+    private val resumeSessionButton = DashboardTheme.button(context, UiText.text("Retomar sessão")) {
+        resumeSession?.invoke()
+    }.apply {
+        id = generateViewId()
+        visibility = GONE
+        maxLines = 1
+        setPadding(0, 0, 0, 0)
+        setOnTouchListener { view, event ->
+            if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) view.requestFocus()
+            false
+        }
+    }
     private val catalogNote = label(18f, false).apply { gravity = Gravity.END; setTextColor(DashboardTheme.muted) }
     private val adapter = CoversAdapter()
 
@@ -359,6 +372,7 @@ class GameDashboardView(
         addView(grid); addView(emptyState)
         addView(footer); addView(catalogNote); addView(metadataNote)
         serviceSelector?.let { addView(it.button) }
+        addView(resumeSessionButton)
         hint("A", UiText.text("SELECIONAR")) { selectedCard?.let(::playCard) }
         hint("B", UiText.text("VOLTAR")) { back() }
         hint("Y", UiText.text("FAVORITAR")) { toggleSelectedFavorite() }
@@ -779,6 +793,18 @@ class GameDashboardView(
         return true
     }
     override fun dispatchKeyEvent(event: KeyEvent): Boolean = handleGridKey(event) || handleCarouselKey(event) || super.dispatchKeyEvent(event)
+    internal fun setSavedSession(resume: (() -> Unit)?) {
+        if (resumeSession == null && resume == null) return
+        resumeSession = resume
+        resumeSessionButton.visibility = if (resume == null) GONE else VISIBLE
+        catalogNote.alpha = if (resume == null) 1f else 0f
+        catalogNote.importantForAccessibility = if (resume == null) IMPORTANT_FOR_ACCESSIBILITY_AUTO else IMPORTANT_FOR_ACCESSIBILITY_NO
+        lastGeometry = 0L
+        requestLayout()
+    }
+
+    internal fun focusSavedSession() { resumeSessionButton.requestFocus() }
+
     fun restoreFocus(refreshCatalog: Boolean = true) {
         if(refreshCatalog) refresh()
         if(designScene==ConsoleScene.XBOX_ORIGINAL && !originalBrowsing) { categoryFocus().requestFocus();return }
@@ -943,6 +969,12 @@ class GameDashboardView(
         val geometry = (w.toLong() shl 32) or h.toLong()
         if (!closed && geometry != lastGeometry && w > 0 && h > 0) {
             lastGeometry = geometry; scale = w / 1280f; layoutGeometry(w, h)
+            if (resumeSession != null) {
+                val buttonWidth = minOf(200*scale, w*.48f)
+                val buttonHeight = 43*scale
+                place(resumeSessionButton, w-buttonWidth-16*scale, h-buttonHeight-5*scale, buttonWidth, buttonHeight)
+                textSize(resumeSessionButton, 20f)
+            }
         }
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
     }

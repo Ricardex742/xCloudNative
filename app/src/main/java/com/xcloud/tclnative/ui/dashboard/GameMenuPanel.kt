@@ -29,7 +29,8 @@ object GameMenuPanel {
              recovery: (() -> Unit)?=null,hudToggle: (() -> Unit)?=null,hudVisible: Boolean=false,
              nativeTouch: (() -> Unit)?=null,xbox: (() -> Unit)?=null,
              bitrate: (() -> Unit)?=null,network: (() -> Unit)?=null,networkWarningsEnabled: Boolean=false,
-             networkDetails: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
+             networkDetails: (() -> Unit)?=null, saveSession: (() -> Unit)?=null): List<GameMenuShortcut> = listOfNotNull(
+            saveSession?.let { GameMenuShortcut(SAVE_SESSION,ConsoleGlyph.RECENT,ConsoleAction(SAVE_SESSION.label,it)) },
             image?.let { GameMenuShortcut(IMAGE,ConsoleGlyph.IMAGE,ConsoleAction(UiText.text("Imagem e tela"),it)) },
             audio?.let { GameMenuShortcut(AUDIO,ConsoleGlyph.AUDIO,ConsoleAction(UiText.text("Áudio e microfone"),it)) },
             hudToggle?.let { toggle ->

@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"Activa las características remotas. Luego vuelve a la aplicación y actualiza la lista de consolas."</string>
     <string name="ui_4282713ae57e7130" formatted="false">"También puedes completar la configuración en el sitio oficial de Xbox."</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Configurar en Xbox.com"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"Guardar sesión"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"Reanudar sesión"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"El juego puede seguir ejecutándose en Xbox mientras navegas. Reanuda antes de que el servicio cierre la sesión."</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"No se pudo solicitar la nueva resolución."</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"La sesión guardada ya no está disponible."</string>
 </resources>

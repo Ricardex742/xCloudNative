@@ -1307,4 +1307,9 @@
     <string name="ui_6718310f3c04b1fd" formatted="false">"Activez les fonctions à distance, puis revenez dans l’application et actualisez la liste des consoles."</string>
     <string name="ui_4282713ae57e7130" formatted="false">"Vous pouvez aussi terminer la configuration sur le site officiel Xbox."</string>
     <string name="ui_b0d9d6f7abcd0a4d" formatted="false">"Configurer sur Xbox.com"</string>
+    <string name="ui_2f3595358fc32664" formatted="false">"Mettre la session de côté"</string>
+    <string name="ui_5ba57b58c82fe86d" formatted="false">"Reprendre la session"</string>
+    <string name="ui_8d925c5a9bc7ef22" formatted="false">"Le jeu peut continuer sur Xbox pendant votre navigation. Reprenez avant la fermeture de la session par le service."</string>
+    <string name="ui_2b6ffbfa5d71c7d2" formatted="false">"Impossible de demander la nouvelle résolution."</string>
+    <string name="ui_a01008a72688bbf8" formatted="false">"La session mise de côté n’est plus disponible."</string>
 </resources>
