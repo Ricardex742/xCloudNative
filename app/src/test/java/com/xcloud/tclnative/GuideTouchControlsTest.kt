@@ -32,7 +32,7 @@ import java.time.Duration
 @LooperMode(LooperMode.Mode.PAUSED)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class GuideTouchControlsTest {
-    @Test fun firstTouchesSendDirectionsAndFaceButtonsAndCloseReleasesTheLastPress() {
+    @Test fun firstTouchesSendGamepadCommandsAtTheRequestedScreenCorners() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
         val root = FrameLayout(activity)
@@ -87,13 +87,14 @@ class GuideTouchControlsTest {
             tapControl(confirm)
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
             assertEquals(listOf(1024, 0, 256, 0, 512, 0, 2048, 0, 16, 0, 16, 0), reports)
+            val beforeBack = reports.size
             tapControl(back)
-            assertEquals("Button history: $reports", 32, controls.buttons)
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
+            assertEquals(listOf(32, 0), reports.drop(beforeBack))
+            val count = reports.size
             tapControl(close)
             assertFalse(controls.active)
             assertEquals(0, controls.buttons)
-            assertEquals(listOf(32, 0), reports.takeLast(2))
-            val count = reports.size
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(200))
             assertEquals(count, reports.size)
         } finally { controller.pause().stop().destroy() }
