@@ -111,7 +111,8 @@ android.sourceSets.getByName("main").assets.srcDir(shortcutAssets)
 tasks.named("preBuild").configure { dependsOn(prepareShortcutTemplate) }
 
 tasks.withType<Test>().configureEach {
-    systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
+    systemProperty("robolectric.dependency.repo.url", providers.environmentVariable("XCLOUD_MAVEN_CENTRAL_URL")
+        .getOrElse("https://repo.maven.apache.org/maven2"))
     // The native-rendering test's SDK resolver must honor a configured build proxy as Gradle does.
     listOf("https.proxyHost", "https.proxyPort", "http.proxyHost", "http.proxyPort",
         "javax.net.ssl.trustStore").forEach { key -> System.getProperty(key)?.let { systemProperty(key, it) } }
