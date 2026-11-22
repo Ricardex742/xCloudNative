@@ -90,11 +90,13 @@ class RendererStartupFailureTest {
         shadowOf(activity.packageManager).setSystemFeature(PackageManager.FEATURE_LEANBACK,true)
         val router=ReflectionHelpers.getField<ControllerRouter>(activity,"controllers")
         val route=MainActivity::class.java.getDeclaredMethod("controllerSlot",Int::class.javaPrimitiveType,
-            Int::class.javaPrimitiveType,Boolean::class.javaPrimitiveType).apply { isAccessible=true }
+            Int::class.javaPrimitiveType,Boolean::class.javaPrimitiveType,Boolean::class.javaPrimitiveType)
+            .apply { isAccessible=true }
         fun key(id: Int, source: Int, code: Int) = KeyEvent(0,0,KeyEvent.ACTION_DOWN,code,0,0,id,0,0,source).also {
             Shadow.extract<ShadowKeyEvent>(it).setDevice(installed.get(id))
         }
-        fun slot(event: KeyEvent) = route.invoke(activity,event.deviceId,event.source,AndroidGamepadPolicy.confirmsGamepad(event))
+        fun slot(event: KeyEvent, register: Boolean = true) =
+            route.invoke(activity,event.deviceId,event.source,AndroidGamepadPolicy.confirmsGamepad(event),register)
         try {
             val signaling=XCloudSignalingClient(XCloudSession("test-token","https://example.test","demo"))
             launch.invoke(activity,signaling,GameTitle("demo","Demo",posterUrl="",tileUrl=""),TouchMode.OFF,true)
@@ -110,7 +112,10 @@ class RendererStartupFailureTest {
             assertTrue(AndroidGamepadPolicy.confirmsJoystick(GamepadState(leftX=.6f)))
 
             router.update(0,GamepadState(buttons=512))
-            assertEquals(0,slot(key(8,gamepadSource,KeyEvent.KEYCODE_BUTTON_A)))
+            val gamepadButton=key(8,gamepadSource,KeyEvent.KEYCODE_BUTTON_A)
+            slot(gamepadButton,register=false)
+            assertNull(router.deviceFor(0))
+            assertEquals(0,slot(gamepadButton))
             assertEquals(8,router.deviceFor(0))
             assertEquals(GamepadState(),router.physical(0))
             assertNull(slot(down))
