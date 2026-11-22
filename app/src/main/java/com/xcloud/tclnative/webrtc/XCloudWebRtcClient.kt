@@ -31,7 +31,8 @@ class XCloudWebRtcClient(
     private val nativeKeyboardMouse: Boolean = false,private val microphoneAllowed: Boolean = false,outputGain: Int = 100,
     private val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD,
     private val onServerDisconnect: (XboxServerDisconnect) -> Unit = {},
-    remotePlay: Boolean = false
+    remotePlay: Boolean = false,
+    private val onTitleFocusChanged: (Boolean) -> Unit = {}
 ) : StreamingPeer {
     private val appContext=context.applicationContext
     private val factory: PeerConnectionFactory
@@ -396,6 +397,7 @@ class XCloudWebRtcClient(
                         val notice=result.disconnect?.takeIf { it.reason.terminal }
                         val first=notice!=null && serverEnded.compareAndSet(null,notice)
                         dispatch(result.replies)
+                        result.titleFocused?.let(onTitleFocusChanged)
                         if(first && notice!=null) {
                             handshake.gamepadSync.close()
                             val error=XboxServerDisconnectException(notice)

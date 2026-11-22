@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"Samples: {0} • Right stick X: {1} / Y: {2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"Optional test: Keep your fingers in the native touch and send aiming via the right analog stick. Some games can switch the input interface. If the mode is Off, enabling this test chooses Always. LT/LB require physical controller in native touch. {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Emulates the right analog stick on controller/HUD. To match Xbox native touch, also enable the test in the Gyroscope category. LT/LB in native touch rely on physical controller. {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"Hide Guide controls"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"Confirm"</string>
 </resources>

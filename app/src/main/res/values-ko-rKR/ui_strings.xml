@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"샘플: {0} • 오른쪽 스틱 X: {1} / Y: {2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"선택적 테스트: 손가락을 기본 터치 상태로 유지하고 오른쪽 아날로그 스틱을 통해 조준을 보냅니다. 일부 게임은 입력 인터페이스를 전환할 수 있습니다. 모드가 꺼짐인 경우 이 테스트를 활성화하려면 항상을 선택합니다. LT/LB에는 기본 터치의 물리적 컨트롤러가 필요합니다. {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"컨트롤러/HUD에서 오른쪽 아날로그 스틱을 에뮬레이션합니다. Xbox 기본 터치를 일치시키려면 자이로스코프 카테고리에서도 테스트를 활성화하세요. 기본 터치의 LT/LB는 물리적 컨트롤러를 사용합니다. {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"가이드 조작 버튼 숨기기"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"확인"</string>
 </resources>

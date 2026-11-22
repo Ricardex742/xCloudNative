@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"采样数：{0} • 右摇杆 X：{1} / Y：{2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"可选测试：保持手指的自然触感，并通过右侧的模拟摇杆发送瞄准信号。有些游戏可以切换输入界面。如果模式为“关闭”，则启用此测试会选择“始终”。 LT/LB 需要原生触摸的物理控制器。 {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"模拟控制器/HUD 上的右侧模拟摇杆。为了匹配Xbox原生触摸，还需要启用陀螺仪类别中的测试。 LT/LB 原生触摸依赖于物理控制器。 {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"隐藏指南控制按钮"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"确认"</string>
 </resources>

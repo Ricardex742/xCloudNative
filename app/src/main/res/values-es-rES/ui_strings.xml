@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"Muestras: {0} • Stick derecho X: {1} / Y: {2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"Prueba opcional: mantenga los dedos en el toque nativo y apunte con el joystick analógico derecho. Algunos juegos pueden cambiar la interfaz de entrada. Si el modo está desactivado, al habilitar esta prueba se elige Siempre. LT/LB requieren un controlador físico en formato táctil nativo. {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Emula el joystick analógico derecho en el controlador/HUD. Para igualar el toque nativo del Xbox, habilite también la prueba en la categoría Giroscopio. LT/LB en toque nativo dependen del controlador físico. {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"Ocultar controles de la guía"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"Confirmar"</string>
 </resources>

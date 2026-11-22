@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"Échantillons : {0} • Stick droit X : {1} / Y : {2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"Test facultatif : gardez vos doigts dans le toucher natif et envoyez la visée via le stick analogique droit. Certains jeux peuvent changer l\'interface d\'entrée. Si le mode est Désactivé, l\'activation de ce test choisit Toujours. Les LT/LB nécessitent un contrôleur physique en mode tactile natif. {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Émule le stick analogique droit sur le contrôleur/HUD. Pour correspondre au toucher natif du Xbox, activez également le test dans la catégorie Gyroscope. Les LT/LB en mode tactile natif reposent sur un contrôleur physique. {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"Masquer les commandes du guide"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"Confirmer"</string>
 </resources>

@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"Örnekler: {0} • Sağ çubuk X: {1} / Y: {2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"İsteğe bağlı test: Parmaklarınızı doğal dokunuşta tutun ve sağ analog çubukla nişan alın. Bazı oyunlar giriş arayüzünü değiştirebilir. Mod Kapalıysa, bu test etkinleştirilirken Her Zaman seçilir. LT/LB, yerel temasta fiziksel denetleyici gerektirir. {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Denetleyici/HUD üzerinde doğru analog çubuğu taklit eder. Xbox yerel dokunuşu eşleştirmek için Jiroskop kategorisindeki testi de etkinleştirin. Yerel dokunmadaki LT/LB, fiziksel denetleyiciye dayanır. {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"Kılavuz kontrollerini gizle"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"Onayla"</string>
 </resources>

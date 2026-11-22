@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"サンプル：{0} • 右スティック X：{1} / Y：{2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"オプションのテスト: 指をネイティブ タッチのままにして、右のアナログ スティックを介して照準を送信します。一部のゲームでは入力インターフェイスを切り替えることができます。モードがオフの場合、このテストを有効にすると [常に] が選択されます。 LT/LB にはネイティブ タッチの物理コントローラーが必要です。 {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"コントローラー/HUD の右アナログ スティックをエミュレートします。 Xbox のネイティブ タッチと一致させるには、ジャイロスコープ カテゴリのテストも有効にします。ネイティブ タッチの LT/LB は物理コントローラーに依存します。 {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"ガイド操作ボタンを非表示"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"決定"</string>
 </resources>

@@ -37,8 +37,9 @@ class GameTouchView(context: Context,
     private var autoHidden=false
     private var wakingGesture=false
     private var overlayFocused=false
+    private var gameplayTouchSuspended=false
     private val virtualPointers=mutableSetOf<Int>()
-    val controlsVisible: Boolean get()=mode==TouchMode.VIRTUAL && !autoHidden
+    val controlsVisible: Boolean get()=mode==TouchMode.VIRTUAL && !autoHidden && !gameplayTouchSuspended
     private val autoHideTask=Runnable { if(canAutoHide() && configuration.autoHide.idle) hideAutomatically() }
     var immediateNativeDispatch=true
     private val native=mutableMapOf<Int,NativePointer>()
@@ -126,6 +127,13 @@ class GameTouchView(context: Context,
     }
     fun setMenuCovered(covered: Boolean) { menuButton.visibility=if(isEditing) GONE else if(covered) INVISIBLE else VISIBLE }
 
+    fun suspendGameplayTouch(suspended: Boolean) {
+        if (gameplayTouchSuspended == suspended) return
+        gameplayTouchSuspended = suspended
+        releaseInputs()
+        scheduleAutoHide()
+    }
+
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
         releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE
         autoHidden=false
@@ -193,7 +201,7 @@ class GameTouchView(context: Context,
         super.onWindowFocusChanged(hasWindowFocus);overlayFocused=hasWindowFocus
         if(hasWindowFocus) scheduleAutoHide() else removeCallbacks(autoHideTask)
     }
-    private fun canAutoHide()=mode==TouchMode.VIRTUAL && !isEditing && !autoHidden && !wakingGesture &&
+    private fun canAutoHide()=controlsVisible && !isEditing && !wakingGesture &&
         overlayFocused && visibility==VISIBLE && virtualPointers.isEmpty() && menuPointer==null
     private fun scheduleAutoHide() {
         removeCallbacks(autoHideTask)
@@ -220,7 +228,7 @@ class GameTouchView(context: Context,
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if(isEditing) return editTouch(event)
         val receivedAt=SystemClock.uptimeMillis()
-        if(mode==TouchMode.NATIVE || mode==TouchMode.VIRTUAL) {
+        if(!gameplayTouchSuspended && (mode==TouchMode.NATIVE || mode==TouchMode.VIRTUAL)) {
             val s=nativeEvents
             when(event.actionMasked) {
                 MotionEvent.ACTION_DOWN,MotionEvent.ACTION_POINTER_DOWN -> s.down++
@@ -231,7 +239,7 @@ class GameTouchView(context: Context,
             val age=receivedAt-event.eventTime
             if(age>=0) { s.samples++;s.totalAge+=age;s.maxAge=maxOf(s.maxAge,age) }
         }
-        if(mode==TouchMode.NATIVE) {
+        if(!gameplayTouchSuspended && mode==TouchMode.NATIVE) {
             val s=nativeEvents
             if(event.actionMasked==MotionEvent.ACTION_DOWN) {
                 // A fresh Android gesture must not reuse a contact left by an interrupted one.
@@ -242,7 +250,7 @@ class GameTouchView(context: Context,
                 }
             }
         }
-        if(mode==TouchMode.VIRTUAL && event.actionMasked==MotionEvent.ACTION_DOWN) {
+        if(!gameplayTouchSuspended && mode==TouchMode.VIRTUAL && event.actionMasked==MotionEvent.ACTION_DOWN) {
             nativeEvents.staleHudContacts+=model.startGesture()
             parent?.requestDisallowInterceptTouchEvent(true)
             if(runCatching { requestUnbufferedDispatch(event) }.isSuccess) nativeEvents.immediate++ else nativeEvents.refused++
@@ -260,6 +268,7 @@ class GameTouchView(context: Context,
             if(menuHit(event.getX(index),event.getY(index))) { releaseInputs(); performClick() }
             return true
         }
+        if(gameplayTouchSuspended) return true
         if(mode==TouchMode.OFF) return false
         if(mode==TouchMode.VIRTUAL && (autoHidden || wakingGesture)) {
             if(menuPointer!=null) return true
@@ -383,8 +392,8 @@ class GameTouchView(context: Context,
     override fun performClick(): Boolean { super.performClick(); onMenu(); return true }
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val state=model.state(SystemClock.uptimeMillis())
-        if(mode==TouchMode.VIRTUAL && !autoHidden) {
+        if(controlsVisible) {
+            val state=model.state(SystemClock.uptimeMillis())
             for(control in model.controls) if(control.kind!=TouchKind.CAMERA) drawControl(canvas,control,state)
             if(isEditing) drawEditor(canvas)
         }

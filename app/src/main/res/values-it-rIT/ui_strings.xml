@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"Campioni: {0} • Levetta destra X: {1} / Y: {2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"Test facoltativo: mantieni le dita nel tocco nativo e invia la mira tramite la levetta analogica destra. Alcuni giochi possono cambiare l\'interfaccia di input. Se la modalità è Disattivata, l\'abilitazione di questo test sceglie Sempre. LT/LB richiedono un controller fisico con tocco nativo. {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Emula la levetta analogica destra sul controller/HUD. Per abbinare il tocco nativo di Xbox, abilita anche il test nella categoria Giroscopio. LT/LB nel tocco nativo si basano sul controller fisico. {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"Nascondi i comandi della guida"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"Conferma"</string>
 </resources>

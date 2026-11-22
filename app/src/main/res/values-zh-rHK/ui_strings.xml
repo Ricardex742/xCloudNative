@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"取樣數：{0} • 右搖桿 X：{1} / Y：{2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"可選測試：保持手指的自然觸感，並通過右側的模擬搖桿發送瞄準信號。有些遊戲可以切換輸入界面。如果模式為“關閉”，則啓用此測試會選擇“始終”。 LT/LB 需要原生觸摸的物理控制器。 {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"模擬控制器/HUD 上的右側模擬搖桿。為了匹配Xbox原生觸摸，還需要啓用陀螺儀類別中的測試。 LT/LB 原生觸摸依賴於物理控制器。 {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"隱藏指南操作按鈕"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"確認"</string>
 </resources>

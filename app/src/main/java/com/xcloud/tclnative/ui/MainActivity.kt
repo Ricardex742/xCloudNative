@@ -159,6 +159,7 @@ open class MainActivity : Activity() {
         directDiagnostics={ if(usbDirect.source!=null) usbDirect.snapshot().status.label else null }
     } }
     private lateinit var touchView: GameTouchView
+    private lateinit var guideTouchControls: GuideTouchControls
     private var currentTouchMode=TouchMode.OFF
     private val hudStore by lazy { com.xcloud.tclnative.touch.GameHudStore(this) }
     private var preferredControllerId: Int?=null
@@ -332,6 +333,7 @@ open class MainActivity : Activity() {
             if(displayCutout!=cutout) {
                 displayCutout=cutout
                 (gameMenuDialog as? GameShortcutBar)?.setCutout(cutout)
+                if (::guideTouchControls.isInitialized) guideTouchControls.setCutout(cutout)
                 networkIndicator.setCutout(cutout)
                 networkPanel?.dialog?.setNetworkCutout(cutout)
                 com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout)
@@ -359,6 +361,11 @@ open class MainActivity : Activity() {
             com.xcloud.tclnative.ui.dashboard.HudActionDialogs.gestures(this,gestures) { touchView.setEditedGestures(id,it) }
         }
         rootLayout.addView(touchView,FrameLayout.LayoutParams(-1,-1))
+        guideTouchControls = GuideTouchControls(this,
+            onButtonsChanged = { if (gameplayInputEnabled()) publishGamepad(0, temporary = true) },
+            onClose = { hideGuideTouchControls(); resumeAuxiliaryInput() })
+        rootLayout.addView(guideTouchControls,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.RIGHT))
+        guideTouchControls.setCutout(displayCutout)
         rootLayout.addView(networkIndicator)
         transitionPanel=SessionTransitionView(this)
         rootLayout.addView(transitionPanel,FrameLayout.LayoutParams(-1,-1))
@@ -1243,6 +1250,7 @@ open class MainActivity : Activity() {
     }
 
     private fun closeGameTools() {
+        hideGuideTouchControls()
         shortcutEditor?.close(); shortcutEditor = null
         networkPanel?.dialog?.dismiss(); networkPanel = null
         gameMenuDialog?.dismiss(); gameMenuDialog = null
@@ -1269,6 +1277,11 @@ open class MainActivity : Activity() {
                 false
             } == true
             if (!focused) return@launch
+            if (InputDeviceProfile.read(this@MainActivity).touchDevice && sessionDesktopMode!=DesktopInputMode.NATIVE) {
+                gyro.stop()
+                touchView.suspendGameplayTouch(true)
+                guideTouchControls.show()
+            }
             controllerPath.xboxMenuPulse()
             controllers.xboxButton(true)
             publishGamepad(0)
@@ -1280,6 +1293,11 @@ open class MainActivity : Activity() {
                 }
             }
         }
+    }
+    private fun hideGuideTouchControls() {
+        if (!::guideTouchControls.isInitialized || !guideTouchControls.active) return
+        guideTouchControls.hide()
+        touchView.suspendGameplayTouch(false)
     }
     private fun enableGameHud(): Boolean {
         if(transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) return false
@@ -1822,7 +1840,9 @@ open class MainActivity : Activity() {
                     ipPreference=settings.ipPreference,nativeKeyboardMouse=sessionDesktopMode==DesktopInputMode.NATIVE,
                     microphoneAllowed=settings.microphone,outputGain=playbackSettings.audioGain,audioMode=settings.audioMode,
                     onServerDisconnect={ notice -> runOnUiThread { if(current()) failure.complete(XboxServerDisconnectException(notice)) } },
-                    remotePlay=remote).also { allocatedRtc=it } }
+                    remotePlay=remote,
+                    onTitleFocusChanged={ focused -> runOnUiThread { if(current()) guideTouchControls.onTitleFocusChanged(focused) } }
+                    ).also { allocatedRtc=it } }
                 }
                 var rtc=buildRtc()
                 webrtcClient = rtc
@@ -2243,10 +2263,14 @@ open class MainActivity : Activity() {
         val physical=profile?.apply(raw) ?: raw
         controllerPath.record(slot,source,raw,physical,profile)
         val base=controllers.combined(slot,physical)
-        return if(slot==0) gyro.apply(if(sessionDesktopMode==DesktopInputMode.EMULATED) ControllerRouter.merge(base,desktopGamepad.state()) else base) else base
+        if (slot!=0) return base
+        val merged=if(sessionDesktopMode==DesktopInputMode.EMULATED) ControllerRouter.merge(base,desktopGamepad.state()) else base
+        val guideButtons=if (::guideTouchControls.isInitialized) guideTouchControls.buttons else 0
+        return gyro.apply(if (guideButtons==0) merged else merged.copy(buttons=merged.buttons or guideButtons))
     }
-    private fun publishGamepad(slot: Int) {
-        val auxiliary=slot==0 && currentTouchMode==TouchMode.NATIVE && sessionSettings?.gyroNativeTouch==true && controllers.sourceFor(0)==null
+    private fun publishGamepad(slot: Int, temporary: Boolean = false) {
+        val auxiliary=slot==0 && currentTouchMode==TouchMode.NATIVE && controllers.sourceFor(0)==null &&
+            (temporary || sessionSettings?.gyroNativeTouch==true)
         webrtcClient?.updateGamepad(combinedInput(slot),slot,auxiliary)
     }
     private fun setDesktopCapture(enabled: Boolean) {
@@ -2266,7 +2290,7 @@ open class MainActivity : Activity() {
     }
     private fun resumeAuxiliaryInput() {
         val settings=sessionSettings ?: return
-        if(!gameplayInputEnabled()) return
+        if(!gameplayInputEnabled() || guideTouchControls.active) return
         gyro.start(settings.gyroMode,settings.gyroSensitivity,currentTouchMode==TouchMode.NATIVE,settings.gyroNativeTouch)
         if(sessionDesktopMode!=DesktopInputMode.OFF) setDesktopCapture(true)
     }
@@ -2449,6 +2473,7 @@ open class MainActivity : Activity() {
 
     private fun resetController() {
         xboxButtonJob?.cancel()
+        hideGuideTouchControls()
         gyro.stop();setDesktopCapture(false)
         controllerShortcuts.indices.forEach(::resetControllerShortcut)
         recoveryMenuShortcut.reset()

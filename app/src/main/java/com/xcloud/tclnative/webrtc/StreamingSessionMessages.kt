@@ -13,7 +13,8 @@ enum class XboxDisconnectReason(val wire: String,val terminal: Boolean=true) {
 }
 data class XboxServerDisconnect(val reason: XboxDisconnectReason,val hresult: Int?=null)
 class XboxServerDisconnectException(val notice: XboxServerDisconnect): IOException("SESSION_STATE: ${notice.reason.wire}")
-data class SessionMessageResult(val replies: List<ChannelMessage> = emptyList(),val disconnect: XboxServerDisconnect?=null)
+data class SessionMessageResult(val replies: List<ChannelMessage> = emptyList(),val disconnect: XboxServerDisconnect?=null,
+                                val titleFocused: Boolean?=null)
 
 /** SDK title activation and server lifetime messages. No game input is synthesized. */
 class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000 }) {
@@ -43,7 +44,11 @@ class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000
         trace.receive(type,target,id!=null && id==activationId)
         // Observe notifications without changing the established session exchange.
         // Generic Unhandled replies require matching feature handlers and capability negotiation.
-        if(type=="Message" && target==TITLE_INFO) trace.title(content(json))
+        if (type=="Message" && target==TITLE_INFO) {
+            val title = content(json)
+            trace.title(title)
+            return SessionMessageResult(titleFocused = title?.opt("focused") as? Boolean)
+        }
         if(type!="TransactionStart" || target!=SERVER_DISCONNECT || id==null) return SessionMessageResult()
         val body=content(json)
         val reason=XboxDisconnectReason.entries.firstOrNull { it.wire==body?.optString("reason") }

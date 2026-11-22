@@ -93,18 +93,19 @@ class StreamingSessionMessagesTest {
         var now=1000L;val messages=StreamingSessionMessages { now }
         val notification=JSONObject().put("type","Message").put("target",StreamingSessionMessages.TITLE_INFO)
             .put("content",JSONObject().put("state",4).put("focused",true).put("titleid","private-id").put("titleaumid","private-aumid").toString())
-        assertTrue(messages.receive(notification).replies.isEmpty())
+        val active=messages.receive(notification)
+        assertTrue(active.replies.isEmpty());assertEquals(true,active.titleFocused)
         assertTrue(messages.diagnostics().contains("TITLE_STATE/Active; focused=true; updates=1"))
         now+=3000
         notification.put("id","server-id").put("content",JSONObject().put("state",0).put("focused",false))
         val closed=messages.receive(notification)
-        assertNull(closed.disconnect);assertTrue(closed.replies.isEmpty())
+        assertNull(closed.disconnect);assertTrue(closed.replies.isEmpty());assertEquals(false,closed.titleFocused)
         val text=messages.diagnostics()
         assertTrue(text.contains("TITLE_STATE/Closed; focused=false; updates=2"))
         assertTrue(text.contains("0:Active/true>3000:Closed/false"))
         listOf("private-id","private-aumid","server-id").forEach { assertFalse(text.contains(it)) }
         val unexpected=messages.receive(notification.put("type","TransactionStart"))
-        assertTrue(unexpected.replies.isEmpty());assertNull(unexpected.disconnect)
+        assertTrue(unexpected.replies.isEmpty());assertNull(unexpected.disconnect);assertNull(unexpected.titleFocused)
     }
     @Test fun passiveTimeNotificationsDoNotInventAQuotaOrAcknowledgeAnUnexpectedTransactionAsCompleted() {
         val messages=StreamingSessionMessages()

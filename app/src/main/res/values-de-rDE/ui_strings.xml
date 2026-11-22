@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"Messwerte: {0} • Rechter Stick X: {1} / Y: {2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"Optionaler Test: Halten Sie Ihre Finger im nativen Touch-Modus und senden Sie das Ziel über den rechten Analogstick. Bei einigen Spielen kann die Eingabeschnittstelle umgeschaltet werden. Wenn der Modus „Aus“ ist, wird bei der Aktivierung dieses Tests „Immer“ ausgewählt. Für LT/LB ist ein physischer Controller mit nativem Touch erforderlich. {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Emuliert den rechten Analogstick am Controller/HUD. Aktivieren Sie den Test auch in der Kategorie „Gyroskop“, um dem nativen Touch von Xbox zu entsprechen. LT/LB im nativen Touch basieren auf einem physischen Controller. {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"Guide-Steuerung ausblenden"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"Bestätigen"</string>
 </resources>

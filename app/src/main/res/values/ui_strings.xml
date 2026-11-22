@@ -1329,4 +1329,6 @@
     <string name="ui_88425a39dc1c1d98" formatted="false">"Amostras: {0} • Analógico direito X: {1} / Y: {2}"</string>
     <string name="ui_09fd55e78884e4a0" formatted="false">"Teste opcional: mantém os dedos no toque nativo e envia a mira pelo analógico direito. Alguns jogos podem alternar a interface de entrada. Se o modo estiver Desativado, ativar este teste escolhe Sempre. LT/LB exigem controle físico no toque nativo. {0}"</string>
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Emula o analógico direito em controle/HUD. Para combinar com toque nativo Xbox, ative também o teste na categoria Giroscópio. LT/LB no toque nativo dependem de controle físico. {0}"</string>
+    <string name="ui_fed5cd4b4d6225a1" formatted="false">"Ocultar controles do Guia"</string>
+    <string name="ui_717bedea36fcffd9" formatted="false">"Confirmar"</string>
 </resources>
