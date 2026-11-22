@@ -47,12 +47,12 @@ internal class NetworkIndicator(context: Context, onOpen: () -> Unit) : ImageBut
         contentDescription = UiText.join(quality.label, ". ", UiText.text("Estatísticas da rede"))
     }
 
-    fun setCutout(cutout: Rect) {
+    fun setCutout(cutout: Rect, rightOffset: Int = 0) {
         val size = (48 * density).roundToInt()
         val margin = (8 * density).roundToInt()
         layoutParams = FrameLayout.LayoutParams(size, size, Gravity.TOP or Gravity.RIGHT).apply {
             topMargin = margin + cutout.top
-            rightMargin = margin + cutout.right
+            rightMargin = margin + cutout.right + rightOffset
         }
     }
 }

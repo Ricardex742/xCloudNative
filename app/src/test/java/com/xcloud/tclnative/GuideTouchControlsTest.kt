@@ -6,7 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Rect
 import android.os.Looper
 import android.os.SystemClock
-import android.view.Gravity
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
@@ -41,30 +40,39 @@ class GuideTouchControlsTest {
         lateinit var controls: GuideTouchControls
         controls = GuideTouchControls(activity, { reports += controls.buttons }, { controls.hide() })
         root.setBackgroundColor(0xff34505c.toInt())
-        root.addView(controls, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT))
+        root.addView(controls, FrameLayout.LayoutParams(-1, -1))
         activity.setContentView(root)
-        controls.setCutout(Rect(0, 0, 32, 24))
+        controls.setCutout(Rect(18, 6, 32, 24))
         controls.show()
         root.measure(View.MeasureSpec.makeMeasureSpec(640, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY))
         root.layout(0, 0, 640, 320)
-        val up = controls.getChildAt(0)
-        val left = controls.getChildAt(1)
-        val right = controls.getChildAt(2)
-        val down = controls.getChildAt(3)
-        val confirm = controls.getChildAt(4)
-        val back = controls.getChildAt(5)
-        val close = controls.getChildAt(6)
-        fun tapControl(view: View) = tap(controls, view.left + view.width / 2f, view.top + view.height / 2f)
+        val pad = controls.getChildAt(0) as FrameLayout
+        val up = pad.getChildAt(0)
+        val left = pad.getChildAt(1)
+        val right = pad.getChildAt(2)
+        val down = pad.getChildAt(3)
+        val confirm = controls.getChildAt(1)
+        val back = controls.getChildAt(2)
+        val close = controls.getChildAt(3)
+        fun tapControl(view: View) {
+            val bounds = Rect(0, 0, view.width, view.height)
+            controls.offsetDescendantRectToMyCoords(view, bounds)
+            tap(controls, bounds.exactCenterX(), bounds.exactCenterY())
+        }
         try {
             assertTrue(reports.isEmpty())
-            val position = controls.layoutParams as FrameLayout.LayoutParams
-            assertTrue(position.rightMargin > 32)
-            assertTrue(position.bottomMargin > 24)
+            assertTrue(pad.left > 18 && pad.right < controls.width / 2)
+            assertTrue(controls.height - pad.bottom > 24)
+            assertTrue(confirm.left > controls.width / 2)
+            assertTrue(close.top > 6 && close.top < controls.height / 2)
+            assertTrue(close.right == back.right && controls.width - close.right > 32)
             assertEquals(up.left, down.left)
             assertEquals(left.top, right.top)
             assertTrue(left.left < up.left && up.left < right.left)
             assertTrue(up.top < left.top && left.top < down.top)
             assertTrue(confirm.top > back.top)
+            val backgroundTap = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 320f, 160f, 0)
+            try { assertFalse(controls.dispatchTouchEvent(backgroundTap)) } finally { backgroundTap.recycle() }
             val preview = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
             root.draw(Canvas(preview))
             File("build/reports/dashboard/guide-touch.png").apply { parentFile?.mkdirs() }.outputStream().use {

@@ -334,7 +334,8 @@ open class MainActivity : Activity() {
                 displayCutout=cutout
                 (gameMenuDialog as? GameShortcutBar)?.setCutout(cutout)
                 if (::guideTouchControls.isInitialized) guideTouchControls.setCutout(cutout)
-                networkIndicator.setCutout(cutout)
+                networkIndicator.setCutout(cutout, if (::guideTouchControls.isInitialized && guideTouchControls.active)
+                    guideTouchControls.cornerControlSize else 0)
                 networkPanel?.dialog?.setNetworkCutout(cutout)
                 com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout)
                 renderStatistics()
@@ -364,7 +365,7 @@ open class MainActivity : Activity() {
         guideTouchControls = GuideTouchControls(this,
             onButtonsChanged = { if (gameplayInputEnabled()) publishGamepad(0, temporary = true) },
             onClose = { hideGuideTouchControls(); resumeAuxiliaryInput() })
-        rootLayout.addView(guideTouchControls,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.RIGHT))
+        rootLayout.addView(guideTouchControls,FrameLayout.LayoutParams(-1,-1))
         guideTouchControls.setCutout(displayCutout)
         rootLayout.addView(networkIndicator)
         transitionPanel=SessionTransitionView(this)
@@ -1281,6 +1282,7 @@ open class MainActivity : Activity() {
                 gyro.stop()
                 touchView.suspendGameplayTouch(true)
                 guideTouchControls.show()
+                networkIndicator.setCutout(displayCutout, guideTouchControls.cornerControlSize)
             }
             controllerPath.xboxMenuPulse()
             controllers.xboxButton(true)
@@ -1298,6 +1300,7 @@ open class MainActivity : Activity() {
         if (!::guideTouchControls.isInitialized || !guideTouchControls.active) return
         guideTouchControls.hide()
         touchView.suspendGameplayTouch(false)
+        networkIndicator.setCutout(displayCutout)
     }
     private fun enableGameHud(): Boolean {
         if(transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) return false

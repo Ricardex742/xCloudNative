@@ -46,30 +46,33 @@ internal class GuideTouchControls(
     private val bezel = RadialGradient(-18f, -21f, 103f, 0xf1374349.toInt(), 0xe90a1115.toInt(), Shader.TileMode.CLAMP)
     private val crossFace = LinearGradient(0f, -53f, 0f, 53f, 0xff405057.toInt(), 0xff162228.toInt(), Shader.TileMode.CLAMP)
     private val controlMasks = mutableMapOf<View, Int>()
+    private val directionPad = object : FrameLayout(context) {
+        init { setWillNotDraw(false) }
+        override fun onDraw(canvas: Canvas) { super.onDraw(canvas); drawDirectionPad(canvas) }
+    }
     private var titleLostFocus = false
     var buttons = 0
         private set
     val active: Boolean get() = visibility == VISIBLE
+    val cornerControlSize: Int get() = hitSize
 
     init {
         visibility = GONE
-        setWillNotDraw(false)
-        isClickable = true
-
+        addView(directionPad, LayoutParams(3 * hitSize, 3 * hitSize, Gravity.BOTTOM or Gravity.LEFT))
         addDirection(HudBinding.UP, 1, 0, 0f)
         addDirection(HudBinding.LEFT, 0, 1, 270f)
         addDirection(HudBinding.RIGHT, 2, 1, 90f)
         addDirection(HudBinding.DOWN, 1, 2, 180f)
-        addRoundControl("A", UiText.text("Confirmar"), 3, 2, 0xff78edac.toInt(), HudBinding.A)
-        addRoundControl("B", UiText.text("Voltar"), 4, 1, 0xffffa397.toInt(), HudBinding.B)
-        addRoundControl("×", UiText.text("Ocultar controles do Guia"), 4, 0, 0xffb3c3c8.toInt())
+        addRoundControl("A", UiText.text("Confirmar"), 0xff78edac.toInt(),
+            LayoutParams(hitSize, hitSize, Gravity.BOTTOM or Gravity.RIGHT).apply { rightMargin = hitSize }, HudBinding.A)
+        addRoundControl("B", UiText.text("Voltar"), 0xffffa397.toInt(),
+            LayoutParams(hitSize, hitSize, Gravity.BOTTOM or Gravity.RIGHT).apply { bottomMargin = hitSize }, HudBinding.B)
+        addRoundControl("×", UiText.text("Ocultar controles do Guia"), 0xffb3c3c8.toInt(),
+            LayoutParams(hitSize, hitSize, Gravity.TOP or Gravity.RIGHT))
     }
 
     fun setCutout(cutout: Rect) {
-        val params = layoutParams as? LayoutParams ?: return
-        params.rightMargin = cutout.right + edgeMargin
-        params.bottomMargin = cutout.bottom + edgeMargin
-        layoutParams = params
+        setPadding(cutout.left + edgeMargin, cutout.top + edgeMargin, cutout.right + edgeMargin, cutout.bottom + edgeMargin)
     }
 
     fun show() {
@@ -90,8 +93,7 @@ internal class GuideTouchControls(
         else if (titleLostFocus) onClose()
     }
 
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
+    private fun drawDirectionPad(canvas: Canvas) {
         val unit = hitSize / 48f
         canvas.save()
         canvas.translate(1.5f * hitSize, 1.5f * hitSize)
@@ -160,10 +162,14 @@ internal class GuideTouchControls(
                 canvas.restore()
             }
         }
-        addControl(button, binding.label, column, row, binding)
+        configureControl(button, binding.label, binding)
+        directionPad.addView(button, LayoutParams(hitSize, hitSize, Gravity.TOP or Gravity.LEFT).apply {
+            leftMargin = column * hitSize
+            topMargin = row * hitSize
+        })
     }
 
-    private fun addRoundControl(label: String, description: String, column: Int, row: Int, accent: Int,
+    private fun addRoundControl(label: String, description: String, accent: Int, position: LayoutParams,
                                 binding: HudBinding? = null) {
         val inset = ceil((if (binding == null) 8 else 2) * density).toInt()
         fun disc(selected: Boolean) = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
@@ -187,10 +193,11 @@ internal class GuideTouchControls(
             background = InsetDrawable(RippleDrawable(ColorStateList.valueOf(0x55ffffff), fill, null), inset)
             elevation = 2 * density
         }
-        addControl(button, description, column, row, binding)
+        configureControl(button, description, binding)
+        addView(button, position)
     }
 
-    private fun addControl(view: View, description: String, column: Int, row: Int, binding: HudBinding?) {
+    private fun configureControl(view: View, description: String, binding: HudBinding?) {
         view.contentDescription = description
         view.isFocusable = true
         view.isFocusableInTouchMode = false
@@ -199,10 +206,6 @@ internal class GuideTouchControls(
             if (binding == null) onClose() else press(binding)
         }
         if (binding != null) controlMasks[view] = binding.button
-        addView(view, LayoutParams(hitSize, hitSize, Gravity.TOP or Gravity.LEFT).apply {
-            leftMargin = column * hitSize
-            topMargin = row * hitSize
-        })
     }
 
     private fun press(binding: HudBinding) {
