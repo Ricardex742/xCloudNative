@@ -129,6 +129,7 @@ open class MainActivity : Activity() {
     } }
     private val playbackGeneration get() = playback.generation
     private val controllers=ControllerRouter()
+    private var xboxButtonJob: Job? = null
     private val controllerPath=ControllerPathTrace()
     private var gamepadState: GamepadState
         get()=controllers.physical(0)
@@ -697,7 +698,7 @@ open class MainActivity : Activity() {
                     val session = authenticator.authenticateToRemotePlay().getOrThrow()
                     val client = XCloudSignalingClient(session, transferTokenProvider = {
                         authenticator.getConsoleTransferToken(session.credentialGeneration)
-                    })
+                    }, renewRemotePlayAuthorization = authenticator::renewRemotePlayAuthorization)
                     val consoles = client.fetchRemoteConsoles()
                     if (remotePlayPanel !== panel) return@launch
                     panel.showConsoles(consoles, selectedId, ::refresh) { console ->
@@ -1235,17 +1236,26 @@ open class MainActivity : Activity() {
         showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(videoDiagnostics()),UiText.nested(playbackSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))+"\n"+(webrtcClient?.inputDiagnostics() ?: ""),onBack=onBack)
     }
     private fun pressXboxButton() {
+        if (xboxButtonJob?.isActive == true) return
         val client=webrtcClient ?: return
         val generation=playbackGeneration
-        mainScope.launch {
-            // Let the native shortcut panel release focus before the explicit button press.
-            delay(80)
-            if(client!==webrtcClient || generation!=playbackGeneration || !gameplayInputEnabled()) return@launch
-            val state=combinedInput(0)
-            client.updateGamepad(state.copy(buttons=state.buttons or 2))
+        xboxButtonJob = mainScope.launch {
+            val focused = withTimeoutOrNull(1500) {
+                while (activityVisible && client === webrtcClient && generation == playbackGeneration) {
+                    if (gameplayInputEnabled()) return@withTimeoutOrNull true
+                    delay(20)
+                }
+                false
+            } == true
+            if (!focused) return@launch
+            controllers.xboxButton(true)
+            publishGamepad(0)
             try { delay(120) } finally {
-                if(client===webrtcClient && generation==playbackGeneration) client.updateGamepad(combinedInput(0),
-                    auxiliary=currentTouchMode==TouchMode.NATIVE && controllers.sourceFor(0)==null)
+                if (client === webrtcClient && generation == playbackGeneration) {
+                    controllers.xboxButton(false)
+                    client.updateGamepad(combinedInput(0),
+                        auxiliary = currentTouchMode == TouchMode.NATIVE && controllers.sourceFor(0) == null)
+                }
             }
         }
     }
@@ -1522,6 +1532,7 @@ open class MainActivity : Activity() {
                 } else if(desktopGamepad.key(event.keyCode,down)) { publishGamepad(0);return true }
             }
         }
+        if (gameplayInputEnabled() && dispatchGameplayButton(event)) return true
         if(transitionPanel.visibility==View.VISIBLE && event.keyCode in setOf(KeyEvent.KEYCODE_BACK,KeyEvent.KEYCODE_BUTTON_B,
                 KeyEvent.KEYCODE_BUTTON_A,KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER,KeyEvent.KEYCODE_DPAD_UP,
                 KeyEvent.KEYCODE_DPAD_DOWN,KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT)) {
@@ -2206,13 +2217,16 @@ open class MainActivity : Activity() {
         }
         return true
     }
-    private fun controllerSlot(deviceId: Int,source: Int,confirmedGamepad: Boolean): Int? {
-        if(!televisionInput) return if(AndroidGamepadPolicy.supportsGamepad(source)) controllers.slot(deviceId) else 0
+    private fun controllerSlot(deviceId: Int,source: Int,confirmedGamepad: Boolean,register: Boolean = true): Int? {
         val android=ControllerSource.Android(deviceId)
         controllers.existingSlot(android)?.let { return it }
+        if (!televisionInput) {
+            if (!AndroidGamepadPolicy.supportsGamepad(source)) return 0
+            return if (register) controllers.slot(android) else null
+        }
         val hasPrimary=controllers.sourceFor(0)!=null
         if(hasPrimary && !controllers.coOp) return null
-        if(deviceId>=0 && confirmedGamepad) {
+        if(deviceId>=0 && confirmedGamepad && register) {
             return controllers.slot(android)
         }
         return 0.takeUnless { hasPrimary }
@@ -2321,10 +2335,10 @@ open class MainActivity : Activity() {
         if (update.openMenu) showGameMenu()
     }
 
-    private fun handleControllerShortcut(mask: Int, down: Boolean): Boolean {
+    private fun handleControllerShortcut(mask: Int, down: Boolean, emitPulse: Boolean = true): Boolean {
         if (mask != ControllerShortcut.START && mask != ControllerShortcut.SELECT) return false
         shortcutFlushJob?.cancel()
-        applyShortcut(controllerShortcut.change(mask, down, android.os.SystemClock.elapsedRealtime()))
+        applyShortcut(controllerShortcut.change(mask, down, android.os.SystemClock.elapsedRealtime(), emitPulse))
         controllerShortcut.flushAtMs?.let { deadline ->
             shortcutFlushJob = mainScope.launch {
                 delay((deadline - android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0))
@@ -2335,6 +2349,7 @@ open class MainActivity : Activity() {
     }
 
     private fun resetController() {
+        xboxButtonJob?.cancel()
         gyro.stop();setDesktopCapture(false)
         shortcutFlushJob?.cancel()
         shortcutFlushJob = null
@@ -2387,7 +2402,7 @@ open class MainActivity : Activity() {
                 !AndroidGamepadPolicy.confirmsJoystick(axes)) return true
             val slot = controllerSlot(event.deviceId, event.source, confirmedGamepad = true) ?: return true
             webrtcClient?.recordControllerEvent(event.eventTime,receivedAt,event.historySize,device?.name)
-            controllers.update(slot, axes.copy(buttons = (controllers.physical(slot).buttons and 0xF0FF) or axes.buttons))
+            controllers.updateAndroidMotion(slot, axes)
             touchView.physicalInput(controllers.physical(slot))
             publishGamepad(slot)
             return true
@@ -2396,7 +2411,7 @@ open class MainActivity : Activity() {
     }
 
     private fun gamepadButton(key: Int, event: KeyEvent): Int = when (key) {
-        KeyEvent.KEYCODE_BUTTON_MODE -> 2
+        KeyEvent.KEYCODE_BUTTON_MODE -> ControllerRouter.XBOX_BUTTON
         KeyEvent.KEYCODE_BUTTON_START -> 4
         KeyEvent.KEYCODE_BUTTON_SELECT -> 8
         KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER -> 16
@@ -2415,16 +2430,17 @@ open class MainActivity : Activity() {
         else -> 0
     }
 
-    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
-        val mask = gamepadButton(keyCode, event)
-        if (mask != 0 && gameplayInputEnabled()) {
-            val slot=controllerSlot(event.deviceId,event.source,confirmedGamepad = false) ?: return true
-            if (slot==0 && handleControllerShortcut(mask, false)) return true
-            controllers.update(slot,controllers.physical(slot).copy(buttons=controllers.physical(slot).buttons and mask.inv()))
-            publishGamepad(slot)
-            return true
-        }
-        return super.onKeyUp(keyCode, event)
+    private fun dispatchGameplayButton(event: KeyEvent): Boolean {
+        val mask = gamepadButton(event.keyCode, event)
+        val down = event.action == KeyEvent.ACTION_DOWN
+        if (mask == 0 || (!down && event.action != KeyEvent.ACTION_UP)) return false
+        if (down && (event.repeatCount > 0 || event.isCanceled)) return true
+        val slot = controllerSlot(event.deviceId, event.source, confirmedGamepad = down &&
+            televisionInput && AndroidGamepadPolicy.confirmsGamepad(event), register = down) ?: return true
+        if (down) touchView.physicalInput(GamepadState(buttons = mask))
+        if (slot == 0 && handleControllerShortcut(mask, down, emitPulse = !event.isCanceled)) return true
+        if (controllers.updateAndroidKey(slot, event.deviceId, event.keyCode, mask, down)) publishGamepad(slot)
+        return true
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
@@ -2458,15 +2474,6 @@ open class MainActivity : Activity() {
         if (keyCode == KeyEvent.KEYCODE_BACK && controlPanel.visibility == View.GONE) {
             if(touchView.isEditing) { touchView.cancelEditing(); return true }
             if (queuePanel.visibility == View.VISIBLE) cancelPlayback() else if(event.repeatCount == 0) showGameMenu()
-            return true
-        }
-        val mask = gamepadButton(keyCode, event)
-        if (mask != 0 && gameplayInputEnabled()) {
-            val slot=controllerSlot(event.deviceId, event.source, televisionInput && AndroidGamepadPolicy.confirmsGamepad(event)) ?: return true
-            touchView.physicalInput(GamepadState(buttons=mask))
-            if (slot==0 && handleControllerShortcut(mask, true)) return true
-            controllers.update(slot,controllers.physical(slot).copy(buttons=controllers.physical(slot).buttons or mask))
-            publishGamepad(slot)
             return true
         }
         return super.onKeyDown(keyCode, event)

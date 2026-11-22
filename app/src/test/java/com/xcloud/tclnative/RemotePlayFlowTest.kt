@@ -127,6 +127,42 @@ class RemotePlayFlowTest {
         }
     }
 
+    @Test fun homeKeepAliveRenewsTheSameAccountAndRetriesWithoutReplacingTheAllocation() = runBlocking {
+        MockWebServer().use { server ->
+            server.start()
+            val login = server.auth()
+            val original = login.authenticateToRemotePlay().getOrThrow()
+            server.reply(list)
+            server.reply("""{"sessionPath":"$path"}""", 202)
+            server.reply("""{"state":"Provisioned"}""")
+            server.answer()
+            server.reply("""{"code":"Unauthorized"}""", 401)
+            server.reply("""{"Token":"user-token","DisplayClaims":{"xui":[{"uhs":"test-hash"}]}}""")
+            server.reply("""{"Token":"xsts-token"}""")
+            val home = server.url("/").toString()
+            server.reply("""{"gsToken":"new-home-token","offeringSettings":{"regions":[{"baseUri":"$home","isDefault":true}]}}""")
+            server.reply("", 204)
+            server.reply("", 204)
+
+            val client = XCloudSignalingClient(original, http, renewRemotePlayAuthorization = login::renewRemotePlayAuthorization)
+            val console = client.fetchRemoteConsoles().first()
+            client.startRemotePlay(console, peer, StreamResolution.HD_1080, SessionOptions(), {}, {}).getOrThrow()
+            client.keepAlive()
+            client.stop()
+
+            val calls = List(server.requestCount) { server.takeRequest(1, TimeUnit.SECONDS)!! }
+            assertEquals(1, calls.count { it.path == "/v5/sessions/home/play" })
+            val keepAlive = calls.filter { it.path == "$path/keepalive" }
+            assertEquals(listOf("Bearer home-token", "Bearer new-home-token"),
+                keepAlive.map { it.getHeader("Authorization") })
+            assertEquals(2, calls.count { it.path == "/home-login" })
+            assertEquals(path, calls.single { it.method == "DELETE" }.path)
+            login.clearSession()
+            assertTrue(runCatching { login.renewRemotePlayAuthorization(original) }.exceptionOrNull()
+                is com.xcloud.tclnative.auth.AuthenticationRequiredException)
+        }
+    }
+
     @Test fun unexpectedAuthorityAndCloudAllocationAreRejected() = runBlocking {
         MockWebServer().use { server ->
             server.start()

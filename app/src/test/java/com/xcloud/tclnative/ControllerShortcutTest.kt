@@ -5,6 +5,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ControllerShortcutTest {
+    @Test fun cancelledPendingChordKeyDoesNotSendAPhantomTap() {
+        val shortcut = ControllerShortcut()
+        shortcut.change(4, true, 0)
+        assertEquals(ShortcutUpdate(0), shortcut.change(4, false, 60, emitPulse = false))
+        assertNull(shortcut.flushAtMs)
+    }
     @Test fun eitherOrderOpensMenuOnceAndNeitherMenuButtonReachesTheGame() {
         for ((first, second) in listOf(4 to 8, 8 to 4)) {
             val shortcut = ControllerShortcut()

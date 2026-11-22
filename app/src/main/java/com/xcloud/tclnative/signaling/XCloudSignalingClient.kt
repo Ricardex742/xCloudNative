@@ -58,7 +58,8 @@ class XCloudSignalingClient(
     private val clockMs: () -> Long = { System.nanoTime() / 1_000_000 },
     private val queueTimeoutMs: Long = 60 * 60_000,
     private val transferTokenProvider: suspend () -> String = { (session as? XCloudSession)?.transferToken.orEmpty() },
-    private val renewCloudAuthorization: (suspend (XCloudSession) -> XCloudSession)? = null
+    private val renewCloudAuthorization: (suspend (XCloudSession) -> XCloudSession)? = null,
+    private val renewRemotePlayAuthorization: (suspend (RemotePlaySession) -> RemotePlaySession)? = null
 ) {
     private data class SessionProfile(
         val baseUri: String, val region: String, val locale: String, val resolution: StreamResolution
@@ -507,25 +508,40 @@ class XCloudSignalingClient(
         try {
             sessionRequest(allocation, path, stage, "POST", client = keepAliveClient, bearer = current.gssvToken)
         } catch (rejected: CloudHttpException) {
-            val renew = renewCloudAuthorization
-            if (rejected.status != 401 || current !is XCloudSession || renew == null) throw rejected
+            val canRenew = when (current) {
+                is XCloudSession -> renewCloudAuthorization != null
+                is RemotePlaySession -> renewRemotePlayAuthorization != null
+            }
+            if (rejected.status != 401 || !canRenew) throw rejected
             onAuthorizationRejected(rejected)
             val replacement = authorizationLock.withLock {
                 requireActive(allocation)
                 val latest = authorization
                 if (latest !== current) return@withLock latest
-                val renewed = withTimeoutOrNull(20_000) { renew(current) } ?: throw rejected
+                val renewed = withTimeoutOrNull(20_000) {
+                    when (current) {
+                        is XCloudSession -> renewCloudAuthorization?.invoke(current)
+                        is RemotePlaySession -> renewRemotePlayAuthorization?.invoke(current)
+                    }
+                } ?: throw rejected
                 requireActive(allocation)
                 val base = allocation.attempt.profile.baseUri.trimEnd('/')
-                if (renewed.credentialGeneration != current.credentialGeneration ||
-                    renewed.libraryAccountId != current.libraryAccountId || renewed.gssvToken.isBlank() ||
-                    (renewed.baseUri.trimEnd('/') != base && renewed.regions.none { it.baseUri.trimEnd('/') == base })) throw rejected
+                if (renewed.gssvToken.isBlank() || !sameAuthorizationScope(current, renewed, base)) throw rejected
                 authorization = renewed
                 renewed
             }
             sessionRequest(allocation, path, stage, "POST", client = keepAliveClient, bearer = replacement.gssvToken)
         }
     }
+
+    private fun sameAuthorizationScope(current: StreamingAuthorization, renewed: StreamingAuthorization, base: String): Boolean =
+        when (current) {
+            is XCloudSession -> renewed is XCloudSession && renewed.credentialGeneration == current.credentialGeneration &&
+                renewed.libraryAccountId == current.libraryAccountId &&
+                (renewed.baseUri.trimEnd('/') == base || renewed.regions.any { it.baseUri.trimEnd('/') == base })
+            is RemotePlaySession -> renewed is RemotePlaySession && renewed.credentialGeneration == current.credentialGeneration &&
+                renewed.baseUri.trimEnd('/') == base
+        }
 
     suspend fun stop() {
         val attempt = lastAttempt

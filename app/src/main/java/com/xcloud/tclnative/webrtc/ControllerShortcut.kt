@@ -10,7 +10,7 @@ class ControllerShortcut {
     private var consumed = false
     val flushAtMs: Long? get() = pendingAt?.plus(CHORD_WINDOW_MS)
 
-    fun change(button: Int, down: Boolean, nowMs: Long): ShortcutUpdate {
+    fun change(button: Int, down: Boolean, nowMs: Long, emitPulse: Boolean = true): ShortcutUpdate {
         require(button == START || button == SELECT)
         if (down) {
             if (held and button != 0) return ShortcutUpdate(forwarded)
@@ -29,7 +29,7 @@ class ControllerShortcut {
             if (held == 0) reset()
             return ShortcutUpdate(0)
         }
-        val pulse = if (forwarded and button == 0) button else 0
+        val pulse = if (emitPulse && forwarded and button == 0) button else 0
         forwarded = forwarded and button.inv()
         if (held == 0) pendingAt = null
         return ShortcutUpdate(forwarded, pulse)

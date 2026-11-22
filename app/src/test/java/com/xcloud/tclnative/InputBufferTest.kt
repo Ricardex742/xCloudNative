@@ -6,6 +6,22 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class InputBufferTest {
+    @Test fun resettingInputDiscardsUnsentPressesInsteadOfReplayingThemAfterFocusLoss() {
+        val packets = java.util.concurrent.LinkedBlockingQueue<ByteArray>()
+        val pump = com.xcloud.tclnative.webrtc.RealtimeInputPump({ 0 }, { packets.offer(it); true }, { fail("Send failed") })
+        try {
+            pump.update(GamepadState(buttons = 16))
+            pump.update(GamepadState())
+            pump.update(GamepadState(buttons = 16))
+            pump.resetGamepads()
+            pump.start()
+            repeat(3) {
+                val packet = packets.poll(2, java.util.concurrent.TimeUnit.SECONDS)
+                assertNotNull(packet)
+                assertEquals(0, java.nio.ByteBuffer.wrap(packet).order(java.nio.ByteOrder.LITTLE_ENDIAN).getShort(16).toInt())
+            }
+        } finally { pump.close() }
+    }
     @Test fun diagnosticInputBytesCountOnlyPacketsActuallyAcceptedByTheChannel() {
         val sent=java.util.concurrent.atomic.AtomicLong()
         val pump=com.xcloud.tclnative.webrtc.RealtimeInputPump({0},{ sent.addAndGet(it.size.toLong()); true },

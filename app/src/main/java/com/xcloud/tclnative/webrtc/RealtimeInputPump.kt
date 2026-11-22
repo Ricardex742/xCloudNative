@@ -85,6 +85,14 @@ class RealtimeInputPump(
     fun desktopKey(key: NativeKey) { desktop.key(key);thread?.let(LockSupport::unpark) }
     fun desktopMouse(mouse: NativeMouse) { desktop.mouse(mouse);thread?.let(LockSupport::unpark) }
     fun releaseDesktop() { desktop.release();thread?.let(LockSupport::unpark) }
+    fun resetGamepads() = synchronized(lock) {
+        val neutral = GamepadState()
+        for (index in active) {
+            buffers[index].update(neutral)
+            buffers[index].discardBacklog()
+        }
+        thread?.let(LockSupport::unpark)
+    }
     fun remove(index: Int) { synchronized(lock) { active.remove(index);retireAfterNeutral.remove(index);revisions[index]++; buffers[index].update(GamepadState()); buffers[index].discardBacklog() } }
     /** Auxiliary aim must release its stick before becoming idle. The touch slot stays connected. */
     fun releaseAfterNeutral(index: Int=0) {

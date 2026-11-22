@@ -288,7 +288,17 @@ class XalAuthenticator(
     }
 
     suspend fun authenticateToRemotePlay(): Result<RemotePlaySession> = result {
-        val grant = streamingGrant(credentials.snapshot())
+        remotePlayAuthorization(credentials.snapshot())
+    }
+
+    internal suspend fun renewRemotePlayAuthorization(previous: RemotePlaySession): RemotePlaySession {
+        val snapshot = credentials.snapshot()
+        if (snapshot.generation != previous.credentialGeneration) throw AuthenticationRequiredException()
+        return remotePlayAuthorization(snapshot)
+    }
+
+    private suspend fun remotePlayAuthorization(snapshot: AccountCredentials.Snapshot): RemotePlaySession {
+        val grant = streamingGrant(snapshot)
         val home = JSONObject(post(endpoints.remotePlayLoginUrl, "REMOTE_PLAY_AUTH", json(JSONObject()
             .put("token", grant.xsts.getString("Token")).put("offeringId", "xhome")), direct = true))
         val regions = home.getJSONObject("offeringSettings").getJSONArray("regions")
@@ -308,7 +318,7 @@ class XalAuthenticator(
         val token = home.optString("gsToken").takeIf { it.isNotBlank() && it != "null" }
             ?: throw java.io.IOException("REMOTE_PLAY_AUTH: credencial ausente")
         credentials.requireCurrent(grant.generation)
-        RemotePlaySession(token, uri.toString().trimEnd('/'), grant.generation)
+        return RemotePlaySession(token, uri.toString().trimEnd('/'), grant.generation)
     }
 
     private class StreamingGrant(val user: JSONObject, val xsts: JSONObject, val generation: Long)

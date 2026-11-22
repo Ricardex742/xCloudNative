@@ -590,7 +590,8 @@ class XCloudWebRtcClient(
     fun desktopMouse(mouse: NativeMouse) { synchronized(pumpLock) { if(nativeKeyboardMouse && !closed.get()) inputPump?.desktopMouse(mouse) } }
     fun releaseDesktop() { synchronized(pumpLock) { if(nativeKeyboardMouse && !closed.get()) inputPump?.releaseDesktop() } }
     fun resetInput() { synchronized(pumpLock) {
-        gamepads.keys.toList().forEach { gamepads[it]=GamepadState(); inputPump?.update(GamepadState(),it) }
+        gamepads.replaceAll { _, _ -> GamepadState() }
+        inputPump?.resetGamepads()
         pendingTouch.release()
         if(nativeKeyboardMouse) inputPump?.releaseDesktop()
     } }

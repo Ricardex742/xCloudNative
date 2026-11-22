@@ -7,6 +7,40 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class MultiplayerInputTest {
+    @Test fun androidKeysAndHatDoNotReleaseOrRepeatAButtonStillHeldByAnotherSource() {
+        val router = ControllerRouter()
+        val up = 256
+        val keyCode = 19
+        assertEquals(0, router.slot(11))
+        assertTrue(router.updateAndroidKey(0, 11, keyCode, up, down = true))
+        repeat(4) {
+            router.updateAndroidMotion(0, GamepadState(leftX = .2f))
+            assertFalse(router.updateAndroidKey(0, 11, keyCode, up, down = true))
+            assertEquals(up, router.physical(0).buttons)
+        }
+        router.updateAndroidMotion(0, GamepadState(buttons = up))
+        assertTrue(router.updateAndroidKey(0, 11, keyCode, up, down = false))
+        assertEquals(up, router.physical(0).buttons)
+        router.updateAndroidMotion(0, GamepadState())
+        assertEquals(0, router.physical(0).buttons)
+    }
+    @Test fun virtualXboxPressSurvivesControllerAndHudUpdatesUntilItsOwnRelease() {
+        val router = ControllerRouter()
+        router.beginSession(true)
+        assertEquals(0, router.slot(11))
+        assertEquals(1, router.slot(12))
+        router.xboxButton(true)
+        router.updateAndroidMotion(0, GamepadState(leftX = .5f))
+        router.virtual(GamepadState(buttons = 16))
+        assertEquals(ControllerRouter.XBOX_BUTTON or 16, router.combined(0).buttons)
+        assertEquals(0, router.combined(1).buttons)
+        router.xboxButton(false)
+        assertEquals(16, router.combined(0).buttons)
+        assertEquals(.5f, router.combined(0).leftX, 0f)
+        router.xboxButton(true)
+        router.reset()
+        assertEquals(GamepadState(), router.combined(0))
+    }
     @Test fun controllerSlotsStayIndependentAcrossHotplugAndFocusReset() {
         val router=ControllerRouter()
         router.beginSession(true)
