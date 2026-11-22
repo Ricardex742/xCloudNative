@@ -1316,4 +1316,17 @@
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Incolla il codice nella pagina Microsoft e torna all’app."</string>
     <string name="ui_04528db174865b6f" formatted="false">", acquistato"</string>
     <string name="ui_c2de4a5b6d5d5573" formatted="false">"Connessione a Microsoft non disponibile. Nuovo tentativo con lo stesso codice…"</string>
+    <string name="ui_ca4c71a6385cb7a4" formatted="false">"Croce direzionale"</string>
+    <string name="ui_1f8873dc3106a672" formatted="false">"Croce direzionale: {0}"</string>
+    <string name="ui_fe712ed18f1274a1" formatted="false">"Tocco nativo e controller"</string>
+    <string name="ui_174e74475bbc1924" formatted="false">"Usa solo il controller in questa sessione"</string>
+    <string name="ui_f22f911f4e9a5ee3" formatted="false">"Usa tocco nativo e controller in questa sessione"</string>
+    <string name="ui_650227c9428dc301" formatted="false">"Avvia il gioco con tocco e controller: {0}"</string>
+    <string name="ui_0c9999fe8f160889" formatted="false">"La combinazione dipende dal gioco."</string>
+    <string name="ui_a8ee8cf2af992f1a" formatted="false">"Prova il giroscopio"</string>
+    <string name="ui_289e3e0a8330365c" formatted="false">"Si applica quando riprendi la partita."</string>
+    <string name="ui_21d60434ca13535c" formatted="false">"Muovi il dispositivo per provare localmente il sensore e la risposta della levetta destra."</string>
+    <string name="ui_88425a39dc1c1d98" formatted="false">"Campioni: {0} • Levetta destra X: {1} / Y: {2}"</string>
+    <string name="ui_09fd55e78884e4a0" formatted="false">"Test facoltativo: mantieni le dita nel tocco nativo e invia la mira tramite la levetta analogica destra. Alcuni giochi possono cambiare l\'interfaccia di input. Se la modalità è Disattivata, l\'abilitazione di questo test sceglie Sempre. LT/LB richiedono un controller fisico con tocco nativo. {0}"</string>
+    <string name="ui_e1e6926d0d8e111c" formatted="false">"Emula la levetta analogica destra sul controller/HUD. Per abbinare il tocco nativo di Xbox, abilita anche il test nella categoria Giroscopio. LT/LB nel tocco nativo si basano sul controller fisico. {0}"</string>
 </resources>

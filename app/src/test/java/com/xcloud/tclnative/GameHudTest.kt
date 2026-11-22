@@ -6,6 +6,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class GameHudTest {
+    @Test fun optionalCodDpadSendsDirectionsWithoutMovingTheLeftStick() {
+        assertFalse(GameHud.elements(HudPreset.CALL_OF_DUTY).any { it.id=="dpad" })
+        val move=HudPlacement(.39f,.50f)
+        val model=VirtualGamepad(1280,720,HudPreset.CALL_OF_DUTY,HudSettings(codDpad=true,placements=mapOf("dpad" to move)))
+        val dpad=model.controls.single { it.id=="dpad" }
+        assertEquals(.39f*1280,dpad.x,.1f)
+        model.down(1,dpad.x,dpad.y-dpad.radius*.8f,10)
+        val report=model.state(10)
+        assertEquals(HudBinding.UP.button,report.buttons)
+        assertEquals(0f,report.leftY,0f)
+        model.up(1,20)
+        assertEquals(0,model.state(20).buttons)
+    }
     @Test fun legacyShotRemappingAlsoChangesTheDefaultSwipeModifiers() {
         val input=VirtualGamepad(1280,720,HudPreset.EA_FC,HudSettings(placements=mapOf(
             "shoot" to HudPlacement(.91f,.54f,binding=HudBinding.X))))

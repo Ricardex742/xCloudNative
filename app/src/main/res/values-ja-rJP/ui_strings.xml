@@ -1316,4 +1316,17 @@
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Microsoft のページにコードを貼り付けてから、アプリに戻ってください。"</string>
     <string name="ui_04528db174865b6f" formatted="false">"、購入済み"</string>
     <string name="ui_c2de4a5b6d5d5573" formatted="false">"Microsoft に接続できません。同じコードで再試行しています…"</string>
+    <string name="ui_ca4c71a6385cb7a4" formatted="false">"方向パッド"</string>
+    <string name="ui_1f8873dc3106a672" formatted="false">"方向パッド：{0}"</string>
+    <string name="ui_fe712ed18f1274a1" formatted="false">"ネイティブタッチとコントローラー"</string>
+    <string name="ui_174e74475bbc1924" formatted="false">"このセッションではコントローラーのみを使用"</string>
+    <string name="ui_f22f911f4e9a5ee3" formatted="false">"このセッションでネイティブタッチとコントローラーを使用"</string>
+    <string name="ui_650227c9428dc301" formatted="false">"このゲームをタッチとコントローラーで開始：{0}"</string>
+    <string name="ui_0c9999fe8f160889" formatted="false">"併用できるかはゲームによって異なります。"</string>
+    <string name="ui_a8ee8cf2af992f1a" formatted="false">"ジャイロセンサーをテスト"</string>
+    <string name="ui_289e3e0a8330365c" formatted="false">"ゲームを再開すると適用されます。"</string>
+    <string name="ui_21d60434ca13535c" formatted="false">"端末を動かし、センサーと右スティックの反応を端末上で確認します。"</string>
+    <string name="ui_88425a39dc1c1d98" formatted="false">"サンプル：{0} • 右スティック X：{1} / Y：{2}"</string>
+    <string name="ui_09fd55e78884e4a0" formatted="false">"オプションのテスト: 指をネイティブ タッチのままにして、右のアナログ スティックを介して照準を送信します。一部のゲームでは入力インターフェイスを切り替えることができます。モードがオフの場合、このテストを有効にすると [常に] が選択されます。 LT/LB にはネイティブ タッチの物理コントローラーが必要です。 {0}"</string>
+    <string name="ui_e1e6926d0d8e111c" formatted="false">"コントローラー/HUD の右アナログ スティックをエミュレートします。 Xbox のネイティブ タッチと一致させるには、ジャイロスコープ カテゴリのテストも有効にします。ネイティブ タッチの LT/LB は物理コントローラーに依存します。 {0}"</string>
 </resources>

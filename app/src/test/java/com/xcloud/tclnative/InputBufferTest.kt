@@ -6,6 +6,19 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class InputBufferTest {
+    @Test fun guideCountersCountEdgesAcceptedByTheChannel() {
+        val pump=com.xcloud.tclnative.webrtc.RealtimeInputPump({0},{true},{fail("Input failed")})
+        try {
+            pump.update(GamepadState(buttons=2))
+            pump.update(GamepadState(buttons=2,leftX=.6f))
+            pump.update(GamepadState())
+            pump.start()
+            val end=System.nanoTime()+java.util.concurrent.TimeUnit.SECONDS.toNanos(2)
+            while(pump.metrics.xboxReleases==0L && System.nanoTime()<end) Thread.sleep(1)
+            assertEquals(1L,pump.metrics.xboxPresses)
+            assertEquals(1L,pump.metrics.xboxReleases)
+        } finally { pump.close() }
+    }
     @Test fun resettingInputDiscardsUnsentPressesInsteadOfReplayingThemAfterFocusLoss() {
         val packets = java.util.concurrent.LinkedBlockingQueue<ByteArray>()
         val pump = com.xcloud.tclnative.webrtc.RealtimeInputPump({ 0 }, { packets.offer(it); true }, { fail("Send failed") })

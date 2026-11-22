@@ -143,12 +143,17 @@ class SessionControlsUiTest {
         gyro.start(GyroMode.ALWAYS,100,true,true);assertTrue(shadowOf(manager).hasListener(gyro))
         val event=ShadowSensorManager.createSensorEvent(3);event.sensor=sensor;event.values[1]=2f
         gyro.onSensorChanged(event);assertEquals(.5f,gyro.apply(GamepadState()).rightX,0f)
+        gyro.start(GyroMode.ALWAYS,100,true,true)
+        assertEquals(.5f,gyro.apply(GamepadState()).rightX,0f)
+        assertEquals(1L,gyro.samplesReceived)
         shadowOf(Looper.getMainLooper()).idleFor(101,TimeUnit.MILLISECONDS)
         assertEquals(GamepadState(),gyro.apply(GamepadState()));assertEquals(2,changes)
         gyro.start(GyroMode.LT,100,true,true);gyro.onSensorChanged(event)
         assertEquals(GamepadState(),gyro.apply(GamepadState()))
         assertEquals(.5f,gyro.apply(GamepadState(leftTrigger=1f)).rightX,0f)
         gyro.stop();assertFalse(shadowOf(manager).hasListener(gyro));assertEquals(GamepadState(),gyro.apply(GamepadState()))
+        assertEquals(2L,gyro.samplesReceived)
+        gyro.resetDiagnostics();assertEquals(0L,gyro.samplesReceived)
         controller.pause().stop().destroy()
     }
 }

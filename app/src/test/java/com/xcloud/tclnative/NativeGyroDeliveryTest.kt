@@ -20,6 +20,24 @@ class NativeGyroDeliveryTest {
         }
         throw AssertionError("Expected input report not received")
     }
+    @Test fun simultaneousNativeTouchAndPhysicalPadReachTheSamePacket() {
+        val packets=LinkedBlockingQueue<ByteArray>()
+        val router=ControllerRouter().apply { beginSession(true,touchPlayerOne=false) }
+        val player=requireNotNull(router.slot(6))
+        assertEquals(0,player)
+        val pump=RealtimeInputPump({0},{packets.offer(it);true},{fail("Input failed")},initialGamepads=emptySet(),
+            initialTouchDimensions=TouchInputDimensions(1920,1080))
+        router.updateAndroidKey(player,6,96,16,down=true)
+        pump.update(router.combined(player),player)
+        pump.pointers(listOf(NativePointer(4,.25f,.5f,1)))
+        try {
+            pump.start()
+            val both=next(packets) { it.getShort(0).toInt()==6 }
+            assertEquals(16,both.getShort(16).toInt())
+            assertEquals(4,both.getInt(47))
+            assertEquals(1,both.get(59).toInt())
+        } finally { pump.close() }
+    }
     @Test fun gyroAndContactsShareTheSerializerAndNeutralRetiresOnlyTheAuxiliaryStick() {
         val packets=LinkedBlockingQueue<ByteArray>();val touch=NativeTouchBuffer()
         val pump=RealtimeInputPump({0},{packets.offer(it);true},{fail("Input failed")},initialGamepads=emptySet(),

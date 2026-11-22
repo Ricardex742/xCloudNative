@@ -1316,4 +1316,17 @@
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Collez le code sur la page Microsoft, puis revenez dans l’application."</string>
     <string name="ui_04528db174865b6f" formatted="false">", acheté"</string>
     <string name="ui_c2de4a5b6d5d5573" formatted="false">"Connexion à Microsoft indisponible. Nouvelle tentative avec le même code…"</string>
+    <string name="ui_ca4c71a6385cb7a4" formatted="false">"Croix directionnelle"</string>
+    <string name="ui_1f8873dc3106a672" formatted="false">"Croix directionnelle : {0}"</string>
+    <string name="ui_fe712ed18f1274a1" formatted="false">"Tactile natif et manette"</string>
+    <string name="ui_174e74475bbc1924" formatted="false">"Utiliser uniquement la manette pour cette session"</string>
+    <string name="ui_f22f911f4e9a5ee3" formatted="false">"Utiliser le tactile natif et la manette pour cette session"</string>
+    <string name="ui_650227c9428dc301" formatted="false">"Démarrer ce jeu avec le tactile et la manette : {0}"</string>
+    <string name="ui_0c9999fe8f160889" formatted="false">"La combinaison dépend du jeu."</string>
+    <string name="ui_a8ee8cf2af992f1a" formatted="false">"Tester le gyroscope"</string>
+    <string name="ui_289e3e0a8330365c" formatted="false">"S’applique à la reprise de la partie."</string>
+    <string name="ui_21d60434ca13535c" formatted="false">"Bougez l’appareil pour tester localement le capteur et la réponse du stick droit."</string>
+    <string name="ui_88425a39dc1c1d98" formatted="false">"Échantillons : {0} • Stick droit X : {1} / Y : {2}"</string>
+    <string name="ui_09fd55e78884e4a0" formatted="false">"Test facultatif : gardez vos doigts dans le toucher natif et envoyez la visée via le stick analogique droit. Certains jeux peuvent changer l\'interface d\'entrée. Si le mode est Désactivé, l\'activation de ce test choisit Toujours. Les LT/LB nécessitent un contrôleur physique en mode tactile natif. {0}"</string>
+    <string name="ui_e1e6926d0d8e111c" formatted="false">"Émule le stick analogique droit sur le contrôleur/HUD. Pour correspondre au toucher natif du Xbox, activez également le test dans la catégorie Gyroscope. Les LT/LB en mode tactile natif reposent sur un contrôleur physique. {0}"</string>
 </resources>

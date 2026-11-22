@@ -1316,4 +1316,17 @@
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Cole o código na página da Microsoft e volte ao app."</string>
     <string name="ui_04528db174865b6f" formatted="false">", comprado"</string>
     <string name="ui_c2de4a5b6d5d5573" formatted="false">"Sem conexão com a Microsoft. Tentando novamente com o mesmo código…"</string>
+    <string name="ui_ca4c71a6385cb7a4" formatted="false">"Direcional"</string>
+    <string name="ui_1f8873dc3106a672" formatted="false">"Direcional: {0}"</string>
+    <string name="ui_fe712ed18f1274a1" formatted="false">"Toque nativo e controle"</string>
+    <string name="ui_174e74475bbc1924" formatted="false">"Usar apenas controle nesta partida"</string>
+    <string name="ui_f22f911f4e9a5ee3" formatted="false">"Usar toque nativo e controle nesta partida"</string>
+    <string name="ui_650227c9428dc301" formatted="false">"Iniciar este jogo com toque e controle: {0}"</string>
+    <string name="ui_0c9999fe8f160889" formatted="false">"A combinação depende do jogo."</string>
+    <string name="ui_a8ee8cf2af992f1a" formatted="false">"Testar giroscópio"</string>
+    <string name="ui_289e3e0a8330365c" formatted="false">"Aplica ao retomar a partida."</string>
+    <string name="ui_21d60434ca13535c" formatted="false">"Mova o aparelho para testar localmente o sensor e a resposta do analógico direito."</string>
+    <string name="ui_88425a39dc1c1d98" formatted="false">"Amostras: {0} • Analógico direito X: {1} / Y: {2}"</string>
+    <string name="ui_09fd55e78884e4a0" formatted="false">"Teste opcional: mantém os dedos no toque nativo e envia a mira pelo analógico direito. Alguns jogos podem alternar a interface de entrada. Se o modo estiver Desativado, ativar este teste escolhe Sempre. LT/LB exigem controle físico no toque nativo. {0}"</string>
+    <string name="ui_e1e6926d0d8e111c" formatted="false">"Emula o analógico direito em controle/HUD. Para combinar com toque nativo Xbox, ative também o teste na categoria Giroscópio. LT/LB no toque nativo dependem de controle físico. {0}"</string>
 </resources>

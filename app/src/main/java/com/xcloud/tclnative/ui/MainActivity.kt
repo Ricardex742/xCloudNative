@@ -131,9 +131,6 @@ open class MainActivity : Activity() {
     private val controllers=ControllerRouter()
     private var xboxButtonJob: Job? = null
     private val controllerPath=ControllerPathTrace()
-    private var gamepadState: GamepadState
-        get()=controllers.physical(0)
-        set(value) { controllers.update(0,value) }
     private val usbNavigation by lazy { com.xcloud.tclnative.ui.dashboard.UsbMenuNavigation(this) }
     private var usbBlockedButtons=0
     private var usbShortcutHeld=0
@@ -178,8 +175,10 @@ open class MainActivity : Activity() {
     private lateinit var queuePanel: GameLoadingView
     private var pendingLoadingGame: GameTitle? = null
     private var queueTicker: Job? = null
-    private val controllerShortcut = ControllerShortcut()
-    private var shortcutFlushJob: Job? = null
+    private val controllerShortcuts = Array(4) { ControllerShortcut() }
+    private val shortcutFlushJobs = arrayOfNulls<Job>(controllerShortcuts.size)
+    private val recoveryMenuShortcut = ControllerShortcut()
+    private var recoveryMenuDeviceId: Int? = null
     private var videoRecoveryDialog: Dialog? = null
     private var nativeTouchDialog: Dialog? = null
     private var dashboard: GameDashboardView? = null
@@ -1085,9 +1084,19 @@ open class MainActivity : Activity() {
         }
     }
     private fun applyPlaybackSettings(settings: PlaybackSettings) {
+        val gyroChanged = playbackSettings.gyroMode!=settings.gyroMode ||
+            playbackSettings.gyroSensitivity!=settings.gyroSensitivity || playbackSettings.gyroNativeTouch!=settings.gyroNativeTouch
         playbackSettings=settings
         applyLiveVideo(settings)
         webrtcClient?.setOutputGain(settings.audioGain)
+        if (gyroChanged && sessionSettings!=null) {
+            sessionSettings=sessionSettings?.copy(gyroMode=settings.gyroMode,gyroSensitivity=settings.gyroSensitivity,
+                gyroNativeTouch=settings.gyroNativeTouch)
+            if (gameplayInputEnabled()) {
+                resumeAuxiliaryInput()
+                publishGamepad(0)
+            }
+        }
     }
 
     private fun applyLiveVideo(settings: PlaybackSettings) {
@@ -1147,12 +1156,14 @@ open class MainActivity : Activity() {
     private fun showGameMenu() = showGameMenu(null)
 
     private fun showTouchGameMenu() {
+        controllerPath.menuTouched()
         val position=if(InputDeviceProfile.read(this).television) null else GameShortcutBar.Position()
         showGameMenu(position)
     }
 
     private fun showGameMenu(position: GameShortcutBar.Position?) {
-        if (sessionSaved || transitionPanel.visibility==View.VISIBLE || gameMenuDialog?.isShowing == true ||
+        if (sessionSaved || controlPanel.visibility != View.GONE || transitionPanel.visibility==View.VISIBLE ||
+            gameMenuDialog?.isShowing == true ||
             shortcutEditor?.isShowing == true || networkPanel?.dialog?.isShowing == true ||
             (webrtcClient == null && reloadTransmission==null) || queuePanel.visibility == View.VISIBLE) return
         resetController()
@@ -1165,11 +1176,13 @@ open class MainActivity : Activity() {
         val reload=reloadTransmission
         val liveSettings=PlaybackSettingsPanel(this,settingsStore,::applyPlaybackSettings,{},{},{},
             liveVideoMode=sessionSettings?.videoMode ?: playbackSettings.videoMode,
+            liveGyro=true,
             microphone=if(active && webrtcClient?.canUseMicrophone()==true) ::toggleMicrophone else null,
             microphoneLabel={ UiText.text(webrtcClient?.microphoneLabel() ?: "Ativar microfone") })
         val shortcuts = GameMenuPanel.shortcuts(
-            image=if(active) ({ liveSettings.showUpscaling(back) }) else null,
-            audio=if(active) ({ liveSettings.showAudio(back) }) else null,
+            image=if(sessionSettings!=null) ({ liveSettings.showUpscaling(back) }) else null,
+            audio=if(sessionSettings!=null) ({ liveSettings.showAudio(back) }) else null,
+            gyro=if(sessionSettings!=null) ({ liveSettings.showGyro(back) }) else null,
             xbox=if(active) ::pressXboxButton else null,
             statistics=::toggleStatistics,
             statisticsOptions={ com.xcloud.tclnative.ui.dashboard.StatisticsSettingsPanel(this,statisticsStore,::refreshStatisticsSettings,back).show() },
@@ -1178,7 +1191,7 @@ open class MainActivity : Activity() {
                 if(touchView.controlsVisible) hideGameHud() else enableGameHud()
             }) else null,
             hudVisible=touchView.controlsVisible,
-            nativeTouch=if(active && currentTouchMode!=TouchMode.NATIVE && webrtcClient?.canUseNativeTouch()==true) ({ enableNativeTouch() }) else null,
+            nativeTouch=if(active && supportsSessionNativeTouch()) ({ showSessionInput(back) }) else null,
             diagnostics={ showLiveDiagnostics(back) },
             network={
                 networkWarningsEnabled = !networkWarningsEnabled
@@ -1211,10 +1224,12 @@ open class MainActivity : Activity() {
             }
         }
         gameMenuDialog=dialog
+        controllerPath.menuOpened()
         dialog.setOnDismissListener {
             if(gameMenuDialog===dialog) {
                 gameMenuDialog=null
                 touchView.setMenuCovered(false)
+                resumeAuxiliaryInput()
             }
         }
     }
@@ -1230,12 +1245,18 @@ open class MainActivity : Activity() {
     private fun closeGameTools() {
         shortcutEditor?.close(); shortcutEditor = null
         networkPanel?.dialog?.dismiss(); networkPanel = null
+        gameMenuDialog?.dismiss(); gameMenuDialog = null
+        if (::touchView.isInitialized) touchView.setMenuCovered(false)
     }
     private fun videoDiagnostics()=ImmersiveWindow.diagnostics(window,rootLayout)+"\n"+surfaceRenderer.diagnostics()
     private fun showLiveDiagnostics(onBack: () -> Unit) {
-        showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(videoDiagnostics()),UiText.nested(playbackSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))+"\n"+(webrtcClient?.inputDiagnostics() ?: ""),onBack=onBack)
+        val session = listOfNotNull(controllerPath.buttonDiagnostics(), gyro.diagnostics(),
+            playbackSignaling?.keepAliveDiagnostics(), webrtcClient?.inputDiagnostics(), webrtcClient?.iceDiagnostics(),
+            transmissionRecovery?.diagnostics()).joinToString("\n")
+        showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(videoDiagnostics()),UiText.nested(playbackSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))+"\n"+session,onBack=onBack)
     }
     private fun pressXboxButton() {
+        controllerPath.xboxMenuRequested()
         if (xboxButtonJob?.isActive == true) return
         val client=webrtcClient ?: return
         val generation=playbackGeneration
@@ -1248,6 +1269,7 @@ open class MainActivity : Activity() {
                 false
             } == true
             if (!focused) return@launch
+            controllerPath.xboxMenuPulse()
             controllers.xboxButton(true)
             publishGamepad(0)
             try { delay(120) } finally {
@@ -1270,6 +1292,7 @@ open class MainActivity : Activity() {
             resetController(); currentTouchMode=TouchMode.VIRTUAL
             touchView.configure(TouchMode.VIRTUAL,game,hudStore.read(game.titleId))
             rumble.enabled=playbackSettings.rumble
+            resumeAuxiliaryInput()
         }
         touchView.revealControls()
         return true
@@ -1278,6 +1301,7 @@ open class MainActivity : Activity() {
         val game=activeGame ?: return
         resetController();currentTouchMode=TouchMode.OFF
         touchView.configure(TouchMode.OFF,game);rumble.enabled=playbackSettings.rumble
+        resumeAuxiliaryInput()
     }
     private fun enableNativeTouch(): Boolean {
         val game=activeGame ?: return false
@@ -1294,6 +1318,39 @@ open class MainActivity : Activity() {
         touchView.configure(TouchMode.NATIVE,game,hudStore.read(game.titleId))
         rumble.enabled=playbackSettings.rumble
         resumeAuxiliaryInput();return true
+    }
+    private fun supportsSessionNativeTouch(): Boolean = activeGame?.let { game ->
+        remotePlayReturn==null && sessionDesktopMode==DesktopInputMode.OFF &&
+            InputDeviceProfile.read(this).touchDevice && DeviceInputPolicy.supportsNativeTouch(game)
+    } == true
+
+    private fun showSessionInput(back: () -> Unit) {
+        val game = activeGame ?: return
+        if (!supportsSessionNativeTouch()) return
+        val preferred = hudStore.prefersNativeTouchWithController(game.titleId)
+        val nativeActive = currentTouchMode==TouchMode.NATIVE
+        val canSwitch = webrtcClient?.canUseNativeTouch()==true && !controllers.reservesPlayerOne
+        val state = if (preferred) UiText.text("Ativado") else UiText.text("Desativado")
+        com.xcloud.tclnative.ui.dashboard.ConsoleDialog(this,UiText.text("Toque nativo e controle")).apply {
+            body.addView(text(if (canSwitch) UiText.text("A combinação depende do jogo.")
+                else UiText.text("Vale na próxima partida."),20))
+            if (canSwitch) {
+                if (nativeActive) addMenuItem(UiText.text("Usar apenas controle nesta partida")) { disableSessionNativeTouch() }
+                else addMenuItem(UiText.text("Usar toque nativo e controle nesta partida")) { enableNativeTouch() }
+            }
+            addMenuItem(UiText.text("Iniciar este jogo com toque e controle: {0}", UiText.nested(state))) {
+                hudStore.preferNativeTouchWithController(game.titleId,!preferred)
+                showSessionInput(back)
+            }
+            addAction(UiText.text("Voltar"),back)
+            setOnCancelListener { back() }
+            show()
+        }
+    }
+    private fun disableSessionNativeTouch() {
+        if (transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE || currentTouchMode!=TouchMode.NATIVE) return
+        if (webrtcClient?.setNativeTouchEnabled(false)==true) hideGameHud()
+        else Toast.makeText(this,UiText.text("Aguarde a conexão dos controles para mudar o modo de toque."),Toast.LENGTH_LONG).show()
     }
     private fun showGameHudSettings(onBack: () -> Unit=::showGameMenu) {
         val game=activeGame ?: return
@@ -1340,7 +1397,6 @@ open class MainActivity : Activity() {
         if (!activityVisible || sessionSaved || !transmissionReady || reloadTransmission == null ||
             transmissionRecovery?.phase != TransmissionRecoveryState.Phase.ACTIVE) return
         sessionSaved = true
-        gameMenuDialog?.dismiss()
         closeGameTools()
         videoRecoveryDialog?.dismiss()
         nativeTouchDialog?.dismiss()
@@ -1492,7 +1548,6 @@ open class MainActivity : Activity() {
     }
     private fun showCatalogReturn(game: GameTitle?,wasPlaying: Boolean) {
         startupArtJob?.cancel(); startupArtJob=null
-        gameMenuDialog?.dismiss()
         closeGameTools()
         networkQuality.reset()
         networkIndicator.visibility = View.GONE
@@ -1513,6 +1568,10 @@ open class MainActivity : Activity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         AndroidControllerMonitor.key(event)
+        if (activeGame!=null && event.keyCode==KeyEvent.KEYCODE_BUTTON_MODE && event.repeatCount==0 &&
+            event.action in setOf(KeyEvent.ACTION_DOWN,KeyEvent.ACTION_UP)) {
+            controllerPath.xboxHardware(event.action==KeyEvent.ACTION_DOWN)
+        }
         if(usbDirect.ownsAndroid(event.deviceId)) return true
         if(sessionDesktopMode!=DesktopInputMode.OFF && gameplayInputEnabled() &&
             event.device?.keyboardType==InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
@@ -1533,6 +1592,7 @@ open class MainActivity : Activity() {
             }
         }
         if (gameplayInputEnabled() && dispatchGameplayButton(event)) return true
+        if (canOpenRecoveryMenu() && dispatchRecoveryMenuButton(event)) return true
         if(transitionPanel.visibility==View.VISIBLE && event.keyCode in setOf(KeyEvent.KEYCODE_BACK,KeyEvent.KEYCODE_BUTTON_B,
                 KeyEvent.KEYCODE_BUTTON_A,KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER,KeyEvent.KEYCODE_DPAD_UP,
                 KeyEvent.KEYCODE_DPAD_DOWN,KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT)) {
@@ -1625,9 +1685,14 @@ open class MainActivity : Activity() {
         dashboard?.pauseArtwork()
         val choice=touchChoice ?: settings.touchMode
         val inputDevice=InputDeviceProfile.read(this)
-        val touchMode = if (remote) {
-            if (choice != TouchMode.OFF && inputDevice.touchDevice) TouchMode.VIRTUAL else TouchMode.OFF
-        } else if(sessionDesktopMode!=DesktopInputMode.OFF) TouchMode.OFF else DeviceInputPolicy.resolve(inputDevice,choice,game)
+        val preferHybrid = !remote && sessionDesktopMode==DesktopInputMode.OFF && inputDevice.touchDevice &&
+            DeviceInputPolicy.supportsNativeTouch(game) && touchChoice==null && hudStore.prefersNativeTouchWithController(titleId)
+        val touchMode = when {
+            remote -> if (choice != TouchMode.OFF && inputDevice.touchDevice) TouchMode.VIRTUAL else TouchMode.OFF
+            sessionDesktopMode!=DesktopInputMode.OFF -> TouchMode.OFF
+            preferHybrid -> TouchMode.NATIVE
+            else -> DeviceInputPolicy.resolve(inputDevice,choice,game)
+        }
         currentTouchMode=TouchMode.OFF
         touchView.configure(TouchMode.OFF)
         statistics.beginSession();transmissionReady=false;latestMetrics=null;latestInput=InputMetrics()
@@ -1660,12 +1725,14 @@ open class MainActivity : Activity() {
             var remoteError: String?=null
             var startupInput = "LAUNCH/${origin.name}; locale=${sessionOptions.locale}"
             controllerPath.clear()
+            gyro.resetDiagnostics()
             signaling.resetStartupDiagnostics()
             tracker.inputDetails={ "Upscaling=${settings.fsr}; output=${settings.fsrOutput}\n"+controllerPath.diagnostics()+"\n"+signaling.startupDiagnostics() }
             tracker.mediaDetails=::videoDiagnostics
             try {
                 resetController()
-                controllers.beginSession(settings.localCoOp,touchMode!=TouchMode.OFF || sessionDesktopMode!=DesktopInputMode.OFF)
+                val reserveVirtualPlayer = (touchMode!=TouchMode.OFF && !preferHybrid) || sessionDesktopMode!=DesktopInputMode.OFF
+                controllers.beginSession(settings.localCoOp,reserveVirtualPlayer)
                 usbDirect.source?.let { controllers.slot(it) }
                 // A TV shortcut can start with stale or misleading Android device capabilities.
                 // Leave Android slots unassigned until input unless the catalog selected a pad.
@@ -1764,13 +1831,13 @@ open class MainActivity : Activity() {
                     "$startupInput\n" + (if (remote) "" else dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" }.orEmpty()) +
                         UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),
                             UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())) +
-                        "\n${controllerPath.diagnostics()}\n${signaling.startupDiagnostics()}\n" +
+                        "\n${controllerPath.diagnostics()}\n${controllerPath.buttonDiagnostics()}\n${signaling.startupDiagnostics()}\n" +
                         "USB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}\n" +
                         inputDevice.diagnostics() + when (touchMode) {
                             TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}"
                             TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}"
                             else -> ""
-                        } + "\n${joystickDispatch.diagnostics()}\n${rumble.diagnostics()}\n${gyro.status}\n" +
+                        } + "\n${joystickDispatch.diagnostics()}\n${rumble.diagnostics()}\n${gyro.diagnostics()}\n" +
                         signaling.keepAliveDiagnostics() +
                         "\nMKB/${sessionDesktopMode.name}; capture=$desktopCaptured; " +
                         "androidCapture=${Build.VERSION.SDK_INT >= 26 && window.decorView.hasPointerCapture()}"
@@ -1807,6 +1874,8 @@ open class MainActivity : Activity() {
                 var lastToken = -1L
                 var recovering = false
                 var pendingRecoveryTouch: TouchMode?=null
+                fun interruptionDetails() = listOf(controllerPath.buttonDiagnostics(), signaling.keepAliveDiagnostics(),
+                    rtc.iceDiagnostics(),rtc.inputDiagnostics(),rtc.codecDiagnostics()).joinToString("\n")
                 recoverImage={
                     if(recoveryState.phase==TransmissionRecoveryState.Phase.ACTIVE) {
                         try {
@@ -1817,10 +1886,10 @@ open class MainActivity : Activity() {
                             Toast.makeText(this@MainActivity,if(requested) UiText.text("Recuperação de imagem solicitada.")
                                 else UiText.text("Use Recarregar transmissão para tentar reconectar."),Toast.LENGTH_SHORT).show()
                         } catch(error: Exception) {
-                            tracker.recordInterruption(error,rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics())
+                            tracker.recordInterruption(error,interruptionDetails())
                             recoveryState.interrupted(recoveryState.epoch,error);transmissionReady=false;renderStatistics()
-                            pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
-                            showTransmissionInterrupted()
+                            pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF,game)
+                            presentTransmissionInterruption()
                         }
                     } else Toast.makeText(this@MainActivity,UiText.text("Use Recarregar transmissão para tentar reconectar."),Toast.LENGTH_SHORT).show()
                 }
@@ -1828,11 +1897,11 @@ open class MainActivity : Activity() {
                     val token=recoveryState.begin() ?: return@reload
                     maxBitrateKbps=bitrate ?: maxBitrateKbps
                     timeline.beginReconnect(token)
-                    val previousInput=rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics()
+                    val previousInput=interruptionDetails()
                     val savedTouch=pendingRecoveryTouch ?: currentTouchMode
                     pendingRecoveryTouch=savedTouch
                     transmissionReady=false;latestMetrics=null;renderStatistics()
-                    resetController();currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
+                    resetController();currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF,game)
                     videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
                     hudTextView.visibility=View.VISIBLE;hudTextView.setTextColor(Color.YELLOW)
                     hudTextView.text=UiText.text("Recarregando áudio e vídeo da partida atual…")
@@ -1885,7 +1954,7 @@ open class MainActivity : Activity() {
                                 tracker.recordInterruption(error,previousInput)
                                 recoveryState.failed(token,error);transmissionReady=false;renderStatistics()
                                 hudTextView.text=if(recoveryState.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) UiText.text("A sessão Xbox foi encerrada. Volte ao catálogo para iniciar outra partida.") else UiText.text("A transmissão não voltou. Você pode tentar reconectar à sessão atual.")
-                                showTransmissionInterrupted()
+                                presentTransmissionInterruption()
                             }
                         }
                     }
@@ -1900,11 +1969,11 @@ open class MainActivity : Activity() {
                         if(failure!=null) {
                             if(recoveryState.interrupted(token,failure)) {
                                 if (sessionSaved && recoveryState.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) throw failure
-                                tracker.recordInterruption(failure,rtc.inputDiagnostics()+"\n"+rtc.codecDiagnostics())
+                                tracker.recordInterruption(failure,interruptionDetails())
                                 transmissionReady=false;renderStatistics();resetController()
-                                pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF;touchView.configure(TouchMode.OFF)
-                                hudTextView.visibility=View.VISIBLE;hudTextView.text=UiText.text("A transmissão foi interrompida. Você pode tentar reconectar à sessão atual.")
-                                showTransmissionInterrupted()
+                                pendingRecoveryTouch=currentTouchMode;currentTouchMode=TouchMode.OFF
+                                touchView.configure(TouchMode.OFF,game.takeUnless { sessionSaved })
+                                presentTransmissionInterruption()
                             }
                             continue
                         }
@@ -2232,8 +2301,12 @@ open class MainActivity : Activity() {
         return 0.takeUnless { hasPrimary }
     }
     private fun removeController(deviceId: Int) {
+        if (recoveryMenuDeviceId == deviceId) {
+            recoveryMenuShortcut.reset()
+            recoveryMenuDeviceId = null
+        }
         val slot=controllers.remove(deviceId) ?: return
-        if(slot==0) { shortcutFlushJob?.cancel(); controllerShortcut.reset() }
+        resetControllerShortcut(slot)
         webrtcClient?.removeGamepad(slot)
         if(slot==0 && currentTouchMode==TouchMode.VIRTUAL) publishGamepad(0)
         rumble.stop()
@@ -2258,19 +2331,18 @@ open class MainActivity : Activity() {
         usbBlockedButtons=usbBlockedButtons and state.buttons
         val filtered=state.copy(buttons=state.buttons and usbBlockedButtons.inv())
         touchView.physicalInput(filtered)
-        if(slot!=0) { controllers.update(slot,filtered);publishGamepad(slot);return }
         val held=filtered.buttons and ControllerShortcut.BOTH
         val old=usbShortcutHeld;usbShortcutHeld=held
-        val forwarded=controllers.physical(0).buttons and ControllerShortcut.BOTH
-        controllers.update(0,filtered.copy(buttons=(filtered.buttons and ControllerShortcut.BOTH.inv()) or forwarded))
-        publishGamepad(0)
+        val forwarded=controllers.physical(slot).buttons and ControllerShortcut.BOTH
+        controllers.update(slot,filtered.copy(buttons=(filtered.buttons and ControllerShortcut.BOTH.inv()) or forwarded))
+        publishGamepad(slot)
         for(mask in intArrayOf(ControllerShortcut.START,ControllerShortcut.SELECT))
-            if((held xor old) and mask!=0) handleControllerShortcut(mask,held and mask!=0)
+            if((held xor old) and mask!=0) handleControllerShortcut(slot,mask,held and mask!=0)
     }
     private fun removeUsbController(source: ControllerSource.Usb) {
         val slot=controllers.remove(source) ?: return
         usbNavigation.clear();usbBlockedButtons=0;usbShortcutHeld=0
-        if(slot==0) { shortcutFlushJob?.cancel();controllerShortcut.reset() }
+        resetControllerShortcut(slot)
         webrtcClient?.removeGamepad(slot)
         if(slot==0 && currentTouchMode==TouchMode.VIRTUAL) publishGamepad(0)
     }
@@ -2311,49 +2383,77 @@ open class MainActivity : Activity() {
     private fun showTransmissionRecovery() = showTransmissionRecovery(::showGameMenu)
     private fun showTransmissionRecovery(onBack: () -> Unit) {
         if(sessionSaved || reloadTransmission==null) return
-        if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.SESSION_ENDED) { showTransmissionInterrupted();return }
+        when (transmissionRecovery?.phase) {
+            TransmissionRecoveryState.Phase.WAITING_RETRY, TransmissionRecoveryState.Phase.SESSION_ENDED -> {
+                showTransmissionInterrupted(onBack); return
+            }
+            TransmissionRecoveryState.Phase.ACTIVE -> Unit
+            else -> return
+        }
         com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.show(this,{ recoverImage?.invoke() },{ reloadTransmission?.invoke(null) },onBack)
     }
-    private fun showTransmissionInterrupted() {
+    private fun presentTransmissionInterruption() {
+        if (!activityVisible || sessionSaved) return
+        val phase = transmissionRecovery?.phase
+        videoRecoveryDialog?.dismiss(); nativeTouchDialog?.dismiss()
+        if (phase==TransmissionRecoveryState.Phase.WAITING_RETRY && InputDeviceProfile.read(this).touchDevice) {
+            hudTextView.visibility=View.VISIBLE
+            hudTextView.setTextColor(Color.YELLOW)
+            hudTextView.text=UiText.text("A transmissão foi interrompida. Você pode tentar reconectar à sessão atual.")
+        } else showTransmissionInterrupted()
+    }
+    private fun showTransmissionInterrupted(onBack: () -> Unit = ::showGameMenu) {
         if (!activityVisible || sessionSaved) return
         (gameMenuDialog as? GameShortcutBar)?.dismiss()
         videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
         videoRecoveryDialog=com.xcloud.tclnative.ui.dashboard.TransmissionRecoveryPanel.failed(this,
-            { reloadTransmission?.invoke(null) },{ cancelPlayback() },::showGameMenu,
+            { reloadTransmission?.invoke(null) },{ cancelPlayback() },onBack,
             sessionEnded=transmissionRecovery?.phase==TransmissionRecoveryState.Phase.SESSION_ENDED).also { dialog ->
                 dialog.setOnDismissListener { if(videoRecoveryDialog===dialog) videoRecoveryDialog=null }
             }
     }
 
-    private fun applyShortcut(update: ShortcutUpdate) {
-        val base = gamepadState.buttons and ControllerShortcut.BOTH.inv()
+    private fun applyShortcut(slot: Int, update: ShortcutUpdate) {
+        val state = controllers.physical(slot)
+        val forwarded = state.copy(buttons = (state.buttons and ControllerShortcut.BOTH.inv()) or update.forwardedButtons)
         if (update.pulse != 0) {
-            webrtcClient?.updateGamepad(combinedInput(0,gamepadState.copy(buttons = base or update.forwardedButtons or update.pulse)),0)
+            webrtcClient?.updateGamepad(combinedInput(slot,forwarded.copy(buttons = forwarded.buttons or update.pulse)),slot)
         }
-        gamepadState = gamepadState.copy(buttons = base or update.forwardedButtons)
-        publishGamepad(0)
-        if (update.openMenu) showGameMenu()
+        controllers.update(slot,forwarded)
+        publishGamepad(slot)
+        if (update.openMenu) {
+            controllerPath.menuChord()
+            showGameMenu()
+        }
     }
 
-    private fun handleControllerShortcut(mask: Int, down: Boolean, emitPulse: Boolean = true): Boolean {
+    private fun handleControllerShortcut(slot: Int, mask: Int, down: Boolean, emitPulse: Boolean = true): Boolean {
         if (mask != ControllerShortcut.START && mask != ControllerShortcut.SELECT) return false
-        shortcutFlushJob?.cancel()
-        applyShortcut(controllerShortcut.change(mask, down, android.os.SystemClock.elapsedRealtime(), emitPulse))
-        controllerShortcut.flushAtMs?.let { deadline ->
-            shortcutFlushJob = mainScope.launch {
+        val shortcut = controllerShortcuts[slot]
+        shortcutFlushJobs[slot]?.cancel()
+        applyShortcut(slot,shortcut.change(mask, down, android.os.SystemClock.elapsedRealtime(), emitPulse))
+        shortcut.flushAtMs?.let { deadline ->
+            shortcutFlushJobs[slot] = mainScope.launch {
                 delay((deadline - android.os.SystemClock.elapsedRealtime()).coerceAtLeast(0))
-                if (gameplayInputEnabled()) applyShortcut(controllerShortcut.flush(android.os.SystemClock.elapsedRealtime()))
+                if (gameplayInputEnabled()) applyShortcut(slot,shortcut.flush(android.os.SystemClock.elapsedRealtime()))
             }
         }
         return true
     }
 
+    private fun resetControllerShortcut(slot: Int) {
+        shortcutFlushJobs[slot]?.cancel()
+        shortcutFlushJobs[slot] = null
+        controllerShortcuts[slot].reset()
+    }
+
     private fun resetController() {
         xboxButtonJob?.cancel()
         gyro.stop();setDesktopCapture(false)
-        shortcutFlushJob?.cancel()
-        shortcutFlushJob = null
-        controllerShortcut.reset();usbShortcutHeld=0
+        controllerShortcuts.indices.forEach(::resetControllerShortcut)
+        recoveryMenuShortcut.reset()
+        recoveryMenuDeviceId = null
+        usbShortcutHeld=0
         usbNavigation.clear();usbBlockedButtons=usbDirect.currentInput().buttons
         if(::touchView.isInitialized) touchView.releaseInputs()
         controllers.reset()
@@ -2434,12 +2534,40 @@ open class MainActivity : Activity() {
         val mask = gamepadButton(event.keyCode, event)
         val down = event.action == KeyEvent.ACTION_DOWN
         if (mask == 0 || (!down && event.action != KeyEvent.ACTION_UP)) return false
-        if (down && (event.repeatCount > 0 || event.isCanceled)) return true
+        if (down && event.repeatCount > 0) {
+            controllerPath.ignoredRepeat()
+            return true
+        }
+        if (down && event.isCanceled) return true
         val slot = controllerSlot(event.deviceId, event.source, confirmedGamepad = down &&
             televisionInput && AndroidGamepadPolicy.confirmsGamepad(event), register = down) ?: return true
         if (down) touchView.physicalInput(GamepadState(buttons = mask))
-        if (slot == 0 && handleControllerShortcut(mask, down, emitPulse = !event.isCanceled)) return true
+        if (handleControllerShortcut(slot, mask, down, emitPulse = !event.isCanceled)) return true
         if (controllers.updateAndroidKey(slot, event.deviceId, event.keyCode, mask, down)) publishGamepad(slot)
+        return true
+    }
+
+    private fun canOpenRecoveryMenu() = !sessionSaved && hasWindowFocus() && controlPanel.visibility==View.GONE &&
+        transitionPanel.visibility!=View.VISIBLE && queuePanel.visibility!=View.VISIBLE && reloadTransmission!=null &&
+        (transmissionRecovery?.phase==TransmissionRecoveryState.Phase.WAITING_RETRY ||
+            transmissionRecovery?.phase==TransmissionRecoveryState.Phase.RELOADING)
+
+    private fun dispatchRecoveryMenuButton(event: KeyEvent): Boolean {
+        if (event.keyCode==KeyEvent.KEYCODE_F7 && event.device?.keyboardType==InputDevice.KEYBOARD_TYPE_ALPHABETIC) {
+            if (event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0) showGameMenu()
+            return true
+        }
+        val mask = gamepadButton(event.keyCode,event)
+        if (mask!=ControllerShortcut.START && mask!=ControllerShortcut.SELECT) return false
+        val down = event.action==KeyEvent.ACTION_DOWN
+        if (!down && event.action!=KeyEvent.ACTION_UP || event.repeatCount>0 || (down && event.isCanceled)) return true
+        if (down && recoveryMenuDeviceId==null) recoveryMenuDeviceId=event.deviceId
+        if (recoveryMenuDeviceId!=event.deviceId) return true
+        val update = recoveryMenuShortcut.change(mask,down,android.os.SystemClock.elapsedRealtime(),emitPulse=false)
+        if (update.openMenu) {
+            controllerPath.menuChord()
+            showGameMenu()
+        } else if (recoveryMenuShortcut.flushAtMs==null) recoveryMenuDeviceId=null
         return true
     }
 
@@ -2488,7 +2616,7 @@ open class MainActivity : Activity() {
         renderStatistics()
         val recoveryPhase = transmissionRecovery?.phase
         if (recoveryPhase == TransmissionRecoveryState.Phase.WAITING_RETRY ||
-            recoveryPhase == TransmissionRecoveryState.Phase.SESSION_ENDED) showTransmissionInterrupted()
+            recoveryPhase == TransmissionRecoveryState.Phase.SESSION_ENDED) presentTransmissionInterruption()
         if(activeGame==null && dashboard!=null && controlPanel.visibility==View.VISIBLE && transitionPanel.visibility!=View.VISIBLE) {
             refreshCloudPlaytime(dashboard!!)
             val signaling=currentSignaling; val library=gameLibrary

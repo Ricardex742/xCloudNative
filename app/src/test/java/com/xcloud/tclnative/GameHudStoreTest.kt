@@ -17,14 +17,19 @@ class GameHudStoreTest {
     @Test fun perGameLayoutsPersistAcrossRecreationWithoutChangingOtherGames() {
         val first=Robolectric.buildActivity(Activity::class.java).setup()
         val settings=HudSettings(HudPreset.CALL_OF_DUTY,75,115,160,
-            mapOf("fire" to HudPlacement(.8f,.4f,1.2f,HudBinding.RT)))
+            mapOf("fire" to HudPlacement(.8f,.4f,1.2f,HudBinding.RT)),codDpad=true)
         GameHudStore(first.get()).save("CALLOFDUTY",settings)
+        GameHudStore(first.get()).preferNativeTouchWithController("game-touch",true)
         first.pause().stop().destroy()
         val next=Robolectric.buildActivity(Activity::class.java).setup()
         val store=GameHudStore(next.get())
         assertEquals(settings,store.read("callofduty"))
+        assertTrue(store.prefersNativeTouchWithController("GAME-TOUCH"))
+        assertFalse(store.prefersNativeTouchWithController("CALLOFDUTY"))
         assertEquals(HudSettings(),store.read("FORZAHORIZON6"))
         store.save("CALLOFDUTY",HudSettings())
+        store.save("game-touch",HudSettings())
+        assertTrue(store.prefersNativeTouchWithController("game-touch"))
         assertEquals(HudSettings(),GameHudStore(next.get()).read("CALLOFDUTY"))
         next.pause().stop().destroy()
     }

@@ -28,17 +28,25 @@ class GyroController(context: Context,private val rotation: () -> Int,private va
     val available get()=sensor!=null
     private var mode=GyroMode.OFF
     private var sensitivity=100
+    private var usingNativeTouch=false
     private var axes=0f to 0f
+    var samplesReceived=0L
+        private set
     private val handler=android.os.Handler(android.os.Looper.getMainLooper())
     private val expire=Runnable { if(mode!=GyroMode.OFF) { axes=0f to 0f;changed() } }
     var status=UiText.text("Giroscópio: desligado")
         private set
+    fun resetDiagnostics() { samplesReceived=0 }
+    fun diagnostics() = "$status | GYROSCOPE/SAMPLES=$samplesReceived"
     fun start(mode: GyroMode,sensitivity: Int,nativeTouch: Boolean,allowNativeTouch: Boolean=false) {
+        if (this.mode!=GyroMode.OFF && this.mode==mode && this.sensitivity==sensitivity &&
+            usingNativeTouch==nativeTouch && (!nativeTouch || allowNativeTouch)) return
         stop();this.sensitivity=sensitivity
         if(mode==GyroMode.OFF) return
         if(nativeTouch && !allowNativeTouch) { status=UiText.text("Giroscópio: teste com toque nativo desativado");return }
         if(sensor==null) { status=UiText.text("Giroscópio: aparelho sem sensor");return }
         this.mode=mode
+        usingNativeTouch=nativeTouch
         val registered=manager?.registerListener(this,sensor,SensorManager.SENSOR_DELAY_GAME)==true
         if(!registered) this.mode=GyroMode.OFF
         status=if(registered) UiText.join(UiText.text("Giroscópio: {0}",UiText.nested(mode.label)),(if(nativeTouch) UiText.text(" • toque nativo experimental") else "")) else UiText.text("Giroscópio: registro recusado pelo Android")
@@ -47,6 +55,7 @@ class GyroController(context: Context,private val rotation: () -> Int,private va
         rightX=(base.rightX+axes.first).coerceIn(-1f,1f),rightY=(base.rightY+axes.second).coerceIn(-1f,1f))
     override fun onSensorChanged(event: SensorEvent) {
         if(mode==GyroMode.OFF) return
+        samplesReceived++
         axes=GyroAim.axes(event.values[0],event.values[1],rotation(),sensitivity);changed()
         handler.removeCallbacks(expire);handler.postDelayed(expire,100)
     }

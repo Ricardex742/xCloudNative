@@ -32,9 +32,11 @@ data class InputDeviceProfile(val television: Boolean,val touchscreen: Boolean,
     }
 }
 object DeviceInputPolicy {
+    fun supportsNativeTouch(game: GameTitle) = game.supportedInputTypes.any { it.equals("NativeTouch", true) }
+
     fun resolve(device: InputDeviceProfile, preference: TouchMode, game: GameTitle): TouchMode {
         if(!device.touchDevice) return TouchMode.OFF
         if(preference==TouchMode.VIRTUAL || preference==TouchMode.OFF) return preference
-        return if(game.supportedInputTypes.any { it.equals("NativeTouch",true) }) TouchMode.NATIVE else TouchMode.VIRTUAL
+        return if(supportsNativeTouch(game)) TouchMode.NATIVE else TouchMode.VIRTUAL
     }
 }

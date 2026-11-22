@@ -58,7 +58,7 @@ data class HudSettings(val preset: HudPreset?=null,val opacity: Int=62,val scale
                        val sensitivity: Int=100,val placements: Map<String,HudPlacement> = emptyMap(),
                        val lookDeadzone: Int=12,val footballScheme: FootballScheme=FootballScheme.CLASSIC,
                        val aimAndFire: Boolean=false,val sprintGesture: Boolean=true,
-                       val autoHide: HudAutoHide=HudAutoHide.OFF) {
+                       val autoHide: HudAutoHide=HudAutoHide.OFF, val codDpad: Boolean=false) {
     /** Applying a scheme restores its commands without moving the user's buttons. */
     fun withFootballScheme(scheme: FootballScheme)=copy(footballScheme=scheme,
         placements=placements.mapValues { (id,p) ->
@@ -131,6 +131,9 @@ object GameHud {
             }
             HudPreset.CALL_OF_DUTY,HudPreset.SHOOTER -> {
                 stick("move",UiText.text("Mover"),.15f,.76f,TouchKind.LEFT_STICK); camera(); menus()
+                if (preset == HudPreset.CALL_OF_DUTY && settings.codDpad) {
+                    stick("dpad",UiText.text("Direcional"),.35f,.42f,TouchKind.DPAD,.068f)
+                }
                 val fireAction=if(preset==HudPreset.CALL_OF_DUTY && settings.aimAndFire) HudAction(HudBinding.LT,HudBinding.RT) else HudAction(HudBinding.RT)
                 button("fire-left",UiText.text("Atirar"),.13f,.27f,HudBinding.RT,HudIcon.FIRE,.065f,dragLook=true,action=fireAction)
                 button("fire",UiText.text("Atirar"),.91f,.49f,HudBinding.RT,HudIcon.FIRE,.083f,dragLook=true,action=fireAction)

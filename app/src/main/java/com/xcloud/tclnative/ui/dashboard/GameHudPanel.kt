@@ -42,6 +42,10 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
             }
         }
         if(effective.family==HudPreset.CALL_OF_DUTY) {
+            val dpadState = if (settings.codDpad) UiText.text("Ativado") else UiText.text("Desativado")
+            actions+=ConsoleAction(UiText.text("Direcional: {0}", UiText.nested(dpadState))) {
+                save(settings.copy(codDpad=!settings.codDpad))
+            }
             actions+=ConsoleAction(UiText.text("Mirar ao atirar: {0}",UiText.nested(if(settings.aimAndFire) UiText.text("Ativado") else UiText.text("Desativado")))) {
                 val dialog=ConsoleDialog(context,UiText.text("Mirar ao atirar"))
                 dialog.body.addView(dialog.text(UiText.text("Ativado combina mira e disparo nos dois botões Atirar. Desativado mantém o disparo separado da mira. Aplicar restaura as ações desses botões e mantém suas posições."),20,color=DashboardTheme.muted))

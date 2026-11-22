@@ -1316,4 +1316,17 @@
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Kodu Microsoft sayfasına yapıştırıp uygulamaya dönün."</string>
     <string name="ui_04528db174865b6f" formatted="false">", satın alındı"</string>
     <string name="ui_c2de4a5b6d5d5573" formatted="false">"Microsoft’a bağlanılamıyor. Aynı kodla yeniden deneniyor…"</string>
+    <string name="ui_ca4c71a6385cb7a4" formatted="false">"Yön tuşları"</string>
+    <string name="ui_1f8873dc3106a672" formatted="false">"Yön tuşları: {0}"</string>
+    <string name="ui_fe712ed18f1274a1" formatted="false">"Yerel dokunma ve oyun kumandası"</string>
+    <string name="ui_174e74475bbc1924" formatted="false">"Bu oturumda yalnızca kumanda kullan"</string>
+    <string name="ui_f22f911f4e9a5ee3" formatted="false">"Bu oturumda yerel dokunmayı ve kumandayı kullan"</string>
+    <string name="ui_650227c9428dc301" formatted="false">"Bu oyunu dokunma ve kumandayla başlat: {0}"</string>
+    <string name="ui_0c9999fe8f160889" formatted="false">"Birlikte kullanım oyuna bağlıdır."</string>
+    <string name="ui_a8ee8cf2af992f1a" formatted="false">"Jiroskobu test et"</string>
+    <string name="ui_289e3e0a8330365c" formatted="false">"Oyuna dönüldüğünde uygulanır."</string>
+    <string name="ui_21d60434ca13535c" formatted="false">"Sensörü ve sağ çubuğun tepkisini cihazda test etmek için cihazı hareket ettirin."</string>
+    <string name="ui_88425a39dc1c1d98" formatted="false">"Örnekler: {0} • Sağ çubuk X: {1} / Y: {2}"</string>
+    <string name="ui_09fd55e78884e4a0" formatted="false">"İsteğe bağlı test: Parmaklarınızı doğal dokunuşta tutun ve sağ analog çubukla nişan alın. Bazı oyunlar giriş arayüzünü değiştirebilir. Mod Kapalıysa, bu test etkinleştirilirken Her Zaman seçilir. LT/LB, yerel temasta fiziksel denetleyici gerektirir. {0}"</string>
+    <string name="ui_e1e6926d0d8e111c" formatted="false">"Denetleyici/HUD üzerinde doğru analog çubuğu taklit eder. Xbox yerel dokunuşu eşleştirmek için Jiroskop kategorisindeki testi de etkinleştirin. Yerel dokunmadaki LT/LB, fiziksel denetleyiciye dayanır. {0}"</string>
 </resources>

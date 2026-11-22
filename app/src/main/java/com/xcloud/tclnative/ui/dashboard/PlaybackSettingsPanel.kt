@@ -3,9 +3,14 @@ package com.xcloud.tclnative.ui.dashboard
 import com.xcloud.tclnative.i18n.UiText
 
 import android.content.Context
+import android.view.Surface
+import android.view.ViewTreeObserver
 import android.widget.LinearLayout
 import com.xcloud.tclnative.settings.*
+import com.xcloud.tclnative.webrtc.GamepadState
+import com.xcloud.tclnative.webrtc.GyroController
 import com.xcloud.tclnative.webrtc.StreamResolution
+import java.util.Locale
 
 enum class SettingsPage { ROOT, VIDEO, IMAGE, APPEARANCE, NETWORK, CONTROLS, PHYSICAL, MOUSE, GYRO, RUMBLE, AUDIO, DIAGNOSTICS, ACCOUNT, TREATMENT, RECONSTRUCTION, UPSCALING, IMAGE_ADVANCED }
 
@@ -33,12 +38,14 @@ class PlaybackSettingsPanel(
     private val currentDiagnostics: (() -> Unit)?=null,private val microphone: (() -> Unit)?=null,
     private val statisticsChanged: () -> Unit={},
     private val microphoneLabel: () -> String={ UiText.text("Ativar microfone") },
-    private val liveVideoMode: VideoMode?=null
+    private val liveVideoMode: VideoMode?=null,
+    private val liveGyro: Boolean=false
 ) {
     private var videoSection=0
     private var currentPage=SettingsPage.ROOT
     private var upscalingBack: () -> Unit = { showImage() }
     private var advancedImageBack: () -> Unit={ showUpscaling() }
+    private var gyroBack: () -> Unit = { showControls() }
     private var appearanceBack: (() -> Unit)?=null
     private fun compatibility(value: PlaybackSettings)=(liveVideoMode ?: value.videoMode)==VideoMode.COMPATIBILITY
     private fun resetImageLab(value: PlaybackSettings)=if(liveVideoMode==null) ImageLabSettings()
@@ -519,22 +526,67 @@ class PlaybackSettingsPanel(
             }
         ),SettingsPage.CONTROLS)
     }
-    fun showGyro(): ConsoleDialog {
+    fun showGyro(onBack: () -> Unit = gyroBack): ConsoleDialog {
+        gyroBack=onBack
+        enter(SettingsPage.GYRO)
         val value=store.read()
-        return category(SettingsPage.GYRO,UiText.text("Controles › Giroscópio"),listOf(
+        return ConsoleDialogs.menu(context,UiText.text("Configurações › {0}",UiText.nested(UiText.text("Controles › Giroscópio"))),listOf(
             ConsoleAction(UiText.text("Modo: {0}",UiText.nested(value.gyroMode.label))) { chooseGyro() },
             ConsoleAction(UiText.text("Sensibilidade: {0}%",UiText.nested(value.gyroSensitivity))) {
                 val levels=listOf(25,50,75,100,125,150,200,250,300)
-                choices(UiText.text("Sensibilidade do giroscópio"),UiText.text("Vale na próxima partida."),levels.map { "$it%" to (it==value.gyroSensitivity) }) { save(value.copy(gyroSensitivity=levels[it])) }
+                choices(UiText.text("Sensibilidade do giroscópio"),gyroApplyLabel(),levels.map { "$it%" to (it==value.gyroSensitivity) }) {
+                    save(value.copy(gyroSensitivity=levels[it])) { showGyro() }
+                }
             },
-            ConsoleAction(UiText.text("Toque nativo Xbox: {0}",UiText.nested(if(value.gyroNativeTouch) UiText.text("Ativado — experimental") else UiText.text("Desativado")))) { chooseNativeGyro() }
-        ),SettingsPage.CONTROLS)
+            ConsoleAction(UiText.text("Toque nativo Xbox: {0}",UiText.nested(if(value.gyroNativeTouch) UiText.text("Ativado — experimental") else UiText.text("Desativado")))) { chooseNativeGyro() },
+            ConsoleAction(UiText.text("Testar giroscópio")) { showGyroTest(value.gyroSensitivity) }
+        ),onBack=onBack)
     }
+
+    private fun gyroApplyLabel() = if (liveGyro) UiText.text("Aplica ao retomar a partida.") else UiText.text("Vale na próxima partida.")
+
+    private fun showGyroTest(sensitivity: Int) {
+        val dialog = ConsoleDialog(context,UiText.text("Testar giroscópio"))
+        dialog.body.addView(dialog.text(UiText.text("Mova o aparelho para testar localmente o sensor e a resposta do analógico direito."),20))
+        val sample = dialog.text("",20,color=DashboardTheme.muted)
+        dialog.body.addView(sample)
+        dialog.addAction(UiText.text("Voltar")) { showGyro() }
+        dialog.setOnCancelListener { showGyro() }
+
+        val preview = GyroController(context,{ dialog.window?.decorView?.display?.rotation ?: Surface.ROTATION_0 }) {}
+        lateinit var poll: Runnable
+        poll = Runnable {
+            if (sample.hasWindowFocus()) {
+                val stick = preview.apply(GamepadState())
+                sample.text = preview.status + "\n" + UiText.text("Amostras: {0} • Analógico direito X: {1} / Y: {2}",
+                    UiText.nested(preview.samplesReceived),UiText.nested(String.format(Locale.US,"%.2f",stick.rightX)),
+                    UiText.nested(String.format(Locale.US,"%.2f",stick.rightY)))
+                if (preview.available) sample.postDelayed(poll,100)
+            }
+        }
+        val focus = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
+            sample.removeCallbacks(poll)
+            if (focused) {
+                preview.start(GyroMode.ALWAYS,sensitivity,nativeTouch=false)
+                sample.post(poll)
+            } else preview.stop()
+        }
+        dialog.show()
+        val tree = sample.viewTreeObserver
+        tree.addOnWindowFocusChangeListener(focus)
+        if (sample.hasWindowFocus()) focus.onWindowFocusChanged(true)
+        dialog.addCleanup {
+            if (tree.isAlive) tree.removeOnWindowFocusChangeListener(focus)
+            sample.removeCallbacks(poll)
+            preview.stop()
+        }
+    }
+
     private fun hasGyro()=(context.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager)?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE)!=null
     fun chooseNativeGyro(): ConsoleDialog {
         enter(SettingsPage.GYRO);val value=store.read()
         if(!hasGyro()) return ConsoleDialogs.message(context,UiText.text("Giroscópio"),UiText.text("O Android não informou um giroscópio neste aparelho."),listOf(ConsoleAction(UiText.text("Voltar")) { showGyro() }),onCancel={ showGyro() })
-        return choices(UiText.text("Giroscópio com toque nativo Xbox"),UiText.text("Teste opcional: mantém os dedos no toque nativo e envia a mira pelo analógico direito. Alguns jogos podem alternar a interface de entrada. Se o modo estiver Desativado, ativar este teste escolhe Sempre. LT/LB exigem controle físico no toque nativo. Vale na próxima partida."),
+        return choices(UiText.text("Giroscópio com toque nativo Xbox"),UiText.text("Teste opcional: mantém os dedos no toque nativo e envia a mira pelo analógico direito. Alguns jogos podem alternar a interface de entrada. Se o modo estiver Desativado, ativar este teste escolhe Sempre. LT/LB exigem controle físico no toque nativo. {0}", UiText.nested(gyroApplyLabel())),
             listOf(UiText.text("Desativado") to !value.gyroNativeTouch,UiText.text("Ativado — experimental") to value.gyroNativeTouch)) {
             save(value.copy(gyroNativeTouch=it==1,gyroMode=if(it==1 && value.gyroMode==GyroMode.OFF) GyroMode.ALWAYS else value.gyroMode))
         }
@@ -570,7 +622,7 @@ class PlaybackSettingsPanel(
         val current=store.read()
         val sensor=(context.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager)?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE)
         if(sensor==null) return ConsoleDialogs.message(context,UiText.text("Giroscópio"),UiText.text("O Android não informou um giroscópio neste aparelho."),listOf(ConsoleAction(UiText.text("Voltar")) { showGyro() }),onCancel={ showGyro() })
-        return choices(UiText.text("Mira por movimento"),UiText.text("Emula o analógico direito em controle/HUD. Para combinar com toque nativo Xbox, ative também o teste na categoria Giroscópio. LT/LB no toque nativo dependem de controle físico. Vale na próxima partida."),
+        return choices(UiText.text("Mira por movimento"),UiText.text("Emula o analógico direito em controle/HUD. Para combinar com toque nativo Xbox, ative também o teste na categoria Giroscópio. LT/LB no toque nativo dependem de controle físico. {0}", UiText.nested(gyroApplyLabel())),
             GyroMode.entries.map { it.label to (it==current.gyroMode) },{ showGyro() }) { save(current.copy(gyroMode=GyroMode.entries[it])) { showGyro() } }
     }
     fun showAudio(onBack: () -> Unit={ show() }): ConsoleDialog {

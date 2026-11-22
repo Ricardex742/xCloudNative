@@ -1316,4 +1316,17 @@
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Microsoft 페이지에 코드를 붙여넣고 앱으로 돌아오세요."</string>
     <string name="ui_04528db174865b6f" formatted="false">", 구매 완료"</string>
     <string name="ui_c2de4a5b6d5d5573" formatted="false">"Microsoft에 연결할 수 없습니다. 같은 코드로 다시 시도하는 중…"</string>
+    <string name="ui_ca4c71a6385cb7a4" formatted="false">"방향 패드"</string>
+    <string name="ui_1f8873dc3106a672" formatted="false">"방향 패드: {0}"</string>
+    <string name="ui_fe712ed18f1274a1" formatted="false">"기본 터치 및 컨트롤러"</string>
+    <string name="ui_174e74475bbc1924" formatted="false">"이 세션에서 컨트롤러만 사용"</string>
+    <string name="ui_f22f911f4e9a5ee3" formatted="false">"이 세션에서 기본 터치 및 컨트롤러 사용"</string>
+    <string name="ui_650227c9428dc301" formatted="false">"이 게임을 터치 및 컨트롤러로 시작: {0}"</string>
+    <string name="ui_0c9999fe8f160889" formatted="false">"동시 사용 여부는 게임에 따라 달라집니다."</string>
+    <string name="ui_a8ee8cf2af992f1a" formatted="false">"자이로스코프 테스트"</string>
+    <string name="ui_289e3e0a8330365c" formatted="false">"게임을 재개하면 적용됩니다."</string>
+    <string name="ui_21d60434ca13535c" formatted="false">"기기를 움직여 센서와 오른쪽 스틱 반응을 기기에서 테스트합니다."</string>
+    <string name="ui_88425a39dc1c1d98" formatted="false">"샘플: {0} • 오른쪽 스틱 X: {1} / Y: {2}"</string>
+    <string name="ui_09fd55e78884e4a0" formatted="false">"선택적 테스트: 손가락을 기본 터치 상태로 유지하고 오른쪽 아날로그 스틱을 통해 조준을 보냅니다. 일부 게임은 입력 인터페이스를 전환할 수 있습니다. 모드가 꺼짐인 경우 이 테스트를 활성화하려면 항상을 선택합니다. LT/LB에는 기본 터치의 물리적 컨트롤러가 필요합니다. {0}"</string>
+    <string name="ui_e1e6926d0d8e111c" formatted="false">"컨트롤러/HUD에서 오른쪽 아날로그 스틱을 에뮬레이션합니다. Xbox 기본 터치를 일치시키려면 자이로스코프 카테고리에서도 테스트를 활성화하세요. 기본 터치의 LT/LB는 물리적 컨트롤러를 사용합니다. {0}"</string>
 </resources>

@@ -14,6 +14,7 @@ class ControllerRouter {
     private var virtual=GamepadState()
     private var xboxButtonPressed = false
     private var reserveTouch=false
+    val reservesPlayerOne get()=reserveTouch
     fun beginSession(enabled: Boolean, touchPlayerOne: Boolean = false) { devices.clear(); coOp=enabled; reserveTouch=enabled && touchPlayerOne; reset() }
     fun slot(deviceId: Int): Int? = slot(ControllerSource.Android(deviceId))
     fun slot(source: ControllerSource): Int? = devices[source] ?: ((if(reserveTouch) 1 else 0) until (if(coOp) 4 else 1))

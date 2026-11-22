@@ -1316,4 +1316,17 @@
     <string name="ui_bd0c36713bffd1ec" formatted="false">"Pega el código en la página de Microsoft y vuelve a la app."</string>
     <string name="ui_04528db174865b6f" formatted="false">", comprado"</string>
     <string name="ui_c2de4a5b6d5d5573" formatted="false">"Sin conexión con Microsoft. Reintentando con el mismo código…"</string>
+    <string name="ui_ca4c71a6385cb7a4" formatted="false">"Cruceta"</string>
+    <string name="ui_1f8873dc3106a672" formatted="false">"Cruceta: {0}"</string>
+    <string name="ui_fe712ed18f1274a1" formatted="false">"Toque nativo y mando"</string>
+    <string name="ui_174e74475bbc1924" formatted="false">"Usar solo el mando en esta sesión"</string>
+    <string name="ui_f22f911f4e9a5ee3" formatted="false">"Usar toque nativo y mando en esta sesión"</string>
+    <string name="ui_650227c9428dc301" formatted="false">"Iniciar este juego con toque y mando: {0}"</string>
+    <string name="ui_0c9999fe8f160889" formatted="false">"La combinación depende del juego."</string>
+    <string name="ui_a8ee8cf2af992f1a" formatted="false">"Probar el giroscopio"</string>
+    <string name="ui_289e3e0a8330365c" formatted="false">"Se aplica al reanudar la partida."</string>
+    <string name="ui_21d60434ca13535c" formatted="false">"Mueve el dispositivo para probar localmente el sensor y la respuesta del stick derecho."</string>
+    <string name="ui_88425a39dc1c1d98" formatted="false">"Muestras: {0} • Stick derecho X: {1} / Y: {2}"</string>
+    <string name="ui_09fd55e78884e4a0" formatted="false">"Prueba opcional: mantenga los dedos en el toque nativo y apunte con el joystick analógico derecho. Algunos juegos pueden cambiar la interfaz de entrada. Si el modo está desactivado, al habilitar esta prueba se elige Siempre. LT/LB requieren un controlador físico en formato táctil nativo. {0}"</string>
+    <string name="ui_e1e6926d0d8e111c" formatted="false">"Emula el joystick analógico derecho en el controlador/HUD. Para igualar el toque nativo del Xbox, habilite también la prueba en la categoría Giroscopio. LT/LB en toque nativo dependen del controlador físico. {0}"</string>
 </resources>

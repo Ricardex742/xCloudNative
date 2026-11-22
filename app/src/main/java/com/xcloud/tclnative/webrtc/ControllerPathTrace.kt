@@ -9,7 +9,32 @@ class ControllerPathTrace {
     private data class Sample(val source: ControllerSource?,var changes: Int,val invertLeft: Boolean,val invertRight: Boolean,
         var left: Pair<Float,Float>?=null,var right: Pair<Float,Float>?=null)
     private val slots=arrayOfNulls<Sample>(4)
-    @Synchronized fun clear() { slots.fill(null) }
+    private var xboxHardwareDown = 0
+    private var xboxHardwareUp = 0
+    private var ignoredRepeats = 0
+    private var menuTouches = 0
+    private var menuChords = 0
+    private var menusOpened = 0
+    private var xboxMenuRequests = 0
+    private var xboxMenuPulses = 0
+
+    @Synchronized fun clear() {
+        slots.fill(null)
+        xboxHardwareDown = 0; xboxHardwareUp = 0; ignoredRepeats = 0
+        menuTouches = 0; menuChords = 0; menusOpened = 0
+        xboxMenuRequests = 0; xboxMenuPulses = 0
+    }
+    @Synchronized fun xboxHardware(down: Boolean) { if (down) xboxHardwareDown++ else xboxHardwareUp++ }
+    @Synchronized fun ignoredRepeat() { ignoredRepeats++ }
+    @Synchronized fun menuTouched() { menuTouches++ }
+    @Synchronized fun menuChord() { menuChords++ }
+    @Synchronized fun menuOpened() { menusOpened++ }
+    @Synchronized fun xboxMenuRequested() { xboxMenuRequests++ }
+    @Synchronized fun xboxMenuPulse() { xboxMenuPulses++ }
+
+    @Synchronized fun buttonDiagnostics() = "MENU/OPEN=$menusOpened TOUCH=$menuTouches CHORD=$menuChords | " +
+        "XBOX/ANDROID_DOWN=$xboxHardwareDown ANDROID_UP=$xboxHardwareUp MENU_REQUEST=$xboxMenuRequests MENU_PULSE=$xboxMenuPulses | " +
+        "INPUT/ANDROID_REPEATS_IGNORED=$ignoredRepeats"
     @Synchronized fun record(slot: Int,source: ControllerSource?,raw: GamepadState,effective: GamepadState,profile: ControllerProfile?) {
         require(slot in 0..3)
         val previous=slots[slot]

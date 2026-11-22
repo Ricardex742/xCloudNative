@@ -48,7 +48,8 @@ class GamepadInputBuffer {
 
 data class InputMetrics(val bufferedBytes: Long = 0, val maxSchedulerDelayMs: Double = 0.0,
                         val backpressureSkips: Long = 0, val coalescedEdges: Long = 0, val sentState: GamepadState = GamepadState(),
-                        val pointerEventsSent: Long=0,val sentBytes: Long=0,val idleReportsSent: Long=0,val initialStateReportsSent: Long=0)
+                        val pointerEventsSent: Long=0,val sentBytes: Long=0,val idleReportsSent: Long=0,val initialStateReportsSent: Long=0,
+                        val xboxPresses: Long=0,val xboxReleases: Long=0)
 
 /** Native sends run independently from decoder/default-coroutine CPU load. Never catch up by replaying old ticks. */
 class RealtimeInputPump(
@@ -133,6 +134,9 @@ class RealtimeInputPump(
                 var sentBytes = 0L
                 var idleReportsSent = 0L
                 var initialStateReportsSent = 0L
+                var xboxPresses = 0L
+                var xboxReleases = 0L
+                var xboxHeld = 0
                 while (running.get()) {
                     val now = System.nanoTime()
                     val dimensions = touchDimensions
@@ -178,7 +182,20 @@ class RealtimeInputPump(
                             if (running.get()) onFailure()
                             break
                         }
-                        if(packet!=null) { lastReportAt=now;if(initial || hasInput) initialStatePending=false }
+                        if(packet!=null) {
+                            lastReportAt=now
+                            if(initial || hasInput) initialStatePending=false
+                            var nextXboxHeld = 0
+                            for ((index, state) in states) {
+                                val slot = 1 shl index
+                                val pressed = state.buttons and ControllerRouter.XBOX_BUTTON != 0
+                                val wasPressed = xboxHeld and slot != 0
+                                if (pressed && !wasPressed) xboxPresses++
+                                if (!pressed && wasPressed) xboxReleases++
+                                if (pressed) nextXboxHeld = nextXboxHeld or slot
+                            }
+                            xboxHeld = nextXboxHeld
+                        }
                         if(pointers.isNotEmpty()) touch.accepted(pointers)
                         if (retiringMask != 0) synchronized(lock) {
                             for (index in buffers.indices) {
@@ -198,7 +215,8 @@ class RealtimeInputPump(
                     metrics = InputMetrics(bufferedBytes = queued, maxSchedulerDelayMs = maxDelay,
                         backpressureSkips = skipped, coalescedEdges = synchronized(lock) { buffers.sumOf { it.coalescedEdges } },
                         sentState = sentState, pointerEventsSent = pointerEventsSent, sentBytes = sentBytes,
-                        idleReportsSent = idleReportsSent, initialStateReportsSent = initialStateReportsSent)
+                        idleReportsSent = idleReportsSent, initialStateReportsSent = initialStateReportsSent,
+                        xboxPresses = xboxPresses, xboxReleases = xboxReleases)
                     if (now - windowStarted >= 1_000_000_000) { maxDelay = 0.0; windowStarted = now }
                     // Button edges can wake this thread early; regular reports remain at 250Hz.
                     deadline = if (now >= deadline) now + period else deadline

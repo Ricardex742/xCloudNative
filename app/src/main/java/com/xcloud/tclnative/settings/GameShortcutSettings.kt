@@ -6,7 +6,7 @@ import com.xcloud.tclnative.i18n.UiText
 internal enum class GameShortcutId(private val source: String) {
     IMAGE("Imagem"), AUDIO("Áudio"), VIRTUAL_CONTROL("Controle virtual"), NETWORK("Avisos de rede"),
     NETWORK_DETAILS("Estatísticas da rede"),
-    HUD("Controles"), BITRATE("Bitrate máximo"), NATIVE_TOUCH("Toque nativo"),
+    HUD("Controles"), BITRATE("Bitrate máximo"), NATIVE_TOUCH("Toque nativo"), GYRO("Giroscópio"),
     REMAPPING("Perfis de controle"), MOUSE_CAPTURE("Mouse e teclado"), STATISTICS("Estatísticas"),
     STATISTICS_LAYOUT("Escolher indicadores"), DIAGNOSTICS("Diagnóstico da partida"),
     RECOVERY("Recuperar imagem"), XBOX("Botão Xbox — experimental"), SAVE_SESSION("Salvar sessão");

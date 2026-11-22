@@ -211,8 +211,8 @@ class XCloudWebRtcClient(
         microphoneStatus=UiText.text("Microfone: negociação não concluída; mudo")
     }
     fun resumeAudio() { if(synchronized(audioLock) { audioTracks.isNotEmpty() }) audioSession.requestFocus() }
-    fun inputDiagnostics(): String = (if(nativeTouch)
-        UiText.text("Toque nativo: {0}; espaço de input: {1}; slot virtual 0: {2}",UiText.nested(if(touchEnabled) UiText.text("sinalizado ativo") else UiText.text("desativado para HUD")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(if(handshake.gamepadSync.registered) "registro enviado" else UiText.text("aguardando canal")))
+    fun inputDiagnostics(): String = currentInputMetrics().let { "XBOX/CHANNEL_DOWN=${it.xboxPresses} CHANNEL_UP=${it.xboxReleases}\n" } + (if(nativeTouch)
+        UiText.text("Toque nativo: {0}; espaço de input: {1}; slot virtual 0: {2}",UiText.nested(if(touchEnabled) UiText.text("sinalizado ativo") else UiText.text("desativado")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(if(handshake.gamepadSync.registered) "registro enviado" else UiText.text("aguardando canal")))
         else if(nativeKeyboardMouse) UiText.text("Input Xbox: mouse/teclado nativos, versão negociada {0}",UiText.nested(negotiatedInputVersion)) else UiText.text("Input Xbox: controle/HUD"))+"\n"+
         handshake.sessionMessages.diagnostics()+"\n"+handshake.gamepadSync.diagnostics()+"\n"+channelTrace.diagnostics()+"\n"+controllerEventTiming.diagnostics()+
         (if(nativeTouch) "\n${pendingTouch.diagnostics()}" else "")+"\n"+remoteInputTrace.diagnostics(negotiatedInputVersion)+"\n"+

@@ -19,6 +19,10 @@ class GameHudStore(private val context: Context) {
     }
     private fun encode(action: HudAction)=JSONArray(action.keys.map { it.name })
     private fun prefs(id: String)=context.getSharedPreferences("hud_"+GameLibrary.accountKey(id.uppercase(Locale.ROOT)),Context.MODE_PRIVATE)
+    fun prefersNativeTouchWithController(id: String) = prefs(id).getBoolean("native_touch_with_controller", false)
+    fun preferNativeTouchWithController(id: String, enabled: Boolean) {
+        prefs(id).edit().putBoolean("native_touch_with_controller", enabled).apply()
+    }
     fun read(id: String): HudSettings { return try {
         val text=prefs(id).getString("layout",null) ?: return HudSettings()
         if(text.length>65536) return HudSettings()
@@ -50,7 +54,8 @@ class GameHudStore(private val context: Context) {
             data.optInt("lookDeadzone",12).coerceIn(0,35),
             FootballScheme.entries.firstOrNull { it.name==data.optString("footballScheme") } ?: FootballScheme.CLASSIC,
             data.optBoolean("aimAndFire",false),data.optBoolean("sprintGesture",true),
-            HudAutoHide.entries.firstOrNull { it.name==data.optString("autoHide") } ?: HudAutoHide.OFF)
+            HudAutoHide.entries.firstOrNull { it.name==data.optString("autoHide") } ?: HudAutoHide.OFF,
+            codDpad=data.optBoolean("codDpad",false))
     } catch(_: Exception) { HudSettings() } }
     fun save(id: String,settings: HudSettings) {
         val controls=JSONObject()
@@ -68,7 +73,7 @@ class GameHudStore(private val context: Context) {
             .put("scale",settings.scale).put("sensitivity",settings.sensitivity).put("controls",controls)
             .put("lookDeadzone",settings.lookDeadzone).put("footballScheme",settings.footballScheme.name)
             .put("aimAndFire",settings.aimAndFire).put("sprintGesture",settings.sprintGesture)
-            .put("autoHide",settings.autoHide.name)
+            .put("autoHide",settings.autoHide.name).put("codDpad",settings.codDpad)
         if(!prefs(id).edit().putString("layout",data.toString()).commit()) throw java.io.IOException(UiText.text("Não foi possível salvar o HUD neste aparelho."))
     }
 }

@@ -1,10 +1,15 @@
 package com.xcloud.tclnative
 
 import android.app.Activity
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.hardware.input.InputManager
 import android.os.Looper
 import android.os.SystemClock
+import android.util.SparseArray
+import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -13,8 +18,11 @@ import com.xcloud.tclnative.settings.TouchMode
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.touch.*
 import com.xcloud.tclnative.ui.GameTouchView
+import com.xcloud.tclnative.ui.MainActivity
 import com.xcloud.tclnative.ui.dashboard.*
 import com.xcloud.tclnative.webrtc.GamepadState
+import com.xcloud.tclnative.webrtc.ControllerRouter
+import com.xcloud.tclnative.webrtc.TransmissionRecoveryState
 import com.xcloud.tclnative.webrtc.VirtualGamepad
 import org.junit.Assert.*
 import org.junit.Test
@@ -25,6 +33,9 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
+import org.robolectric.shadows.ShadowDialog
+import org.robolectric.shadows.ShadowInputDevice
+import org.robolectric.util.ReflectionHelpers
 import java.time.Duration
 import java.io.File
 
@@ -38,6 +49,79 @@ class QuickControlsUiTest {
         MotionEvent.obtain(now,now,action,x,y,0).let { view.onTouchEvent(it);it.recycle() }
     }
     private fun idle(seconds: Long)=shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(seconds))
+
+    @Test @Config(qualifiers="w1280dp-h720dp-land-finger-mdpi")
+    fun retryKeepsTheMenuReachableByTouchAndControllerWithoutSendingGameInput() {
+        val controller=Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity=controller.get()
+        shadowOf(activity.packageManager).setSystemFeature(PackageManager.FEATURE_TOUCHSCREEN,true)
+        val manager=ReflectionHelpers.callStaticMethod<InputManager>(InputManager::class.java,"getInstance")
+        val previous=ReflectionHelpers.getField<SparseArray<InputDevice>?>(manager,"mInputDevices")
+        val touch=ShadowInputDevice.makeInputDeviceNamed("Touchscreen fixture")
+        ReflectionHelpers.setField(touch,"mId",1)
+        ReflectionHelpers.setField(touch,"mSources",InputDevice.SOURCE_TOUCHSCREEN)
+        ReflectionHelpers.setField(manager,"mInputDevices",SparseArray<InputDevice>().apply { put(1,touch) })
+        try {
+            val recovery=TransmissionRecoveryState().apply { interrupted(0) }
+            val view=prepareMenuSession(activity,recovery)
+            val interrupted=MainActivity::class.java.getDeclaredMethod("presentTransmissionInterruption").apply { isAccessible=true }
+            interrupted.invoke(activity)
+            assertEquals(View.VISIBLE,view.visibility)
+            assertFalse(view.controlsVisible)
+            val anchor=view.getChildAt(0)
+            assertEquals(View.VISIBLE,anchor.visibility)
+            event(view,MotionEvent.ACTION_DOWN,anchor.left+anchor.width/2f,anchor.top+anchor.height/2f)
+            event(view,MotionEvent.ACTION_UP,anchor.left+anchor.width/2f,anchor.top+anchor.height/2f)
+            assertTrue(ReflectionHelpers.getField<android.app.Dialog>(activity,"gameMenuDialog").isShowing)
+            ReflectionHelpers.getField<android.app.Dialog>(activity,"gameMenuDialog").dismiss()
+            idle(0)
+            assertEquals(View.VISIBLE,anchor.visibility)
+
+            controller.windowFocusChanged(true)
+            assertTrue(activity.dispatchKeyEvent(gamepad(17,KeyEvent.KEYCODE_BUTTON_START)))
+            assertTrue(activity.dispatchKeyEvent(gamepad(17,KeyEvent.KEYCODE_BUTTON_SELECT)))
+            assertTrue(ReflectionHelpers.getField<android.app.Dialog>(activity,"gameMenuDialog").isShowing)
+            ReflectionHelpers.getField<android.app.Dialog>(activity,"gameMenuDialog").dismiss()
+            idle(0)
+        } finally {
+            controller.pause().stop().destroy()
+            ReflectionHelpers.setField(manager,"mInputDevices",previous)
+        }
+    }
+
+    @Test fun aPadBehindReservedTouchPlayerCanOpenTheLocalMenu() {
+        val controller=Robolectric.buildActivity(MainActivity::class.java).setup()
+        val activity=controller.get()
+        prepareMenuSession(activity,TransmissionRecoveryState())
+        val router=ReflectionHelpers.getField<ControllerRouter>(activity,"controllers")
+        router.beginSession(true,true)
+        assertEquals(1,router.slot(17))
+        val dispatch=MainActivity::class.java.getDeclaredMethod("dispatchGameplayButton",KeyEvent::class.java).apply { isAccessible=true }
+        dispatch.invoke(activity,gamepad(17,KeyEvent.KEYCODE_BUTTON_START))
+        assertNull(ReflectionHelpers.getField<android.app.Dialog?>(activity,"gameMenuDialog"))
+        dispatch.invoke(activity,gamepad(17,KeyEvent.KEYCODE_BUTTON_SELECT))
+        assertTrue(ShadowDialog.getLatestDialog().isShowing)
+        assertEquals(GamepadState(),router.physical(1))
+        ShadowDialog.getLatestDialog().dismiss()
+        idle(0)
+        controller.pause().stop().destroy()
+    }
+
+    private fun prepareMenuSession(activity: MainActivity,recovery: TransmissionRecoveryState): GameTouchView {
+        val game=GameTitle("demo","Demo")
+        val reload: (Int?) -> Unit = {}
+        ReflectionHelpers.setField(activity,"activeGame",game)
+        ReflectionHelpers.setField(activity,"transmissionRecovery",recovery)
+        ReflectionHelpers.setField(activity,"reloadTransmission",reload)
+        ReflectionHelpers.getField<View>(activity,"controlPanel").visibility=View.GONE
+        val view=ReflectionHelpers.getField<GameTouchView>(activity,"touchView")
+        view.configure(TouchMode.OFF,game)
+        view.measure(View.MeasureSpec.makeMeasureSpec(1280,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(720,View.MeasureSpec.EXACTLY))
+        view.layout(0,0,1280,720)
+        return view
+    }
+
+    private fun gamepad(device: Int,code: Int) = KeyEvent(0,0,KeyEvent.ACTION_DOWN,code,0,0,device,0,0,InputDevice.SOURCE_GAMEPAD)
     @Test fun idleHidePreservesHeldButtonsAndConsumesOnlyTheRevealingGesture() {
         val activity=Robolectric.buildActivity(Activity::class.java).setup()
         var state=GamepadState();var menus=0
@@ -114,10 +198,10 @@ class QuickControlsUiTest {
         val bitmap=Bitmap.createBitmap(panel.panel.width,panel.panel.height,Bitmap.Config.ARGB_8888);panel.panel.draw(Canvas(bitmap))
         File("build/reports/social/quick-controls.png").apply { parentFile!!.mkdirs() }.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG,100,it) };bitmap.recycle()
         nodes(panel.panel).filterIsInstance<TextView>().single { it.text.toString()=="Ocultar controle virtual" }.performClick()
-        panel=open();nodes(panel.panel).filterIsInstance<TextView>().single { it.text.toString()=="Usar toque nativo nesta partida" }.performClick()
+        panel=open();nodes(panel.panel).filterIsInstance<TextView>().single { it.text.toString()=="Toque nativo e controle" }.performClick()
         assertEquals(1,toggles);assertEquals(1,native)
         val unavailable=GameMenuPanel.show(activity.get(),{},{},{},{})
-        assertFalse(nodes(unavailable.panel).filterIsInstance<TextView>().any { it.text.toString()=="Usar toque nativo nesta partida" })
+        assertFalse(nodes(unavailable.panel).filterIsInstance<TextView>().any { it.text.toString()=="Toque nativo e controle" })
         unavailable.dismiss();activity.pause().stop().destroy()
     }
 }
