@@ -1,14 +1,16 @@
 package com.xcloud.tclnative
 
 import android.app.Activity
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Rect
 import android.os.Looper
 import android.os.SystemClock
+import android.view.Gravity
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
-import android.widget.LinearLayout
 import com.xcloud.tclnative.settings.TouchMode
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.ui.GameTouchView
@@ -21,12 +23,15 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
+import java.io.File
 import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "w640dp-h320dp-land-mdpi-finger")
 @LooperMode(LooperMode.Mode.PAUSED)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class GuideTouchControlsTest {
     @Test fun firstTouchesSendDirectionsAndFaceButtonsAndCloseReleasesTheLastPress() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
@@ -35,31 +40,49 @@ class GuideTouchControlsTest {
         val reports = mutableListOf<Int>()
         lateinit var controls: GuideTouchControls
         controls = GuideTouchControls(activity, { reports += controls.buttons }, { controls.hide() })
-        root.addView(controls, FrameLayout.LayoutParams(-2, -2))
+        root.setBackgroundColor(0xff34505c.toInt())
+        root.addView(controls, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT))
         activity.setContentView(root)
         controls.setCutout(Rect(0, 0, 32, 24))
         controls.show()
         root.measure(View.MeasureSpec.makeMeasureSpec(640, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(320, View.MeasureSpec.EXACTLY))
         root.layout(0, 0, 640, 320)
-        val directions = controls.getChildAt(0) as LinearLayout
-        val actions = controls.getChildAt(1) as LinearLayout
+        val up = controls.getChildAt(0)
+        val left = controls.getChildAt(1)
+        val right = controls.getChildAt(2)
+        val down = controls.getChildAt(3)
+        val confirm = controls.getChildAt(4)
+        val back = controls.getChildAt(5)
+        val close = controls.getChildAt(6)
+        fun tapControl(view: View) = tap(root, controls.left + view.left + view.width / 2f,
+            controls.top + view.top + view.height / 2f)
         try {
             assertTrue(reports.isEmpty())
             val position = controls.layoutParams as FrameLayout.LayoutParams
             assertTrue(position.rightMargin > 32)
             assertTrue(position.bottomMargin > 24)
-            for (index in 0 until directions.childCount) {
-                val button = directions.getChildAt(index)
-                assertTrue(button.width >= 48 && button.height >= 48)
-                tap(button, button.width / 2f, button.height / 2f)
+            assertEquals(up.left, down.left)
+            assertEquals(left.top, right.top)
+            assertTrue(left.left < up.left && up.left < right.left)
+            assertTrue(up.top < left.top && left.top < down.top)
+            assertTrue(confirm.top > back.top)
+            val preview = Bitmap.createBitmap(root.width, root.height, Bitmap.Config.ARGB_8888)
+            root.draw(Canvas(preview))
+            File("build/reports/dashboard/guide-touch.png").apply { parentFile?.mkdirs() }.outputStream().use {
+                preview.compress(Bitmap.CompressFormat.PNG, 100, it)
             }
-            tap(actions.getChildAt(0), 20f, 20f)
-            tap(actions.getChildAt(0), 20f, 20f)
+            preview.recycle()
+            for (button in listOf(left, up, down, right)) {
+                assertTrue(button.width >= 48 && button.height >= 48)
+                tapControl(button)
+            }
+            tapControl(confirm)
+            tapControl(confirm)
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
             assertEquals(listOf(1024, 0, 256, 0, 512, 0, 2048, 0, 16, 0, 16, 0), reports)
-            tap(actions.getChildAt(1), 20f, 20f)
+            tapControl(back)
             assertEquals(32, controls.buttons)
-            tap(actions.getChildAt(2), 20f, 20f)
+            tapControl(close)
             assertFalse(controls.active)
             assertEquals(0, controls.buttons)
             assertEquals(listOf(32, 0), reports.takeLast(2))
