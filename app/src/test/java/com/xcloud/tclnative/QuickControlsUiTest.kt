@@ -50,7 +50,7 @@ class QuickControlsUiTest {
     }
     private fun idle(seconds: Long)=shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(seconds))
 
-    @Test @Config(qualifiers="w1280dp-h720dp-land-finger-mdpi")
+    @Test @Config(qualifiers="w1280dp-h720dp-land-mdpi-finger")
     fun retryKeepsTheMenuReachableByTouchAndControllerWithoutSendingGameInput() {
         val controller=Robolectric.buildActivity(MainActivity::class.java).setup()
         val activity=controller.get()
@@ -58,9 +58,9 @@ class QuickControlsUiTest {
         val manager=ReflectionHelpers.callStaticMethod<InputManager>(InputManager::class.java,"getInstance")
         val previous=ReflectionHelpers.getField<SparseArray<InputDevice>?>(manager,"mInputDevices")
         val touch=ShadowInputDevice.makeInputDeviceNamed("Touchscreen fixture")
-        ReflectionHelpers.setField(touch,"mId",1)
+        ReflectionHelpers.setField(touch,"mId",0)
         ReflectionHelpers.setField(touch,"mSources",InputDevice.SOURCE_TOUCHSCREEN)
-        ReflectionHelpers.setField(manager,"mInputDevices",SparseArray<InputDevice>().apply { put(1,touch) })
+        ReflectionHelpers.setField(manager,"mInputDevices",SparseArray<InputDevice>().apply { put(0,touch) })
         try {
             val recovery=TransmissionRecoveryState().apply { interrupted(0) }
             val view=prepareMenuSession(activity,recovery)
