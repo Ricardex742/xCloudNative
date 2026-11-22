@@ -145,6 +145,7 @@ internal class GuideTouchControls(
                 canvas.translate(width / 2f, height / 2f)
                 canvas.scale(unit, unit)
                 canvas.rotate(rotation)
+                canvas.translate(0f, 4f)
                 if (highlighted) {
                     symbolPaint.style = Paint.Style.FILL
                     symbolPaint.color = (DashboardTheme.accent and 0x00ffffff) or 0x43000000
@@ -192,6 +193,7 @@ internal class GuideTouchControls(
     private fun addControl(view: View, description: String, column: Int, row: Int, binding: HudBinding?) {
         view.contentDescription = description
         view.isFocusable = true
+        view.isFocusableInTouchMode = false
         view.setOnClickListener {
             if (!active) return@setOnClickListener
             if (binding == null) onClose() else press(binding)

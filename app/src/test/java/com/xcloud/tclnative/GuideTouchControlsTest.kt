@@ -54,8 +54,7 @@ class GuideTouchControlsTest {
         val confirm = controls.getChildAt(4)
         val back = controls.getChildAt(5)
         val close = controls.getChildAt(6)
-        fun tapControl(view: View) = tap(root, controls.left + view.left + view.width / 2f,
-            controls.top + view.top + view.height / 2f)
+        fun tapControl(view: View) = tap(controls, view.left + view.width / 2f, view.top + view.height / 2f)
         try {
             assertTrue(reports.isEmpty())
             val position = controls.layoutParams as FrameLayout.LayoutParams
@@ -81,7 +80,7 @@ class GuideTouchControlsTest {
             shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
             assertEquals(listOf(1024, 0, 256, 0, 512, 0, 2048, 0, 16, 0, 16, 0), reports)
             tapControl(back)
-            assertEquals(32, controls.buttons)
+            assertEquals("Button history: $reports", 32, controls.buttons)
             tapControl(close)
             assertFalse(controls.active)
             assertEquals(0, controls.buttons)
