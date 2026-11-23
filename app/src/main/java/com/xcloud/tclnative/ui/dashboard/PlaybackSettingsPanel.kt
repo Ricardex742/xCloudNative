@@ -214,7 +214,7 @@ class PlaybackSettingsPanel(
                 addMenuItem(UiText.text("Cores da imagem")) { showImageAdjustments { showUpscaling() } }
                 addMenuItem(UiText.text("Avançado — métodos e filtros")) { showAdvancedImage { showUpscaling() } }
                 addMenuItem(UiText.text("Restaurar imagem original")) {
-                    save(ImageProfiles.apply(value,ImageProfile.ORIGINAL).copy(saturation=100,brightness=0,contrast=100,
+                    save(value,ImageProfiles.apply(value,ImageProfile.ORIGINAL).copy(saturation=100,brightness=0,contrast=100,
                         imageLab=resetImageLab(value)))
                 }
             }
@@ -225,18 +225,18 @@ class PlaybackSettingsPanel(
         enter(SettingsPage.UPSCALING);val value=store.read()
         val profiles=listOf(ImageProfile.ORIGINAL,ImageProfile.LIGHT,ImageProfile.RECONSTRUCTION)
         return choices(UiText.text("Perfil de imagem"),UiText.text("Original usa a imagem recebida com seus ajustes de cor. Leve aplica nitidez moderada em uma passagem. Reconstrução combina detalhe e histórico temporal, com proteção de desempenho; continua experimental. Nenhum perfil muda o codec ou a resolução solicitada."),
-            profiles.map {it.label to (it==ImageProfiles.selected(value))},onReturn) { save(ImageProfiles.apply(value,profiles[it]),onReturn) }
+            profiles.map {it.label to (it==ImageProfiles.selected(value))},onReturn) { save(value,ImageProfiles.apply(value,profiles[it]),onReturn) }
     }
     private fun chooseImageIntensity(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
         enter(SettingsPage.UPSCALING);val value=store.read();val levels=listOf(0,25,50,75,100)
         return choices(UiText.text("Intensidade"),UiText.text("Ajusta o realce e, no perfil Reconstrução, o peso temporal. 0% preserva os detalhes recebidos. A intensidade não mede o custo da GPU."),
-            levels.map {"$it%" to (it==ImageProfiles.intensity(value))},onReturn) {save(ImageProfiles.withIntensity(value,levels[it]),onReturn)}
+            levels.map {"$it%" to (it==ImageProfiles.intensity(value))},onReturn) {save(value,ImageProfiles.withIntensity(value,levels[it]),onReturn)}
     }
     private fun chooseGlobalComparison(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
         enter(SettingsPage.UPSCALING);val value=store.read()
         return choices(UiText.text("Comparação da imagem"),UiText.text("Compara o mesmo quadro com e sem tratamento, mantendo as cores e o enquadramento. Dividida mostra o original à esquerda. A comparação suspende a geração de quadros até a próxima partida. O custo de meia tela não representa o de tela inteira."),
             ImageComparison.entries.map {it.label to (it==value.effectiveImageComparison())},onReturn) {
-            save(value.copy(imageComparison=ImageComparison.entries[it],
+            save(value,value.copy(imageComparison=ImageComparison.entries[it],
                 reconstruction=value.reconstruction.copy(comparison=ImageComparison.PROCESSED),
                 imageLab=value.imageLab.copy(comparison=ImageComparison.PROCESSED)),onReturn)
         }
@@ -278,7 +278,7 @@ class PlaybackSettingsPanel(
                     ImageLabPanel(context,store,changed,live=liveVideoMode!=null) { showAdvancedImage() }.show()
                 }
                 addMenuItem(UiText.text("Restaurar imagem original")) {
-                    save(value.copy(nativeUpscaling=liveVideoMode==null || value.nativeUpscaling,
+                    save(value,value.copy(nativeUpscaling=liveVideoMode==null || value.nativeUpscaling,
                         fsr=FsrMode.OFF,fsrOutput=FsrOutput.AUTO,fsrSharpness=50,
                         reconstruction=ReconstructionSettings(),imageLab=resetImageLab(value),imageTreatment=ImageTreatmentSettings(),imageComparison=ImageComparison.PROCESSED,sharpness=0,saturation=100,brightness=0,contrast=100),::back)
                 }
@@ -295,20 +295,20 @@ class PlaybackSettingsPanel(
         val amount=if(value.fsr==FsrMode.OFF) value.sharpness else value.fsrSharpness
         return choices(UiText.text("{0} — Nitidez",UiText.nested(methodName(value.fsr))),UiText.text("0% desativa somente a nitidez deste método. A ampliação e os filtros adicionais continuam independentes. Comece com 25%."),
             levels.map { "$it%" to (it==amount) }) {
-            save(if(value.fsr==FsrMode.OFF) value.copy(sharpness=levels[it]) else value.copy(fsrSharpness=levels[it]))
+            save(value,if(value.fsr==FsrMode.OFF) value.copy(sharpness=levels[it]) else value.copy(fsrSharpness=levels[it]))
         }
     }
     private fun chooseSharpeningMethod(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED);val value=store.read()
         return choices(UiText.text("Método de nitidez"),UiText.text("Este ajuste pertence ao método selecionado. RCAS adaptativo e USM trabalham na luminância para limitar ruído e halos."),
             ImageSharpening.entries.map { sharpeningName(value.copy(imageTreatment=value.imageTreatment.copy(sharpening=it))) to (it==value.imageTreatment.sharpening) }) {
-            save(value.copy(imageTreatment=value.imageTreatment.copy(sharpening=ImageSharpening.entries[it])))
+            save(value,value.copy(imageTreatment=value.imageTreatment.copy(sharpening=ImageSharpening.entries[it])))
         }
     }
     private fun choosePerformanceProtection(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED);val value=store.read();val image=value.imageTreatment
         return choices(UiText.text("Proteção de desempenho"),UiText.text("Reduz temporal, saída, antialiasing, neural e filtros quando a cadência desenhada fica abaixo da recebida. As escolhas salvas são preservadas. Os cortes valem nesta partida e aparecem no diagnóstico."),
-            listOf(UiText.text("Ativada") to image.autoProtect,UiText.text("Desativada") to !image.autoProtect)) { save(value.copy(imageTreatment=image.copy(autoProtect=it==0))) }
+            listOf(UiText.text("Ativada") to image.autoProtect,UiText.text("Desativada") to !image.autoProtect)) { save(value,value.copy(imageTreatment=image.copy(autoProtect=it==0))) }
     }
     fun showNetwork(): ConsoleDialog { videoSection=2;return showVideo() }
     fun showDiagnostics(): ConsoleDialog {
@@ -322,7 +322,7 @@ class PlaybackSettingsPanel(
             ConsoleAction(UiText.text("Diagnóstico pós-partida: {0}",UiText.nested(if(value.sessionReport) UiText.text("Ativado") else UiText.text("Desativado")))) {
                 choices(UiText.text("Diagnóstico pós-partida"),UiText.text("Guarda o último resumo local. As estatísticas da partida continuam ocultas até você ativá-las."),
                     listOf(UiText.text("Ativado — abrir ao sair do jogo") to value.sessionReport,UiText.text("Desativado — consultar nas configurações") to !value.sessionReport)) {
-                    save(value.copy(sessionReport=it==0))
+                    save(value,value.copy(sessionReport=it==0))
                 }
             },
             ConsoleAction(UiText.text("Último diagnóstico"),lastReport)
@@ -346,7 +346,10 @@ class PlaybackSettingsPanel(
         if(allowAccountChanges) ConsoleAction(UiText.text("Atualizar catálogo"),refresh) else null,
         if(allowAccountChanges) ConsoleAction(UiText.text("Trocar conta"),logout) else null
     ))
-    private fun save(settings: PlaybackSettings, after: () -> Unit = { open(currentPage) }) { store.save(settings); changed(settings); after() }
+    private fun save(base: PlaybackSettings, settings: PlaybackSettings, after: () -> Unit = { open(currentPage) }) {
+        changed(store.update(base,settings))
+        after()
+    }
     private fun choices(title: String, description: String, entries: List<Pair<String,Boolean>>,
                         onBack: () -> Unit = { open(currentPage) }, select: (Int) -> Unit): ConsoleDialog {
         val dialog=ConsoleDialog(context,title)
@@ -369,7 +372,7 @@ class PlaybackSettingsPanel(
         return choices(UiText.text("Modo de vídeo"),UiText.text("Menor atraso reduz buffers. Adaptativo permite mais margem para a rede. Compatibilidade seleciona 720p, pede até 6 Mbps no Automático, prioriza H.264 Baseline e apresenta até 30 quadros/s. A decodificação ainda depende do fluxo recebido. Aplica-se à próxima partida."),
             VideoMode.entries.map { it.label to (it==current.videoMode) }) {
             val mode=VideoMode.entries[it]
-            save(if(mode==VideoMode.COMPATIBILITY) current.copy(videoMode=mode,resolution=StreamResolution.HD_720,
+            save(current,if(mode==VideoMode.COMPATIBILITY) current.copy(videoMode=mode,resolution=StreamResolution.HD_720,
                 nativeUpscaling=true,sharpness=0,saturation=100,videoCodec=VideoCodecMode.H264,fsr=FsrMode.OFF,brightness=0,contrast=100) else current.copy(videoMode=mode))
         }
     }
@@ -380,13 +383,13 @@ class PlaybackSettingsPanel(
             UiText.text("Experimentos: High, HEVC, VP9 e AV1 exigem decoder de hardware e suporte do serviço. Se indisponíveis, usamos H.264. Confira o codec recebido no diagnóstico."),"\n\n",UiText.text("Para comparar codecs, use Restaurar imagem original em Upscaling e tratamento. Mais compressão não garante imagem melhor.")),
             VideoCodecMode.entries.map { it.label to (it==current.videoCodec) }) {
             val selected=current.copy(videoCodec=VideoCodecMode.entries[it])
-            save(if(selected.videoCodec==VideoCodecMode.H264_BASELINE) selected.copy(resolution=StreamResolution.HD_720) else selected)
+            save(current,if(selected.videoCodec==VideoCodecMode.H264_BASELINE) selected.copy(resolution=StreamResolution.HD_720) else selected)
         }
     }
     fun choosePacing(): ConsoleDialog {
         enter(SettingsPage.VIDEO);val value=store.read()
         return choices(UiText.text("Fluidez da apresentação"),UiText.text("Suave agenda os quadros com uma pequena espera e pode aumentar o atraso do controle. Mantém apenas o quadro pendente mais recente; não gera novos quadros. Só atua em Adaptativo. Menor atraso e Compatibilidade mantêm a apresentação imediata. Vale na próxima partida."),
-            PresentationPacing.entries.map { it.label to (it==value.presentationPacing) }) { save(value.copy(presentationPacing=PresentationPacing.entries[it])) }
+            PresentationPacing.entries.map { it.label to (it==value.presentationPacing) }) { save(value,value.copy(presentationPacing=PresentationPacing.entries[it])) }
     }
     fun chooseResolution(): ConsoleDialog {
         enter(SettingsPage.VIDEO)
@@ -394,34 +397,34 @@ class PlaybackSettingsPanel(
         return choices(UiText.text("Resolução da transmissão"),UiText.join(
             UiText.text("H.264 leve e Compatibilidade usam 720p mesmo com outra escolha salva. 720p solicita menos banda e trabalho de decodificação. A resolução recebida depende do Xbox, do jogo e da conexão. Aplica-se à próxima partida."),"\n\n",
             UiText.text("1440p solicita vídeo em até 2560×1440 pelo perfil de qualidade máxima do Xbox. A disponibilidade depende da assinatura, do jogo e do serviço. Exige mais rede e decodificação; confira a resolução realmente recebida no diagnóstico.")),
-            StreamResolution.entries.map { it.label to (it==current.resolution) }) { save(current.copy(resolution=StreamResolution.entries[it])) }
+            StreamResolution.entries.map { it.label to (it==current.resolution) }) { save(current,current.copy(resolution=StreamResolution.entries[it])) }
     }
     fun chooseUpscaling(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED)
         val current=store.read()
         return choices(UiText.text("Upscaling nativo"),UiText.text("A imagem se ajusta à janela nos dois modos, respeitando a proporção escolhida. Ativado solicita a escala da Surface Android; desativado usa a escala do renderer. Quando o FSR está ativo, ele usa o renderer na resolução de saída. O processamento da TV é ajustado na própria TV. Aplica-se à próxima partida."),
             listOf(UiText.text("Ativado — escala da Surface") to current.nativeUpscaling,UiText.text("Desativado — escala do renderer") to !current.nativeUpscaling)) {
-            save(current.copy(nativeUpscaling=it==0))
+            save(current,current.copy(nativeUpscaling=it==0))
         }
     }
     fun chooseFsr(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED)
         val current=store.read()
         return choices(UiText.text("Escolher método de imagem"),UiText.text("Escolha apenas um método. Padrão usa a escala do aparelho. FSR e SGSR ampliam e realçam a imagem. Reconstrução xCloud prioriza definição. Os três métodos alternativos são experimentais. Ao escolher, os ajustes correspondentes aparecem na mesma tela."),
-            FsrMode.entries.map { methodName(it) to (it==current.fsr) }) { save(current.copy(fsr=FsrMode.entries[it])) }
+            FsrMode.entries.map { methodName(it) to (it==current.fsr) }) { save(current,current.copy(fsr=FsrMode.entries[it])) }
     }
     fun chooseFsrOutput(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED)
         val current=store.read()
         return choices(UiText.text("Saída do escalador"),UiText.text("A saída é local e não altera o stream recebido. Automático prioriza a fluidez e limita TVs a 1080p. Ative um escalador para usar esta opção. As escolhas preservam a proporção e respeitam a saída física. A proteção reduz a saída se os desenhos não acompanharem os quadros recebidos. 1440p e 4K não garantem 60 FPS."),
-            FsrOutput.entries.map { it.label to (it==current.fsrOutput) }) { save(current.copy(fsrOutput=FsrOutput.entries[it])) }
+            FsrOutput.entries.map { it.label to (it==current.fsrOutput) }) { save(current,current.copy(fsrOutput=FsrOutput.entries[it])) }
     }
     fun chooseAspect(onBack: () -> Unit = { showImage() }): ConsoleDialog {
         enter(SettingsPage.IMAGE)
         val current=store.read()
         return choices(UiText.text("Proporção da imagem"),UiText.text("Original preserva o formato recebido e usa o maior tamanho que cabe na janela. Um vídeo 16:9 pode deixar barras laterais no celular; alguns jogos com toque nativo oferecem vídeo mais largo. Esticar preenche sem cortar, mas deforma a imagem. Zoom preenche sem deformar, cortando as bordas. Proporções fixas também podem deformar. Use ↑/↓ ou deslize para ver todas as opções. A mudança é imediata durante a partida e fica salva para os próximos jogos."),
             VideoAspect.entries.map { it.label to (it==current.aspect) },onBack=onBack) {
-            save(current.copy(aspect=VideoAspect.entries[it]),onBack)
+            save(current,current.copy(aspect=VideoAspect.entries[it]),onBack)
         }
     }
     fun showImageAdjustments(onBack: () -> Unit = { showImage() }): ConsoleDialog {
@@ -433,18 +436,18 @@ class PlaybackSettingsPanel(
             addMenuItem(UiText.text("Brilho: {0}%",UiText.nested(settings.brightness))) {
                 val levels=listOf(-50,-25,-10,0,10,25,50)
                 choices(UiText.text("Brilho"),UiText.text("0% preserva a imagem original. Aplicado junto aos filtros existentes, inclusive no FSR."),
-                    levels.map { "$it%" to (it==settings.brightness) },::backToImage) { save(settings.copy(brightness=levels[it]),::backToImage) }
+                    levels.map { "$it%" to (it==settings.brightness) },::backToImage) { save(settings,settings.copy(brightness=levels[it]),::backToImage) }
             }
             addMenuItem(UiText.text("Contraste: {0}%",UiText.nested(settings.contrast))) {
                 val levels=listOf(50,75,90,100,110,125,150)
                 choices(UiText.text("Contraste"),UiText.text("100% preserva o contraste original. Valores extremos podem esconder detalhes claros ou escuros."),
-                    levels.map { "$it%" to (it==settings.contrast) },::backToImage) { save(settings.copy(contrast=levels[it]),::backToImage) }
+                    levels.map { "$it%" to (it==settings.contrast) },::backToImage) { save(settings,settings.copy(contrast=levels[it]),::backToImage) }
             }
             addMenuItem(UiText.text("Saturação: {0}%",UiText.nested(settings.saturation))) {
                 val levels=listOf(0,75,100,110,125,150,200)
                 choices(UiText.text("Saturação"),UiText.text("100% mantém as cores originais. Valores maiores intensificam as cores; 0% deixa a imagem em cinza."),
                     levels.map { UiText.text("{0}%{1}",UiText.nested(it),UiText.nested(if(it==100) UiText.text(" — original") else "")) to (it==settings.saturation) },::backToImage) {
-                    save(settings.copy(saturation=levels[it]),::backToImage)
+                    save(settings,settings.copy(saturation=levels[it]),::backToImage)
                 }
             }
             addAction(UiText.text("Voltar"),onBack); setOnCancelListener { onBack() }; show()
@@ -455,17 +458,17 @@ class PlaybackSettingsPanel(
     private fun chooseReconstructionQuality(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED);val value=store.read();val options=value.reconstruction
         return choices(UiText.text("Qualidade do processamento"),UiText.text("Automático começa Leve e aumenta após observar cadência estável. Equilibrado e Qualidade usam mais amostras para reconstrução de detalhes. Se houver queda sustentada, a proteção reduz o nível e evita repetir a tentativa nesta partida. Sem proteção de desempenho, Automático permanece Leve. A cadência não é uma medição de tempo de GPU. Compatibilidade desativa o modo."),
-            ReconstructionQuality.entries.map { it.label to (it==options.quality) }) { save(value.copy(reconstruction=options.copy(quality=ReconstructionQuality.entries[it]))) }
+            ReconstructionQuality.entries.map { it.label to (it==options.quality) }) { save(value,value.copy(reconstruction=options.copy(quality=ReconstructionQuality.entries[it]))) }
     }
     private fun chooseReconstructionStrength(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED);val value=store.read();val options=value.reconstruction;val levels=listOf(0,25,50,75,100)
         return choices(UiText.text("Intensidade da reconstrução"),UiText.text("0% desativa a reconstrução de detalhes. Valores maiores aumentam o realce com limites de ruído e halos. A intensidade não altera a resolução; 50% não significa metade do custo da GPU."),
-            levels.map { "$it%" to (it==options.strength) }) { save(value.copy(reconstruction=options.copy(strength=levels[it]))) }
+            levels.map { "$it%" to (it==options.strength) }) { save(value,value.copy(reconstruction=options.copy(strength=levels[it]))) }
     }
     private fun chooseImageComparison(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED);val value=store.read();val options=value.reconstruction
         return choices(UiText.text("Comparação da imagem"),UiText.text("Original mostra o quadro recebido sem os filtros do app. Dividida mostra esse mesmo quadro original à esquerda e tratado à direita. Só atua na reconstrução adaptativa; não altera o toque nem o enquadramento. A adaptação automática fica pausada durante a comparação. O desempenho em meia tela não representa o custo em tela inteira."),
-            ImageComparison.entries.map { it.label to (it==options.comparison) }) { save(value.copy(reconstruction=options.copy(comparison=ImageComparison.entries[it]))) }
+            ImageComparison.entries.map { it.label to (it==options.comparison) }) { save(value,value.copy(reconstruction=options.copy(comparison=ImageComparison.entries[it]))) }
     }
     fun showTreatment(): ConsoleDialog {
         if(compatibility(store.read())) return showAdvancedImage()
@@ -475,7 +478,7 @@ class PlaybackSettingsPanel(
             val levels=listOf(0,25,50,75,100).filter { it<=max }
             choices(title,UiText.text("Filtros opcionais. Use intensidades baixas e compare com a imagem original. Temporal pode deixar rastros. A rede neural exige renderização half-float e fonte de até 1080p; o diagnóstico informa quando não há suporte. Compatibilidade desativa o tratamento."),
                 levels.map { "$it%" to (it==current) },{ showTreatment() }) { index ->
-                val now=store.read();save(now.copy(imageTreatment=change(now.imageTreatment,levels[index])))
+                val now=store.read();save(now,now.copy(imageTreatment=change(now.imageTreatment,levels[index])))
             }
         }
         return ConsoleDialog(context,UiText.text("Filtros adicionais — compartilhados")).apply {
@@ -504,7 +507,7 @@ class PlaybackSettingsPanel(
             ConsoleAction(UiText.text("Calibração e remapeamento por controle"),controllerProfiles),
             ConsoleAction(UiText.text("Coop local: {0}",UiText.nested(if(value.localCoOp) UiText.text("Ativado — até 4 jogadores") else UiText.text("Desativado")))) {
                 choices(UiText.text("Coop local"),UiText.text("Cada controle ocupa um jogador. Toque/teclado reservam o jogador 1. O jogo e a sessão precisam aceitar multiplayer local. Vale na próxima partida."),
-                    listOf(UiText.text("Desativado") to !value.localCoOp,UiText.text("Ativado — até 4 jogadores") to value.localCoOp)) { save(value.copy(localCoOp=it==1)) }
+                    listOf(UiText.text("Desativado") to !value.localCoOp,UiText.text("Ativado — até 4 jogadores") to value.localCoOp)) { save(value,value.copy(localCoOp=it==1)) }
             }
         ),SettingsPage.CONTROLS)
     }
@@ -512,7 +515,7 @@ class PlaybackSettingsPanel(
         enter(SettingsPage.CONTROLS);val value=store.read()
         return choices(UiText.text("Jogar com toque"),UiText.text("Na TV, o jogo usa controle físico. No celular, Automático prioriza toque nativo em jogos compatíveis e HUD nos demais. Exclusivo — controle virtual força o HUD. Vale na próxima partida."),
             TouchMode.entries.map { it.label to (it==value.touchMode) },onBack={ if(onBack!=null) onBack() else showControls() }) {
-                save(value.copy(touchMode=TouchMode.entries[it])) { if(onBack!=null) onBack() else showControls() }
+                save(value,value.copy(touchMode=TouchMode.entries[it])) { if(onBack!=null) onBack() else showControls() }
             }
     }
     fun showMouse(): ConsoleDialog {
@@ -522,7 +525,7 @@ class PlaybackSettingsPanel(
             ConsoleAction(UiText.text("Sensibilidade do mouse emulado: {0}%",UiText.nested(value.mouseSensitivity))) {
                 val levels=listOf(25,50,75,100,125,150,200,250,300)
                 choices(UiText.text("Sensibilidade do mouse emulado"),UiText.text("Ajusta o analógico direito emulado. No modo nativo, use a sensibilidade do próprio jogo. Vale na próxima partida."),
-                    levels.map { "$it%" to (it==value.mouseSensitivity) }) { save(value.copy(mouseSensitivity=levels[it])) }
+                    levels.map { "$it%" to (it==value.mouseSensitivity) }) { save(value,value.copy(mouseSensitivity=levels[it])) }
             }
         ),SettingsPage.CONTROLS)
     }
@@ -532,22 +535,28 @@ class PlaybackSettingsPanel(
         val value=store.read()
         return ConsoleDialogs.menu(context,UiText.text("Configurações › {0}",UiText.nested(UiText.text("Controles › Giroscópio"))),listOf(
             ConsoleAction(UiText.text("Modo: {0}",UiText.nested(value.gyroMode.label))) { chooseGyro() },
+            ConsoleAction(UiText.text("Fonte do giroscópio: {0}", UiText.nested(value.gyroSource.label))) {
+                choices(UiText.text("Fonte do giroscópio"),UiText.text("O sensor do controle exige Android 12 ou superior e suporte do controle."),
+                    GyroSource.entries.map { it.label to (it==value.gyroSource) },{ showGyro() }) {
+                    save(value,value.copy(gyroSource=GyroSource.entries[it])) { showGyro() }
+                }
+            },
             ConsoleAction(UiText.text("Sensibilidade: {0}%",UiText.nested(value.gyroSensitivity))) {
                 val levels=listOf(25,50,75,100,125,150,200,250,300)
                 choices(UiText.text("Sensibilidade do giroscópio"),gyroApplyLabel(),levels.map { "$it%" to (it==value.gyroSensitivity) }) {
-                    save(value.copy(gyroSensitivity=levels[it])) { showGyro() }
+                    save(value,value.copy(gyroSensitivity=levels[it])) { showGyro() }
                 }
             },
             ConsoleAction(UiText.text("Toque nativo Xbox: {0}",UiText.nested(if(value.gyroNativeTouch) UiText.text("Ativado — experimental") else UiText.text("Desativado")))) { chooseNativeGyro() },
-            ConsoleAction(UiText.text("Testar giroscópio")) { showGyroTest(value.gyroSensitivity) }
+            ConsoleAction(UiText.text("Testar giroscópio")) { showGyroTest(value.gyroSource,value.gyroSensitivity) }
         ),onBack=onBack)
     }
 
     private fun gyroApplyLabel() = if (liveGyro) UiText.text("Aplica ao retomar a partida.") else UiText.text("Vale na próxima partida.")
 
-    private fun showGyroTest(sensitivity: Int) {
+    private fun showGyroTest(source: GyroSource,sensitivity: Int) {
         val dialog = ConsoleDialog(context,UiText.text("Testar giroscópio"))
-        dialog.body.addView(dialog.text(UiText.text("Mova o aparelho para testar localmente o sensor e a resposta do analógico direito."),20))
+        dialog.body.addView(dialog.text(UiText.text("Mova o aparelho ou controle selecionado para testar o sensor e o analógico direito."),20))
         val sample = dialog.text("",20,color=DashboardTheme.muted)
         dialog.body.addView(sample)
         dialog.addAction(UiText.text("Voltar")) { showGyro() }
@@ -561,13 +570,13 @@ class PlaybackSettingsPanel(
                 sample.text = preview.status + "\n" + UiText.text("Amostras: {0} • Analógico direito X: {1} / Y: {2}",
                     UiText.nested(preview.samplesReceived),UiText.nested(String.format(Locale.US,"%.2f",stick.rightX)),
                     UiText.nested(String.format(Locale.US,"%.2f",stick.rightY)))
-                if (preview.available) sample.postDelayed(poll,100)
+                if (preview.listening) sample.postDelayed(poll,100)
             }
         }
         val focus = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
             sample.removeCallbacks(poll)
             if (focused) {
-                preview.start(GyroMode.ALWAYS,sensitivity,nativeTouch=false)
+                preview.start(GyroMode.ALWAYS,sensitivity,nativeTouch=false,source=source)
                 sample.post(poll)
             } else preview.stop()
         }
@@ -582,13 +591,11 @@ class PlaybackSettingsPanel(
         }
     }
 
-    private fun hasGyro()=(context.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager)?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE)!=null
     fun chooseNativeGyro(): ConsoleDialog {
         enter(SettingsPage.GYRO);val value=store.read()
-        if(!hasGyro()) return ConsoleDialogs.message(context,UiText.text("Giroscópio"),UiText.text("O Android não informou um giroscópio neste aparelho."),listOf(ConsoleAction(UiText.text("Voltar")) { showGyro() }),onCancel={ showGyro() })
         return choices(UiText.text("Giroscópio com toque nativo Xbox"),UiText.text("Teste opcional: mantém os dedos no toque nativo e envia a mira pelo analógico direito. Alguns jogos podem alternar a interface de entrada. Se o modo estiver Desativado, ativar este teste escolhe Sempre. LT/LB exigem controle físico no toque nativo. {0}", UiText.nested(gyroApplyLabel())),
             listOf(UiText.text("Desativado") to !value.gyroNativeTouch,UiText.text("Ativado — experimental") to value.gyroNativeTouch)) {
-            save(value.copy(gyroNativeTouch=it==1,gyroMode=if(it==1 && value.gyroMode==GyroMode.OFF) GyroMode.ALWAYS else value.gyroMode))
+            save(value,value.copy(gyroNativeTouch=it==1,gyroMode=if(it==1 && value.gyroMode==GyroMode.OFF) GyroMode.ALWAYS else value.gyroMode))
         }
     }
     fun showRumble(): ConsoleDialog {
@@ -596,11 +603,11 @@ class PlaybackSettingsPanel(
         return category(SettingsPage.RUMBLE,UiText.text("Controles › Vibração"),listOf(
             ConsoleAction(UiText.text("Vibração: {0}",UiText.nested(if(value.rumble) UiText.text("Ativada") else UiText.text("Desativada")))) {
                 choices(UiText.text("Vibração"),UiText.text("Aciona o controle correspondente quando Android ou o teste USB oferecem suporte. Vale na próxima partida."),
-                    listOf(UiText.text("Ativada") to value.rumble,UiText.text("Desativada") to !value.rumble)) { save(value.copy(rumble=it==0)) }
+                    listOf(UiText.text("Ativada") to value.rumble,UiText.text("Desativada") to !value.rumble)) { save(value,value.copy(rumble=it==0)) }
             },
             ConsoleAction(UiText.text("Vibração do celular no toque: {0}",UiText.nested(if(value.touchRumble) UiText.text("Ativada") else UiText.text("Desativada")))) {
                 choices(UiText.text("Vibração do celular"),UiText.text("Usa rumble do jogador de toque quando não há controle físico associado. Requer Vibração ativada e vibrador no celular. Vale na próxima partida."),
-                    listOf(UiText.text("Desativada") to !value.touchRumble,UiText.text("Ativada") to value.touchRumble)) { save(value.copy(touchRumble=it==1)) }
+                    listOf(UiText.text("Desativada") to !value.touchRumble,UiText.text("Ativada") to value.touchRumble)) { save(value,value.copy(touchRumble=it==1)) }
             },
             ConsoleAction(UiText.text("Testar vibração / verificar suporte"),testRumble)
         ),SettingsPage.CONTROLS)
@@ -609,21 +616,19 @@ class PlaybackSettingsPanel(
         enter(SettingsPage.NETWORK)
         val current=store.read()
         return choices(UiText.text("Preferência de rede"),UiText.text("Automático mantém IPv4/IPv6 disponíveis e verifica as rotas durante a partida. O WebRTC considera conectividade, recebimento e RTT, mantendo alternativas de reserva. As preferências IPv4/IPv6 dão até 750 ms iniciais à família escolhida e preservam a outra. A rota depende também do servidor; não há garantia do menor ping. Vale na próxima partida."),
-            IpPreference.entries.map { it.label to (it==current.ipPreference) }) { save(current.copy(ipPreference=IpPreference.entries[it])) }
+            IpPreference.entries.map { it.label to (it==current.ipPreference) }) { save(current,current.copy(ipPreference=IpPreference.entries[it])) }
     }
     fun chooseDesktopInput(): ConsoleDialog {
         enter(SettingsPage.MOUSE)
         val current=store.read()
         return choices(UiText.text("Mouse e teclado"),UiText.text("Emulação: WASD move, mouse mira, clique esquerdo RT, direito LT; Espaço A, Ctrl B, R/E X, Q Y, Shift L3, Tab View e Esc Menu. Nativo envia teclas e mouse apenas em jogos que anunciam suporte. F7 abre o menu do app; F8 captura/solta entradas. Captura relativa requer Android 8+. Vale na próxima partida."),
-            DesktopInputMode.entries.map { it.label to (it==current.desktopInput) },{ showMouse() }) { save(current.copy(desktopInput=DesktopInputMode.entries[it])) { showMouse() } }
+            DesktopInputMode.entries.map { it.label to (it==current.desktopInput) },{ showMouse() }) { save(current,current.copy(desktopInput=DesktopInputMode.entries[it])) { showMouse() } }
     }
     fun chooseGyro(): ConsoleDialog {
         enter(SettingsPage.GYRO)
         val current=store.read()
-        val sensor=(context.getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager)?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE)
-        if(sensor==null) return ConsoleDialogs.message(context,UiText.text("Giroscópio"),UiText.text("O Android não informou um giroscópio neste aparelho."),listOf(ConsoleAction(UiText.text("Voltar")) { showGyro() }),onCancel={ showGyro() })
         return choices(UiText.text("Mira por movimento"),UiText.text("Emula o analógico direito em controle/HUD. Para combinar com toque nativo Xbox, ative também o teste na categoria Giroscópio. LT/LB no toque nativo dependem de controle físico. {0}", UiText.nested(gyroApplyLabel())),
-            GyroMode.entries.map { it.label to (it==current.gyroMode) },{ showGyro() }) { save(current.copy(gyroMode=GyroMode.entries[it])) { showGyro() } }
+            GyroMode.entries.map { it.label to (it==current.gyroMode) },{ showGyro() }) { save(current,current.copy(gyroMode=GyroMode.entries[it])) { showGyro() } }
     }
     fun showAudio(onBack: () -> Unit={ show() }): ConsoleDialog {
         enter(SettingsPage.AUDIO)
@@ -640,17 +645,17 @@ class PlaybackSettingsPanel(
             if(liveVideoMode!=null) null else ConsoleAction(UiText.text("Perfil de áudio: {0}", UiText.nested(current.audioMode.label))) {
                 choices(UiText.text("Perfil de áudio"), UiText.text("Solicita saída de áudio de baixa latência no Android 8 ou superior. O sistema pode ignorar o pedido. Padrão mantém o comportamento atual. Vale na próxima partida; volte ao padrão se houver estalos ou cortes."),
                     AudioPlaybackMode.entries.map { it.label to (it==current.audioMode) }, { showAudio(onBack) }) {
-                    save(current.copy(audioMode=AudioPlaybackMode.entries[it])) { showAudio(onBack) }
+                    save(current,current.copy(audioMode=AudioPlaybackMode.entries[it])) { showAudio(onBack) }
                 }
             },
             ConsoleAction(UiText.text("Ganho de áudio: {0}%",UiText.nested(current.audioGain))) {
                 val values=listOf(0,50,75,100,125,150,175,200,250,300)
                 choices(UiText.text("Ganho de áudio"),UiText.text("100% preserva o volume. Acima disso, o app aumenta gradualmente e reduz o ganho ao detectar picos no áudio. Transientes ainda podem distorcer. Comece em 125%. O foco e o volume do Android continuam ativos."),
-                    values.map { "$it%" to (it==current.audioGain) },{ showAudio(onBack) }) { save(current.copy(audioGain=values[it])) { showAudio(onBack) } }
+                    values.map { "$it%" to (it==current.audioGain) },{ showAudio(onBack) }) { save(current,current.copy(audioGain=values[it])) { showAudio(onBack) } }
             },
             if(liveVideoMode!=null) null else ConsoleAction(UiText.text("Microfone nas próximas partidas: {0}",UiText.nested(if(current.microphone) UiText.text("Disponível — inicia mudo") else UiText.text("Desativado")))) {
                 choices(UiText.text("Microfone opcional"),UiText.text("A sessão sempre inicia muda. Com esta opção, o app consulta suporte a chat; ative a captura no menu da partida, após conceder a permissão do Android. Ir para segundo plano silencia. Alguns servidores podem não oferecer chat."),
-                    listOf(UiText.text("Desativado") to !current.microphone,UiText.text("Disponível — iniciar mudo") to current.microphone),{ showAudio(onBack) }) { save(current.copy(microphone=it==1)) { showAudio(onBack) } }
+                    listOf(UiText.text("Desativado") to !current.microphone,UiText.text("Disponível — iniciar mudo") to current.microphone),{ showAudio(onBack) }) { save(current,current.copy(microphone=it==1)) { showAudio(onBack) } }
             }
         ),onBack=onBack)
     }

@@ -43,7 +43,9 @@ class CatalogUiWorkTest {
         val activity = controller.get()
         UiText.apply(activity, AppLanguage.PORTUGUESE)
         DashboardTheme.apply(activity, UiTheme.GREEN)
-        val view = GameDashboardView(activity, GameLibrary(activity, "genre-catalog"), {}, {}, {}, {})
+        var officialTouchProduct: String? = null
+        val view = GameDashboardView(activity, GameLibrary(activity, "genre-catalog"), {}, {}, {}, {},
+            onOfficialTouch={ officialTouchProduct=it })
         activity.setContentView(view)
         val items = listOf(GameTitle("a", "Águia", "AAAAAAAAAAAA", genres = setOf(CatalogGenre.SHOOTER)),
             GameTitle("b", "Barco", "BBBBBBBBBBBB", genres = setOf(CatalogGenre.SIMULATION)),
@@ -109,6 +111,21 @@ class CatalogUiWorkTest {
             purchasedPicker.dismiss()
             selectTab(LibraryTab.GAME_PASS)
             assertEquals("Barco", view.selectedGame?.name)
+            view.setOfficialGallery(OfficialGalleryKind.TOUCH,
+                OfficialGallery(OfficialGalleryKind.TOUCH,listOf(GalleryProduct("ZZZZZZZZZZZZ"))))
+            selectTab(LibraryTab.ALL)
+            val genre = views(view).filterIsInstance<TextView>().single { it.text.toString() == "Tiro" && it.isShown }
+            assertTrue(genre.performClick())
+            val filter = ShadowDialog.getLatestDialog() as ConsoleDialog
+            assertTrue(views(filter.panel).filterIsInstance<TextView>().single { it.text.toString() == "Jogar com toque" }.performClick())
+            view.awaitCatalog()
+            layout()
+            assertEquals(1,grid.adapter?.itemCount)
+            assertEquals("Zebra",view.selectedGame?.name)
+            assertTrue(genre.performClick())
+            val web = ShadowDialog.getLatestDialog() as ConsoleDialog
+            assertTrue(views(web.panel).filterIsInstance<TextView>().single { it.text.toString() == "Controles oficiais no navegador" }.performClick())
+            assertEquals("ZZZZZZZZZZZZ",officialTouchProduct)
         } finally {
             view.close()
             controller.pause().stop().destroy()

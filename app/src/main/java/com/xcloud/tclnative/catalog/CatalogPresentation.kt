@@ -20,7 +20,8 @@ internal data class CatalogInput(
     val ownershipFilter: OwnershipFilter=OwnershipFilter.ALL,
     val ownership: Map<String,Ownership> = emptyMap(),
     val limit: Int? = null,
-    val genre: CatalogGenre? = null
+    val genre: CatalogGenre? = null,
+    val touchOnly: Boolean = false
 )
 
 internal data class CatalogPresentation(
@@ -46,7 +47,8 @@ internal class CatalogPresentationEngine {
         fun ownership(card: CatalogCard) = input.ownership[card.ownershipProductId()] ?: Ownership.UNKNOWN
         val eligible=catalog.select(input).asSequence().filter { card ->
             search.matches(card) && input.ownershipFilter.accepts(ownership(card)) &&
-                (!input.tab.hasBrowseTools || input.genre == null || input.genre in card.genres)
+                (!input.tab.hasBrowseTools || input.genre == null || input.genre in card.genres) &&
+                (!input.touchOnly || catalog.inTouchGallery(card))
         }
         val matching = if (input.tab == LibraryTab.PURCHASED) {
             val groups = eligible.groupBy(::ownership)
@@ -79,6 +81,10 @@ internal class CatalogPresentationEngine {
         }
         val subscription=XboxProfile.subscription(source.games.flatMap { it.userSubscriptions+it.userPrograms })
         private val index=CloudTitleIndex(games)
+        private val touchProducts=source.galleries[OfficialGalleryKind.TOUCH]?.products.orEmpty()
+            .mapTo(hashSetOf()) { it.productId }
+        fun inTouchGallery(card: CatalogCard): Boolean = card.product?.productId in touchProducts ||
+            card.game?.productId?.let(GamePassCatalog::productKey) in touchProducts
         private val galleries=source.galleries.mapNotNull { (kind,gallery) -> gallery?.let {
             val cards = OfficialGalleryCards.matching(it,index,source.bindings,membership,"")
             kind to if (kind == OfficialGalleryKind.PURCHASED) sortByEnglishTitle(cards) else cards.toList()

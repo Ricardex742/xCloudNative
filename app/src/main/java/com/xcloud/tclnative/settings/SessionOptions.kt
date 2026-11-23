@@ -16,6 +16,11 @@ enum class IpPreference(private val sourceLabel: String,val preferredFamily: Int
 enum class DesktopInputMode(private val sourceLabel: String) { OFF("Desativado"), EMULATED("Emular controle com mouse e teclado"), NATIVE("Mouse e teclado nativos — jogos compatíveis") ;
     val label: String get()=UiText.text(sourceLabel)
 }
+enum class GyroSource(private val sourceLabel: String) {
+    DEVICE("Aparelho"), CONTROLLER("Controle físico");
+    val label get() = UiText.text(sourceLabel)
+}
+
 enum class GyroMode(private val sourceLabel: String) { OFF("Desativado"), LT("Enquanto segurar LT"), LB("Enquanto segurar LB"), ALWAYS("Sempre durante a partida") ;
     val label: String get()=UiText.text(sourceLabel)
 }

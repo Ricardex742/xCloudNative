@@ -1343,4 +1343,20 @@
     <string name="ui_19e0531220f40ceb" formatted="false">"格斗"</string>
     <string name="ui_5d7325dd007ccc28" formatted="false">"平台跳跃"</string>
     <string name="ui_947072ee72a7269b" formatted="false">"益智"</string>
+    <string name="ui_d676aad7af5c964a" formatted="false">"设备"</string>
+    <string name="ui_798a8b31e7089db7" formatted="false">"实体手柄"</string>
+    <string name="ui_d60a7b948fd48acd" formatted="false">"使用虚拟手柄启动此游戏"</string>
+    <string name="ui_cd46ffb27f3e67df" formatted="false">"Xbox 提示云游戏时长已用完。"</string>
+    <string name="ui_a094c6ea7a6f2fab" formatted="false">"打开 Xbox.com"</string>
+    <string name="ui_da9bb3168ce02767" formatted="false">"本局限时 · {0}"</string>
+    <string name="ui_f66712ff9f22a5fa" formatted="false">"本局剩余不到 5 分钟，请在游戏内保存进度。"</string>
+    <string name="ui_d94815562d57121e" formatted="false">"陀螺仪：手柄传感器不可用"</string>
+    <string name="ui_c9306bc10f8e9273" formatted="false">"正在加载支持触控的游戏…"</string>
+    <string name="ui_2894938e2d687327" formatted="false">"触控游玩合集暂不可用，请刷新游戏目录。"</string>
+    <string name="ui_4e2fb8f6074c56c5" formatted="false">"游戏目录筛选"</string>
+    <string name="ui_dfef36ec668231e8" formatted="false">"在浏览器中使用官方触控"</string>
+    <string name="ui_7018b98c929744cd" formatted="false">"陀螺仪来源：{0}"</string>
+    <string name="ui_f54af6654b132fe2" formatted="false">"陀螺仪来源"</string>
+    <string name="ui_08454ee73abc5618" formatted="false">"使用手柄传感器需要 Android 12 或更高版本，以及兼容的手柄。"</string>
+    <string name="ui_f50709cbc486d85d" formatted="false">"移动选中的设备或手柄，测试传感器和右摇杆。"</string>
 </resources>

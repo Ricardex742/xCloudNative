@@ -1343,4 +1343,20 @@
     <string name="ui_19e0531220f40ceb" formatted="false">"Dövüş"</string>
     <string name="ui_5d7325dd007ccc28" formatted="false">"Platform"</string>
     <string name="ui_947072ee72a7269b" formatted="false">"Bulmaca"</string>
+    <string name="ui_d676aad7af5c964a" formatted="false">"Cihaz"</string>
+    <string name="ui_798a8b31e7089db7" formatted="false">"Fiziksel oyun kumandası"</string>
+    <string name="ui_d60a7b948fd48acd" formatted="false">"Bu oyunu sanal kumandayla başlat"</string>
+    <string name="ui_cd46ffb27f3e67df" formatted="false">"Xbox, bulut oyun sürenizin dolduğunu bildirdi."</string>
+    <string name="ui_a094c6ea7a6f2fab" formatted="false">"Xbox.com’u aç"</string>
+    <string name="ui_da9bb3168ce02767" formatted="false">"Oturum sınırı · {0}"</string>
+    <string name="ui_f66712ff9f22a5fa" formatted="false">"Bu oturumda en fazla 5 dakika kaldı. Oyun ilerlemenizi kaydedin."</string>
+    <string name="ui_d94815562d57121e" formatted="false">"Jiroskop: kumanda sensörü kullanılamıyor"</string>
+    <string name="ui_c9306bc10f8e9273" formatted="false">"Dokunmatik kontrollü oyunlar yükleniyor…"</string>
+    <string name="ui_2894938e2d687327" formatted="false">"Dokunarak oyna koleksiyonu kullanılamıyor. Kataloğu yenileyin."</string>
+    <string name="ui_4e2fb8f6074c56c5" formatted="false">"Katalog filtreleri"</string>
+    <string name="ui_dfef36ec668231e8" formatted="false">"Tarayıcıda resmi dokunmatik kontroller"</string>
+    <string name="ui_7018b98c929744cd" formatted="false">"Jiroskop kaynağı: {0}"</string>
+    <string name="ui_f54af6654b132fe2" formatted="false">"Jiroskop kaynağı"</string>
+    <string name="ui_08454ee73abc5618" formatted="false">"Kumanda sensörü için Android 12 veya üzeri ve uyumlu bir kumanda gerekir."</string>
+    <string name="ui_f50709cbc486d85d" formatted="false">"Sensörü ve sağ çubuğu test etmek için seçilen cihazı veya kumandayı hareket ettirin."</string>
 </resources>

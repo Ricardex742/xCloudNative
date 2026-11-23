@@ -1343,4 +1343,20 @@
     <string name="ui_19e0531220f40ceb" formatted="false">"Fighting"</string>
     <string name="ui_5d7325dd007ccc28" formatted="false">"Platformer"</string>
     <string name="ui_947072ee72a7269b" formatted="false">"Puzzle"</string>
+    <string name="ui_d676aad7af5c964a" formatted="false">"Device"</string>
+    <string name="ui_798a8b31e7089db7" formatted="false">"Physical controller"</string>
+    <string name="ui_d60a7b948fd48acd" formatted="false">"Start this game with the virtual controller"</string>
+    <string name="ui_cd46ffb27f3e67df" formatted="false">"Xbox reported that your cloud gaming hours have run out."</string>
+    <string name="ui_a094c6ea7a6f2fab" formatted="false">"Open Xbox.com"</string>
+    <string name="ui_da9bb3168ce02767" formatted="false">"Session limit · {0}"</string>
+    <string name="ui_f66712ff9f22a5fa" formatted="false">"Up to 5 minutes left in this session. Save your progress in the game."</string>
+    <string name="ui_d94815562d57121e" formatted="false">"Gyroscope: controller sensor unavailable"</string>
+    <string name="ui_c9306bc10f8e9273" formatted="false">"Loading games with touch controls…"</string>
+    <string name="ui_2894938e2d687327" formatted="false">"The Play with touch collection is unavailable. Refresh the catalog."</string>
+    <string name="ui_4e2fb8f6074c56c5" formatted="false">"Catalog filters"</string>
+    <string name="ui_dfef36ec668231e8" formatted="false">"Official touch controls in browser"</string>
+    <string name="ui_7018b98c929744cd" formatted="false">"Gyroscope source: {0}"</string>
+    <string name="ui_f54af6654b132fe2" formatted="false">"Gyroscope source"</string>
+    <string name="ui_08454ee73abc5618" formatted="false">"The controller sensor requires Android 12 or later and a compatible controller."</string>
+    <string name="ui_f50709cbc486d85d" formatted="false">"Move the selected device or controller to test the sensor and right stick."</string>
 </resources>

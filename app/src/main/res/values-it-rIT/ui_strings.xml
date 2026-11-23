@@ -1343,4 +1343,20 @@
     <string name="ui_19e0531220f40ceb" formatted="false">"Picchiaduro"</string>
     <string name="ui_5d7325dd007ccc28" formatted="false">"Platform"</string>
     <string name="ui_947072ee72a7269b" formatted="false">"Rompicapo"</string>
+    <string name="ui_d676aad7af5c964a" formatted="false">"Dispositivo"</string>
+    <string name="ui_798a8b31e7089db7" formatted="false">"Controller fisico"</string>
+    <string name="ui_d60a7b948fd48acd" formatted="false">"Avvia questo gioco con il controller virtuale"</string>
+    <string name="ui_cd46ffb27f3e67df" formatted="false">"Xbox ha comunicato che le tue ore di gioco nel cloud sono esaurite."</string>
+    <string name="ui_a094c6ea7a6f2fab" formatted="false">"Apri Xbox.com"</string>
+    <string name="ui_da9bb3168ce02767" formatted="false">"Limite della sessione · {0}"</string>
+    <string name="ui_f66712ff9f22a5fa" formatted="false">"Restano al massimo 5 minuti. Salva i tuoi progressi nel gioco."</string>
+    <string name="ui_d94815562d57121e" formatted="false">"Giroscopio: sensore del controller non disponibile"</string>
+    <string name="ui_c9306bc10f8e9273" formatted="false">"Caricamento dei giochi con comandi touch…"</string>
+    <string name="ui_2894938e2d687327" formatted="false">"La raccolta Gioca con il tocco non è disponibile. Aggiorna il catalogo."</string>
+    <string name="ui_4e2fb8f6074c56c5" formatted="false">"Filtri del catalogo"</string>
+    <string name="ui_dfef36ec668231e8" formatted="false">"Comandi touch ufficiali nel browser"</string>
+    <string name="ui_7018b98c929744cd" formatted="false">"Sorgente del giroscopio: {0}"</string>
+    <string name="ui_f54af6654b132fe2" formatted="false">"Sorgente del giroscopio"</string>
+    <string name="ui_08454ee73abc5618" formatted="false">"Il sensore del controller richiede Android 12 o successivo e un controller compatibile."</string>
+    <string name="ui_f50709cbc486d85d" formatted="false">"Muovi il dispositivo o il controller selezionato per provare il sensore e la levetta destra."</string>
 </resources>

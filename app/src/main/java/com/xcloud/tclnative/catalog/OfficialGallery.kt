@@ -10,7 +10,8 @@ import java.util.Locale
 /** IDs and Cloud:XGPUWEB context verified against the public Xbox gallery client. */
 enum class OfficialGalleryKind(val id: String, val path: String) {
     GAME_PASS("af206485-e87d-4624-9007-cb7f6d0cc42e", "game-pass-games"),
-    PURCHASED("e78d9a61-5ef4-43af-b400-edba1250b18e", "buy-and-stream")
+    PURCHASED("e78d9a61-5ef4-43af-b400-edba1250b18e", "buy-and-stream"),
+    TOUCH("9c86f07a-f3e8-45ad-82a0-a1f759597059", "touch")
 }
 
 /** Public Store data, deliberately separate from an authenticated cloud launch ID. */

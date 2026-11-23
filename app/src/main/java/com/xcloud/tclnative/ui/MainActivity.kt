@@ -39,6 +39,8 @@ import com.xcloud.tclnative.catalog.CatalogCache
 import com.xcloud.tclnative.catalog.withMetadataFallback
 import java.io.File
 import com.xcloud.tclnative.signaling.GameTitle
+import com.xcloud.tclnative.signaling.SessionTimeLimit
+import com.xcloud.tclnative.net.CloudHttpException
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
 import com.xcloud.tclnative.ui.dashboard.GameMenuPanel
 import com.xcloud.tclnative.ui.dashboard.GameShortcutBar
@@ -159,17 +161,19 @@ open class MainActivity : Activity() {
         directDiagnostics={ if(usbDirect.source!=null) usbDirect.snapshot().status.label else null }
     } }
     private lateinit var touchView: GameTouchView
+    private lateinit var sessionTimeView: TextView
     private lateinit var guideTouchControls: GuideTouchControls
     private var currentTouchMode=TouchMode.OFF
     private val hudStore by lazy { com.xcloud.tclnative.touch.GameHudStore(this) }
     private var preferredControllerId: Int?=null
     private val televisionInput by lazy { InputDeviceProfile.read(this).television }
     private val deviceListener=object : InputManager.InputDeviceListener {
-        override fun onInputDeviceAdded(deviceId: Int) {}
+        override fun onInputDeviceAdded(deviceId: Int) { refreshControllerGyro() }
         override fun onInputDeviceChanged(deviceId: Int) = onInputDeviceRemoved(deviceId)
         override fun onInputDeviceRemoved(deviceId: Int) {
             if(preferredControllerId==deviceId) preferredControllerId=null
             removeController(deviceId)
+            refreshControllerGyro()
         }
     }
     private var qrPollingJob: Job? = null
@@ -337,6 +341,11 @@ open class MainActivity : Activity() {
                 networkIndicator.setCutout(cutout, if (::guideTouchControls.isInitialized && guideTouchControls.active)
                     guideTouchControls.cornerControlSize else 0)
                 networkPanel?.dialog?.setNetworkCutout(cutout)
+                if (::sessionTimeView.isInitialized) {
+                    val params = sessionTimeView.layoutParams as FrameLayout.LayoutParams
+                    params.topMargin = (48 * resources.displayMetrics.density).toInt() + cutout.top
+                    sessionTimeView.layoutParams = params
+                }
                 com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout)
                 renderStatistics()
             }
@@ -367,6 +376,17 @@ open class MainActivity : Activity() {
             onClose = { hideGuideTouchControls(); resumeAuxiliaryInput() })
         rootLayout.addView(guideTouchControls,FrameLayout.LayoutParams(-1,-1))
         guideTouchControls.setCutout(displayCutout)
+        val density = resources.displayMetrics.density
+        sessionTimeView = com.xcloud.tclnative.i18n.LocalizedTextView(this).apply {
+            setPadding((10 * density).toInt(),(4 * density).toInt(),(10 * density).toInt(),(4 * density).toInt())
+            setTextColor(Color.WHITE)
+            setBackgroundColor(Color.argb(204, 12, 18, 20))
+            textSize = 12f
+            visibility = View.GONE
+        }
+        rootLayout.addView(sessionTimeView, FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
+            topMargin = (48 * density).toInt() + displayCutout.top
+        })
         rootLayout.addView(networkIndicator)
         transitionPanel=SessionTransitionView(this)
         rootLayout.addView(transitionPanel,FrameLayout.LayoutParams(-1,-1))
@@ -624,7 +644,8 @@ open class MainActivity : Activity() {
                 onOwnershipNeeded = { requestOwnership() },onGameShortcut={ showGameShortcut(it) },
                 onFriends={ showFriends { dashboard?.restoreFocus() } },
                 onThemeSettings={ page -> showSettings(session,page) { dashboard?.restoreFocus() } },
-                onRemotePlay={ showRemotePlay() })
+                onRemotePlay={ showRemotePlay() },
+                onOfficialTouch=::openOfficialTouch)
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)
@@ -914,8 +935,8 @@ open class MainActivity : Activity() {
         if(!settingsStore.read().sessionReport) return
         postSessionDialog?.dismiss()
         postSessionDialog=SessionReportPanel.show(this,report) {
-            val updated=settingsStore.read().copy(sessionReport=false)
-            settingsStore.save(updated); playbackSettings=updated
+            val current=settingsStore.read()
+            playbackSettings=settingsStore.update(current,current.copy(sessionReport=false))
         }
     }
     private fun syncHomeShortcuts(requestVisibility: Boolean = false) {
@@ -1101,13 +1122,14 @@ open class MainActivity : Activity() {
     }
     private fun applyPlaybackSettings(settings: PlaybackSettings) {
         val gyroChanged = playbackSettings.gyroMode!=settings.gyroMode ||
-            playbackSettings.gyroSensitivity!=settings.gyroSensitivity || playbackSettings.gyroNativeTouch!=settings.gyroNativeTouch
+            playbackSettings.gyroSensitivity!=settings.gyroSensitivity || playbackSettings.gyroNativeTouch!=settings.gyroNativeTouch ||
+            playbackSettings.gyroSource!=settings.gyroSource
         playbackSettings=settings
         applyLiveVideo(settings)
         webrtcClient?.setOutputGain(settings.audioGain)
         if (gyroChanged && sessionSettings!=null) {
             sessionSettings=sessionSettings?.copy(gyroMode=settings.gyroMode,gyroSensitivity=settings.gyroSensitivity,
-                gyroNativeTouch=settings.gyroNativeTouch)
+                gyroNativeTouch=settings.gyroNativeTouch,gyroSource=settings.gyroSource)
             if (gameplayInputEnabled()) {
                 resumeAuxiliaryInput()
                 publishGamepad(0)
@@ -1360,6 +1382,7 @@ open class MainActivity : Activity() {
         val game = activeGame ?: return
         if (!supportsSessionNativeTouch()) return
         val preferred = hudStore.prefersNativeTouchWithController(game.titleId)
+        val virtualPreferred = hudStore.prefersVirtualTouch(game.titleId)
         val nativeActive = currentTouchMode==TouchMode.NATIVE
         val canSwitch = webrtcClient?.canUseNativeTouch()==true && !controllers.reservesPlayerOne
         val state = if (preferred) UiText.text("Ativado") else UiText.text("Desativado")
@@ -1370,8 +1393,15 @@ open class MainActivity : Activity() {
                 if (nativeActive) addMenuItem(UiText.text("Usar apenas controle nesta partida")) { disableSessionNativeTouch() }
                 else addMenuItem(UiText.text("Usar toque nativo e controle nesta partida")) { enableNativeTouch() }
             }
+            if(currentTouchMode!=TouchMode.VIRTUAL) {
+                addMenuItem(UiText.text("Usar controle virtual nesta partida")) { enableGameHud() }
+            }
             addMenuItem(UiText.text("Iniciar este jogo com toque e controle: {0}", UiText.nested(state))) {
-                hudStore.preferNativeTouchWithController(game.titleId,!preferred)
+                hudStore.setTouchPreference(game.titleId,if(preferred) TouchMode.AUTO else TouchMode.NATIVE)
+                showSessionInput(back)
+            }
+            addMenuItem((if(virtualPreferred) "✓  " else "")+UiText.text("Iniciar este jogo com controle virtual")) {
+                hudStore.setTouchPreference(game.titleId,if(virtualPreferred) TouchMode.AUTO else TouchMode.VIRTUAL)
                 showSessionInput(back)
             }
             addAction(UiText.text("Voltar"),back)
@@ -1430,6 +1460,7 @@ open class MainActivity : Activity() {
         if (!activityVisible || sessionSaved || !transmissionReady || reloadTransmission == null ||
             transmissionRecovery?.phase != TransmissionRecoveryState.Phase.ACTIVE) return
         sessionSaved = true
+        sessionTimeView.visibility = View.GONE
         closeGameTools()
         videoRecoveryDialog?.dismiss()
         nativeTouchDialog?.dismiss()
@@ -1535,6 +1566,12 @@ open class MainActivity : Activity() {
                         ConsoleAction(UiText.text("Voltar")) { showFriends(onBack) }),onCancel={ showFriends(onBack) })
                 else launch()
             },back=onBack).also { it.show() }
+    }
+
+    private fun openOfficialTouch(productId: String?) {
+        val verifiedId=productId?.takeIf { it.matches(Regex("[A-Za-z0-9]{12}")) }
+        openAccountPage(if(verifiedId==null) "https://www.xbox.com/play/gallery/touch"
+            else "https://www.xbox.com/play/games/x/$verifiedId")
     }
 
     private fun openAccountPage(url: String) {
@@ -1716,7 +1753,7 @@ open class MainActivity : Activity() {
         streamHistory.clear()
         catalogWork.pause()
         dashboard?.pauseArtwork()
-        val choice=touchChoice ?: settings.touchMode
+        val choice=touchChoice ?: if(!remote && hudStore.prefersVirtualTouch(titleId)) TouchMode.VIRTUAL else settings.touchMode
         val inputDevice=InputDeviceProfile.read(this)
         val preferHybrid = !remote && sessionDesktopMode==DesktopInputMode.OFF && inputDevice.touchDevice &&
             DeviceInputPolicy.supportsNativeTouch(game) && touchChoice==null && hudStore.prefersNativeTouchWithController(titleId)
@@ -1790,10 +1827,12 @@ open class MainActivity : Activity() {
                     throw RenderFailureException(error)
                 }
                 timeline.mark(0, PlaybackStage.RENDERER_READY)
+                var sessionStartedAtMs = 0L
                 surfaceRenderer.onFirstFrameSubmitted = { submittedAt ->
                     if (generation == playbackGeneration && recoveryState.current(0) && !firstFrame.isCompleted) {
                         timeline.mark(0, PlaybackStage.FIRST_EGL_SUBMISSION, submittedAt)
-                        tracker.begin(android.os.SystemClock.elapsedRealtime(),NetworkSnapshot.read(this@MainActivity))
+                        sessionStartedAtMs = android.os.SystemClock.elapsedRealtime()
+                        tracker.begin(sessionStartedAtMs,NetworkSnapshot.read(this@MainActivity))
                         runCatching { startupReportStore.clear() }
                         firstFrame.complete(Unit)
                         finishLoading(forPlayback = true)
@@ -1903,6 +1942,8 @@ open class MainActivity : Activity() {
                 if (touchMode == TouchMode.NATIVE) rtc.setNativeTouchEnabled(true)
                 if (!firstFrame.isCompleted) queuePanel.updateProgress("VIDEO:")
                 attempt.awaitFirstFrame(transportFailure)
+                val sessionTime = signaling.sessionTimeLimitSeconds()?.let { SessionTimeLimit(it,sessionStartedAtMs) }
+                renderSessionTime(sessionTime)
                 val recovery = VideoRecoveryPolicy(compatible)
                 var visibilityEpoch = videoVisibilityEpoch
                 val nativeReadiness=com.xcloud.tclnative.webrtc.NativeTouchReadiness()
@@ -1997,7 +2038,11 @@ open class MainActivity : Activity() {
                 kotlinx.coroutines.coroutineScope {
                     launch { signaling.maintainSession() }
                     while (isActive) {
-                        if(recoveryState.phase!=TransmissionRecoveryState.Phase.ACTIVE) { delay(250);continue }
+                        if(recoveryState.phase!=TransmissionRecoveryState.Phase.ACTIVE) {
+                            sessionTimeView.visibility = View.GONE
+                            delay(250)
+                            continue
+                        }
                         val token=recoveryState.epoch
                         val failure=withTimeoutOrNull(1000) { transportFailure.await() }
                         if(recoveryState.phase!=TransmissionRecoveryState.Phase.ACTIVE || !recoveryState.current(token)) continue
@@ -2012,6 +2057,7 @@ open class MainActivity : Activity() {
                             }
                             continue
                         }
+                        renderSessionTime(sessionTime)
                         if (!activityVisible || sessionSaved) continue
                         if (visibilityEpoch != videoVisibilityEpoch) {
                             visibilityEpoch = videoVisibilityEpoch
@@ -2078,11 +2124,17 @@ open class MainActivity : Activity() {
                 startupFailure=SessionFailure.from(error).code
                 tracker.recordFailure(error)
                 if (generation == playbackGeneration && !sessionSaved && (!firstFrame.isCompleted || !settingsStore.read().sessionReport)) {
-                    val details = (error.message ?: UiText.text("Falha na sessão"))+
+                    val noCloudHours = error is CloudHttpException && error.stage=="PLAY" &&
+                        error.serviceCode.equals("CloudHoursExhausted", ignoreCase=true)
+                    val details = (if(noCloudHours) UiText.text("O Xbox informou que as horas de jogo na nuvem acabaram.")+"\n\n" else "")+
+                        (error.message ?: UiText.text("Falha na sessão"))+
                         if(!firstFrame.isCompleted) "\nUpscaling=${settings.fsr}; output=${settings.fsrOutput}\n${signaling.startupDiagnostics()}\n${controllerPath.diagnostics()}" else ""
                     hudTextView.text = details
                     hudTextView.setTextColor(Color.RED)
-                    if (remote) remoteError = details else showCopyableErrorDialog(gameName, details)
+                    if (remote) remoteError = details else showCopyableErrorDialog(gameName, details,
+                        additionalAction = if(noCloudHours) ConsoleAction(UiText.text("Abrir Xbox.com")) {
+                            openAccountPage("https://www.xbox.com/play")
+                        } else null)
                 }
             } finally {
                 // Always release the local decoder and server session together.
@@ -2112,6 +2164,7 @@ open class MainActivity : Activity() {
                         if (!expiredWhileSaved) showCatalogReturn(game,pendingLoadingGame==null)
                         finishLoading()
                         statsView.visibility = View.GONE
+                        sessionTimeView.visibility = View.GONE
                     }
                     allowTransitionFrame()
                     videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
@@ -2248,15 +2301,28 @@ open class MainActivity : Activity() {
         }
     }
 
+    private fun renderSessionTime(limit: SessionTimeLimit?) {
+        if(limit==null || !activityVisible || sessionSaved) {
+            sessionTimeView.visibility = View.GONE
+            return
+        }
+        val seconds = limit.remainingSeconds(android.os.SystemClock.elapsedRealtime())
+        val time = String.format(java.util.Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)
+        sessionTimeView.text = UiText.text("Limite da partida · {0}",UiText.nested(time))
+        sessionTimeView.visibility = View.VISIBLE
+        if (hasWindowFocus() && limit.shouldWarn(seconds)) Toast.makeText(this,
+            UiText.text("Restam até 5 minutos nesta partida. Salve seu progresso no jogo."),Toast.LENGTH_LONG).show()
+    }
+
     private fun showCopyableErrorDialog(gameName: String, fullError: String,onBack: (() -> Unit)?=null,
-                                        export: (() -> Unit)?=null) {
-        ConsoleDialogs.message(this,UiText.text("Diagnóstico de sessão ({0})",UiText.nested(gameName)),fullError,listOf(
+                                        export: (() -> Unit)?=null, additionalAction: ConsoleAction?=null) {
+        ConsoleDialogs.message(this,UiText.text("Diagnóstico de sessão ({0})",UiText.nested(gameName)),fullError,listOfNotNull(
             ConsoleAction(UiText.text("Copiar detalhes")) {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 clipboard.setPrimaryClip(ClipData.newPlainText(UiText.text("xCloud Error"), fullError))
                 Toast.makeText(this,UiText.text("Detalhes copiados!"),Toast.LENGTH_LONG).show()
                 onBack?.invoke()
-            }, ConsoleAction(UiText.text("Fechar")) { onBack?.invoke() }),onCancel={ onBack?.invoke() })
+            }, additionalAction, ConsoleAction(UiText.text("Fechar")) { onBack?.invoke() }),onCancel={ onBack?.invoke() })
             .also { dialog -> if (export != null) dialog.addPersistentAction(UiText.text("Exportar diagnóstico"), export) }
     }
 
@@ -2306,9 +2372,16 @@ open class MainActivity : Activity() {
     private fun resumeAuxiliaryInput() {
         val settings=sessionSettings ?: return
         if(!gameplayInputEnabled() || guideTouchControls.active) return
-        gyro.start(settings.gyroMode,settings.gyroSensitivity,currentTouchMode==TouchMode.NATIVE,settings.gyroNativeTouch)
+        gyro.start(settings.gyroMode,settings.gyroSensitivity,currentTouchMode==TouchMode.NATIVE,settings.gyroNativeTouch,
+            settings.gyroSource,controllers.deviceFor(0) ?: preferredControllerId)
         if(sessionDesktopMode!=DesktopInputMode.OFF) setDesktopCapture(true)
     }
+    private fun refreshControllerGyro() {
+        if(sessionSettings?.gyroSource!=GyroSource.CONTROLLER || !gameplayInputEnabled()) return
+        resumeAuxiliaryInput()
+        publishGamepad(0)
+    }
+
     private fun handleDesktopMouse(event: MotionEvent,captured: Boolean=false): Boolean {
         if(!desktopCaptured || sessionDesktopMode==DesktopInputMode.OFF || !gameplayInputEnabled()) return false
         val movement=event.actionMasked==MotionEvent.ACTION_MOVE || event.actionMasked==MotionEvent.ACTION_HOVER_MOVE
@@ -2330,12 +2403,12 @@ open class MainActivity : Activity() {
         controllers.existingSlot(android)?.let { return it }
         if (!televisionInput) {
             if (!AndroidGamepadPolicy.supportsGamepad(source)) return 0
-            return if (register) controllers.slot(android) else null
+            return if (register) controllers.slot(android).also { if(it==0) refreshControllerGyro() } else null
         }
         val hasPrimary=controllers.sourceFor(0)!=null
         if(hasPrimary && !controllers.coOp) return null
         if(deviceId>=0 && confirmedGamepad && register) {
-            return controllers.slot(android)
+            return controllers.slot(android).also { if(it==0) refreshControllerGyro() }
         }
         return 0.takeUnless { hasPrimary }
     }
@@ -2665,6 +2738,7 @@ open class MainActivity : Activity() {
     }
     override fun onStop() {
         activityVisible = false
+        sessionTimeView.visibility = View.GONE
         dashboard?.closeServiceMenu()
         renderNetworkStatus()
         videoVisibilityEpoch++

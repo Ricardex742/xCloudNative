@@ -1343,4 +1343,20 @@
     <string name="ui_19e0531220f40ceb" formatted="false">"Файтинги"</string>
     <string name="ui_5d7325dd007ccc28" formatted="false">"Платформеры"</string>
     <string name="ui_947072ee72a7269b" formatted="false">"Головоломки"</string>
+    <string name="ui_d676aad7af5c964a" formatted="false">"Устройство"</string>
+    <string name="ui_798a8b31e7089db7" formatted="false">"Физический геймпад"</string>
+    <string name="ui_d60a7b948fd48acd" formatted="false">"Запустить игру с виртуальным геймпадом"</string>
+    <string name="ui_cd46ffb27f3e67df" formatted="false">"Xbox сообщил, что время облачной игры закончилось."</string>
+    <string name="ui_a094c6ea7a6f2fab" formatted="false">"Открыть Xbox.com"</string>
+    <string name="ui_da9bb3168ce02767" formatted="false">"Лимит сеанса · {0}"</string>
+    <string name="ui_f66712ff9f22a5fa" formatted="false">"До конца сеанса осталось не более 5 минут. Сохраните прогресс в игре."</string>
+    <string name="ui_d94815562d57121e" formatted="false">"Гироскоп: датчик геймпада недоступен"</string>
+    <string name="ui_c9306bc10f8e9273" formatted="false">"Загрузка игр с сенсорным управлением…"</string>
+    <string name="ui_2894938e2d687327" formatted="false">"Коллекция игр с сенсорным управлением недоступна. Обновите каталог."</string>
+    <string name="ui_4e2fb8f6074c56c5" formatted="false">"Фильтры каталога"</string>
+    <string name="ui_dfef36ec668231e8" formatted="false">"Официальное сенсорное управление в браузере"</string>
+    <string name="ui_7018b98c929744cd" formatted="false">"Источник гироскопа: {0}"</string>
+    <string name="ui_f54af6654b132fe2" formatted="false">"Источник гироскопа"</string>
+    <string name="ui_08454ee73abc5618" formatted="false">"Для датчика геймпада нужны Android 12 или новее и совместимый геймпад."</string>
+    <string name="ui_f50709cbc486d85d" formatted="false">"Подвигайте выбранное устройство или геймпад, чтобы проверить датчик и правый стик."</string>
 </resources>

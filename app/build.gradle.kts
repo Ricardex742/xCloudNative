@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 127
-        versionName = "0.41.14-catalog-toolbar"
+        versionCode = 128
+        versionName = "0.41.15-touch-gyro"
     }
 
     signingConfigs {

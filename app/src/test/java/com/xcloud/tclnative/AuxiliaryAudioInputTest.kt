@@ -30,6 +30,8 @@ class AuxiliaryAudioInputTest {
         assertTrue(landscape.first<0);assertTrue(landscape.second>0)
         assertEquals(0f to 0f,GyroAim.axes(Float.NaN,0f,0,100))
         assertEquals(-1f,GyroAim.axes(100f,0f,1,300).first,0f)
+        assertTrue(GyroAim.axes(0f,0f,1,100,z=1f).first<0)
+        assertEquals(0f to 0f,GyroAim.axes(.002f,.002f,1,100,z=.001f))
     }
     @Test fun ipv6PreferenceReordersWithoutChangingPrioritiesOrDroppingIpv4() {
         val four=org.webrtc.IceCandidate("0",0,"candidate:1 1 UDP 100 192.0.2.1 1234 typ host")

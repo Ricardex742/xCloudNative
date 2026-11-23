@@ -74,6 +74,7 @@ class XCloudSignalingClient(
     private class Allocation(val attempt: Attempt, val path: String) {
         val transportLock = Mutex()
         var sdpRequest = 1
+        @Volatile var timeLimitSeconds: Long? = null
     }
 
     private val cloudSession = session as? XCloudSession
@@ -95,6 +96,7 @@ class XCloudSignalingClient(
 
     fun resetStartupDiagnostics() = lastAttempt.startupTrace.reset()
     fun startupDiagnostics() = lastAttempt.startupTrace.diagnostics()
+    internal fun sessionTimeLimitSeconds(): Long? = active.get()?.timeLimitSeconds
     fun profileDiagnostics(): String {
         val profile = lastAttempt.profile
         val resolution = profile.resolution
@@ -231,6 +233,9 @@ class XCloudSignalingClient(
         try {
             while (true) {
                 val state = JSONObject(sessionRequest(allocation, "$path/state", "SESSION_STATE"))
+                if (!remotePlay) {
+                    SessionTimeLimit.durationSeconds(state)?.let { allocation.timeLimitSeconds = it }
+                }
                 val name = state.optString("state")
                 startupTrace.observe(name)
                 val elapsed = (clockMs() - started) / 1000

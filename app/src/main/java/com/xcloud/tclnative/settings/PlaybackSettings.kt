@@ -72,7 +72,8 @@ data class PlaybackSettings(
     val reconstruction: ReconstructionSettings = ReconstructionSettings(),
     val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD,
     val imageLab: ImageLabSettings = ImageLabSettings(),
-    val imageComparison: ImageComparison = ImageComparison.PROCESSED
+    val imageComparison: ImageComparison = ImageComparison.PROCESSED,
+    val gyroSource: GyroSource = GyroSource.DEVICE
 ) {
     fun effectiveImageComparison(): ImageComparison = when {
         imageComparison!=ImageComparison.PROCESSED -> imageComparison
@@ -146,43 +147,87 @@ class PlaybackSettingsStore(context: Context,
                 ImageSupersampling.entries.firstOrNull { it.name==prefs.getString("image_lab_supersampling",null) } ?: ImageSupersampling.OFF,
                 ExperimentalFrameGeneration.entries.firstOrNull { it.name==prefs.getString("image_lab_frame_generation",null) } ?: ExperimentalFrameGeneration.OFF,
                 ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_lab_comparison",null) } ?: ImageComparison.PROCESSED,prefs.getBoolean("image_lab_neural",false)).bounded(),
-            imageComparison=ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_comparison_all",null) } ?: ImageComparison.PROCESSED)
+            imageComparison=ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_comparison_all",null) } ?: ImageComparison.PROCESSED,
+            gyroSource=GyroSource.entries.firstOrNull { it.name==prefs.getString("gyro_source",null) } ?: GyroSource.DEVICE)
     }
-    fun save(settings: PlaybackSettings) {
-        prefs.edit().putString("video_mode",settings.videoMode.name).putBoolean("low_latency_video",settings.videoMode.lowLatency)
-            .putString("resolution",settings.resolution.name).putBoolean("native_upscaling",settings.nativeUpscaling)
-            .putString("aspect",settings.aspect.name).putBoolean("local_coop",settings.localCoOp)
-            .putBoolean("rumble",settings.rumble).putString("touch_mode",settings.touchMode.name)
-            .putInt("sharpness",settings.sharpness.coerceIn(0,100)).putInt("saturation",settings.saturation.coerceIn(0,200))
-            .putBoolean("session_report",settings.sessionReport).putString("video_codec",settings.videoCodec.name)
-            .putString("fsr_mode",settings.fsr.name).putInt("fsr_sharpness",settings.fsrSharpness.coerceIn(0,100))
-            .putInt("brightness",settings.brightness.coerceIn(-50,50)).putInt("contrast",settings.contrast.coerceIn(50,150))
-            .putString("ip_preference",settings.ipPreference.name).putString("desktop_input",settings.desktopInput.name)
-            .putInt("mouse_sensitivity",settings.mouseSensitivity.coerceIn(25,300)).putString("gyro_mode",settings.gyroMode.name)
-            .putInt("gyro_sensitivity",settings.gyroSensitivity.coerceIn(25,300)).putBoolean("microphone",settings.microphone)
-            .putInt("audio_gain",settings.audioGain.coerceIn(0,300)).putBoolean("touch_rumble",settings.touchRumble)
-            .putBoolean("gyro_native_touch",settings.gyroNativeTouch).putString("fsr_output",settings.fsrOutput.name)
-            .putString("image_sharpening",settings.imageTreatment.sharpening.name)
-            .putInt("image_deband",settings.imageTreatment.deband.coerceIn(0,100))
-            .putInt("image_cleanup",settings.imageTreatment.cleanup.coerceIn(0,100))
-            .putInt("image_chroma",settings.imageTreatment.chroma.coerceIn(0,100))
-            .putInt("image_antialias",settings.imageTreatment.antialias.coerceIn(0,100))
-            .putInt("image_temporal",settings.imageTreatment.temporal.coerceIn(0,50))
-            .putInt("image_neural",settings.imageTreatment.neural.coerceIn(0,100))
-            .putBoolean("image_auto_protect",settings.imageTreatment.autoProtect)
-            .putString("presentation_pacing",settings.presentationPacing.name)
-            .putString("reconstruction_quality",settings.reconstruction.quality.name)
-            .putInt("reconstruction_strength",settings.reconstruction.strength.coerceIn(0,100))
-            .putString("image_comparison",settings.reconstruction.comparison.name)
-            .putString("audio_mode",settings.audioMode.name)
-            .putBoolean("image_lab_enabled",settings.imageLab.enabled)
-            .putInt("image_lab_restoration",settings.imageLab.restoration.coerceIn(0,100))
-            .putString("image_lab_protection",settings.imageLab.protection.name)
-            .putString("image_lab_supersampling",settings.imageLab.supersampling.name)
-            .putString("image_lab_frame_generation",settings.imageLab.frameGeneration.name)
-            .putString("image_lab_comparison",settings.imageLab.comparison.name)
-            .putBoolean("image_lab_neural",settings.imageLab.neural)
-            .putString("image_comparison_all",settings.imageComparison.name).apply()
+    fun save(settings: PlaybackSettings) = synchronized(writes) { write(values(settings)) }
+
+    /** Apply the fields changed by this editor, even if other screens updated the saved settings. */
+    fun update(base: PlaybackSettings, edited: PlaybackSettings): PlaybackSettings = synchronized(writes) {
+        val before = values(base)
+        val changes = values(edited).filter { (key, value) -> value != before[key] }
+        if (changes.isNotEmpty()) {
+            val firstWrite = prefs.all.keys.all { it == "game_hud_migrated" }
+            write(if (firstWrite) values(read()) + changes else changes)
+        }
+        read()
+    }
+
+    private fun write(fields: Map<String, Any>) {
+        val editor = prefs.edit()
+        fields.forEach { (key, value) ->
+            when (value) {
+                is String -> editor.putString(key, value)
+                is Int -> editor.putInt(key, value)
+                is Boolean -> editor.putBoolean(key, value)
+            }
+        }
+        editor.apply()
+    }
+
+    private fun values(settings: PlaybackSettings): Map<String, Any> = mapOf(
+        "video_mode" to settings.videoMode.name,
+        "low_latency_video" to settings.videoMode.lowLatency,
+        "resolution" to settings.resolution.name,
+        "native_upscaling" to settings.nativeUpscaling,
+        "aspect" to settings.aspect.name,
+        "local_coop" to settings.localCoOp,
+        "rumble" to settings.rumble,
+        "touch_mode" to settings.touchMode.name,
+        "sharpness" to settings.sharpness.coerceIn(0,100),
+        "saturation" to settings.saturation.coerceIn(0,200),
+        "session_report" to settings.sessionReport,
+        "video_codec" to settings.videoCodec.name,
+        "fsr_mode" to settings.fsr.name,
+        "fsr_sharpness" to settings.fsrSharpness.coerceIn(0,100),
+        "brightness" to settings.brightness.coerceIn(-50,50),
+        "contrast" to settings.contrast.coerceIn(50,150),
+        "ip_preference" to settings.ipPreference.name,
+        "desktop_input" to settings.desktopInput.name,
+        "mouse_sensitivity" to settings.mouseSensitivity.coerceIn(25,300),
+        "gyro_mode" to settings.gyroMode.name,
+        "gyro_sensitivity" to settings.gyroSensitivity.coerceIn(25,300),
+        "microphone" to settings.microphone,
+        "audio_gain" to settings.audioGain.coerceIn(0,300),
+        "touch_rumble" to settings.touchRumble,
+        "gyro_native_touch" to settings.gyroNativeTouch,
+        "fsr_output" to settings.fsrOutput.name,
+        "image_sharpening" to settings.imageTreatment.sharpening.name,
+        "image_deband" to settings.imageTreatment.deband.coerceIn(0,100),
+        "image_cleanup" to settings.imageTreatment.cleanup.coerceIn(0,100),
+        "image_chroma" to settings.imageTreatment.chroma.coerceIn(0,100),
+        "image_antialias" to settings.imageTreatment.antialias.coerceIn(0,100),
+        "image_temporal" to settings.imageTreatment.temporal.coerceIn(0,50),
+        "image_neural" to settings.imageTreatment.neural.coerceIn(0,100),
+        "image_auto_protect" to settings.imageTreatment.autoProtect,
+        "presentation_pacing" to settings.presentationPacing.name,
+        "reconstruction_quality" to settings.reconstruction.quality.name,
+        "reconstruction_strength" to settings.reconstruction.strength.coerceIn(0,100),
+        "image_comparison" to settings.reconstruction.comparison.name,
+        "audio_mode" to settings.audioMode.name,
+        "image_lab_enabled" to settings.imageLab.enabled,
+        "image_lab_restoration" to settings.imageLab.restoration.coerceIn(0,100),
+        "image_lab_protection" to settings.imageLab.protection.name,
+        "image_lab_supersampling" to settings.imageLab.supersampling.name,
+        "image_lab_frame_generation" to settings.imageLab.frameGeneration.name,
+        "image_lab_comparison" to settings.imageLab.comparison.name,
+        "image_lab_neural" to settings.imageLab.neural,
+        "image_comparison_all" to settings.imageComparison.name,
+        "gyro_source" to settings.gyroSource.name
+    )
+
+    private companion object {
+        val writes = Any()
     }
 }
 

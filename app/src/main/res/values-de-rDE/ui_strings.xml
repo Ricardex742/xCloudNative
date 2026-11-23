@@ -1343,4 +1343,20 @@
     <string name="ui_19e0531220f40ceb" formatted="false">"Kampfspiel"</string>
     <string name="ui_5d7325dd007ccc28" formatted="false">"Jump ’n’ Run"</string>
     <string name="ui_947072ee72a7269b" formatted="false">"Puzzle"</string>
+    <string name="ui_d676aad7af5c964a" formatted="false">"Gerät"</string>
+    <string name="ui_798a8b31e7089db7" formatted="false">"Physischer Controller"</string>
+    <string name="ui_d60a7b948fd48acd" formatted="false">"Dieses Spiel mit virtuellem Controller starten"</string>
+    <string name="ui_cd46ffb27f3e67df" formatted="false">"Laut Xbox ist deine Cloud-Gaming-Zeit aufgebraucht."</string>
+    <string name="ui_a094c6ea7a6f2fab" formatted="false">"Xbox.com öffnen"</string>
+    <string name="ui_da9bb3168ce02767" formatted="false">"Sitzungslimit · {0}"</string>
+    <string name="ui_f66712ff9f22a5fa" formatted="false">"Für diese Sitzung bleiben bis zu 5 Minuten. Speichere deinen Fortschritt im Spiel."</string>
+    <string name="ui_d94815562d57121e" formatted="false">"Gyroskop: Controller-Sensor nicht verfügbar"</string>
+    <string name="ui_c9306bc10f8e9273" formatted="false">"Spiele mit Touch-Steuerung werden geladen…"</string>
+    <string name="ui_2894938e2d687327" formatted="false">"Die Sammlung Mit Touch-Steuerung spielen ist nicht verfügbar. Aktualisiere den Katalog."</string>
+    <string name="ui_4e2fb8f6074c56c5" formatted="false">"Katalogfilter"</string>
+    <string name="ui_dfef36ec668231e8" formatted="false">"Offizielle Touch-Steuerung im Browser"</string>
+    <string name="ui_7018b98c929744cd" formatted="false">"Gyroskopquelle: {0}"</string>
+    <string name="ui_f54af6654b132fe2" formatted="false">"Gyroskopquelle"</string>
+    <string name="ui_08454ee73abc5618" formatted="false">"Der Controller-Sensor erfordert Android 12 oder neuer und einen kompatiblen Controller."</string>
+    <string name="ui_f50709cbc486d85d" formatted="false">"Bewege das ausgewählte Gerät oder den Controller, um Sensor und rechten Stick zu testen."</string>
 </resources>

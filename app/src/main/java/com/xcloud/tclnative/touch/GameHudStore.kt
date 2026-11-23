@@ -4,6 +4,7 @@ import com.xcloud.tclnative.i18n.UiText
 
 import android.content.Context
 import com.xcloud.tclnative.catalog.GameLibrary
+import com.xcloud.tclnative.settings.TouchMode
 import org.json.JSONObject
 import org.json.JSONArray
 import java.util.Locale
@@ -20,8 +21,12 @@ class GameHudStore(private val context: Context) {
     private fun encode(action: HudAction)=JSONArray(action.keys.map { it.name })
     private fun prefs(id: String)=context.getSharedPreferences("hud_"+GameLibrary.accountKey(id.uppercase(Locale.ROOT)),Context.MODE_PRIVATE)
     fun prefersNativeTouchWithController(id: String) = prefs(id).getBoolean("native_touch_with_controller", false)
-    fun preferNativeTouchWithController(id: String, enabled: Boolean) {
-        prefs(id).edit().putBoolean("native_touch_with_controller", enabled).apply()
+    fun prefersVirtualTouch(id: String) = prefs(id).getBoolean("prefer_virtual_touch", false)
+    fun setTouchPreference(id: String, mode: TouchMode) {
+        prefs(id).edit()
+            .putBoolean("native_touch_with_controller", mode==TouchMode.NATIVE)
+            .putBoolean("prefer_virtual_touch", mode==TouchMode.VIRTUAL)
+            .apply()
     }
     fun read(id: String): HudSettings {
         val prefs = prefs(id)

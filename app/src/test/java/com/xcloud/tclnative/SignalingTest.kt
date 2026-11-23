@@ -85,7 +85,7 @@ class SignalingTest {
                         failedState -> response("""{"state":"Failed","errorDetails":{"code":"NoCapacity"}}""")
                         queuedStates-- > 0 -> response("""{"state":"WaitingForResources"}""")
                         !connectSent -> response("""{"state":"ReadyToConnect"}""")
-                        else -> { provisioned = true; response("""{"state":"Provisioned"}""") }
+                        else -> { provisioned = true; response("""{"state":"Provisioned","maxSessionDurationInSeconds":1800}""") }
                     }
                     "POST" to "/session/connect" -> {
                         assertEquals("console-token", JSONObject(request.body.clone().readUtf8()).getString("userToken"))
@@ -115,6 +115,22 @@ class SignalingTest {
         XCloudSession("test-token", server.url("/").toString(), "hash", transferToken = transferToken),
         OkHttpClient.Builder().proxy(Proxy.NO_PROXY).callTimeout(3, TimeUnit.SECONDS).build(),
         { now += it }, { now }, queueTimeout)
+
+    @Test fun sessionLimitStartsWithTheFirstFrameAndWarnsOnce() = runBlocking {
+        val client=signaling()
+        assertNull(client.sessionTimeLimitSeconds())
+        client.startAndConnectWebRtcSession("real-id",peer) {}.getOrThrow()
+        val allowed=client.sessionTimeLimitSeconds()
+        assertEquals(1800L,allowed)
+        val timer=com.xcloud.tclnative.signaling.SessionTimeLimit(requireNotNull(allowed),12_500L)
+        assertEquals(1800L,timer.remainingSeconds(12_500L))
+        assertFalse(timer.shouldWarn(timer.remainingSeconds(1_512_499L)))
+        assertTrue(timer.shouldWarn(timer.remainingSeconds(1_512_500L)))
+        assertFalse(timer.shouldWarn(timer.remainingSeconds(1_513_500L)))
+        assertEquals(0L,timer.remainingSeconds(1_900_000L))
+        client.stop()
+        assertNull(client.sessionTimeLimitSeconds())
+    }
 
     @Test fun reconnectReusesTheAllocationAndDoesNotProvisionOrEnterAnotherQueue() = runBlocking {
         val client=signaling()

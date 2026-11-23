@@ -1343,4 +1343,20 @@
     <string name="ui_19e0531220f40ceb" formatted="false">"Luta"</string>
     <string name="ui_5d7325dd007ccc28" formatted="false">"Plataforma"</string>
     <string name="ui_947072ee72a7269b" formatted="false">"Quebra-cabeça"</string>
+    <string name="ui_d676aad7af5c964a" formatted="false">"Aparelho"</string>
+    <string name="ui_798a8b31e7089db7" formatted="false">"Controle físico"</string>
+    <string name="ui_d60a7b948fd48acd" formatted="false">"Iniciar este jogo com controle virtual"</string>
+    <string name="ui_cd46ffb27f3e67df" formatted="false">"O Xbox informou que as horas de jogo na nuvem acabaram."</string>
+    <string name="ui_a094c6ea7a6f2fab" formatted="false">"Abrir Xbox.com"</string>
+    <string name="ui_da9bb3168ce02767" formatted="false">"Limite da partida · {0}"</string>
+    <string name="ui_f66712ff9f22a5fa" formatted="false">"Restam até 5 minutos nesta partida. Salve seu progresso no jogo."</string>
+    <string name="ui_d94815562d57121e" formatted="false">"Giroscópio: sensor do controle indisponível"</string>
+    <string name="ui_c9306bc10f8e9273" formatted="false">"Carregando jogos com toque…"</string>
+    <string name="ui_2894938e2d687327" formatted="false">"A coleção Jogar com toque está indisponível. Atualize o catálogo."</string>
+    <string name="ui_4e2fb8f6074c56c5" formatted="false">"Filtros do catálogo"</string>
+    <string name="ui_dfef36ec668231e8" formatted="false">"Controles oficiais no navegador"</string>
+    <string name="ui_7018b98c929744cd" formatted="false">"Fonte do giroscópio: {0}"</string>
+    <string name="ui_f54af6654b132fe2" formatted="false">"Fonte do giroscópio"</string>
+    <string name="ui_08454ee73abc5618" formatted="false">"O sensor do controle exige Android 12 ou superior e suporte do controle."</string>
+    <string name="ui_f50709cbc486d85d" formatted="false">"Mova o aparelho ou controle selecionado para testar o sensor e o analógico direito."</string>
 </resources>

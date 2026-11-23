@@ -81,7 +81,8 @@ class GameDashboardView(
     private val onGameShortcut: ((GameTitle) -> Unit)?=null,
     private val onFriends: (() -> Unit)?=null,
     private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() },
-    onRemotePlay: (() -> Unit)? = null
+    onRemotePlay: (() -> Unit)? = null,
+    private val onOfficialTouch: ((String?) -> Unit)? = null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -182,6 +183,9 @@ class GameDashboardView(
     private var renderedLimit: Int? = null
     private val genresByTab = mutableMapOf<LibraryTab, CatalogGenre>()
     private val genre get() = genresByTab[activeTab]
+    private val touchTabs = mutableSetOf<LibraryTab>()
+    private val touchOnly get() = activeTab in touchTabs
+    private var renderedTouchOnly = false
     private var renderedGenre: CatalogGenre? = null
     private var catalogGenres = emptySet<CatalogGenre>()
     private var alphabetPositions = emptyMap<Char, Int>()
@@ -586,11 +590,12 @@ class GameDashboardView(
         val limit=homeCoverLimit()
         val selectedGenre = genre
         val categoryChanged=renderedTab!=activeTab || renderedQuery!=searchQuery ||
-            renderedOwnershipFilter!=ownershipFilter || renderedGenre!=selectedGenre
+            renderedOwnershipFilter!=ownershipFilter || renderedGenre!=selectedGenre || renderedTouchOnly!=touchOnly
         if(categoryChanged || renderedLimit!=limit) {
             // Do not leave clickable cards from the previous category while preparing the next.
             renderedTab=activeTab; renderedQuery=searchQuery;renderedOwnershipFilter=ownershipFilter
             renderedGenre=selectedGenre
+            renderedTouchOnly=touchOnly
             renderedLimit=limit
             adapter.submit(emptyList(),CatalogChanges(true,emptyList()))
             positions=emptyMap()
@@ -600,7 +605,7 @@ class GameDashboardView(
         }
         pendingCatalog=CatalogInput(games,officialGalleries.toMap(),galleryBindings.toMap(),
             gamePassProducts,gamePassTitles,activeTab,library.favorites,added,recent,searchQuery,ownershipFilter,ownership.toMap(),
-            limit=limit,genre=selectedGenre)
+            limit=limit,genre=selectedGenre,touchOnly=touchOnly)
         if(catalogJob?.isActive==true) return
         // One worker, one pending snapshot: bursts cannot build an unbounded CPU queue.
         catalogJob=scope.launch {
@@ -615,7 +620,7 @@ class GameDashboardView(
                 // Metadata arriving during a build must not starve an otherwise current category.
                 if(!closed && !artworkPaused && input.tab==activeTab && input.query==searchQuery &&
                     input.ownershipFilter==ownershipFilter && input.limit==homeCoverLimit() &&
-                    input.genre==genre)
+                    input.genre==genre && input.touchOnly==touchOnly)
                     applyCatalog(presentation,if(adapter.items!==before) CatalogChanges(true,emptyList()) else changes)
             }
         }
@@ -655,6 +660,8 @@ class GameDashboardView(
         emptyState.visibility = if (count==0 && !originalHome) View.VISIBLE else View.GONE
         emptyState.text = when {
             preparing -> UiText.text("Carregando catálogo…")
+            touchOnly && !officialGalleries.containsKey(OfficialGalleryKind.TOUCH) -> UiText.text("Carregando jogos com toque…")
+            touchOnly && officialGalleries[OfficialGalleryKind.TOUCH]==null -> UiText.text("A coleção Jogar com toque está indisponível. Atualize o catálogo.")
             ownershipFilter!=OwnershipFilter.ALL && ownershipLoading -> UiText.text("Consultando as licenças da conta…")
             ownershipFilter!=OwnershipFilter.ALL -> UiText.text("Nenhum jogo confirmado para este filtro.\nA propriedade não confirmada fica em uma opção separada.")
             searchQuery.isNotBlank() -> UiText.text("Nenhum jogo encontrado para “{0}”.\nX para pesquisar novamente.",UiText.nested(searchQuery))
@@ -740,7 +747,26 @@ class GameDashboardView(
         val tab = activeTab
         val selected = genre
         val options = listOf<CatalogGenre?>(null) + CatalogGenre.entries.filter { it in catalogGenres || it == selected }
-        val dialog = ConsoleDialog(context, UiText.text("Gêneros"))
+        val dialog = ConsoleDialog(context, UiText.text("Filtros do catálogo"))
+        val filteringTouch = touchOnly
+        val touchOption = dialog.addMenuItem((if(filteringTouch) "✓  " else "") + UiText.text("Jogar com toque")) {
+            if(activeTab != tab) return@addMenuItem
+            if(filteringTouch) touchTabs.remove(tab) else touchTabs.add(tab)
+            updateGenreButton()
+            catalogFocus.cancel()
+            refresh()
+            grid.scrollToPosition(0)
+            genreButton.requestFocus()
+        }
+        if(filteringTouch) dialog.focusFirst(touchOption)
+        onOfficialTouch?.let { open ->
+            val products = officialGalleries[OfficialGalleryKind.TOUCH]?.products.orEmpty()
+            val selectedProduct = selectedCard?.let { it.product?.productId ?: it.game?.productId }
+                ?.takeIf { id -> products.any { it.productId.equals(id,true) } }
+            if (filteringTouch || selectedProduct != null) {
+                dialog.addMenuItem(UiText.text("Controles oficiais no navegador")) { open(selectedProduct) }
+            }
+        }
         options.forEach { option ->
             val label = option?.label ?: UiText.text("Todos os gêneros")
             val row = dialog.addMenuItem((if (option == selected) "✓  " else "") + label) {
@@ -754,7 +780,7 @@ class GameDashboardView(
                 }
                 genreButton.requestFocus()
             }
-            if (option == selected) dialog.focusFirst(row)
+            if (option == selected && !filteringTouch) dialog.focusFirst(row)
         }
         dialog.addAction(UiText.text("Voltar")) { genreButton.requestFocus() }
         dialog.setOnCancelListener { genreButton.requestFocus() }
@@ -762,9 +788,10 @@ class GameDashboardView(
     }
     private fun updateGenreButton() {
         val selected = genre
-        genreButton.isSelected = selected != null
-        genreButton.text = selected?.label ?: UiText.text("Gêneros")
-        genreButton.contentDescription = selected?.let { "${UiText.text("Gêneros")} • ${it.label}" }
+        val title = if(touchOnly) UiText.text("Jogar com toque") else selected?.label ?: UiText.text("Gêneros")
+        genreButton.isSelected = selected != null || touchOnly
+        genreButton.text = title
+        genreButton.contentDescription = if(touchOnly && selected!=null) "$title • ${selected.label}" else title
     }
     private fun showAlphabet() {
         if (alphabetPositions.isEmpty()) return
