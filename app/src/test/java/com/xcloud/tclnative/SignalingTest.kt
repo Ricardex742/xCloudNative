@@ -11,6 +11,9 @@ import com.xcloud.tclnative.webrtc.LocalIceUnavailableException
 import com.xcloud.tclnative.catalog.*
 import kotlinx.coroutines.*
 import okhttp3.OkHttpClient
+import okhttp3.Protocol
+import okhttp3.Response
+import okhttp3.ResponseBody.Companion.toResponseBody
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -23,6 +26,9 @@ import org.junit.Before
 import org.junit.Test
 import org.webrtc.IceCandidate
 import java.io.IOException
+import java.io.ByteArrayOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.net.Proxy
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
@@ -81,6 +87,8 @@ class SignalingTest {
                         }
                     }
                     "POST" to "/v5/sessions/cloud/play" -> response("""{"sessionPath":"/session"}""")
+                    "GET" to "/v1/sessions/tabs/demo-tab/download?noRedirect=true" ->
+                        response("https://cdn.xbox.com/demo.takx?signature=test")
                     "GET" to "/session/state" -> when {
                         failedState -> response("""{"state":"Failed","errorDetails":{"code":"NoCapacity"}}""")
                         queuedStates-- > 0 -> response("""{"state":"WaitingForResources"}""")
@@ -116,7 +124,39 @@ class SignalingTest {
         OkHttpClient.Builder().proxy(Proxy.NO_PROXY).callTimeout(3, TimeUnit.SECONDS).build(),
         { now += it }, { now }, queueTimeout)
 
-    @Test fun sessionLimitStartsWithTheFirstFrameAndWarnsOnce() = runBlocking {
+    @Test fun officialTouchBundleUsesTheActiveSessionAndKeepsItsTokenOffTheCdn() = runBlocking {
+        val bytes=ByteArrayOutputStream()
+        ZipOutputStream(bytes).use { zip ->
+            mapOf("takxmanifest.json" to """{"layouts":"layouts","defaultLayout":"start"}""",
+                "layouts/neutral/start.json" to """{"content":{"right":{"inner":[{"type":"button","action":"gamepadA"}]}}}""")
+                .forEach { (path,body) ->
+                    zip.putNextEntry(ZipEntry(path))
+                    zip.write(body.toByteArray())
+                    zip.closeEntry()
+                }
+        }
+        val http=OkHttpClient.Builder().proxy(Proxy.NO_PROXY).addInterceptor { chain ->
+            val request=chain.request()
+            if(request.url.host!="cdn.xbox.com") chain.proceed(request)
+            else {
+                assertNull(request.header("Authorization"))
+                Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(200)
+                    .message("OK").body(bytes.toByteArray().toResponseBody()).build()
+            }
+        }.build()
+        val client=XCloudSignalingClient(XCloudSession("test-token",server.url("/").toString(),"hash",
+            transferToken="console-token"),http,{ now+=it },{ now })
+        val game=com.xcloud.tclnative.signaling.GameTitle("real-id","Test",touchBundleIds=listOf("demo-tab"))
+        assertNull(client.officialTouchBundle(game,"pt-BR"))
+        client.startAndConnectWebRtcSession(game.titleId,peer) {}.getOrThrow()
+        val pack=client.officialTouchBundle(game,"pt-BR")!!
+        assertEquals("A",pack.controls(null,pack.newState())!!.single().label)
+        val request=requests.single { it.path?.startsWith("/v1/sessions/tabs/")==true }
+        assertEquals("Bearer test-token",request.getHeader("Authorization"))
+        client.stop()
+    }
+
+    @Test fun sessionLimitStartsWithTheFirstFrameAndWarnsAtFiveAndOneMinute() = runBlocking {
         val client=signaling()
         assertNull(client.sessionTimeLimitSeconds())
         client.startAndConnectWebRtcSession("real-id",peer) {}.getOrThrow()
@@ -125,13 +165,19 @@ class SignalingTest {
         val timer=com.xcloud.tclnative.signaling.SessionTimeLimit()
         timer.startFromSessionState(allowed,12_500L)
         assertEquals(1800L,timer.remainingSeconds(12_500L))
-        assertFalse(timer.shouldWarn(requireNotNull(timer.remainingSeconds(1_512_499L))))
-        assertTrue(timer.shouldWarn(requireNotNull(timer.remainingSeconds(1_512_500L))))
-        assertFalse(timer.shouldWarn(requireNotNull(timer.remainingSeconds(1_513_500L))))
+        assertNull(timer.takeWarningMinutes(requireNotNull(timer.remainingSeconds(1_512_499L))))
+        assertEquals(5,timer.takeWarningMinutes(requireNotNull(timer.remainingSeconds(1_512_500L))))
+        assertNull(timer.takeWarningMinutes(requireNotNull(timer.remainingSeconds(1_513_500L))))
+        assertEquals(1,timer.takeWarningMinutes(requireNotNull(timer.remainingSeconds(1_752_500L))))
+        assertNull(timer.takeWarningMinutes(requireNotNull(timer.remainingSeconds(1_753_000L))))
+        assertNull(timer.takeWarningMinutes(0L))
         assertEquals(0L,timer.remainingSeconds(1_900_000L))
         timer.updateFromXbox(250L,1_900_000L)
         assertEquals(249L,timer.remainingSeconds(1_901_000L))
-        assertFalse(timer.shouldWarn(249L))
+        assertNull(timer.takeWarningMinutes(249L))
+        val resumed=com.xcloud.tclnative.signaling.SessionTimeLimit()
+        assertEquals(1,resumed.takeWarningMinutes(48L))
+        assertNull(resumed.takeWarningMinutes(120L))
         timer.updateFromXbox(null,1_901_000L)
         timer.startFromSessionState(allowed,1_901_000L)
         assertNull(timer.remainingSeconds(1_901_000L))

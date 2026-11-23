@@ -43,9 +43,7 @@ class CatalogUiWorkTest {
         val activity = controller.get()
         UiText.apply(activity, AppLanguage.PORTUGUESE)
         DashboardTheme.apply(activity, UiTheme.GREEN)
-        var officialTouchProduct: String? = null
-        val view = GameDashboardView(activity, GameLibrary(activity, "genre-catalog"), {}, {}, {}, {},
-            onOfficialTouch={ officialTouchProduct=it })
+        val view = GameDashboardView(activity, GameLibrary(activity, "genre-catalog"), {}, {}, {}, {})
         activity.setContentView(view)
         val items = listOf(GameTitle("a", "Águia", "AAAAAAAAAAAA", genres = setOf(CatalogGenre.SHOOTER)),
             GameTitle("b", "Barco", "BBBBBBBBBBBB", genres = setOf(CatalogGenre.SIMULATION)),
@@ -123,9 +121,10 @@ class CatalogUiWorkTest {
             assertEquals(1,grid.adapter?.itemCount)
             assertEquals("Zebra",view.selectedGame?.name)
             assertTrue(genre.performClick())
-            val web = ShadowDialog.getLatestDialog() as ConsoleDialog
-            assertTrue(views(web.panel).filterIsInstance<TextView>().single { it.text.toString() == "Controles oficiais no navegador" }.performClick())
-            assertEquals("ZZZZZZZZZZZZ",officialTouchProduct)
+            val touchFilters = ShadowDialog.getLatestDialog() as ConsoleDialog
+            assertTrue(views(touchFilters.panel).filterIsInstance<TextView>()
+                .none { it.text.toString().contains("navegador",ignoreCase=true) })
+            touchFilters.dismiss()
         } finally {
             view.close()
             controller.pause().stop().destroy()

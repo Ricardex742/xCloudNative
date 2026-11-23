@@ -6,6 +6,7 @@ import android.content.Context
 import com.xcloud.tclnative.settings.VideoCodecMode
 import com.xcloud.tclnative.settings.IpPreference
 import com.xcloud.tclnative.settings.AudioPlaybackMode
+import com.xcloud.tclnative.touch.OfficialTouchNotice
 import kotlinx.coroutines.*
 import org.json.JSONObject
 import org.webrtc.*
@@ -33,7 +34,8 @@ class XCloudWebRtcClient(
     private val onServerDisconnect: (XboxServerDisconnect) -> Unit = {},
     remotePlay: Boolean = false,
     private val onTitleFocusChanged: (Boolean) -> Unit = {},
-    private val onGameTimeChanged: (XboxGameTime) -> Unit = {}
+    private val onGameTimeChanged: (XboxGameTime) -> Unit = {},
+    private val onTouchLayoutChanged: (OfficialTouchNotice) -> Unit = {}
 ) : StreamingPeer {
     private val appContext=context.applicationContext
     private val factory: PeerConnectionFactory
@@ -400,6 +402,7 @@ class XCloudWebRtcClient(
                         dispatch(result.replies)
                         result.titleFocused?.let(onTitleFocusChanged)
                         result.gameTime?.let(onGameTimeChanged)
+                        result.touchLayout?.let(onTouchLayoutChanged)
                         if(first && notice!=null) {
                             handshake.gamepadSync.close()
                             val error=XboxServerDisconnectException(notice)

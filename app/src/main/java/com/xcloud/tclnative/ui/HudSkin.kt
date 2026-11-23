@@ -5,10 +5,12 @@ import com.xcloud.tclnative.touch.*
 import com.xcloud.tclnative.webrtc.*
 import kotlin.math.*
 
-/** Original vector skins inspired by the visual language of each genre; no downloaded game assets. */
+/** Native HUD skin with optional glyphs supplied by the current game's Xbox touch bundle. */
 internal class HudSkin {
     private val p=Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign=Paint.Align.CENTER }
     private val path=Path()
+    private val imageRect=RectF()
+    private val imagePaint=Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val icons=HudIcons()
     private val tactical=RadialGradient(-.25f,-.4f,1.6f,intArrayOf(0xff54616a.toInt(),0xff111820.toInt()),null,Shader.TileMode.CLAMP)
     private val teal=LinearGradient(0f,-1f,0f,1f,0xff26717a.toInt(),0xff082b36.toInt(),Shader.TileMode.CLAMP)
@@ -41,6 +43,14 @@ internal class HudSkin {
         if(width>maxWidth*unit) p.textSize*=maxWidth*unit/width
         canvas.drawText(value,0f,y*unit-(p.ascent()+p.descent())/2,p)
         canvas.restore()
+    }
+    private fun glyph(canvas: Canvas,image: Bitmap,x: Float,y: Float,radius: Float,alpha: Int) {
+        val scale=radius/maxOf(image.width,image.height)
+        val w=image.width*scale
+        val h=image.height*scale
+        imageRect.set(x-w,y-h,x+w,y+h)
+        imagePaint.alpha=alpha
+        canvas.drawBitmap(image,null,imageRect,imagePaint)
     }
     fun draw(canvas: Canvas,c: TouchControl,preset: HudPreset,state: GamepadState,active: Boolean,selected: Boolean,
              opacity: Int,editor: Boolean,gesture: String?) {
@@ -102,13 +112,17 @@ internal class HudSkin {
                 canvas.drawCircle(x*.59f,y*.59f,.38f,p); p.shader=null
                 p.style=Paint.Style.STROKE; p.strokeWidth=.025f; p.color=white; p.alpha=alpha
                 canvas.drawCircle(x*.59f,y*.59f,.38f,p)
-                if(!football && c.kind==TouchKind.RIGHT_STICK) { p.strokeWidth=.035f; canvas.drawLine(-.15f,0f,.15f,0f,p); canvas.drawLine(0f,-.15f,0f,.15f,p) }
+                if(c.image!=null) glyph(canvas,c.image,x*.59f,y*.59f,.28f,alpha)
+                else if(!football && c.kind==TouchKind.RIGHT_STICK) { p.strokeWidth=.035f; canvas.drawLine(-.15f,0f,.15f,0f,p); canvas.drawLine(0f,-.15f,0f,.15f,p) }
             }
             TouchKind.DPAD -> {
                 p.style=Paint.Style.FILL; path.reset(); path.moveTo(-.22f,-.7f); path.lineTo(.22f,-.7f); path.lineTo(.22f,-.22f); path.lineTo(.7f,-.22f); path.lineTo(.7f,.22f); path.lineTo(.22f,.22f); path.lineTo(.22f,.7f); path.lineTo(-.22f,.7f); path.lineTo(-.22f,.22f); path.lineTo(-.7f,.22f); path.lineTo(-.7f,-.22f); path.lineTo(-.22f,-.22f); path.close(); canvas.drawPath(path,p)
             }
             else -> {
-                if(football && c.id !in setOf("map","pause")) {
+                if(c.image!=null) {
+                    glyph(canvas,c.image,0f,-.13f,.53f,alpha)
+                    text(canvas,c.label,.65f,.24f)
+                } else if(football && c.id !in setOf("map","pause")) {
                     text(canvas,(gesture ?: c.label).uppercase(),.05f,.32f,1.65f)
                 } else if(c.icon==HudIcon.TEXT) text(canvas,c.label,0f,.62f)
                 else {

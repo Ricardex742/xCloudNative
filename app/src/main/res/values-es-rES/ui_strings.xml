@@ -1347,16 +1347,16 @@
     <string name="ui_798a8b31e7089db7" formatted="false">"Mando físico"</string>
     <string name="ui_d60a7b948fd48acd" formatted="false">"Iniciar este juego con el mando virtual"</string>
     <string name="ui_cd46ffb27f3e67df" formatted="false">"Xbox informó de que se han agotado tus horas de juego en la nube."</string>
-    <string name="ui_a094c6ea7a6f2fab" formatted="false">"Abrir Xbox.com"</string>
-    <string name="ui_da9bb3168ce02767" formatted="false">"Límite de la sesión · {0}"</string>
     <string name="ui_f66712ff9f22a5fa" formatted="false">"Quedan hasta 5 minutos en esta sesión. Guarda tu progreso en el juego."</string>
     <string name="ui_d94815562d57121e" formatted="false">"Giroscopio: sensor del mando no disponible"</string>
     <string name="ui_c9306bc10f8e9273" formatted="false">"Cargando juegos con controles táctiles…"</string>
     <string name="ui_2894938e2d687327" formatted="false">"La colección Jugar con controles táctiles no está disponible. Actualiza el catálogo."</string>
     <string name="ui_4e2fb8f6074c56c5" formatted="false">"Filtros del catálogo"</string>
-    <string name="ui_dfef36ec668231e8" formatted="false">"Controles táctiles oficiales en el navegador"</string>
     <string name="ui_7018b98c929744cd" formatted="false">"Fuente del giroscopio: {0}"</string>
     <string name="ui_f54af6654b132fe2" formatted="false">"Fuente del giroscopio"</string>
     <string name="ui_08454ee73abc5618" formatted="false">"El sensor del mando requiere Android 12 o posterior y un mando compatible."</string>
     <string name="ui_f50709cbc486d85d" formatted="false">"Mueve el dispositivo o mando seleccionado para probar el sensor y el stick derecho."</string>
+    <string name="ui_c6bd348ff9537470" formatted="false">"Usar los controles táctiles oficiales de Xbox"</string>
+    <string name="ui_a52f6fe663d36ac6" formatted="false">"La disposición oficial de Xbox no está disponible en esta sesión."</string>
+    <string name="ui_fe524f1820bb0a0f" formatted="false">"Queda como máximo 1 minuto. Guarda tu progreso en el juego."</string>
 </resources>

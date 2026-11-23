@@ -28,13 +28,81 @@ import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
 import org.robolectric.shadows.ShadowDialog
 import java.io.File
+import java.io.ByteArrayOutputStream
 import java.time.Duration
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28],qualifiers="w1280dp-h720dp-land-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class GameHudUiTest {
+    @Test fun xboxBundleRendersInTheNativeHudAndHideReleasesTheGamepad() {
+        val output=ByteArrayOutputStream()
+        val art=ByteArrayOutputStream()
+        Bitmap.createBitmap(16,16,Bitmap.Config.ARGB_8888).apply {
+            eraseColor(Color.RED)
+            compress(Bitmap.CompressFormat.PNG,100,art)
+            recycle()
+        }
+        val files=mapOf(
+            "takxmanifest.json" to """{"assets":"assets","layouts":"layouts","defaultLayout":"Default","contextFile":"context.json"}""".toByteArray(),
+            "context.json" to """{"state":{"show":false}}""".toByteArray(),
+            "layouts/neutral/Default.json" to """{"content":{"right":{"inner":[{"type":"button","action":["gamepadA","rightTrigger"],"visible":{"${'$'}ref":"../../context.json#/state/show"},"styles":{"default":{"faceImage":{"type":"asset","value":"Action"}}}}]}}}""".toByteArray(),
+            "assets/neutral/@1.0x/Action.png" to art.toByteArray()
+        )
+        ZipOutputStream(output).use { zip ->
+            for ((path,bytes) in files) {
+                zip.putNextEntry(ZipEntry(path))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+        val xbox=OfficialTouchSession(true)
+        xbox.receive(OfficialTouchNotice.Patch("""[{"op":"replace","path":"/state/show","value":true}]"""))
+        xbox.load(OfficialTouchBundle.parse(output.toByteArray(),"pt-BR"))
+        val controls=xbox.controls()!!
+        assertNotNull(controls.single().image)
+        val controller=Robolectric.buildActivity(Activity::class.java).setup()
+        var state=GamepadState()
+        val direct=mutableListOf<NativePointer>()
+        val view=GameTouchView(controller.get(),{state=it},{direct.addAll(it)},{_,_ -> .25f to .5f},{})
+        controller.get().setContentView(view)
+        view.configure(TouchMode.VIRTUAL,GameTitle("test","Test game"))
+        view.installOfficialControls(controls)
+        layout(view)
+        val button=VirtualGamepad(1280,720,official=controls).controls.single()
+        val render=Bitmap.createBitmap(1280,720,Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(render))
+        val center=render.getPixel(button.x.toInt(),(button.y-.13f*button.radius).toInt())
+        assertTrue(Color.red(center)>Color.green(center)+80)
+        render.recycle()
+        val now=SystemClock.uptimeMillis()
+        event(view,MotionEvent.ACTION_DOWN,now,Triple(0,button.x,button.y))
+        assertEquals(HudBinding.A.button,state.buttons)
+        assertEquals(1f,state.rightTrigger,0f)
+        assertTrue(direct.isEmpty())
+        xbox.receive(OfficialTouchNotice.Hide)
+        view.installOfficialControls(xbox.controls())
+        assertEquals(GamepadState(),state)
+        assertFalse(view.controlsVisible)
+        xbox.receive(OfficialTouchNotice.ShowDefault)
+        view.installOfficialControls(xbox.controls())
+        assertTrue(view.controlsVisible)
+        view.configure(TouchMode.NATIVE,GameTitle("test","Test game"))
+        event(view,MotionEvent.ACTION_DOWN,now+10,Triple(0,button.x,button.y))
+        assertEquals(HudBinding.A.button,state.buttons)
+        assertTrue(direct.isEmpty())
+        event(view,MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT),
+            now+15,Triple(0,button.x,button.y),Triple(1,620f,200f))
+        assertEquals(HudBinding.A.button,state.buttons)
+        assertEquals(2,direct.single().id)
+        view.releaseInputs()
+        assertEquals(GamepadState(),state)
+        assertEquals(2,direct.last().type)
+        controller.pause().stop().destroy()
+    }
     @Test fun comboPickerDoesNotApplyIntermediateChoicesAndAllowsClearingASwipe() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val activity=controller.get().apply { setContentView(FrameLayout(this)) }; layout(activity.window.decorView)

@@ -1,12 +1,27 @@
 package com.xcloud.tclnative
 
 import com.xcloud.tclnative.diagnostics.*
+import com.xcloud.tclnative.touch.OfficialTouchNotice
 import com.xcloud.tclnative.webrtc.*
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
 class StreamingSessionMessagesTest {
+    @Test fun xboxTouchMessagesSelectLayoutsAndDoNotEchoTheMessage() {
+        val parser=StreamingSessionMessages()
+        val message=JSONObject().put("type","Message").put("target","/streaming/touchControls/showLayoutV2")
+            .put("content",JSONObject().put("layoutId","combat").put("patch","[]"))
+        val show=parser.receive(message)
+        assertEquals(OfficialTouchNotice.Show("combat","[]"),show.touchLayout)
+        assertTrue(show.replies.isEmpty())
+        assertFalse(parser.diagnostics().contains("combat"))
+        assertNull(parser.receive(message.put("type","TransactionStart")).touchLayout)
+        message.put("type","Message").put("target","/streaming/touchcontrols/hide")
+        assertEquals(OfficialTouchNotice.Hide,parser.receive(message).touchLayout)
+        message.put("target","/streaming/touchcontrols/showtitledefault")
+        assertEquals(OfficialTouchNotice.ShowDefault,parser.receive(message).touchLayout)
+    }
     private fun json(message: ChannelMessage)=JSONObject(String(message.bytes,Charsets.UTF_8))
     @Test fun everyChannelOrderActivatesTheTitleOnceAfterTheHandshakeForBothInputModes() {
         val orders=listOf(listOf("control","input","message"),listOf("control","message","input"),listOf("input","control","message"),

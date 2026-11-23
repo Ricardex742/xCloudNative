@@ -81,8 +81,7 @@ class GameDashboardView(
     private val onGameShortcut: ((GameTitle) -> Unit)?=null,
     private val onFriends: (() -> Unit)?=null,
     private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() },
-    onRemotePlay: (() -> Unit)? = null,
-    private val onOfficialTouch: ((String?) -> Unit)? = null
+    onRemotePlay: (() -> Unit)? = null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -759,14 +758,6 @@ class GameDashboardView(
             genreButton.requestFocus()
         }
         if(filteringTouch) dialog.focusFirst(touchOption)
-        onOfficialTouch?.let { open ->
-            val products = officialGalleries[OfficialGalleryKind.TOUCH]?.products.orEmpty()
-            val selectedProduct = selectedCard?.let { it.product?.productId ?: it.game?.productId }
-                ?.takeIf { id -> products.any { it.productId.equals(id,true) } }
-            if (filteringTouch || selectedProduct != null) {
-                dialog.addMenuItem(UiText.text("Controles oficiais no navegador")) { open(selectedProduct) }
-            }
-        }
         options.forEach { option ->
             val label = option?.label ?: UiText.text("Todos os gêneros")
             val row = dialog.addMenuItem((if (option == selected) "✓  " else "") + label) {

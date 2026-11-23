@@ -32,6 +32,8 @@ class GameTouchView(context: Context,
     var configuration=HudSettings()
         private set
     private var model=VirtualGamepad(1,1)
+    private var officialControls: List<HudElement>? = null
+    val usingOfficialControls get() = officialControls!=null
     val preset: HudPreset get()=model.preset
     private var mode=TouchMode.OFF
     private var autoHidden=false
@@ -39,7 +41,8 @@ class GameTouchView(context: Context,
     private var overlayFocused=false
     private var gameplayTouchSuspended=false
     private val virtualPointers=mutableSetOf<Int>()
-    val controlsVisible: Boolean get()=mode==TouchMode.VIRTUAL && !autoHidden && !gameplayTouchSuspended
+    val controlsVisible: Boolean get()=(mode==TouchMode.VIRTUAL || mode==TouchMode.NATIVE && usingOfficialControls) &&
+        officialControls?.isEmpty()!=true && !autoHidden && !gameplayTouchSuspended
     private val autoHideTask=Runnable { if(canAutoHide() && configuration.autoHide.idle) hideAutomatically() }
     var immediateNativeDispatch=true
     private val native=mutableMapOf<Int,NativePointer>()
@@ -51,7 +54,7 @@ class GameTouchView(context: Context,
         var samples=0L;var totalAge=0.0;var maxAge=0L;var hudUpdates=0L;var staleHudContacts=0L
     }
     /** Reset after the previous report was frozen, not when opening a menu or hiding the view. */
-    fun beginSession() { releaseInputs();nativeEvents=NativeEvents();lastHudPress=UiText.text("nenhum") }
+    fun beginSession() { releaseInputs();officialControls=null;nativeEvents=NativeEvents();lastHudPress=UiText.text("nenhum") }
     private var lastHudPress=UiText.text("nenhum")
     fun nativeDiagnostics(): String {
         val s=nativeEvents
@@ -154,7 +157,18 @@ class GameTouchView(context: Context,
         revealControls()
     }
     fun showPage(page: HudPreset) { releaseInputs(); model.setPage(page);scheduleAutoHide(); invalidate() }
-    private fun rebuild(page: HudPreset=preset) { model=VirtualGamepad(width.coerceAtLeast(1),height.coerceAtLeast(1),page,configuration) }
+    private fun rebuild(page: HudPreset=preset) {
+        model=VirtualGamepad(width.coerceAtLeast(1),height.coerceAtLeast(1),
+            if (usingOfficialControls) HudPreset.GAMEPAD else page,configuration,officialControls)
+    }
+    internal fun installOfficialControls(controls: List<HudElement>?) {
+        if (officialControls==controls || isEditing && controls!=null) return
+        releaseInputs()
+        officialControls=controls
+        rebuild(configuration.preset ?: automatic)
+        scheduleAutoHide()
+        invalidate()
+    }
     override fun refreshLanguage() { menuButton.contentDescription=UiText.text("Atalhos da partida");releaseInputs();rebuild();scheduleAutoHide();invalidate() }
     fun beginEditing() {
         if(mode!=TouchMode.VIRTUAL) return
@@ -243,7 +257,7 @@ class GameTouchView(context: Context,
             val s=nativeEvents
             if(event.actionMasked==MotionEvent.ACTION_DOWN) {
                 // A fresh Android gesture must not reuse a contact left by an interrupted one.
-                if(native.isNotEmpty()) releaseInputs()
+                if(native.isNotEmpty() || virtualPointers.isNotEmpty()) releaseInputs()
                 parent?.requestDisallowInterceptTouchEvent(true)
                 if(immediateNativeDispatch) {
                     if(runCatching { requestUnbufferedDispatch(event) }.isSuccess) s.immediate++ else s.refused++
@@ -284,10 +298,38 @@ class GameTouchView(context: Context,
             }
         }
         if(mode==TouchMode.NATIVE) {
+            if (usingOfficialControls) {
+                when (action) {
+                    MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                        if (autoHidden && action==MotionEvent.ACTION_DOWN) revealControls()
+                        else if (controlsVisible && model.down(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)!=null) {
+                            virtualPointers.add(id)
+                            removeCallbacks(autoHideTask)
+                            publish()
+                            return true
+                        }
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (virtualPointers.remove(id)) {
+                        model.move(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)
+                        model.up(id,event.eventTime,receivedAt)
+                        publish()
+                        scheduleAutoHide()
+                        return true
+                    }
+                    MotionEvent.ACTION_MOVE -> if (virtualPointers.isNotEmpty()) {
+                        repeat(event.pointerCount) { i ->
+                            val pointer=event.getPointerId(i)
+                            if (pointer in virtualPointers)
+                                model.move(pointer,event.getX(i),event.getY(i),event.eventTime,receivedAt)
+                        }
+                        publish()
+                    }
+                }
+            }
             val events=mutableListOf<NativePointer>()
             fun pointer(i: Int,type: Int) {
                 val pointerId=event.getPointerId(i)
-                if(pointerId==menuPointer) return
+                if(pointerId==menuPointer || pointerId in virtualPointers) return
                 val position=coordinates(event.getX(i),event.getY(i))
                 val old=native[pointerId]
                 if(type==1 && (native.size>=10 || position==null)) {

@@ -1347,16 +1347,16 @@
     <string name="ui_798a8b31e7089db7" formatted="false">"Manette physique"</string>
     <string name="ui_d60a7b948fd48acd" formatted="false">"Démarrer ce jeu avec la manette virtuelle"</string>
     <string name="ui_cd46ffb27f3e67df" formatted="false">"Xbox a indiqué que votre temps de jeu dans le cloud est épuisé."</string>
-    <string name="ui_a094c6ea7a6f2fab" formatted="false">"Ouvrir Xbox.com"</string>
-    <string name="ui_da9bb3168ce02767" formatted="false">"Limite de la session · {0}"</string>
     <string name="ui_f66712ff9f22a5fa" formatted="false">"Il reste au maximum 5 minutes. Sauvegardez votre progression dans le jeu."</string>
     <string name="ui_d94815562d57121e" formatted="false">"Gyroscope : capteur de la manette indisponible"</string>
     <string name="ui_c9306bc10f8e9273" formatted="false">"Chargement des jeux avec commandes tactiles…"</string>
     <string name="ui_2894938e2d687327" formatted="false">"La collection Jouer avec les commandes tactiles est indisponible. Actualisez le catalogue."</string>
     <string name="ui_4e2fb8f6074c56c5" formatted="false">"Filtres du catalogue"</string>
-    <string name="ui_dfef36ec668231e8" formatted="false">"Commandes tactiles officielles dans le navigateur"</string>
     <string name="ui_7018b98c929744cd" formatted="false">"Source du gyroscope : {0}"</string>
     <string name="ui_f54af6654b132fe2" formatted="false">"Source du gyroscope"</string>
     <string name="ui_08454ee73abc5618" formatted="false">"Le capteur de la manette nécessite Android 12 ou une version ultérieure et une manette compatible."</string>
     <string name="ui_f50709cbc486d85d" formatted="false">"Bougez l’appareil ou la manette sélectionnée pour tester le capteur et le stick droit."</string>
+    <string name="ui_c6bd348ff9537470" formatted="false">"Utiliser les commandes tactiles officielles Xbox"</string>
+    <string name="ui_a52f6fe663d36ac6" formatted="false">"La disposition officielle Xbox est indisponible pour cette session."</string>
+    <string name="ui_fe524f1820bb0a0f" formatted="false">"Il reste au maximum 1 minute. Sauvegardez votre progression dans le jeu."</string>
 </resources>

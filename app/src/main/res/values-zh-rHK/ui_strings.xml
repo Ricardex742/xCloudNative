@@ -1347,16 +1347,16 @@
     <string name="ui_798a8b31e7089db7" formatted="false">"實體控制器"</string>
     <string name="ui_d60a7b948fd48acd" formatted="false">"使用虛擬控制器啟動此遊戲"</string>
     <string name="ui_cd46ffb27f3e67df" formatted="false">"Xbox 通知你的雲端遊戲時數已用完。"</string>
-    <string name="ui_a094c6ea7a6f2fab" formatted="false">"開啟 Xbox.com"</string>
-    <string name="ui_da9bb3168ce02767" formatted="false">"本次遊玩限時 · {0}"</string>
     <string name="ui_f66712ff9f22a5fa" formatted="false">"這次遊玩最多剩下 5 分鐘，請在遊戲內儲存進度。"</string>
     <string name="ui_d94815562d57121e" formatted="false">"陀螺儀：無法使用控制器感應器"</string>
     <string name="ui_c9306bc10f8e9273" formatted="false">"正在載入支援觸控的遊戲…"</string>
     <string name="ui_2894938e2d687327" formatted="false">"觸控遊玩系列目前無法使用，請重新整理遊戲目錄。"</string>
     <string name="ui_4e2fb8f6074c56c5" formatted="false">"遊戲目錄篩選"</string>
-    <string name="ui_dfef36ec668231e8" formatted="false">"在瀏覽器使用官方觸控"</string>
     <string name="ui_7018b98c929744cd" formatted="false">"陀螺儀來源：{0}"</string>
     <string name="ui_f54af6654b132fe2" formatted="false">"陀螺儀來源"</string>
     <string name="ui_08454ee73abc5618" formatted="false">"控制器感應器需要 Android 12 或更新版本，以及相容的控制器。"</string>
     <string name="ui_f50709cbc486d85d" formatted="false">"移動選取的裝置或控制器，以測試感應器與右類比搖桿。"</string>
+    <string name="ui_c6bd348ff9537470" formatted="false">"使用 Xbox 官方觸控配置"</string>
+    <string name="ui_a52f6fe663d36ac6" formatted="false">"本次遊玩無法使用 Xbox 官方觸控配置。"</string>
+    <string name="ui_fe524f1820bb0a0f" formatted="false">"這次遊玩最多剩下 1 分鐘，請在遊戲內儲存進度。"</string>
 </resources>

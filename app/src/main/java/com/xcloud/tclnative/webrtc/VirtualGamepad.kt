@@ -9,11 +9,13 @@ data class TouchControl(val label: String,val x: Float,val y: Float,val radius: 
                         val binding: HudBinding?=null,val icon: HudIcon=HudIcon.TEXT,
                         val shape: HudShape=HudShape.CIRCLE,val dragLook: Boolean=false,val page: HudPreset?=null,
                         val action: HudAction?=binding?.let { HudAction(it) },
-                        val gestures: Map<HudSwipe,HudGesture> = emptyMap())
+                        val gestures: Map<HudSwipe,HudGesture> = emptyMap(),val stickAxis: HudStickAxis = HudStickAxis.BOTH,
+                        val image: android.graphics.Bitmap? = null)
 
 /** No game-state inference: context pages are switched explicitly, gestures combine simultaneous inputs. */
 class VirtualGamepad(private val width: Int,private val height: Int,
-                     preset: HudPreset=HudPreset.GAMEPAD,private val settings: HudSettings=HudSettings()) {
+                     preset: HudPreset=HudPreset.GAMEPAD,private val settings: HudSettings=HudSettings(),
+                     private val official: List<HudElement>?=null) {
     private data class Contact(var control: TouchControl,var x: Float,var y: Float,var time: Long,
                                val startX: Float=x,val startY: Float=y,
                                var lookX: Float=0f,var lookY: Float=0f,var lookAt: Long=Long.MIN_VALUE,
@@ -25,8 +27,8 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         private set
     var controls=layout(preset)
         private set
-    private fun layout(preset: HudPreset)=GameHud.elements(preset,settings).map { element ->
-        val custom=settings.placements[element.id]
+    private fun layout(preset: HudPreset)=(official ?: GameHud.elements(preset,settings)).map { element ->
+        val custom=if(official==null) settings.placements[element.id] else null
         val r=(height*element.radius*settings.scale.coerceIn(75,150)/100f*(custom?.scale ?: 1f))
             .coerceAtLeast(1f).coerceAtMost(if(element.id=="football-mode") minOf(width/3.6f,height*.45f) else minOf(width,height)*.45f)
         val paddingX=if(element.id=="football-mode") r*1.8f else r
@@ -39,7 +41,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         }
         TouchControl(element.label,((custom?.x ?: element.x)*width).coerceIn(paddingX,width-paddingX),
             ((custom?.y ?: element.y)*height).coerceIn(r,height-r),r,element.kind,action?.buttons ?: 0,
-            element.id,binding,element.icon,element.shape,element.dragLook,element.page,action,gestures)
+            element.id,binding,element.icon,element.shape,element.dragLook,element.page,action,gestures,element.stickAxis,element.image)
     }
     private fun inside(c: TouchControl,x: Float,y: Float,slack: Float=1f): Boolean {
         val dx=abs(x-c.x); val dy=abs(y-c.y); val r=c.radius*slack
@@ -164,7 +166,8 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         val sprint=if(preset.family==HudPreset.CALL_OF_DUTY && settings.sprintGesture) controls.firstOrNull { it.id=="sprint" } else null
         for(contact in contacts.values) {
             val control=contact.control
-            val dx=(contact.x-control.x)/control.radius;val dy=(contact.y-control.y)/control.radius
+            val dx=if(control.stickAxis==HudStickAxis.VERTICAL) 0f else (contact.x-control.x)/control.radius
+            val dy=if(control.stickAxis==HudStickAxis.HORIZONTAL) 0f else (contact.y-control.y)/control.radius
             val length=maxOf(1f,hypot(dx,dy))
             when(control.kind) {
                 TouchKind.LEFT_STICK -> { leftX=dx/length;leftY=dy/length;if(sprinting(contact,sprint)) combine(sprint?.action) }

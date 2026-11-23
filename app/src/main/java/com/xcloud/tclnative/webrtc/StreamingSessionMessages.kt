@@ -1,5 +1,7 @@
 package com.xcloud.tclnative.webrtc
 
+import com.xcloud.tclnative.touch.OfficialTouchNotice
+import org.json.JSONArray
 import org.json.JSONObject
 import okio.ByteString.Companion.toByteString
 import java.io.IOException
@@ -15,7 +17,8 @@ data class XboxServerDisconnect(val reason: XboxDisconnectReason,val hresult: In
 data class XboxGameTime(val secondsLeft: Long?)
 class XboxServerDisconnectException(val notice: XboxServerDisconnect): IOException("SESSION_STATE: ${notice.reason.wire}")
 data class SessionMessageResult(val replies: List<ChannelMessage> = emptyList(),val disconnect: XboxServerDisconnect?=null,
-                                val titleFocused: Boolean?=null,val gameTime: XboxGameTime?=null)
+                                val titleFocused: Boolean?=null,val gameTime: XboxGameTime?=null,
+                                val touchLayout: OfficialTouchNotice?=null)
 
 /** SDK title activation and server lifetime messages. No game input is synthesized. */
 class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000 }) {
@@ -53,6 +56,9 @@ class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000
         if (type=="Message" && target==GAME_TIME) {
             return SessionMessageResult(gameTime=content(json)?.let(::gameTime))
         }
+        if (type=="Message" && target?.startsWith("/streaming/touchcontrols/",ignoreCase=true)==true) {
+            return SessionMessageResult(touchLayout=touchLayout(target.substringAfterLast('/'),json))
+        }
         if(type!="TransactionStart" || target!=SERVER_DISCONNECT || id==null) return SessionMessageResult()
         val body=content(json)
         val reason=XboxDisconnectReason.entries.firstOrNull { it.wire==body?.optString("reason") }
@@ -67,6 +73,26 @@ class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000
     private fun content(json: JSONObject): JSONObject?=runCatching {
         when(val raw=json.opt("content")) { is JSONObject -> raw;is String -> if(raw.length<=8192) JSONObject(raw) else null;else -> null }
     }.getOrNull()
+    private fun touchLayout(route: String, json: JSONObject): OfficialTouchNotice? {
+        fun patch(body: JSONObject?): String? = when(val value = body?.opt("patch")) {
+            is String -> value
+            is JSONArray -> value.toString()
+            else -> null
+        }?.takeIf { it.length<=8192 }
+        fun validName(value: Any?): String? = (value as? String)?.trim()?.takeIf {
+            it.length in 1..128 && it.none(Char::isISOControl)
+        }
+        return when {
+            route.equals("hide",true) -> OfficialTouchNotice.Hide
+            route.equals("showtitledefault",true) -> OfficialTouchNotice.ShowDefault
+            route.equals("showlayout",true) -> validName(json.opt("content"))?.let { OfficialTouchNotice.Show(it) }
+            route.equals("showlayoutv2",true) -> content(json)?.let { body ->
+                validName(body.opt("layoutId"))?.let { OfficialTouchNotice.Show(it,patch(body)) }
+            }
+            route.equals("patchstate",true) -> patch(content(json))?.let { OfficialTouchNotice.Patch(it) }
+            else -> null
+        }
+    }
     private fun gameTime(body: JSONObject): XboxGameTime? {
         val active=body.opt("IsTimerActive") as? Boolean ?: return null
         if(!active) return XboxGameTime(null)

@@ -11,7 +11,8 @@ import com.xcloud.tclnative.touch.*
 class GameHudPanel(private val context: Context,private val game: GameTitle,private val store: GameHudStore,
                    private val changed: (HudSettings) -> Unit,private val edit: () -> Unit,
                    private val hide: () -> Unit,private val page: (HudPreset) -> Unit,
-                   private val activate: (() -> Unit)?=null,private val nativeTouch: (() -> Unit)?=null,private val back: () -> Unit={}) {
+                   private val activate: (() -> Unit)?=null,private val nativeTouch: (() -> Unit)?=null,
+                   private val officialTouch: (() -> Unit)?=null,private val back: () -> Unit={}) {
     fun show(): ConsoleDialog {
         val settings=store.read(game.titleId)
         val automatic=GameHud.automatic(game.titleId,game.name)
@@ -24,6 +25,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         )
         activate?.let { actions.add(0,ConsoleAction(UiText.text("Usar controles na tela"),it)) }
         nativeTouch?.let { actions.add(0,ConsoleAction(com.xcloud.tclnative.settings.TouchMode.NATIVE.label,it)) }
+        officialTouch?.let { actions.add(0,ConsoleAction(UiText.text("Usar controles oficiais do Xbox"),it)) }
         actions+=ConsoleAction(UiText.text("Ocultar automaticamente: {0}",UiText.nested(settings.autoHide.label))) {
             val dialog=ConsoleDialog(context,UiText.text("Ocultação automática do controle virtual"))
             dialog.body.addView(dialog.text(UiText.text("O menu permanece visível. Toque uma vez para mostrar os controles novamente. Um botão segurado continua ativo até você soltar."),20,color=DashboardTheme.muted))

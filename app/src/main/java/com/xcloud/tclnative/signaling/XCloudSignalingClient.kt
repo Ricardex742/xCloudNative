@@ -14,6 +14,7 @@ import com.xcloud.tclnative.net.readResponse
 import com.xcloud.tclnative.net.checkedBody
 import com.xcloud.tclnative.net.CloudHttpException
 import com.xcloud.tclnative.net.CloudRequestException
+import com.xcloud.tclnative.touch.OfficialTouchBundle
 import com.xcloud.tclnative.webrtc.StreamingPeer
 import com.xcloud.tclnative.webrtc.StreamResolution
 import com.xcloud.tclnative.catalog.XboxProfile
@@ -34,6 +35,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
@@ -49,8 +51,12 @@ data class GameTitle(
     val programs: List<String> = emptyList(), val userPrograms: List<String> = emptyList(),
     val freeToPlay: Boolean = false, val supportedInputTypes: Set<String> = emptySet(),
     val englishName: String? = null,
-    val genres: Set<com.xcloud.tclnative.catalog.CatalogGenre> = emptySet()
-)
+    val genres: Set<com.xcloud.tclnative.catalog.CatalogGenre> = emptySet(),
+    val touchBundleIds: List<String> = emptyList()
+) {
+    internal fun offersOfficialTouch() = touchBundleIds.isNotEmpty() ||
+        supportedInputTypes.any { it.equals("customTouchOverlay",true) || it.equals("nativeTouchOrCustomTouchOverlay",true) }
+}
 
 class XCloudSignalingClient(
     private val session: StreamingAuthorization,
@@ -92,6 +98,8 @@ class XCloudSignalingClient(
     private val waitTimeClient = requestClient.newBuilder().callTimeout(3, TimeUnit.SECONDS).build()
     private val keepAliveClient = requestClient.newBuilder().callTimeout(5, TimeUnit.SECONDS).build()
     private val remoteStartClient = requestClient.newBuilder().callTimeout(10, TimeUnit.SECONDS).build()
+    private val touchBundleClient by lazy { requestClient.newBuilder().callTimeout(12, TimeUnit.SECONDS)
+        .followRedirects(false).followSslRedirects(false).build() }
     private val jsonType = "application/json; charset=utf-8".toMediaType()
 
     fun resetStartupDiagnostics() = lastAttempt.startupTrace.reset()
@@ -165,7 +173,57 @@ class XCloudSignalingClient(
             userPrograms = XboxProfile.subscriptionClaims(details?.opt("userPrograms")),
             programs = XboxProfile.subscriptionClaims(details?.opt("programs")),
             freeToPlay = details?.optBoolean("isFreeInStore",false) == true,
-            supportedInputTypes = XboxProfile.subscriptionClaims(details?.opt("supportedInputTypes")).toSet())
+            supportedInputTypes = XboxProfile.subscriptionClaims(details?.opt("supportedInputTypes")).toSet(),
+            touchBundleIds = touchBundleIds(details))
+    }
+
+    internal suspend fun officialTouchBundle(game: GameTitle, locale: String): OfficialTouchBundle? = withContext(Dispatchers.IO) {
+        val allocation = active.get() ?: return@withContext null
+        if (remotePlay || !game.offersOfficialTouch()) return@withContext null
+        val base = allocation.attempt.profile.baseUri
+        val ids = game.touchBundleIds.ifEmpty {
+            val titleId = game.xboxTitleId?.takeIf { it.matches(Regex("[0-9]{1,10}")) } ?: return@withContext null
+            val payload = JSONObject().put("titleIds",org.json.JSONArray().put(titleId)).put("titleIdType","xboxTitleId")
+            val configs = org.json.JSONArray(request("/v2/titles/inputconfigs","TOUCH_CONFIG","POST",payload,
+                client=touchBundleClient,base=base))
+            if (configs.length()!=1) return@withContext null
+            touchBundleIds(configs.optJSONObject(0))
+        }
+        for (id in ids) {
+            if (active.get() !== allocation) return@withContext null
+            try {
+                val signedLocation = request("/v1/sessions/tabs/$id/download","TOUCH_BUNDLE",
+                    client=touchBundleClient,query=mapOf("noRedirect" to "true"),base=base).trim()
+                val url = signedLocation.takeIf { it.length <= 8192 }?.toHttpUrlOrNull()
+                    ?: continue
+                if (!url.isHttps || url.port!=443 || url.username.isNotEmpty() || url.password.isNotEmpty() ||
+                    url.fragment!=null || !officialBundleHost(url.host)) continue
+                val bytes = touchBundleClient.newCall(Request.Builder().url(url).get().build()).readResponse { response ->
+                    check(response.isSuccessful) { "TOUCH_BUNDLE: download unavailable" }
+                    val body=response.body ?: error("TOUCH_BUNDLE: empty download")
+                    val maximum=8L*1024*1024
+                    check(body.contentLength()<=maximum && !body.source().request(maximum+1)) { "TOUCH_BUNDLE: too large" }
+                    body.bytes()
+                }
+                return@withContext OfficialTouchBundle.parse(bytes,locale)
+            } catch(error: CancellationException) {
+                throw error
+            } catch(_: Exception) {
+                // A title may advertise more than one bundle version.
+            }
+        }
+        null
+    }
+
+    private fun officialBundleHost(host: String): Boolean =
+        listOf("xbox.com","xboxlive.com","xboxservices.com","blob.core.windows.net","azureedge.net",
+            "microsoft.com","msedge.net").any { host==it || host.endsWith(".$it") }
+
+    private fun touchBundleIds(details: JSONObject?): List<String> {
+        val tabs=details?.optJSONArray("supportedTabs") ?: return emptyList()
+        return (0 until minOf(12,tabs.length())).mapNotNull { tabs.optJSONObject(it)?.optString("id") }
+            .filter { it.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,159}")) }
+            .distinct().take(4)
     }
 
     /** A public gallery product must resolve through the authenticated service before launching. */

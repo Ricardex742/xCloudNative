@@ -5,7 +5,7 @@ import org.json.JSONObject
 internal class SessionTimeLimit {
     private var deadlineMs: Long? = null
     private var receivedTimer = false
-    private var reminded = false
+    private var lastWarningMinutes = Int.MAX_VALUE
 
     fun startFromSessionState(durationSeconds: Long?, startedAtMs: Long) {
         if (!receivedTimer && durationSeconds != null) setDeadline(durationSeconds,startedAtMs)
@@ -23,10 +23,15 @@ internal class SessionTimeLimit {
     fun remainingSeconds(nowMs: Long): Long? =
         deadlineMs?.let { (it - nowMs).coerceAtLeast(0L) }?.let { (it + 999L) / 1_000L }
 
-    fun shouldWarn(remainingSeconds: Long): Boolean {
-        if (reminded || remainingSeconds !in 1..300) return false
-        reminded = true
-        return true
+    fun takeWarningMinutes(remainingSeconds: Long): Int? {
+        val minutes = when (remainingSeconds) {
+            in 1L..60L -> 1
+            in 61L..300L -> 5
+            else -> return null
+        }
+        if (minutes >= lastWarningMinutes) return null
+        lastWarningMinutes = minutes
+        return minutes
     }
 
     companion object {

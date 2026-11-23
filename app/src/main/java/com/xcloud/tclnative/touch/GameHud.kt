@@ -23,13 +23,14 @@ enum class HudBinding(private val sourceLabel: String,val button: Int=0) {
     A("A",16),B("B",32),X("X",64),Y("Y",128),LB("LB",4096),RB("RB",8192),
     LT("LT"),RT("RT"),L3("L3",16384),R3("R3",32768),MENU("Menu",4),VIEW("View",8),
     UP("Direcional ↑",256),DOWN("Direcional ↓",512),LEFT("Direcional ←",1024),RIGHT("Direcional →",2048),
-    STEER_LEFT("Virar ←"),STEER_RIGHT("Virar →");
+    STEER_LEFT("Virar ←"),STEER_RIGHT("Virar →"),GUIDE("Xbox",2);
     val label: String get()=UiText.text(sourceLabel)
 }
 enum class HudIcon { TEXT,FIRE,AIM,JUMP,CROUCH,RELOAD,SPRINT,USE,WEAPON,BUILD,WALL,STAIRS,FLOOR,ROOF,
     GRENADE,MELEE,ACCELERATE,BRAKE,LEFT,RIGHT,HANDBRAKE,REWIND,CAMERA,GEAR_UP,GEAR_DOWN,
     PASS,SHOOT,THROUGH,CROSS,SWITCH,SHIELD,DASH,ATTACK,SPECIAL,CAST,PAUSE,MAP }
 enum class HudShape { CIRCLE,PEDAL,SQUARE }
+enum class HudStickAxis { BOTH, HORIZONTAL, VERTICAL }
 enum class HudSwipe(private val sourceLabel: String) { UP("↑ Cima"),DOWN("↓ Baixo"),LEFT("← Esquerda"),RIGHT("→ Direita") ;
     val label: String get()=UiText.text(sourceLabel)
 }
@@ -78,7 +79,8 @@ data class HudElement(val id: String,val label: String,val x: Float,val y: Float
                       val icon: HudIcon=HudIcon.TEXT,val shape: HudShape=HudShape.CIRCLE,
                       val dragLook: Boolean=false,val page: HudPreset?=null,
                       val action: HudAction?=binding?.let { HudAction(it) },
-                      val gestures: Map<HudSwipe,HudGesture> = emptyMap())
+                      val gestures: Map<HudSwipe,HudGesture> = emptyMap(),val stickAxis: HudStickAxis = HudStickAxis.BOTH,
+                      val image: android.graphics.Bitmap? = null)
 
 object GameHud {
     private fun key(value: String)=value.uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]"),"")
