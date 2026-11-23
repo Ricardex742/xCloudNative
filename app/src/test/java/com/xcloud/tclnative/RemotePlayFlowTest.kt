@@ -81,7 +81,7 @@ class RemotePlayFlowTest {
             assertTrue(consoles[0].canConnect)
             assertFalse(consoles[1].canConnect)
             val stages = mutableListOf<PlaybackStage>()
-            client.startRemotePlay(consoles[0], peer, StreamResolution.HD_1080, SessionOptions(),
+            client.startRemotePlay(consoles[0], peer, StreamResolution.HD_1080, SessionOptions(locale = "zh-TW"),
                 { stages += it }, {}).getOrThrow()
             client.reconnectExistingSession(peer).getOrThrow()
             client.stop()
@@ -92,9 +92,10 @@ class RemotePlayFlowTest {
             assertNull(login.getHeader("X-Forwarded-For"))
             assertEquals("/v6/servers/home?mr=50", requests[3].path)
             assertTrue(requests.drop(3).all { it.getHeader("Authorization") == "Bearer home-token" })
-            val play = requests.single { it.path == "/v5/sessions/home/play" }
-            assertEquals("series-1", JSONObject(play.body.clone().readUtf8()).getString("serverId"))
-            assertEquals("", JSONObject(play.body.readUtf8()).getString("titleId"))
+            val play = JSONObject(requests.single { it.path == "/v5/sessions/home/play" }.body.readUtf8())
+            assertEquals("series-1", play.getString("serverId"))
+            assertEquals("", play.getString("titleId"))
+            assertEquals("zh-TW", play.getJSONObject("settings").getString("locale"))
             assertEquals("transfer", JSONObject(requests.single { it.path == "$path/connect" }.body.readUtf8()).getString("userToken"))
             assertEquals(PlaybackStage.PLAY_REQUEST, stages.first())
             assertEquals(PlaybackStage.TRANSPORT_READY, stages.last())

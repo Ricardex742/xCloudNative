@@ -1331,4 +1331,16 @@
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Emula el joystick analógico derecho en el controlador/HUD. Para igualar el toque nativo del Xbox, habilite también la prueba en la categoría Giroscopio. LT/LB en toque nativo dependen del controlador físico. {0}"</string>
     <string name="ui_fed5cd4b4d6225a1" formatted="false">"Ocultar controles de la guía"</string>
     <string name="ui_717bedea36fcffd9" formatted="false">"Confirmar"</string>
+    <string name="ui_2b3c410c71580e4f" formatted="false">"Géneros"</string>
+    <string name="ui_3ac658db6cb497f4" formatted="false">"Todos los géneros"</string>
+    <string name="ui_6d84bf7d0d0984fc" formatted="false">"Acción y aventura"</string>
+    <string name="ui_afa200615ac8b9a9" formatted="false">"Disparos"</string>
+    <string name="ui_9871087b1b184d77" formatted="false">"Rol"</string>
+    <string name="ui_0c0bbe80398cea2f" formatted="false">"Carreras"</string>
+    <string name="ui_979f5fd1bda4d2f9" formatted="false">"Deportes"</string>
+    <string name="ui_5d257075e9615993" formatted="false">"Simulación"</string>
+    <string name="ui_965a7648e4b2653a" formatted="false">"Estrategia"</string>
+    <string name="ui_19e0531220f40ceb" formatted="false">"Lucha"</string>
+    <string name="ui_5d7325dd007ccc28" formatted="false">"Plataformas"</string>
+    <string name="ui_947072ee72a7269b" formatted="false">"Puzles"</string>
 </resources>

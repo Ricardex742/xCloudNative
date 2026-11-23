@@ -1331,4 +1331,16 @@
     <string name="ui_e1e6926d0d8e111c" formatted="false">"模拟控制器/HUD 上的右侧模拟摇杆。为了匹配Xbox原生触摸，还需要启用陀螺仪类别中的测试。 LT/LB 原生触摸依赖于物理控制器。 {0}"</string>
     <string name="ui_fed5cd4b4d6225a1" formatted="false">"隐藏指南控制按钮"</string>
     <string name="ui_717bedea36fcffd9" formatted="false">"确认"</string>
+    <string name="ui_2b3c410c71580e4f" formatted="false">"类型"</string>
+    <string name="ui_3ac658db6cb497f4" formatted="false">"所有类型"</string>
+    <string name="ui_6d84bf7d0d0984fc" formatted="false">"动作冒险"</string>
+    <string name="ui_afa200615ac8b9a9" formatted="false">"射击"</string>
+    <string name="ui_9871087b1b184d77" formatted="false">"角色扮演"</string>
+    <string name="ui_0c0bbe80398cea2f" formatted="false">"竞速"</string>
+    <string name="ui_979f5fd1bda4d2f9" formatted="false">"体育"</string>
+    <string name="ui_5d257075e9615993" formatted="false">"模拟"</string>
+    <string name="ui_965a7648e4b2653a" formatted="false">"策略"</string>
+    <string name="ui_19e0531220f40ceb" formatted="false">"格斗"</string>
+    <string name="ui_5d7325dd007ccc28" formatted="false">"平台跳跃"</string>
+    <string name="ui_947072ee72a7269b" formatted="false">"益智"</string>
 </resources>

@@ -1331,4 +1331,16 @@
     <string name="ui_e1e6926d0d8e111c" formatted="false">"컨트롤러/HUD에서 오른쪽 아날로그 스틱을 에뮬레이션합니다. Xbox 기본 터치를 일치시키려면 자이로스코프 카테고리에서도 테스트를 활성화하세요. 기본 터치의 LT/LB는 물리적 컨트롤러를 사용합니다. {0}"</string>
     <string name="ui_fed5cd4b4d6225a1" formatted="false">"가이드 조작 버튼 숨기기"</string>
     <string name="ui_717bedea36fcffd9" formatted="false">"확인"</string>
+    <string name="ui_2b3c410c71580e4f" formatted="false">"장르"</string>
+    <string name="ui_3ac658db6cb497f4" formatted="false">"모든 장르"</string>
+    <string name="ui_6d84bf7d0d0984fc" formatted="false">"액션 및 어드벤처"</string>
+    <string name="ui_afa200615ac8b9a9" formatted="false">"슈팅"</string>
+    <string name="ui_9871087b1b184d77" formatted="false">"RPG"</string>
+    <string name="ui_0c0bbe80398cea2f" formatted="false">"레이싱"</string>
+    <string name="ui_979f5fd1bda4d2f9" formatted="false">"스포츠"</string>
+    <string name="ui_5d257075e9615993" formatted="false">"시뮬레이션"</string>
+    <string name="ui_965a7648e4b2653a" formatted="false">"전략"</string>
+    <string name="ui_19e0531220f40ceb" formatted="false">"격투"</string>
+    <string name="ui_5d7325dd007ccc28" formatted="false">"플랫포머"</string>
+    <string name="ui_947072ee72a7269b" formatted="false">"퍼즐"</string>
 </resources>

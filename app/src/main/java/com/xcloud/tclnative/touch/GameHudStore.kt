@@ -23,13 +23,17 @@ class GameHudStore(private val context: Context) {
     fun preferNativeTouchWithController(id: String, enabled: Boolean) {
         prefs(id).edit().putBoolean("native_touch_with_controller", enabled).apply()
     }
-    fun read(id: String): HudSettings { return try {
-        val text=prefs(id).getString("layout",null) ?: return HudSettings()
+    fun read(id: String): HudSettings {
+        val prefs = prefs(id)
+        return readLayout(prefs.getString("layout", null)) { prefs.edit().remove("layout").apply() }
+    }
+    private fun readLayout(raw: String?, discard: (() -> Unit)? = null): HudSettings { return try {
+        val text=raw ?: return HudSettings()
         if(text.length>65536) return HudSettings()
         val data=JSONObject(text)
         // Removed presets must not carry their combat/build bindings into another layout.
         if(data.optString("preset") in setOf("FORTNITE","FORTNITE_BUILD")) {
-            prefs(id).edit().remove("layout").apply()
+            discard?.invoke()
             return HudSettings()
         }
         val positions=data.optJSONObject("controls") ?: JSONObject()
@@ -57,7 +61,7 @@ class GameHudStore(private val context: Context) {
             HudAutoHide.entries.firstOrNull { it.name==data.optString("autoHide") } ?: HudAutoHide.OFF,
             codDpad=data.optBoolean("codDpad",false))
     } catch(_: Exception) { HudSettings() } }
-    fun save(id: String,settings: HudSettings) {
+    private fun encodeLayout(settings: HudSettings): String {
         val controls=JSONObject()
         settings.placements.forEach { (key,value) ->
             val control=JSONObject().put("x",value.x).put("y",value.y).put("scale",value.scale).put("binding",value.binding?.name)
@@ -74,6 +78,28 @@ class GameHudStore(private val context: Context) {
             .put("lookDeadzone",settings.lookDeadzone).put("footballScheme",settings.footballScheme.name)
             .put("aimAndFire",settings.aimAndFire).put("sprintGesture",settings.sprintGesture)
             .put("autoHide",settings.autoHide.name).put("codDpad",settings.codDpad)
-        if(!prefs(id).edit().putString("layout",data.toString()).commit()) throw java.io.IOException(UiText.text("Não foi possível salvar o HUD neste aparelho."))
+        return data.toString()
+    }
+    fun save(id: String, settings: HudSettings, resetPresets: Boolean = false) {
+        val prefs = prefs(id)
+        val editor = prefs.edit().putString("layout", encodeLayout(settings))
+        if (resetPresets) prefs.all.keys.filter { it.startsWith("layout:") }.forEach(editor::remove)
+        commit(editor)
+    }
+    fun selectPreset(id: String, automatic: HudPreset, preset: HudPreset?): HudSettings {
+        val prefs = prefs(id)
+        val current = read(id)
+        val previous = (current.preset ?: automatic).family
+        val next = (preset ?: automatic).family
+        val edit = prefs.edit()
+        val saved = if (previous == next) current else {
+            edit.putString("layout:${previous.name}", encodeLayout(current))
+            val archived = prefs.getString("layout:${next.name}", null)
+            if (archived == null) current.copy(placements = emptyMap()) else readLayout(archived)
+        }
+        return saved.copy(preset = preset).also { commit(edit.putString("layout", encodeLayout(it))) }
+    }
+    private fun commit(editor: android.content.SharedPreferences.Editor) {
+        if (!editor.commit()) throw java.io.IOException(UiText.text("Não foi possível salvar o HUD neste aparelho."))
     }
 }

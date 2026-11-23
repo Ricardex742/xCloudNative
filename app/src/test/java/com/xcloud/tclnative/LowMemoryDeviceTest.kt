@@ -69,7 +69,7 @@ class LowMemoryDeviceTest {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val activity=controller.get()
         oneGb(activity)
         val played=mutableListOf<String>()
-        val games=(0 until 30).map { GameTitle("LOW-$it","Game $it") }
+        val games=(0 until 30).map { GameTitle("LOW-$it","Game ${it.toString().padStart(2, '0')}") }
         fun layout(view: GameDashboardView) {
             view.awaitCatalog()
             repeat(3) {

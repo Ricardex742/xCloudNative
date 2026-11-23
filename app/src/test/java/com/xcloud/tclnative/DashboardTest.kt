@@ -252,8 +252,10 @@ class DashboardTest {
             gear.requestFocus(); key(view,KeyEvent.KEYCODE_BUTTON_A)
         }
         assertEquals(3,opened)
+        view.setSearch("Forza Horizon 5"); layout(view,1280,720)
         val title=descendants(view).filterIsInstance<TextView>().single { it.text.toString().contains("FORZA\nHORIZON 5") }.text as Spanned
         assertEquals(DashboardTheme.accent,title.getSpans(0,title.length,ForegroundColorSpan::class.java).single().foregroundColor)
+        view.setSearch("")
         view.selectTab(LibraryTab.GAME_PASS); layout(view,1280,720)
         val grid=descendants(view).filterIsInstance<RecyclerView>().single()
         assertEquals(0,grid.adapter!!.itemCount)
@@ -294,7 +296,7 @@ class DashboardTest {
         val right = first.focusSearch(View.FOCUS_RIGHT)
         assertNotNull(right)
         assertTrue(right.requestFocus())
-        assertEquals(games[1].titleId, view.selectedGame?.titleId)
+        assertEquals(games[2].titleId, view.selectedGame?.titleId)
         val down = right.focusSearch(View.FOCUS_DOWN)
         assertNotNull(down)
         assertTrue(down.requestFocus())

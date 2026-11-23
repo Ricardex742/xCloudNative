@@ -195,10 +195,9 @@ internal class GameShortcutBar(
 
     override fun show() {
         window?.apply {
-            clearFlags(LayoutParams.FLAG_DIM_BEHIND)
             setBackgroundDrawableResource(android.R.color.transparent)
             setLayout(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
-            ImmersiveWindow.apply(this, edgeToEdge = true)
+            ImmersiveWindow.inheritPlaybackDisplay(this, activity.window)
         }
         super.show()
         window?.let { AppControllerWindows.attach(activity, it) }

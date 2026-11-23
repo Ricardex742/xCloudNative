@@ -18,7 +18,8 @@ data class GalleryProduct(
     val productId: String, val name: String? = null,
     val posterUrl: String? = null, val tileUrl: String? = null, val heroUrl: String? = null,
     val seriesOptimized: Boolean = false, val cloudSupported: Boolean? = null,
-    val cloudTitleId: String? = null, val englishName: String? = null
+    val cloudTitleId: String? = null, val englishName: String? = null,
+    val genres: Set<CatalogGenre> = emptySet()
 )
 
 data class OfficialGallery(
@@ -51,15 +52,17 @@ data class CatalogCard(val game: GameTitle? = null, val product: GalleryProduct?
     // A native row keeps its identity when official names/art arrive; gallery editions keep product IDs.
     val key = if(nativeIdentity) "title:${game!!.titleId}" else product?.let { "product:${it.productId}" } ?: "title:${game!!.titleId}"
     val name get() = product?.name ?: game?.name ?: product!!.productId
+    internal val englishSortName get() = product?.englishName ?: game?.englishName ?: name
     val sortKey = name.lowercase(Locale.ROOT)
     val posterUrl get() = product?.posterUrl ?: game?.posterUrl
     val tileUrl get() = product?.tileUrl ?: game?.tileUrl
     val seriesOptimized get() = product?.seriesOptimized == true || game?.seriesOptimized == true
+    val genres = product?.genres.orEmpty() + game?.genres.orEmpty()
     /** Visual metadata never replaces authenticated identity, product or input capabilities. */
     fun playableGame(): GameTitle? = game?.let { native ->
         if(product==null && native.gamePass==gamePass) native else native.copy(
             name=name,posterUrl=posterUrl,tileUrl=tileUrl,heroUrl=product?.heroUrl ?: native.heroUrl,
-            seriesOptimized=seriesOptimized,gamePass=gamePass)
+            seriesOptimized=seriesOptimized,gamePass=gamePass,genres=genres)
     }
 }
 

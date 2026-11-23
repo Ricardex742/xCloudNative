@@ -78,28 +78,36 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
             actions+=ConsoleAction(UiText.text("Mostrar HUD de ataque")) { page(effective.family) }
             actions+=ConsoleAction(UiText.text("Mostrar HUD de defesa")) { page(if(effective.family==HudPreset.EA_FC) HudPreset.EA_FC_DEFENSE else HudPreset.FOOTBALL_DEFENSE) }
         }
-        actions+=ConsoleAction(UiText.text("Restaurar HUD deste jogo")) { save(HudSettings(footballScheme=settings.footballScheme)) }
+        actions+=ConsoleAction(UiText.text("Restaurar HUD deste jogo")) {
+            save(HudSettings(footballScheme=settings.footballScheme), resetPresets=true)
+        }
         actions+=ConsoleAction(UiText.text("Guia de gestos e modos")) {
             ConsoleDialogs.message(context,UiText.text("Gestos e comandos combinados"),
                 UiText.text("No futebol, toque em ATAQUE / DEFESA para trocar os comandos. A troca é manual. No chute: arraste para baixo para colocado, para cima para cavadinha e para os lados para superchute. Marcar combina RT + A.\n\nNo editor, Ação permite combinar botões; Gestos configura cada direção de arrasto. Os comandos seguem o esquema do seu jogo.\n\nNo CoD, segure e arraste Mirar ou Atirar para mover a câmera. Mirar ao atirar é opcional. Arrastar o analógico para cima, na direção de Correr, ativa a corrida quando essa opção está ligada.\n\nNos jogos de tiro, aumente a sensibilidade do HUD e ajuste a compensação da zona morta. A velocidade máxima de giro também depende da sensibilidade de controle configurada dentro do jogo."),
                 listOf(ConsoleAction(UiText.text("Voltar")) { show() }),onCancel={ show() })
         }
-        if(activate==null) actions+=ConsoleAction(UiText.text("Ocultar HUD"),hide)
+        if(activate==null) actions+=ConsoleAction(UiText.text("Usar apenas controle nesta partida"),hide)
         return ConsoleDialogs.menu(context,"HUD • ${game.name}",actions,onBack=back)
     }
-    private fun save(settings: HudSettings) {
-        try { store.save(game.titleId,settings); changed(settings); show() }
+    private fun save(settings: HudSettings, resetPresets: Boolean = false) {
+        try { store.save(game.titleId,settings,resetPresets); changed(settings); show() }
         catch(error: java.io.IOException) { Toast.makeText(context,error.message,Toast.LENGTH_LONG).show() }
     }
     private fun choosePreset() {
         val current=store.read(game.titleId)
+        val automatic=GameHud.automatic(game.titleId,game.name)
         val options=listOf<HudPreset?>(null)+HudPreset.entries.filter { it.family==it }
         val dialog=ConsoleDialog(context,UiText.text("Layout dos controles"))
         dialog.body.addView(dialog.text(UiText.text("Os comandos usam o mapeamento padrão de controle Xbox. Você pode ajustar cada ação no editor e nas configurações do jogo."),20,color=DashboardTheme.muted),LinearLayout.LayoutParams(-1,-2))
         options.forEach { preset ->
-            val label=preset?.label ?: UiText.text("Automático • {0}",UiText.nested(GameHud.automatic(game.titleId,game.name).label))
+            val label=preset?.label ?: UiText.text("Automático • {0}",UiText.nested(automatic.label))
             val row=dialog.addMenuItem(UiText.text("{0} {1}",UiText.nested(if(preset==current.preset) "✓" else "○"),UiText.nested(label))) {
-                save(current.copy(preset=preset,placements=emptyMap()))
+                try {
+                    changed(store.selectPreset(game.titleId, automatic, preset))
+                    show()
+                } catch(error: java.io.IOException) {
+                    Toast.makeText(context,error.message,Toast.LENGTH_LONG).show()
+                }
             }
             if(preset==current.preset) dialog.focusFirst(row)
         }

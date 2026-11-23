@@ -540,13 +540,13 @@ class XCloudWebRtcClient(
         require(index in 0..3)
         synchronized(pumpLock) {
             if(closed.get() || inputRegistrationFailed) return
-            if(auxiliary && nativeTouch && index==0 && state==GamepadState()) {
+            if(auxiliary && touchEnabled && index==0 && state==GamepadState()) {
                 if(gamepads.remove(index)!=null) inputPump?.releaseAfterNeutral(index)
                 return
             }
             val added=index !in gamepads
             // Reserved menu chords and idle dongles must not start physical reports in a touch-only game.
-            if ((nativeTouch || nativeKeyboardMouse) && added && state == GamepadState()) return
+            if ((touchEnabled || nativeKeyboardMouse) && added && state == GamepadState()) return
             if (added && index != 0 && inputReady && !gamepadConnections.add(index) { sendGamepadChanged(index, true) }) return
             gamepads[index]=state
             inputPump?.update(state,index)
@@ -555,11 +555,11 @@ class XCloudWebRtcClient(
     fun removeGamepad(index: Int) {
         synchronized(pumpLock) {
             if (closed.get() || inputRegistrationFailed) return
-            if(index==0 && !nativeTouch) { gamepads[0]=GamepadState(); inputPump?.update(GamepadState()); return }
+            if(index==0 && !touchEnabled) { gamepads[0]=GamepadState(); inputPump?.update(GamepadState()); return }
             if (index != 0 && index in gamepads && inputReady && !gamepadConnections.remove(index) { sendGamepadChanged(index, false) }) return
             gamepads.remove(index)
             // Native touch owns logical slot zero even when its physical source disconnects.
-            if(index==0 && nativeTouch) inputPump?.releaseAfterNeutral(index) else inputPump?.remove(index)
+            if(index==0 && touchEnabled) inputPump?.releaseAfterNeutral(index) else inputPump?.remove(index)
         }
     }
     fun sendPointers(events: List<NativePointer>) { synchronized(pumpLock) {

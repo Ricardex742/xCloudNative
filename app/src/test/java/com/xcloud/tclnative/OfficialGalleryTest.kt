@@ -98,7 +98,7 @@ class OfficialGalleryTest {
             server.enqueue(MockResponse().setBody("""{"Products":[
                 {"ProductId":"BBBBBBBBBBBB","XCloudOfferings":{"XGPUWEB":{"Programs":["GPULTIMATE"]}},"LocalizedProperties":[{"Language":"pt-BR","ProductTitle":"Meu jogo","Images":[{"ImagePurpose":"Poster","Uri":"https://example.com/poster.png"}]}]},
                 {"ProductId":"CCCCCCCCCCCC","ProductTitle":"Not in this gallery"}]}"""))
-            server.enqueue(MockResponse().setBody("""{"Products":[{"ProductId":"BBBBBBBBBBBB",
+            server.enqueue(MockResponse().setBody("""{"Products":[{"ProductId":"BBBBBBBBBBBB","Properties":{"Category":"Shooter"},
                 "LocalizedProperties":[{"Language":"en-US","ProductTitle":"My game"}]}]}"""))
             var loaded=source
             service.hydrateOfficialGallery(source,setOf("AAAAAAAAAAAA")) { loaded=it }
@@ -112,6 +112,7 @@ class OfficialGalleryTest {
             assertNull(request.getHeader("Authorization"))
             assertEquals("en-us",server.takeRequest().requestUrl!!.queryParameter("languages"))
             assertEquals("My game", loaded.products.last().englishName)
+            assertEquals(setOf(com.xcloud.tclnative.catalog.CatalogGenre.SHOOTER), loaded.products.last().genres)
             server.enqueue(MockResponse().setResponseCode(503))
             server.enqueue(MockResponse().setBody("""{"Products":[]}"""))
             service.hydrateOfficialGallery(source,setOf("AAAAAAAAAAAA")) { loaded=it }

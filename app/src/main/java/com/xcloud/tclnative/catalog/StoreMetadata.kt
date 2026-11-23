@@ -22,7 +22,7 @@ object StoreMetadata {
                 if((0 until programs.length()).any { programs.opt(it) !is String }) return@let null
                 programs.length()>0
             }, (data.opt("XCloudTitleId") as? String)?.trim()?.takeIf { it.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,255}")) },
-            englishName(data))
+            englishName(data), genres(data))
     }
     private fun JSONObject.text(key: String) = optString(key).takeIf { it.isNotBlank() && it != "null" }
     fun products(response: JSONObject): List<JSONObject> = when (val data = response.opt("Products")) {
@@ -62,6 +62,12 @@ object StoreMetadata {
         is String -> listOf(value.lowercase())
         else -> emptyList()
     }
+    private fun genres(data: JSONObject): Set<CatalogGenre> {
+        val properties = data.optJSONObject("Properties")
+        return listOf(properties?.opt("Category"), properties?.opt("Categories"),
+            data.opt("Category"), data.opt("Categories"), data.opt("Genres"))
+            .flatMap(::strings).mapNotNull(CatalogGenre::fromStore).toSet()
+    }
     fun optimized(data: JSONObject): Boolean {
         val supported = setOf("consolegen9", "xboxseriesx", "xboxseriess", "xboxseriesxs")
         // Compatibility with Series alone is backward compatibility, not a Series edition badge.
@@ -79,7 +85,8 @@ object StoreMetadata {
             tileUrl = artwork(local, listOf("SquareTile", "Tile", "BoxArt")) ?: direct(data, "Image_Tile") ?: game.tileUrl,
             heroUrl = artwork(local, listOf("SuperHeroArt", "TitledHeroArt", "Hero", "Screenshot"))
                 ?: direct(data, "Image_Hero") ?: game.heroUrl,
-            seriesOptimized = optimized(data) || game.seriesOptimized)
+            seriesOptimized = optimized(data) || game.seriesOptimized,
+            genres = genres(data).ifEmpty { game.genres })
     }
     fun merge(games: List<GameTitle>, response: JSONObject): List<GameTitle> {
         val data = products(response)
@@ -97,7 +104,8 @@ internal fun GameTitle.withMetadataFallback(previous: GameTitle) = copy(
     posterUrl = posterUrl ?: previous.posterUrl,
     tileUrl = tileUrl ?: previous.tileUrl,
     heroUrl = heroUrl ?: previous.heroUrl,
-    seriesOptimized = seriesOptimized || previous.seriesOptimized
+    seriesOptimized = seriesOptimized || previous.seriesOptimized,
+    genres = genres.ifEmpty { previous.genres }
 )
 
 /** Public art only. A cached product never adds a playable title or restores account entitlements. */
@@ -112,11 +120,12 @@ class CatalogCache(private val file: File) {
         try {
             val products = JSONArray()
             games.zip(restore(games)) { fresh, cached -> fresh.withMetadataFallback(cached) }
-                .filter { it.productId != null && (it.posterUrl != null || it.tileUrl != null) }.forEach { game ->
+                .filter { it.productId != null && (it.posterUrl != null || it.tileUrl != null || it.genres.isNotEmpty()) }.forEach { game ->
                 products.put(JSONObject().put("StoreId", game.productId).put("XCloudTitleId", game.titleId)
                     .put("ProductTitle", game.name).put("EnglishProductTitle", game.englishName)
                     .put("Image_Poster", game.posterUrl).put("Image_Tile", game.tileUrl)
-                    .put("Image_Hero", game.heroUrl).put("SeriesOptimized", game.seriesOptimized))
+                    .put("Image_Hero", game.heroUrl).put("SeriesOptimized", game.seriesOptimized)
+                    .put("Genres", JSONArray(game.genres.map { it.name })))
             }
             file.parentFile?.mkdirs()
             val next = File(file.parentFile, file.name+".tmp")

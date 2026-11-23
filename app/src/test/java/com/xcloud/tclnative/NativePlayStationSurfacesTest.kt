@@ -249,7 +249,7 @@ class NativePlayStationSurfacesTest {
                 DashboardTheme.apply(a,theme);val played=mutableListOf<String>();var menus=0
                 val view=GameDashboardView(a,GameLibrary(a,"native-phone-${theme.name}"),{ played+=it.titleId },{},{menus++},{})
                 try {
-                    a.setContentView(view);view.setGames((0..20).map { game().copy(titleId="PHONE-$it",name="Jogo $it") });view.selectTab(LibraryTab.ALL)
+                    a.setContentView(view);view.setGames((0..20).map { game().copy(titleId="PHONE-$it",name="Jogo ${it.toString().padStart(2, '0')}") });view.selectTab(LibraryTab.ALL)
                     layout(view,2400,1080)
                     view.restoreFocus();layout(view,2400,1080)
                     val touch=48*a.resources.displayMetrics.density

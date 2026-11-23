@@ -2,6 +2,7 @@ package com.xcloud.tclnative.ui.dashboard
 
 import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.ui.ImmersiveWindow
+import com.xcloud.tclnative.ui.MainActivity
 
 import android.app.Activity
 import android.app.Dialog
@@ -45,6 +46,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val sessionSidebar=purpose==ConsolePanelPurpose.GAME_SESSION
     private val compactNetwork=purpose==ConsolePanelPurpose.NETWORK_STATS
     private val remotePlayPage=purpose==ConsolePanelPurpose.REMOTE_PLAY
+    private val playingBehindPanel get() = (activity as? MainActivity)?.hasPlaybackBehindPanels() == true
+    private val edgeToEdge get() = fullScreen || compactNetwork || playingBehindPanel
     private val fullScreen=remotePlayPage || skin.scene.playStation && !sessionSidebar && !compactNetwork && purpose !in listOf(ConsolePanelPurpose.GUIDE,ConsolePanelPurpose.CONTROL_CENTER) && !(purpose==ConsolePanelPurpose.PROFILE && skin.scene==ConsoleScene.PS5)
     private val networkCutout=Rect()
     private val screenWidth = activity?.window?.decorView?.width?.takeIf { it > 0 }
@@ -328,7 +331,11 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }
 
     override fun show() {
-        window?.let { ImmersiveWindow.apply(it,edgeToEdge=fullScreen || compactNetwork) }
+        val playing = playingBehindPanel
+        window?.let {
+            if (playing && activity != null) ImmersiveWindow.inheritPlaybackDisplay(it, activity.window)
+            else ImmersiveWindow.apply(it, edgeToEdge)
+        }
         super.show()
         visiblePanels.removeAll { it.get()==null || it.get()===this }
         visiblePanels.add(java.lang.ref.WeakReference(this))
@@ -336,7 +343,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         window?.apply {
             setBackgroundDrawableResource(android.R.color.transparent)
             decorView.setPadding(0,0,0,0)
-            if (!compactNetwork) {
+            if (!compactNetwork && !playing) {
                 addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
                 setDimAmount(if(skin.enabled) .48f else .72f)
             }
@@ -368,7 +375,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 setLayout((screenWidth*(if(skin.enabled) .90f else .82f)).roundToInt(), WindowManager.LayoutParams.WRAP_CONTENT)
             }
             setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN)
-            ImmersiveWindow.apply(this,edgeToEdge=fullScreen || compactNetwork)
+            ImmersiveWindow.apply(this, edgeToEdge)
         }
         val target=if(explicitFocus) initialFocus else returningFocus ?: initialFocus
         target?.requestFocus()
@@ -376,7 +383,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
-        if(hasFocus) window?.let { ImmersiveWindow.apply(it,edgeToEdge=fullScreen || compactNetwork) }
+        if(hasFocus) window?.let { ImmersiveWindow.apply(it, edgeToEdge) }
     }
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         com.xcloud.tclnative.webrtc.AndroidControllerMonitor.key(event)

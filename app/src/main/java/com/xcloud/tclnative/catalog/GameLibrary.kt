@@ -15,6 +15,7 @@ enum class LibraryTab(private val sourceLabel: String) {
     RECENT("VOLTAR A JOGAR"), FAVORITES("FAVORITOS"), GAME_PASS("GAME PASS"), PURCHASED("TRANSMITA SEU JOGO"),
     ADDED("ADIÇÕES RECENTES"), ALL("TODOS OS JOGOS");
     val label: String get()=UiText.text(sourceLabel)
+    internal val hasBrowseTools: Boolean get() = this == ALL || this == GAME_PASS || this == PURCHASED
 }
 
 data class PlayRecord(val lastPlayed: Long, val launches: Int)

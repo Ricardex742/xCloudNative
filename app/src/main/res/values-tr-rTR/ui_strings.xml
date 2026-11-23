@@ -1331,4 +1331,16 @@
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Denetleyici/HUD üzerinde doğru analog çubuğu taklit eder. Xbox yerel dokunuşu eşleştirmek için Jiroskop kategorisindeki testi de etkinleştirin. Yerel dokunmadaki LT/LB, fiziksel denetleyiciye dayanır. {0}"</string>
     <string name="ui_fed5cd4b4d6225a1" formatted="false">"Kılavuz kontrollerini gizle"</string>
     <string name="ui_717bedea36fcffd9" formatted="false">"Onayla"</string>
+    <string name="ui_2b3c410c71580e4f" formatted="false">"Türler"</string>
+    <string name="ui_3ac658db6cb497f4" formatted="false">"Tüm türler"</string>
+    <string name="ui_6d84bf7d0d0984fc" formatted="false">"Aksiyon ve macera"</string>
+    <string name="ui_afa200615ac8b9a9" formatted="false">"Nişancı"</string>
+    <string name="ui_9871087b1b184d77" formatted="false">"Rol yapma"</string>
+    <string name="ui_0c0bbe80398cea2f" formatted="false">"Yarış"</string>
+    <string name="ui_979f5fd1bda4d2f9" formatted="false">"Spor"</string>
+    <string name="ui_5d257075e9615993" formatted="false">"Simülasyon"</string>
+    <string name="ui_965a7648e4b2653a" formatted="false">"Strateji"</string>
+    <string name="ui_19e0531220f40ceb" formatted="false">"Dövüş"</string>
+    <string name="ui_5d7325dd007ccc28" formatted="false">"Platform"</string>
+    <string name="ui_947072ee72a7269b" formatted="false">"Bulmaca"</string>
 </resources>

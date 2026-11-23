@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 125
-        versionName = "0.41.12-guide-style"
+        versionCode = 126
+        versionName = "0.41.13-catalog-browse"
     }
 
     signingConfigs {

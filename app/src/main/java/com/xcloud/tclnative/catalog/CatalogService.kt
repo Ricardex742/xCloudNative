@@ -138,6 +138,7 @@ class CatalogService(
     /** Hydrate unmatched public products without inserting them into the authenticated native catalog. */
     suspend fun hydrateOfficialGallery(gallery: OfficialGallery, knownProducts: Set<String>,
                                       knownEnglishProducts: Set<String> = emptySet(),
+                                      knownGenreProducts: Set<String> = emptySet(),
                                       onBatch: suspend (OfficialGallery) -> Unit) = withContext(Dispatchers.IO) {
         var current = gallery
         var failed = false
@@ -167,22 +168,29 @@ class CatalogService(
         }
         current = current.copy(metadataComplete = true, metadataFailed = failed)
         onBatch(current)
-        if (gallery.kind == OfficialGalleryKind.PURCHASED) {
-            val needsEnglish = current.products.filter { it.englishName == null && it.productId !in knownEnglishProducts }
-            for (batch in needsEnglish.chunked(50)) {
-                beforeRequest()
-                val names = try {
-                    StoreMetadata.products(storeProducts(batch.map { it.productId }, "en-us"))
-                        .mapNotNull(StoreMetadata::galleryProduct).associate { it.productId to (it.englishName ?: it.name) }
-                } catch (cancelled: CancellationException) { throw cancelled }
-                catch (_: Exception) { emptyMap() }
-                val wanted = batch.map { it.productId }.toSet()
-                current = current.copy(products = current.products.map { product ->
-                    val english = names[product.productId]
-                    if (product.productId in wanted && english != null) product.copy(englishName = english) else product
-                })
-                onBatch(current)
-            }
+        fun needsEnglish(product: GalleryProduct) = gallery.kind == OfficialGalleryKind.PURCHASED &&
+            product.englishName == null && product.productId !in knownEnglishProducts
+        val missingDetails = current.products.filter { product ->
+            product.cloudSupported != false && (needsEnglish(product) ||
+                product.genres.isEmpty() && product.productId !in knownGenreProducts)
+        }
+        for (batch in missingDetails.chunked(50)) {
+            beforeRequest()
+            val wanted = batch.map { it.productId }.toSet()
+            val metadata = try {
+                StoreMetadata.products(storeProducts(wanted.toList(), "en-us"))
+                    .mapNotNull(StoreMetadata::galleryProduct).filter { it.productId in wanted }.associateBy { it.productId }
+            } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { emptyMap() }
+            if (metadata.isEmpty()) continue
+            current = current.copy(products = current.products.map { product ->
+                val details = metadata[product.productId] ?: return@map product
+                product.copy(
+                    englishName = if (needsEnglish(product)) details.englishName ?: details.name else product.englishName,
+                    genres = product.genres.ifEmpty { details.genres }
+                )
+            })
+            onBatch(current)
         }
     }
     companion object {

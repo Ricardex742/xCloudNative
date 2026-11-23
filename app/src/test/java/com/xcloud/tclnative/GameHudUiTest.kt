@@ -224,7 +224,7 @@ class GameHudUiTest {
         panel.show(); choose("Layout:"); choose("Corrida — padrão")
         assertEquals(HudPreset.RACING,applied.preset)
         assertEquals(HudSettings(),store.read("HADES2"))
-        choose("Ocultar HUD"); assertEquals(1,hidden)
+        choose("Usar apenas controle nesta partida"); assertEquals(1,hidden)
         controller.pause().stop().destroy()
     }
     @Test fun actionHudsRenderAtPhoneSizesAndPageChangesKeepTheSavedProfile() {

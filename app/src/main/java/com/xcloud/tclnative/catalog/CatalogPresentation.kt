@@ -2,6 +2,7 @@ package com.xcloud.tclnative.catalog
 
 import com.xcloud.tclnative.signaling.GameTitle
 import java.text.Collator
+import java.text.Normalizer
 import java.util.Locale
 
 /** Immutable inputs captured on Main; all catalog-sized work runs on the catalog worker. */
@@ -18,7 +19,8 @@ internal data class CatalogInput(
     val query: String,
     val ownershipFilter: OwnershipFilter=OwnershipFilter.ALL,
     val ownership: Map<String,Ownership> = emptyMap(),
-    val limit: Int? = null
+    val limit: Int? = null,
+    val genre: CatalogGenre? = null
 )
 
 internal data class CatalogPresentation(
@@ -26,7 +28,9 @@ internal data class CatalogPresentation(
     val positions: Map<String, Int>,
     val subscription: String?,
     val gamePassProducts: Set<String>?,
-    val purchaseProducts: Set<String>
+    val purchaseProducts: Set<String>,
+    val genres: Set<CatalogGenre> = emptySet(),
+    val alphabetPositions: Map<Char, Int> = emptyMap()
 ) {
     companion object {
         fun build(input: CatalogInput): CatalogPresentation = CatalogPresentationEngine().build(input)
@@ -41,7 +45,8 @@ internal class CatalogPresentationEngine {
         val search=CatalogQuery(input.query)
         fun ownership(card: CatalogCard) = input.ownership[card.ownershipProductId()] ?: Ownership.UNKNOWN
         val eligible=catalog.select(input).asSequence().filter { card ->
-            search.matches(card) && input.ownershipFilter.accepts(ownership(card))
+            search.matches(card) && input.ownershipFilter.accepts(ownership(card)) &&
+                (!input.tab.hasBrowseTools || input.genre == null || input.genre in card.genres)
         }
         val matching = if (input.tab == LibraryTab.PURCHASED) {
             val groups = eligible.groupBy(::ownership)
@@ -52,8 +57,15 @@ internal class CatalogPresentationEngine {
             }
         } else eligible
         val visible=(input.limit?.let(matching::take) ?: matching).toList()
+        val alphabet = if (input.tab.hasBrowseTools && input.limit == null) sortedMapOf<Char, Int>().apply {
+            val initials = catalog.initials.getValue(input.tab)
+            visible.forEachIndexed { index, card ->
+                val initial = initials.getValue(card.key)
+                if (initial !in this) put(initial, index)
+            }
+        } else emptyMap()
         return CatalogPresentation(visible,visible.withIndex().associate { it.value.key to it.index },catalog.subscription,
-            catalog.products,catalog.purchaseProducts)
+            catalog.products,catalog.purchaseProducts,catalog.genres[input.tab].orEmpty(),alphabet)
     }
     private class IndexedCatalog(private val source: CatalogInput) {
         val products=if(source.galleries.containsKey(OfficialGalleryKind.GAME_PASS))
@@ -69,7 +81,7 @@ internal class CatalogPresentationEngine {
         private val index=CloudTitleIndex(games)
         private val galleries=source.galleries.mapNotNull { (kind,gallery) -> gallery?.let {
             val cards = OfficialGalleryCards.matching(it,index,source.bindings,membership,"")
-            kind to if (kind == OfficialGalleryKind.PURCHASED) sortByEnglishTitle(cards) else cards.sortedBy { it.sortKey }.toList()
+            kind to if (kind == OfficialGalleryKind.PURCHASED) sortByEnglishTitle(cards) else cards.toList()
         } }.toMap()
         val purchaseProducts = galleries[OfficialGalleryKind.PURCHASED].orEmpty()
             .mapNotNull(CatalogCard::ownershipProductId).toSet()
@@ -82,26 +94,47 @@ internal class CatalogPresentationEngine {
             val alias=direct ?: byTitle[GamePassCatalog.productKey(game.titleId)]?.singleOrNull()
             game.titleId to CatalogCard(game,alias?.product,alias?.gamePass ?: game.gamePass,nativeIdentity=true)
         }
-        private val all: List<CatalogCard> = run {
+        private val allCards = run {
             val selected=GameLibrary.select(games,LibraryTab.ALL,emptySet(),emptyMap(),products?.toList(),null).map { native.getValue(it.titleId) }
-            if(official.isEmpty()) selected else {
-                val represented=selected.mapNotNull { it.product?.productId }.toSet()
-                (selected+official.filter { it.product!!.productId !in represented }).sortedBy { it.sortKey }
+            val represented=selected.mapNotNull { it.product?.productId }.toSet()
+            sortForBrowse(selected + official.filter { it.product!!.productId !in represented })
+        }
+        private val browseCards = mapOf(
+            LibraryTab.ALL to allCards,
+            LibraryTab.PURCHASED to galleries[OfficialGalleryKind.PURCHASED].orEmpty(),
+            LibraryTab.GAME_PASS to sortForBrowse(galleries[OfficialGalleryKind.GAME_PASS]
+                ?: games.filter { GamePassCatalog.contains(it, membership, titles) }.map { native.getValue(it.titleId) })
+        )
+        val initials = browseCards.mapValues { (tab, cards) ->
+            cards.associate { card ->
+                val title = if (tab == LibraryTab.PURCHASED) card.englishSortName else card.name
+                card.key to initial(normalizedTitle(title))
             }
         }
+        val genres = browseCards.mapValues { (_, cards) -> cards.flatMap { it.genres }.toSet() }
+
         fun matches(input: CatalogInput)=source.games===input.games && source.galleries==input.galleries &&
             source.bindings==input.bindings && source.legacyProducts==input.legacyProducts && source.legacyTitles==input.legacyTitles
         fun select(input: CatalogInput): List<CatalogCard> {
-            val kind=when(input.tab) { LibraryTab.GAME_PASS -> OfficialGalleryKind.GAME_PASS;LibraryTab.PURCHASED -> OfficialGalleryKind.PURCHASED;else -> null }
-            galleries[kind]?.let { return it }
-            if(input.tab==LibraryTab.ALL)return all
+            browseCards[input.tab]?.let { return it }
             return GameLibrary.select(games,input.tab,input.favorites,emptyMap(),products?.toList(),input.added,"",titles,input.recent)
                 .map { native.getValue(it.titleId) }
         }
+        private fun normalizedTitle(title: String) = Normalizer.normalize(title.trim(), Normalizer.Form.NFD)
+            .filterNot { it.category == CharCategory.NON_SPACING_MARK }.lowercase(Locale.ROOT)
+
+        private fun initial(title: String) =
+            title.firstOrNull { it.isLetterOrDigit() }?.uppercaseChar()?.takeIf { it in 'A'..'Z' } ?: '#'
+
+        private fun sortForBrowse(cards: List<CatalogCard>): List<CatalogCard> = cards.map { card ->
+            val name = normalizedTitle(card.name)
+            Triple(initial(name), name, card)
+        }.sortedWith(compareBy({ it.first }, { it.second })).map { it.third }
+
         private fun sortByEnglishTitle(cards: Sequence<CatalogCard>): List<CatalogCard> {
             val alphabet = Collator.getInstance(Locale.US).apply { strength = Collator.PRIMARY }
             return cards.map { card ->
-                alphabet.getCollationKey(card.product?.englishName ?: card.game?.englishName ?: card.name) to card
+                alphabet.getCollationKey(card.englishSortName) to card
             }.sortedWith(compareBy { (key, _) -> key })
                 .map { (_, card) -> card }.toList()
         }

@@ -14,6 +14,19 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28])
 class GameHudStoreTest {
+    @Test fun switchingHudPresetsRestoresEachLayoutsSavedPositionsAndMappings() {
+        val store = GameHudStore(org.robolectric.RuntimeEnvironment.getApplication())
+        val cod = HudSettings(preset = HudPreset.CALL_OF_DUTY, sensitivity = 450, codDpad = true,
+            placements = mapOf("fire" to HudPlacement(.8f, .4f, binding = HudBinding.LT)))
+        store.save("game", cod)
+        val xbox = store.selectPreset("game", HudPreset.GAMEPAD, HudPreset.GAMEPAD)
+        assertTrue(xbox.placements.isEmpty())
+        val customizedXbox = xbox.copy(placements = mapOf("a" to HudPlacement(.7f, .6f)))
+        store.save("game", customizedXbox)
+        assertEquals(cod, store.selectPreset("game", HudPreset.GAMEPAD, HudPreset.CALL_OF_DUTY))
+        assertEquals(customizedXbox.copy(preset = null), store.selectPreset("game", HudPreset.GAMEPAD, null))
+    }
+
     @Test fun perGameLayoutsPersistAcrossRecreationWithoutChangingOtherGames() {
         val first=Robolectric.buildActivity(Activity::class.java).setup()
         val settings=HudSettings(HudPreset.CALL_OF_DUTY,75,115,160,

@@ -48,7 +48,8 @@ data class GameTitle(
     val seriesOptimized: Boolean = false, val xboxTitleId: String? = null,
     val programs: List<String> = emptyList(), val userPrograms: List<String> = emptyList(),
     val freeToPlay: Boolean = false, val supportedInputTypes: Set<String> = emptySet(),
-    val englishName: String? = null
+    val englishName: String? = null,
+    val genres: Set<com.xcloud.tclnative.catalog.CatalogGenre> = emptySet()
 )
 
 class XCloudSignalingClient(

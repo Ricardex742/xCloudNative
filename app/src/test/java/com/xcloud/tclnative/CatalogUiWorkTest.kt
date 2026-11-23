@@ -5,23 +5,111 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Looper
+import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.TextView
+import com.xcloud.tclnative.catalog.CatalogGenre
+import com.xcloud.tclnative.catalog.GalleryProduct
+import com.xcloud.tclnative.catalog.GameLibrary
+import com.xcloud.tclnative.catalog.LibraryTab
+import com.xcloud.tclnative.catalog.OfficialGallery
+import com.xcloud.tclnative.catalog.OfficialGalleryKind
+import com.xcloud.tclnative.i18n.AppLanguage
+import com.xcloud.tclnative.i18n.UiText
+import com.xcloud.tclnative.settings.UiTheme
+import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.ui.dashboard.*
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.annotation.LooperMode
+import org.robolectric.shadows.ShadowDialog
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28],qualifiers="w1280dp-h720dp-land-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class CatalogUiWorkTest {
+    @Test fun genreAndAlphabetRailWorkIndependentlyOnEachBrowseTab() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        UiText.apply(activity, AppLanguage.PORTUGUESE)
+        DashboardTheme.apply(activity, UiTheme.GREEN)
+        val view = GameDashboardView(activity, GameLibrary(activity, "genre-catalog"), {}, {}, {}, {})
+        activity.setContentView(view)
+        val items = listOf(GameTitle("a", "Águia", "AAAAAAAAAAAA", genres = setOf(CatalogGenre.SHOOTER)),
+            GameTitle("b", "Barco", "BBBBBBBBBBBB", genres = setOf(CatalogGenre.SIMULATION)),
+            GameTitle("z", "Zebra", "ZZZZZZZZZZZZ", genres = setOf(CatalogGenre.SHOOTER)))
+        fun views(root: View): Sequence<View> = sequence {
+            yield(root)
+            if (root is ViewGroup) for (index in 0 until root.childCount) yieldAll(views(root.getChildAt(index)))
+        }
+        fun layout() {
+            view.measure(View.MeasureSpec.makeMeasureSpec(1280, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(720, View.MeasureSpec.EXACTLY))
+            view.layout(0, 0, 1280, 720)
+        }
+        fun selectTab(tab: LibraryTab) {
+            view.selectTab(tab)
+            view.awaitCatalog()
+            layout()
+        }
+        fun chooseGenre(label: String) {
+            val genre = views(view).filterIsInstance<TextView>().single { it.text.toString() == "Gêneros" && it.isShown }
+            assertTrue(genre.performClick())
+            val picker = ShadowDialog.getLatestDialog() as ConsoleDialog
+            assertTrue(views(picker.panel).filterIsInstance<TextView>().single { it.text.toString() == label }.performClick())
+            view.awaitCatalog()
+            layout()
+        }
+        try {
+            view.setGames(items)
+            selectTab(LibraryTab.ALL)
+            val rail = views(view).filterIsInstance<CatalogAlphabetRail>().single()
+            assertTrue(rail.isShown && rail.height > 48)
+            chooseGenre("Tiro")
+            assertEquals("Águia", view.selectedGame?.name)
+            for ((action, y) in listOf(MotionEvent.ACTION_DOWN to 1f, MotionEvent.ACTION_MOVE to rail.height - 1f,
+                MotionEvent.ACTION_UP to rail.height - 1f)) {
+                val event = MotionEvent.obtain(0, 0, action, rail.width / 2f, y, 0)
+                try { assertTrue(rail.dispatchTouchEvent(event)) } finally { event.recycle() }
+            }
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals("Zebra", view.selectedGame?.name)
+            selectTab(LibraryTab.FAVORITES)
+            assertFalse(rail.isShown)
+            view.setGamePassProducts(setOf("AAAAAAAAAAAA", "BBBBBBBBBBBB"))
+            selectTab(LibraryTab.GAME_PASS)
+            assertTrue(rail.isShown && rail.isEnabled)
+            chooseGenre("Simulação")
+            assertEquals("Barco", view.selectedGame?.name)
+            view.setOfficialGallery(OfficialGalleryKind.PURCHASED,
+                OfficialGallery(OfficialGalleryKind.PURCHASED, listOf(
+                    GalleryProduct("AAAAAAAAAAAA", englishName = "Zebra"),
+                    GalleryProduct("BBBBBBBBBBBB", englishName = "Boat"))))
+            selectTab(LibraryTab.PURCHASED)
+            assertTrue(rail.isShown && rail.isEnabled)
+            chooseGenre("Tiro")
+            assertEquals("Águia", view.selectedGame?.name)
+            assertTrue(rail.performClick())
+            val letters = ShadowDialog.getLatestDialog() as ConsoleDialog
+            assertTrue(views(letters.body).filterIsInstance<TextView>().any { it.isClickable && it.text.toString() == "Z" })
+            letters.dismiss()
+            selectTab(LibraryTab.GAME_PASS)
+            assertEquals("Barco", view.selectedGame?.name)
+        } finally {
+            view.close()
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun largeCatalogStaysReachableDuringTabSwitchesAndMetadataBursts() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
         val view=GameDashboardView(a,com.xcloud.tclnative.catalog.GameLibrary(a,"large-catalog"),{},{},{},{})

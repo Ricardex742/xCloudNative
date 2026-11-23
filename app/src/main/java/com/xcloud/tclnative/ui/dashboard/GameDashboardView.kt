@@ -46,6 +46,7 @@ import com.xcloud.tclnative.catalog.CatalogInput
 import com.xcloud.tclnative.catalog.CatalogPresentation
 import com.xcloud.tclnative.catalog.CatalogPresentationEngine
 import com.xcloud.tclnative.catalog.CatalogChanges
+import com.xcloud.tclnative.catalog.CatalogGenre
 import com.xcloud.tclnative.catalog.Ownership
 import com.xcloud.tclnative.catalog.OwnershipFilter
 import com.xcloud.tclnative.catalog.ownershipProductKey
@@ -171,6 +172,11 @@ class GameDashboardView(
     private var renderedTab = activeTab
     private var renderedQuery = searchQuery
     private var renderedLimit: Int? = null
+    private val genresByTab = mutableMapOf<LibraryTab, CatalogGenre>()
+    private val genre get() = genresByTab[activeTab]
+    private var renderedGenre: CatalogGenre? = null
+    private var catalogGenres = emptySet<CatalogGenre>()
+    private var alphabetPositions = emptyMap<Char, Int>()
     private var positions = emptyMap<String, Int>()
     private val catalogFocus = CatalogFocus()
     internal val isCatalogUpdating: Boolean get() = catalogJob?.isActive == true || metadataJob?.isActive == true
@@ -324,6 +330,29 @@ class GameDashboardView(
     }
     private val catalogNote = label(18f, false).apply { gravity = Gravity.END; setTextColor(DashboardTheme.muted) }
     private val adapter = CoversAdapter()
+    private val genreButton = DashboardTheme.button(context, UiText.text("Gêneros"), action = ::showGenres).apply {
+        id = generateViewId()
+        textSize = 12f
+        setPadding(3, 0, 3, 0)
+    }
+    private val alphabetRail = CatalogAlphabetRail(context, ::showAlphabet) { letter ->
+        alphabetPositions[letter]?.let { position ->
+            catalogFocus.cancel()
+            val manager = grid.layoutManager as GridLayoutManager
+            manager.scrollToPositionWithOffset(position, 0)
+            updateSelected(adapter.items.getOrNull(position))
+        }
+    }.apply { id = generateViewId() }
+    private val browseTools = LinearLayout(context).apply {
+        visibility = GONE
+        orientation = LinearLayout.VERTICAL
+        background = DashboardTheme.panel()
+        val height = (48 * resources.displayMetrics.density).roundToInt()
+        addView(genreButton, LinearLayout.LayoutParams(-1, height))
+        addView(alphabetRail, LinearLayout.LayoutParams(-1, 0, 1f))
+        genreButton.nextFocusDownId = alphabetRail.id
+        alphabetRail.nextFocusUpId = genreButton.id
+    }
 
     init {
         background = DashboardBackground(consoleArtwork=false)
@@ -382,7 +411,7 @@ class GameDashboardView(
         addView(navigation)
         searchButton.nextFocusDownId=tabs.first().id
         grid.adapter = adapter
-        addView(grid); addView(emptyState)
+        addView(grid); addView(emptyState); addView(browseTools)
         addView(footer); addView(catalogNote); addView(metadataNote)
         serviceSelector?.let { addView(it.button) }
         addView(resumeSessionButton)
@@ -547,18 +576,23 @@ class GameDashboardView(
         if(ownershipFilter!=OwnershipFilter.ALL && ownershipScope().any { it !in ownershipRequested }) onOwnershipNeeded()
         if(artworkPaused) return
         val limit=homeCoverLimit()
-        val categoryChanged=renderedTab!=activeTab || renderedQuery!=searchQuery || renderedOwnershipFilter!=ownershipFilter
+        val selectedGenre = genre
+        val categoryChanged=renderedTab!=activeTab || renderedQuery!=searchQuery ||
+            renderedOwnershipFilter!=ownershipFilter || renderedGenre!=selectedGenre
         if(categoryChanged || renderedLimit!=limit) {
             // Do not leave clickable cards from the previous category while preparing the next.
             renderedTab=activeTab; renderedQuery=searchQuery;renderedOwnershipFilter=ownershipFilter
+            renderedGenre=selectedGenre
             renderedLimit=limit
             adapter.submit(emptyList(),CatalogChanges(true,emptyList()))
             positions=emptyMap()
+            bindAlphabet(emptyMap())
             if(categoryChanged) updateSelected(null)
             renderCatalogState(0,preparing=true)
         }
         pendingCatalog=CatalogInput(games,officialGalleries.toMap(),galleryBindings.toMap(),
-            gamePassProducts,gamePassTitles,activeTab,library.favorites,added,recent,searchQuery,ownershipFilter,ownership.toMap(),limit=limit)
+            gamePassProducts,gamePassTitles,activeTab,library.favorites,added,recent,searchQuery,ownershipFilter,ownership.toMap(),
+            limit=limit,genre=selectedGenre)
         if(catalogJob?.isActive==true) return
         // One worker, one pending snapshot: bursts cannot build an unbounded CPU queue.
         catalogJob=scope.launch {
@@ -571,7 +605,9 @@ class GameDashboardView(
                     result to CatalogChanges.between(before,result.cards)
                 }
                 // Metadata arriving during a build must not starve an otherwise current category.
-                if(!closed && !artworkPaused && input.tab==activeTab && input.query==searchQuery && input.ownershipFilter==ownershipFilter && input.limit==homeCoverLimit())
+                if(!closed && !artworkPaused && input.tab==activeTab && input.query==searchQuery &&
+                    input.ownershipFilter==ownershipFilter && input.limit==homeCoverLimit() &&
+                    input.genre==genre)
                     applyCatalog(presentation,if(adapter.items!==before) CatalogChanges(true,emptyList()) else changes)
             }
         }
@@ -587,6 +623,8 @@ class GameDashboardView(
             if(manager.orientation==RecyclerView.HORIZONTAL) it.left-grid.paddingLeft else it.top-grid.paddingTop
         } ?: 0
         positions=presentation.positions
+        catalogGenres=presentation.genres
+        bindAlphabet(presentation.alphabetPositions)
         gamePassProducts=presentation.gamePassProducts
         purchaseProductIds=presentation.purchaseProducts
         if (activeTab == LibraryTab.PURCHASED && ownershipFilter == OwnershipFilter.ALL &&
@@ -620,9 +658,10 @@ class GameDashboardView(
             activeTab == LibraryTab.ADDED && added == null -> UiText.text("Adições recentes indisponíveis no momento.\nOs jogos continuam na aba Todos os jogos.")
             activeTab == LibraryTab.GAME_PASS && !gamePassLoaded -> UiText.text("Carregando jogos do Game Pass…")
             activeTab == LibraryTab.GAME_PASS && gamePassProducts == null -> UiText.text("Não foi possível confirmar os jogos do Game Pass.\nAtualize o catálogo nas configurações.")
-            activeTab == LibraryTab.GAME_PASS -> UiText.text("Nenhum título do Game Pass disponível nesta lista.")
             activeTab == LibraryTab.PURCHASED && !officialGalleries.containsKey(OfficialGalleryKind.PURCHASED) -> UiText.text("Carregando a lista oficial de jogos comprados compatíveis…")
             activeTab == LibraryTab.PURCHASED && gallery == null -> UiText.text("Não foi possível consultar a lista oficial.\nAtualize o catálogo nas configurações.")
+            genre != null -> UiText.text("Nenhum jogo disponível nesta categoria.")
+            activeTab == LibraryTab.GAME_PASS -> UiText.text("Nenhum título do Game Pass disponível nesta lista.")
             activeTab == LibraryTab.PURCHASED -> UiText.text("A galeria oficial não retornou jogos nesta região.")
             else -> UiText.text("Nenhum jogo disponível nesta categoria.")
         }
@@ -632,6 +671,8 @@ class GameDashboardView(
                 UiText.nested(if(ownershipLoading) UiText.text("Consultando as licenças da conta…") else
                     "${OwnershipFilter.UNKNOWN.label}: ${ownershipProducts().count { ownership[it]==null || ownership[it]==Ownership.UNKNOWN }}"))
             searchQuery.isNotBlank() -> UiText.text("BUSCA: {0}  •  {1} JOGOS",UiText.nested(searchQuery),UiText.nested(count))
+            genre != null ->
+                "${genre?.label} • ${UiText.text("{0} JOGOS", UiText.nested(count))}"
             activeTab == LibraryTab.PURCHASED && gallery != null && ownershipLoading ->
                 UiText.text("Consultando as licenças da conta…")
             activeTab == LibraryTab.PURCHASED && purchaseProductIds.isNotEmpty() -> {
@@ -669,11 +710,57 @@ class GameDashboardView(
     fun selectTab(tab: LibraryTab) {
         if (activeTab != tab) {
             catalogFocus.cancel()
+            val browseChanged = activeTab.hasBrowseTools || tab.hasBrowseTools
             activeTab = tab; selectedCard = null
-            if(designScene==ConsoleScene.XBOX_SERIES) { configureCardLayout();lastGeometry=0L;requestLayout() }
+            catalogGenres = emptySet()
+            updateGenreButton()
+            if (designScene == ConsoleScene.XBOX_SERIES) configureCardLayout()
+            if (browseChanged || designScene == ConsoleScene.XBOX_SERIES) {
+                lastGeometry = 0L
+                requestLayout()
+            }
             refresh(); grid.scrollToPosition(0)
         }
         updateTabs()
+    }
+    private fun bindAlphabet(value: Map<Char, Int>) {
+        if (alphabetPositions == value) return
+        alphabetPositions = value
+        alphabetRail.bind(value)
+    }
+    private fun showGenres() {
+        val tab = activeTab
+        val selected = genre
+        val options = listOf<CatalogGenre?>(null) + CatalogGenre.entries.filter { it in catalogGenres || it == selected }
+        val dialog = ConsoleDialog(context, UiText.text("Gêneros"))
+        options.forEach { option ->
+            val label = option?.label ?: UiText.text("Todos os gêneros")
+            val row = dialog.addMenuItem((if (option == selected) "✓  " else "") + label) {
+                if (activeTab != tab) return@addMenuItem
+                if (option != selected) {
+                    if (option == null) genresByTab.remove(tab) else genresByTab[tab] = option
+                    updateGenreButton()
+                    catalogFocus.cancel()
+                    refresh()
+                    grid.scrollToPosition(0)
+                }
+                genreButton.requestFocus()
+            }
+            if (option == selected) dialog.focusFirst(row)
+        }
+        dialog.addAction(UiText.text("Voltar")) { genreButton.requestFocus() }
+        dialog.setOnCancelListener { genreButton.requestFocus() }
+        dialog.show()
+    }
+    private fun updateGenreButton() {
+        val selected = genre
+        genreButton.text = selected?.label ?: UiText.text("Gêneros")
+        genreButton.contentDescription = selected?.let { "${UiText.text("Gêneros")} • ${it.label}" }
+    }
+    private fun showAlphabet() {
+        ConsoleDialogs.menu(context, "A–Z", alphabetPositions.keys.map { letter ->
+            ConsoleAction(letter.toString()) { alphabetPositions[letter]?.let(::focusCoverAt) }
+        }, onBack = { alphabetRail.requestFocus() })
     }
     private fun updateTabs() {
         sectionTitle.text=activeTab.label
@@ -992,7 +1079,7 @@ class GameDashboardView(
         when {
             searchQuery.isNotBlank() -> setSearch("")
             playStationGrid -> closePlayStationCatalog()
-            grid.hasFocus() -> categoryFocus().requestFocus()
+            grid.hasFocus() || browseTools.hasFocus() -> categoryFocus().requestFocus()
             else -> onExit()
         }
     }
@@ -1044,6 +1131,7 @@ class GameDashboardView(
         val geometry = (w.toLong() shl 32) or h.toLong()
         if (!closed && geometry != lastGeometry && w > 0 && h > 0) {
             lastGeometry = geometry; scale = w / 1280f; layoutGeometry(w, h)
+            layoutBrowseTools(w)
             if (resumeSession != null) {
                 val buttonWidth = minOf(200*scale, w*.48f)
                 val buttonHeight = 43*scale
@@ -1059,6 +1147,29 @@ class GameDashboardView(
         }
     }
     private fun textSize(view: TextView, value: Float) = view.setTextSize(TypedValue.COMPLEX_UNIT_PX, value * scale)
+    private fun layoutBrowseTools(width: Int) {
+        val visible = activeTab.hasBrowseTools && grid.visibility == VISIBLE && homeCoverLimit() == null &&
+            (designScene != ConsoleScene.PS5 || playStationGrid)
+        browseTools.visibility = if (visible) VISIBLE else GONE
+        searchButton.nextFocusDownId = if (visible) genreButton.id else tabs.first().id
+        if (designScene == ConsoleScene.NONE || designScene == ConsoleScene.XBOX_SERIES)
+            tabs[LibraryTab.ALL.ordinal].nextFocusRightId = if (visible && activeTab == LibraryTab.ALL) genreButton.id else View.NO_ID
+        if (!visible) return
+        val layout = grid.layoutParams as LayoutParams
+        val density = resources.displayMetrics.density
+        val dockWidth = (60 * density).roundToInt()
+        val gridRight = layout.leftMargin + layout.width
+        val gap = (8 * density).roundToInt()
+        val left = minOf(gridRight + gap, width - dockWidth - gap)
+        layout.width = (left - layout.leftMargin - gap).coerceAtLeast(1)
+        grid.layoutParams = layout
+        place(browseTools, left.toFloat(), layout.topMargin.toFloat(), dockWidth.toFloat(), layout.height.toFloat())
+        val category = if (consoleBack.visibility == VISIBLE) consoleBack else categoryFocus()
+        if (consoleBack.visibility == VISIBLE) consoleBack.nextFocusRightId = genreButton.id
+        genreButton.nextFocusLeftId = category.id
+        genreButton.nextFocusUpId = searchButton.id
+        alphabetRail.nextFocusLeftId = category.id
+    }
     private fun layoutGeometry(w: Int, h: Int) {
         if (designScene != ConsoleScene.NONE) {
             layoutConsole(w,h)

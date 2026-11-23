@@ -450,6 +450,8 @@ open class MainActivity : Activity() {
         playbackDisplay.request(tv4k ?: com.xcloud.tclnative.renderer.DisplayModePolicy.preferredCadence(current,supported,fps))
     }
 
+    internal fun hasPlaybackBehindPanels() = sessionSettings != null && activeGame != null && !sessionSaved
+
     private fun renderLoginMenu() {
         if (sessionSaved) {
             playback.cancel()
@@ -667,7 +669,9 @@ open class MainActivity : Activity() {
                         .mapNotNull { it.productId?.let(com.xcloud.tclnative.catalog.GamePassCatalog::productKey) }.toSet()
                     val knownEnglish = currentGames.filter { it.englishName != null }
                         .mapNotNull { it.productId?.let(com.xcloud.tclnative.catalog.GamePassCatalog::productKey) }.toSet()
-                    catalog.hydrateOfficialGallery(gallery, known, knownEnglish) { hydrated -> withContext(Dispatchers.Main) {
+                    val knownGenres = currentGames.filter { it.genres.isNotEmpty() }
+                        .mapNotNull { it.productId?.let(com.xcloud.tclnative.catalog.GamePassCatalog::productKey) }.toSet()
+                    catalog.hydrateOfficialGallery(gallery, known, knownEnglish, knownGenres) { hydrated -> withContext(Dispatchers.Main) {
                         if(dashboard===view) view.updateOfficialGallery(hydrated)
                     } }
                 }
@@ -679,7 +683,10 @@ open class MainActivity : Activity() {
                 authenticator.loadXboxProfile().onSuccess { profile ->
                     if (dashboard === view) {
                         if (profile.xuid != null && (session.xuid == null || session.xuid == profile.xuid)) {
-                            withContext(Dispatchers.IO) { library.bindXboxAccount(profile.xuid) }
+                            withContext(Dispatchers.IO) {
+                                library.bindXboxAccount(profile.xuid)
+                                SessionOptionsStore(this@MainActivity, "xuid:${profile.xuid}", session.userHash)
+                            }
                             view.refresh(); syncHomeShortcuts()
                         }
                         view.setProfile(profile)
@@ -838,7 +845,7 @@ open class MainActivity : Activity() {
     }
     private fun settingsPanel(session: XCloudSession,onBack: () -> Unit={}): PlaybackSettingsPanel {
         var returnPage=SettingsPage.ROOT
-        val game=activeGame ?: dashboard?.selectedGame
+        val game=if (remotePlayReturn != null) null else activeGame ?: dashboard?.selectedGame
         fun back() { showSettings(session,returnPage,onBack) }
         return PlaybackSettingsPanel(this,settingsStore,
             changed = ::applyPlaybackSettings,
@@ -853,7 +860,7 @@ open class MainActivity : Activity() {
             refreshPlaytime={ dashboard?.let { refreshCloudPlaytime(it,force=true) } },
             playtimeInformation={ dashboard?.cloudPlaytimeDiagnostics() ?: CloudPlaytime().diagnostics() },
             friends={ showFriends(::back) },gameShortcut=game?.let { selected -> ({ showGameShortcut(selected,::back) }) },
-            sessionPanel=com.xcloud.tclnative.ui.dashboard.SessionOptionsPanel(this,SessionOptionsStore(this,session.libraryAccountId),session.regions,game?.titleId,game?.name,::back),
+            sessionPanel=SessionOptionsPanel(this,sessionOptionsStore(session),session.regions,game?.titleId,game?.name,::back),
             back=onBack,allowAccountChanges=activeGame==null,
             gameControls=if(activeGame==null || sessionSaved) null else ({ showGameHudSettings { showSettings(session,SettingsPage.CONTROLS,onBack) } }),
             recovery=if(activeGame==null || sessionSaved) null else ({ showTransmissionRecovery { showSettings(session,SettingsPage.DIAGNOSTICS,onBack) } }),
@@ -867,10 +874,11 @@ open class MainActivity : Activity() {
             usbSources={ listOfNotNull(usbDirect.source) },hiddenAndroid=usbDirect::ownsAndroid) { if(webrtcClient!=null) (0..3).filter { controllers.sourceFor(it)!=null }.forEach(::publishGamepad) }.show(back)
     }
     private fun showSessionOptionsMenu(session: XCloudSession,onBack: () -> Unit={ if(webrtcClient!=null) showGameMenu() else showSettings(session,SettingsPage.NETWORK) }) {
-        val game=activeGame ?: dashboard?.selectedGame
-        com.xcloud.tclnative.ui.dashboard.SessionOptionsPanel(this,SessionOptionsStore(this,session.libraryAccountId),
+        val game=if (remotePlayReturn != null) null else activeGame ?: dashboard?.selectedGame
+        SessionOptionsPanel(this,sessionOptionsStore(session),
             session.regions,game?.titleId,game?.name,onBack).show()
     }
+    private fun sessionOptionsStore(session: XCloudSession) = SessionOptionsStore(this,session.libraryAccountId,session.userHash)
     private fun showLatestReport(onBack: (() -> Unit)?=null) {
         startupReportStore.read()?.let { startup ->
             val timeline = startup.timeline
@@ -1305,9 +1313,12 @@ open class MainActivity : Activity() {
     private fun enableGameHud(): Boolean {
         if(transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) return false
         val game=activeGame ?: return false
-        if(currentTouchMode==TouchMode.NATIVE && webrtcClient?.setNativeTouchEnabled(false)!=true) {
-            Toast.makeText(this,UiText.text("Aguarde a conexão dos controles para ativar o HUD."),Toast.LENGTH_LONG).show()
-            return false
+        if (currentTouchMode == TouchMode.NATIVE) {
+            touchView.releaseInputs()
+            if (webrtcClient?.setNativeTouchEnabled(false) != true) {
+                Toast.makeText(this,UiText.text("Aguarde a conexão dos controles para ativar o HUD."),Toast.LENGTH_LONG).show()
+                return false
+            }
         }
         if(currentTouchMode!=TouchMode.VIRTUAL) {
             resetController(); currentTouchMode=TouchMode.VIRTUAL
@@ -1370,6 +1381,7 @@ open class MainActivity : Activity() {
     }
     private fun disableSessionNativeTouch() {
         if (transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE || currentTouchMode!=TouchMode.NATIVE) return
+        touchView.releaseInputs()
         if (webrtcClient?.setNativeTouchEnabled(false)==true) hideGameHud()
         else Toast.makeText(this,UiText.text("Aguarde a conexão dos controles para mudar o modo de toque."),Toast.LENGTH_LONG).show()
     }
@@ -1684,8 +1696,8 @@ open class MainActivity : Activity() {
             microphone = false, desktopInput = DesktopInputMode.OFF
         ) else playbackProfile
         sessionSettings=settings
-        val sessionOptions = if (remote) SessionOptions() else
-            currentSession?.let { SessionOptionsStore(this,it.libraryAccountId).read(titleId) } ?: SessionOptions()
+        val storedOptions = currentSession?.let { sessionOptionsStore(it).read(if (remote) null else titleId) } ?: SessionOptions()
+        val sessionOptions = if (remote) SessionOptions(locale = storedOptions.locale) else storedOptions
         sessionDesktopMode=if(settings.desktopInput==DesktopInputMode.NATIVE && !DesktopKeys.nativeSupported(game.supportedInputTypes)) {
             Toast.makeText(this,UiText.text("Este jogo não anunciou mouse e teclado nativos. Use emulação ou controle."),Toast.LENGTH_LONG).show()
             DesktopInputMode.OFF
@@ -1752,8 +1764,8 @@ open class MainActivity : Activity() {
             tracker.mediaDetails=::videoDiagnostics
             try {
                 resetController()
-                val reserveVirtualPlayer = (touchMode!=TouchMode.OFF && !preferHybrid) || sessionDesktopMode!=DesktopInputMode.OFF
-                controllers.beginSession(settings.localCoOp,reserveVirtualPlayer)
+                // The HUD and a physical pad drive player one together, including in local co-op.
+                controllers.beginSession(settings.localCoOp,sessionDesktopMode!=DesktopInputMode.OFF)
                 usbDirect.source?.let { controllers.slot(it) }
                 // A TV shortcut can start with stale or misleading Android device capabilities.
                 // Leave Android slots unassigned until input unless the catalog selected a pad.

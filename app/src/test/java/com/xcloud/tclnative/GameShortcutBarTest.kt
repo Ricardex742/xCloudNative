@@ -58,6 +58,29 @@ class GameShortcutBarTest {
 
     private fun idle() = shadowOf(Looper.getMainLooper()).idle()
 
+    @Test fun inGameBarUsesTheSameDisplayPreferencesAsTheVideoWindow() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        activity.window.attributes = activity.window.attributes.apply {
+            preferredDisplayModeId = 4
+            preferredRefreshRate = 60f
+            preferMinimalPostProcessing = true
+        }
+        val bar = GameShortcutBar(activity, emptyList(), GameShortcutBar.Position(), Rect(), {}, {})
+        try {
+            bar.show()
+            val attrs = bar.window!!.attributes
+            assertEquals(4, attrs.preferredDisplayModeId)
+            assertEquals(60f, attrs.preferredRefreshRate, 0f)
+            assertTrue(attrs.preferMinimalPostProcessing)
+            assertEquals(0, attrs.flags and LayoutParams.FLAG_DIM_BEHIND)
+            assertEquals(0, attrs.windowAnimations)
+        } finally {
+            bar.dismiss()
+            controller.pause().stop().destroy()
+        }
+    }
+
     private fun layout(view: View, insets: WindowInsets) {
         view.dispatchApplyWindowInsets(insets)
         view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),

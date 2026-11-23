@@ -14,6 +14,23 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28])
 class SessionOptionsTest {
+    @Test fun verifiedAccountRetainsLegacySettingsAndExistingOverridesAcrossLogins() {
+        val context = RuntimeEnvironment.getApplication()
+        val legacy = SessionOptionsStore(context, "account-hash")
+        legacy.set(null, SessionOptionField.LOCALE, "zh-TW")
+        legacy.set("game", SessionOptionField.BITRATE, 6000)
+        SessionOptionsStore(context, "xuid:12345").set("game", SessionOptionField.REGION, "JapanEast")
+
+        val verified = SessionOptionsStore(context, "xuid:12345", "account-hash")
+        val expected = SessionOptions(6000, "zh-TW", "JapanEast")
+        assertEquals(expected, verified.read("game"))
+        assertEquals(expected, legacy.read("game"))
+        assertEquals(SessionOptions(), SessionOptionsStore(context, "xuid:67890", "account-hash").read("game"))
+        verified.inherit("game", SessionOptionField.BITRATE)
+        assertEquals(expected.copy(maxBitrateKbps = 0), SessionOptionsStore(context, "account-hash").read("game"))
+        assertEquals(expected.copy(maxBitrateKbps = 0), SessionOptionsStore(context, "xuid:12345", "account-hash").read("game"))
+    }
+
     @Test fun changingBitrateDoesNotPinTheInheritedLanguageOrRegion() {
         val context=RuntimeEnvironment.getApplication()
         val store=SessionOptionsStore(context,"field-inheritance")

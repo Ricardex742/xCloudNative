@@ -1331,4 +1331,16 @@
     <string name="ui_e1e6926d0d8e111c" formatted="false">"Emula o analógico direito em controle/HUD. Para combinar com toque nativo Xbox, ative também o teste na categoria Giroscópio. LT/LB no toque nativo dependem de controle físico. {0}"</string>
     <string name="ui_fed5cd4b4d6225a1" formatted="false">"Ocultar controles do Guia"</string>
     <string name="ui_717bedea36fcffd9" formatted="false">"Confirmar"</string>
+    <string name="ui_2b3c410c71580e4f" formatted="false">"Gêneros"</string>
+    <string name="ui_3ac658db6cb497f4" formatted="false">"Todos os gêneros"</string>
+    <string name="ui_6d84bf7d0d0984fc" formatted="false">"Ação e aventura"</string>
+    <string name="ui_afa200615ac8b9a9" formatted="false">"Tiro"</string>
+    <string name="ui_9871087b1b184d77" formatted="false">"RPG"</string>
+    <string name="ui_0c0bbe80398cea2f" formatted="false">"Corrida"</string>
+    <string name="ui_979f5fd1bda4d2f9" formatted="false">"Esportes"</string>
+    <string name="ui_5d257075e9615993" formatted="false">"Simulação"</string>
+    <string name="ui_965a7648e4b2653a" formatted="false">"Estratégia"</string>
+    <string name="ui_19e0531220f40ceb" formatted="false">"Luta"</string>
+    <string name="ui_5d7325dd007ccc28" formatted="false">"Plataforma"</string>
+    <string name="ui_947072ee72a7269b" formatted="false">"Quebra-cabeça"</string>
 </resources>

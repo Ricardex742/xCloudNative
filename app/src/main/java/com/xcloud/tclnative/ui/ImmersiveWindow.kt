@@ -13,6 +13,18 @@ import androidx.core.view.doOnAttach
 
 /** Apply to every owned window: a focusable dialog otherwise reveals Android's system bars. */
 internal object ImmersiveWindow {
+    fun inheritPlaybackDisplay(window: Window, playback: Window) {
+        val display = playback.attributes
+        window.attributes = window.attributes.apply {
+            preferredDisplayModeId = display.preferredDisplayModeId
+            preferredRefreshRate = display.preferredRefreshRate
+            if (Build.VERSION.SDK_INT >= 30) preferMinimalPostProcessing = display.preferMinimalPostProcessing
+            windowAnimations = 0
+        }
+        window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        apply(window, edgeToEdge = true)
+    }
+
     @Suppress("DEPRECATION")
     fun apply(window: Window, edgeToEdge: Boolean = false) {
         window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
