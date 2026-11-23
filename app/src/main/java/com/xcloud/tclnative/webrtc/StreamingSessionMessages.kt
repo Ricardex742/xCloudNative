@@ -12,9 +12,10 @@ enum class XboxDisconnectReason(val wire: String,val terminal: Boolean=true) {
     NO_CLIENT("KickForNoClientConnection"),OUT_OF_TIME("KickForOutOfStreamingTime"),IDLE_WARNING("WarningForBeingIdle",false)
 }
 data class XboxServerDisconnect(val reason: XboxDisconnectReason,val hresult: Int?=null)
+data class XboxGameTime(val secondsLeft: Long?)
 class XboxServerDisconnectException(val notice: XboxServerDisconnect): IOException("SESSION_STATE: ${notice.reason.wire}")
 data class SessionMessageResult(val replies: List<ChannelMessage> = emptyList(),val disconnect: XboxServerDisconnect?=null,
-                                val titleFocused: Boolean?=null)
+                                val titleFocused: Boolean?=null,val gameTime: XboxGameTime?=null)
 
 /** SDK title activation and server lifetime messages. No game input is synthesized. */
 class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000 }) {
@@ -49,6 +50,9 @@ class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000
             trace.title(title)
             return SessionMessageResult(titleFocused = title?.opt("focused") as? Boolean)
         }
+        if (type=="Message" && target==GAME_TIME) {
+            return SessionMessageResult(gameTime=content(json)?.let(::gameTime))
+        }
         if(type!="TransactionStart" || target!=SERVER_DISCONNECT || id==null) return SessionMessageResult()
         val body=content(json)
         val reason=XboxDisconnectReason.entries.firstOrNull { it.wire==body?.optString("reason") }
@@ -63,6 +67,16 @@ class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000
     private fun content(json: JSONObject): JSONObject?=runCatching {
         when(val raw=json.opt("content")) { is JSONObject -> raw;is String -> if(raw.length<=8192) JSONObject(raw) else null;else -> null }
     }.getOrNull()
+    private fun gameTime(body: JSONObject): XboxGameTime? {
+        val active=body.opt("IsTimerActive") as? Boolean ?: return null
+        if(!active) return XboxGameTime(null)
+        val seconds=when(val value=body.opt("SecondsLeft")) {
+            is Int -> value.toLong()
+            is Long -> value
+            else -> return null
+        }
+        return if(seconds in 0L..86_400L) XboxGameTime(seconds) else null
+    }
     @Synchronized fun diagnostics()="TITLE_ACTIVATION/$activation\nSERVER_DISCONNECT/$disconnect"+
         (hresult?.let { " • HRESULT 0x"+it.toUInt().toString(16) } ?: "")+"\n"+trace.diagnostics()
     companion object {

@@ -1827,6 +1827,7 @@ open class MainActivity : Activity() {
                     throw RenderFailureException(error)
                 }
                 timeline.mark(0, PlaybackStage.RENDERER_READY)
+                val sessionTime = SessionTimeLimit()
                 var sessionStartedAtMs = 0L
                 surfaceRenderer.onFirstFrameSubmitted = { submittedAt ->
                     if (generation == playbackGeneration && recoveryState.current(0) && !firstFrame.isCompleted) {
@@ -1895,7 +1896,14 @@ open class MainActivity : Activity() {
                     microphoneAllowed=settings.microphone,outputGain=playbackSettings.audioGain,audioMode=settings.audioMode,
                     onServerDisconnect={ notice -> runOnUiThread { if(current()) failure.complete(XboxServerDisconnectException(notice)) } },
                     remotePlay=remote,
-                    onTitleFocusChanged={ focused -> runOnUiThread { if(current()) guideTouchControls.onTitleFocusChanged(focused) } }
+                    onTitleFocusChanged={ focused -> runOnUiThread { if(current()) guideTouchControls.onTitleFocusChanged(focused) } },
+                    onGameTimeChanged={ time -> runOnUiThread {
+                        if(!remote && current()) {
+                            sessionTime.updateFromXbox(time.secondsLeft,android.os.SystemClock.elapsedRealtime())
+                            if(firstFrame.isCompleted && recoveryState.phase==TransmissionRecoveryState.Phase.ACTIVE)
+                                renderSessionTime(sessionTime)
+                        }
+                    } }
                     ).also { allocatedRtc=it } }
                 }
                 var rtc=buildRtc()
@@ -1942,7 +1950,7 @@ open class MainActivity : Activity() {
                 if (touchMode == TouchMode.NATIVE) rtc.setNativeTouchEnabled(true)
                 if (!firstFrame.isCompleted) queuePanel.updateProgress("VIDEO:")
                 attempt.awaitFirstFrame(transportFailure)
-                val sessionTime = signaling.sessionTimeLimitSeconds()?.let { SessionTimeLimit(it,sessionStartedAtMs) }
+                sessionTime.startFromSessionState(signaling.sessionTimeLimitSeconds(),sessionStartedAtMs)
                 renderSessionTime(sessionTime)
                 val recovery = VideoRecoveryPolicy(compatible)
                 var visibilityEpoch = videoVisibilityEpoch
@@ -2301,12 +2309,12 @@ open class MainActivity : Activity() {
         }
     }
 
-    private fun renderSessionTime(limit: SessionTimeLimit?) {
-        if(limit==null || !activityVisible || sessionSaved) {
+    private fun renderSessionTime(limit: SessionTimeLimit) {
+        val seconds = limit.remainingSeconds(android.os.SystemClock.elapsedRealtime())
+        if(seconds==null || !activityVisible || sessionSaved) {
             sessionTimeView.visibility = View.GONE
             return
         }
-        val seconds = limit.remainingSeconds(android.os.SystemClock.elapsedRealtime())
         val time = String.format(java.util.Locale.ROOT,"%02d:%02d",seconds/60,seconds%60)
         sessionTimeView.text = UiText.text("Limite da partida · {0}",UiText.nested(time))
         sessionTimeView.visibility = View.VISIBLE

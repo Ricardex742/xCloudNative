@@ -2,11 +2,26 @@ package com.xcloud.tclnative.signaling
 
 import org.json.JSONObject
 
-internal class SessionTimeLimit(durationSeconds: Long, startedAtMs: Long) {
-    private val deadlineMs = startedAtMs + durationSeconds * 1_000L
+internal class SessionTimeLimit {
+    private var deadlineMs: Long? = null
+    private var receivedTimer = false
     private var reminded = false
 
-    fun remainingSeconds(nowMs: Long): Long = (deadlineMs - nowMs).coerceAtLeast(0L).let { (it + 999L) / 1_000L }
+    fun startFromSessionState(durationSeconds: Long?, startedAtMs: Long) {
+        if (!receivedTimer && durationSeconds != null) setDeadline(durationSeconds,startedAtMs)
+    }
+
+    fun updateFromXbox(secondsLeft: Long?, nowMs: Long) {
+        receivedTimer = true
+        setDeadline(secondsLeft,nowMs)
+    }
+
+    private fun setDeadline(seconds: Long?, nowMs: Long) {
+        deadlineMs = seconds?.let { nowMs + it * 1_000L }
+    }
+
+    fun remainingSeconds(nowMs: Long): Long? =
+        deadlineMs?.let { (it - nowMs).coerceAtLeast(0L) }?.let { (it + 999L) / 1_000L }
 
     fun shouldWarn(remainingSeconds: Long): Boolean {
         if (reminded || remainingSeconds !in 1..300) return false
