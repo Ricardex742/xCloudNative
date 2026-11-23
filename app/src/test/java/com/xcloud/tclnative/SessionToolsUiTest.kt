@@ -31,11 +31,12 @@ class SessionToolsUiTest {
         activity.setContentView(notice)
         layout(notice)
         try {
-            val playtime = com.xcloud.tclnative.catalog.CloudPlaytime(com.xcloud.tclnative.catalog.CloudPlaytimeStatus.UNLIMITED)
-            notice.show(null, playtime)
-            assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("ilimitado") })
-            notice.update(3_661, playtime)
-            assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("1:01:01") })
+            notice.show(null)
+            assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("Tempo da sessão não informado") })
+            for ((seconds, expected) in listOf(1800L to "30 min", 7200L to "2 h", 12000L to "3 h 20 min")) {
+                notice.update(seconds)
+                assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString() == "Tempo restante na sessão: $expected" })
+            }
             shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(4_999))
             assertEquals(View.VISIBLE, notice.visibility)
             shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1))

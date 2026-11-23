@@ -79,7 +79,6 @@ class DashboardNavigationRegressionTest {
             tap(cover, MotionEvent.ACTION_CANCEL)
             assertTrue(played.isEmpty())
             tap(cover)
-            confirmGameDetailsPlay()
             assertEquals(listOf("NAV-1"), played)
             assertTrue(cover.isFocusableInTouchMode)
 
@@ -141,7 +140,9 @@ class DashboardNavigationRegressionTest {
             repeat(8) { v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT)) }
             layout(v);shortcut=null
             val card=grid(v).findViewHolderForAdapterPosition(8)!!.itemView
-            assertTrue(card.performLongClick());assertEquals("NAV-8",shortcut);assertEquals(0,plays)
+            assertTrue(card.performLongClick());assertNull(shortcut);assertEquals(0,plays)
+            currentGameDetails().panel.findViewWithTag<View>("game-details-shortcut").performClick()
+            assertEquals("NAV-8",shortcut);assertEquals(0,plays)
         } finally { v.close();c.pause().stop().destroy() }
     }
     @Test fun downReachesTheThirdRowAndKeepsTheTabWhenCoversAreOffScreen() {

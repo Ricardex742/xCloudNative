@@ -117,12 +117,16 @@ class AppearanceUiTest {
             choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Tema do aplicativo")
             val options=ShadowDialog.getLatestDialog() as ConsoleDialog
             capture(options,"theme-picker")
-            assertEquals(UiTheme.entries.size,all(options.body).filterIsInstance<TextView>().count { it.isClickable })
+            val entries = all(options.body).filterIsInstance<TextView>().filter { it.isClickable }.map { it.text.toString() }
+            assertEquals(9, entries.size)
+            assertEquals(1, entries.count { it.contains("PlayStation 4") })
+            assertEquals(1, entries.count { it.contains("PlayStation 5") })
+            assertFalse(entries.any { it.contains("Noturno") || it.contains("Prata Platina") })
             assertEquals(UiTheme.GREEN,AppearanceSettingsStore(a).read())
             options.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
             shadowOf(Looper.getMainLooper()).idle()
             assertEquals(SettingsPage.APPEARANCE,pages.last());assertEquals(UiTheme.GREEN,AppearanceSettingsStore(a).read())
-            choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Tema do aplicativo")
+            choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Cores")
             choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Prata Platina")
             assertEquals(UiTheme.PLATINUM_SILVER,AppearanceSettingsStore(a).read())
             assertEquals(UiTheme.PLATINUM_SILVER,DashboardTheme.palette.theme)
@@ -130,6 +134,22 @@ class AppearanceUiTest {
             DashboardTheme.apply(a,UiTheme.GREEN)
             DashboardTheme.install(a)
             assertEquals(UiTheme.PLATINUM_SILVER,DashboardTheme.palette.theme)
+            ShadowDialog.getLatestDialog().dismiss()
+            a.getSharedPreferences("app_appearance", android.content.Context.MODE_PRIVATE).edit()
+                .putString("theme", "PS4_NIGHT").commit()
+            DashboardTheme.install(a)
+            choose(panel.showAppearance(),"Tema do aplicativo")
+            choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"PlayStation 5")
+            assertEquals(UiTheme.PS5,AppearanceSettingsStore(a).read())
+            choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Cores")
+            val colors = ShadowDialog.getLatestDialog() as ConsoleDialog
+            assertEquals(2, all(colors.body).filterIsInstance<TextView>().count { it.isClickable })
+            choose(colors,"Noturno")
+            assertEquals(UiTheme.PS5_NIGHT,AppearanceSettingsStore(a).read())
+            choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Tema do aplicativo")
+            choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"PlayStation 4")
+            assertEquals(UiTheme.PS4_NIGHT,AppearanceSettingsStore(a).read())
+            assertEquals(UiTheme.PS4_NIGHT,DashboardTheme.palette.theme)
         } finally { controller.pause().stop().destroy() }
     }
 

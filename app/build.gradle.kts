@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 134
-        versionName = "0.41.21-game-details"
+        versionCode = 135
+        versionName = "0.41.22-details-layout"
     }
 
     signingConfigs {

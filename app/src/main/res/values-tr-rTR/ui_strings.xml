@@ -1362,10 +1362,17 @@
     <string name="ui_a2e1f978ce089e42" formatted="false">"Resmî Xbox dokunmatik kontrolleri yükleniyor…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"Resmî HUD düzenini düzenle"</string>
     <string name="ui_452597b2a054daef">"Oturumunuz başladı"</string>
-    <string name="ui_ad67e39384589ca1">"Kalan oturum süresi: {0}"</string>
+    <string name="ui_c6df8b096e900c77">"Kalan oturum süresi: {0} dk"</string>
     <string name="ui_7d959d4dfdf8dd04">"Xbox Cloud Gaming’de kullanılamaz"</string>
     <string name="ui_c99dea26471a5ea7">"Oyun ayrıntıları yükleniyor…"</string>
     <string name="ui_05ba0638071ec56a">"Mağaza ayrıntıları kullanılamıyor."</string>
     <string name="ui_d07a340ad020541f">"Yaş derecelendirmesi: {0}"</string>
     <string name="ui_baef6be64b483ab9">"Ekran görüntüleri"</string>
+    <string name="ui_46332f9d834ef8dd">"Açıklama"</string>
+    <string name="ui_c3083b82a1cee53b">"Oturum süresi bildirilmedi"</string>
+    <string name="ui_7bff6181add2231b">"Renkler"</string>
+    <string name="ui_8b8dfc312e7a1a17">"Renkler: {0}"</string>
+    <string name="ui_f94cbdab8f3a9694">"Gece"</string>
+    <string name="ui_e37b8e0d5b62b71c">"Kalan oturum süresi: {0} sa"</string>
+    <string name="ui_bdce1060812213d6">"Kalan oturum süresi: {0} sa {1} dk"</string>
 </resources>

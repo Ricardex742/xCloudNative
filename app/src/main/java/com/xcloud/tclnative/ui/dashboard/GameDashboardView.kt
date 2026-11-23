@@ -1127,6 +1127,12 @@ class GameDashboardView(
         val game=card.playableGame()
         if(game!=null) onPlay(game) else card.product?.let(onPlayProduct)
     }
+    private fun showCoverDetails(cover: GameCard): Boolean {
+        val card = adapter.items.getOrNull(grid.getChildAdapterPosition(cover)) ?: return false
+        updateSelected(card)
+        showGameDetails(card)
+        return true
+    }
     private fun showGameDetails(card: CatalogCard) {
         if (closed || gameDetails?.isShowing == true) return
         val game = card.playableGame()
@@ -1137,7 +1143,7 @@ class GameDashboardView(
         dialog.setOnDismissListener {
             if (gameDetails === dialog) {
                 gameDetails = null
-                if (!closed && !artworkPaused) restoreFocus()
+                if (!closed && !artworkPaused) restoreFocus(refreshCatalog = false)
             }
         }
         dialog.show()
@@ -1195,7 +1201,10 @@ class GameDashboardView(
             KeyEvent.KEYCODE_BUTTON_Y -> toggleSelectedFavorite()
             KeyEvent.KEYCODE_BUTTON_START -> if(designScene.playStation) onOptions() else openGuideOrOptions()
             KeyEvent.KEYCODE_BUTTON_SELECT -> selectedGame?.let { onGameShortcut?.invoke(it) }
-            KeyEvent.KEYCODE_BUTTON_A -> findFocus()?.performClick()
+            KeyEvent.KEYCODE_BUTTON_A -> {
+                val focused = findFocus()
+                if (focused is GameCard) showCoverDetails(focused) else focused?.performClick()
+            }
             KeyEvent.KEYCODE_BUTTON_B -> back()
         }
         return true
@@ -2235,12 +2244,9 @@ class GameDashboardView(
             // Holders from the previous snapshot can still exist until the next layout.
             // Resolve the current position/binding instead of launching the captured old card.
             card.setOnClickListener {
-                items.getOrNull(holder.bindingAdapterPosition)?.let { current -> updateSelected(current); showGameDetails(current) }
+                items.getOrNull(holder.bindingAdapterPosition)?.let { current -> updateSelected(current); playCard(current) }
             }
-            card.setOnLongClickListener {
-                val game=items.getOrNull(holder.bindingAdapterPosition)?.playableGame()
-                if(game!=null && onGameShortcut!=null) { onGameShortcut.invoke(game);true } else false
-            }
+            card.setOnLongClickListener { showCoverDetails(card) }
         }
         override fun onBindViewHolder(holder: CoverHolder, position: Int, payloads: MutableList<Any>) {
             when {
@@ -2259,6 +2265,23 @@ class GameDashboardView(
     private class CoverHolder(val card: GameCard) : RecyclerView.ViewHolder(card)
     private inner class GameCard(context: Context) : FrameLayout(context) {
         override fun onTouchEvent(event: MotionEvent) = dispatchPhoneTouch(event) { super.onTouchEvent(event) }
+        private fun detailsKey(keyCode: Int) = keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+            keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
+        override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+            if (isEnabled && detailsKey(keyCode)) {
+                isPressed = true
+                return true
+            }
+            return super.onKeyDown(keyCode, event)
+        }
+        override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+            if (isPressed && detailsKey(keyCode)) {
+                isPressed = false
+                if (!event.isCanceled) showCoverDetails(this)
+                return true
+            }
+            return super.onKeyUp(keyCode, event)
+        }
         private val cover = FrameLayout(context).apply {
             background = DashboardTheme.gradient(GradientDrawable.Orientation.TL_BR, arrayOf(UiColor.COVER_TOP, UiColor.COVER_BOTTOM))
                 .apply { cornerRadius = 7*scale }

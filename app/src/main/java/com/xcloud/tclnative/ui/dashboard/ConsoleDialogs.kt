@@ -21,6 +21,8 @@ import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -56,8 +58,15 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val screenHeight = activity?.window?.decorView?.height?.takeIf { it > 0 }
         ?: context.resources.displayMetrics.heightPixels
     private val phone=skin.scene.playStation && consolePhone(context,screenWidth,screenHeight)
-    val scale = if (compactNetwork) context.resources.displayMetrics.density else
-        (if(skin.enabled) consoleReferenceScale(screenWidth, screenHeight) else screenWidth/1280f).coerceAtLeast(if(skin.scene.playStation) .5f else maxOf(.5f,context.resources.displayMetrics.density*.65f))
+    internal val wideDetails = gameDetails && screenWidth > screenHeight &&
+        screenWidth >= 560 * context.resources.displayMetrics.density
+    val scale = when {
+        compactNetwork -> context.resources.displayMetrics.density
+        wideDetails -> minOf(screenWidth/1280f, screenHeight/650f).coerceAtLeast(.65f)
+        gameDetails -> context.resources.displayMetrics.density
+        else -> (if(skin.enabled) consoleReferenceScale(screenWidth, screenHeight) else screenWidth/1280f)
+            .coerceAtLeast(if(skin.scene.playStation) .5f else maxOf(.5f,context.resources.displayMetrics.density*.65f))
+    }
     val panel: LinearLayout = object : LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -69,9 +78,18 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         }
     }.apply {
         orientation = LinearLayout.VERTICAL
-        background = if(skin.enabled) skin.background() else if(remotePlayPage) DashboardBackground() else DashboardTheme.panel(16*scale)
+        background = when {
+            gameDetails -> null
+            skin.enabled -> skin.background()
+            remotePlayPage -> DashboardBackground()
+            else -> DashboardTheme.panel(16*scale)
+        }
         if (compactNetwork) setPadding(px(14),px(4),px(8),px(10))
-        else if(remotePlayPage || gameDetails) setPadding(px(28),px(16),px(28),px(16))
+        else if(gameDetails) {
+            val side = px(if (wideDetails) 38 else 16)
+            setPadding(side, px(18), side, px(18))
+        }
+        else if(remotePlayPage) setPadding(px(28),px(16),px(28),px(16))
         else setPadding(px(if(fullScreen) 64 else 32), px(if(fullScreen) 32 else 26), px(if(fullScreen) 64 else 32), px(if(phone) 20 else 26))
     }
     val body = object: LinearLayout(context) {
@@ -91,8 +109,28 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         }
         overScrollMode = View.OVER_SCROLL_NEVER
         DashboardTheme.customFocus(this)
-        addView(body, ViewGroup.LayoutParams(-1, -2))
+        if (!wideDetails) addView(body, ViewGroup.LayoutParams(-1, -2))
     }
+    internal val detailsBackdrop: ImageView? = if (gameDetails) FixedArtworkView(context).apply {
+        scaleType = ImageView.ScaleType.CENTER_CROP
+        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+    } else null
+    internal val detailsPublisher: TextView? = if (gameDetails) text("", if (wideDetails) 21 else 15, color = 0xffc7dbd7.toInt()).apply {
+        visibility = View.GONE
+        maxLines = 2
+        ellipsize = android.text.TextUtils.TruncateAt.END
+    } else null
+    internal val detailsRating: TextView? = if (gameDetails) text("", if (wideDetails) 18 else 14, true).apply {
+        visibility = View.GONE
+        maxWidth = px(224)
+        maxLines = 2
+        background = GradientDrawable().apply {
+            setColor(0xff263443.toInt())
+            cornerRadius = px(10).toFloat()
+            setStroke(px(1).coerceAtLeast(1), 0xff586e81.toInt())
+        }
+        setPadding(px(12),px(8),px(12),px(8))
+    } else null
     private var initialFocus: View? = null
     private var explicitFocus=false
     private val focusKey=focusHistory[navigationContext]?.get(heading)
@@ -124,7 +162,17 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         activity?.let(::setOwnerActivity)
         val headingContent=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
-        if (remotePlayPage || gameDetails) {
+        if (gameDetails) {
+            headingContent.addView(text(heading,if(wideDetails) 39 else 27,true).apply {
+                maxLines=2
+                ellipsize=android.text.TextUtils.TruncateAt.END
+                androidx.core.view.ViewCompat.setAccessibilityHeading(this, true)
+            },LinearLayout.LayoutParams(-1,-2))
+            detailsPublisher?.let { headingContent.addView(it,LinearLayout.LayoutParams(-1,-2).apply { topMargin=px(4) }) }
+            if (!wideDetails) detailsRating?.let {
+                headingContent.addView(it,LinearLayout.LayoutParams(-2,-2).apply { topMargin=px(8) })
+            }
+        } else if (remotePlayPage) {
             headingContent.addView(text(heading,27,true).apply {
                 maxLines=2
                 gravity=Gravity.CENTER_VERTICAL
@@ -165,23 +213,47 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             gravity=if(sessionSidebar || compactNetwork) Gravity.CENTER_VERTICAL else Gravity.TOP
         }
         header.addView(headingContent,LinearLayout.LayoutParams(0,-2,1f))
+        if (wideDetails) detailsRating?.let {
+            header.addView(it,LinearLayout.LayoutParams(-2,-2).apply { gravity=Gravity.CENTER_VERTICAL; marginStart=px(20) })
+        }
         val close=keyButton("×") { closePanels() }.apply {
             tag="close-settings"
-            if(skin.scene.playStation) background=ConsoleControlPlate(skin.scene,ConsoleControl.TAB)
+            if(gameDetails) {
+                setTextColor(Color.WHITE)
+                background = FocusPlate(px(12).toFloat()).also { plate ->
+                    setOnFocusChangeListener { _, focused -> plate.highlighted = focused }
+                }
+            } else if(skin.scene.playStation) background=ConsoleControlPlate(skin.scene,ConsoleControl.TAB)
             contentDescription=if (remotePlayPage || gameDetails) UiText.text("Fechar") else UiText.text("Fechar ajustes e voltar")
             if(compactNetwork) textSize=24f
             else if(skin.scene.playStation) setTextSize(TypedValue.COMPLEX_UNIT_PX,28*scale) else setTextSize(TypedValue.COMPLEX_UNIT_SP,28f)
             setPadding(0,0,0,0)
         }
-        val closeSize=if(skin.scene.playStation && !sessionSidebar && !compactNetwork) px(48) else touchSize()
+        val closeSize=if(!gameDetails && skin.scene.playStation && !sessionSidebar && !compactNetwork) px(48) else touchSize()
         header.addView(close,LinearLayout.LayoutParams(closeSize,closeSize).apply { marginStart=px(if(compactNetwork) 4 else 10) })
         if(compactNetwork) focusFirst(close)
         panel.addView(header,LinearLayout.LayoutParams(-1,-2).apply { if(remotePlayPage || gameDetails) bottomMargin=px(16) })
-        panel.addView(scroll, LinearLayout.LayoutParams(-1, -2, 1f))
-        panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(if(compactNetwork || remotePlayPage) 0 else 22) })
+        panel.addView(if (wideDetails) body else scroll, LinearLayout.LayoutParams(-1, if (gameDetails) 0 else -2, 1f))
+        panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply {
+            topMargin = px(when {
+                compactNetwork || remotePlayPage -> 0
+                gameDetails -> 14
+                else -> 22
+            })
+        })
         if(skin.scene.playStation) ConsoleHitTargets.install(panel,listOf(close))
         if(!compactNetwork) ImmersiveWindow.protectContent(panel,avoidKeyboard=fullScreen)
-        setContentView(panel)
+        if (detailsBackdrop == null) setContentView(panel)
+        else setContentView(FrameLayout(context).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                intArrayOf(DashboardTheme.color(UiColor.BACKGROUND_END), 0xff111827.toInt(), 0xff141622.toInt()))
+            addView(detailsBackdrop, FrameLayout.LayoutParams(-1, -1))
+            addView(View(context).apply {
+                background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(0xbb101723.toInt(), 0xbb141a2a.toInt(), 0xf50e1520.toInt()))
+            }, FrameLayout.LayoutParams(-1, -1))
+            addView(panel, FrameLayout.LayoutParams(-1, -1))
+        })
         setOnKeyListener { _, key, event ->
             if(shortcut?.invoke(event)==true) true else when (key) {
                 KeyEvent.KEYCODE_BUTTON_X -> {
@@ -196,7 +268,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                     if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) window?.currentFocus?.performClick()
                     true
                 }
-                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> if (gameDetails) {
+                KeyEvent.KEYCODE_DPAD_UP, KeyEvent.KEYCODE_DPAD_DOWN -> if (gameDetails && !wideDetails) {
                     if (event.action == KeyEvent.ACTION_DOWN) {
                         val direction = if (key == KeyEvent.KEYCODE_DPAD_UP) -1 else 1
                         scroll.smoothScrollBy(0, direction * maxOf(scroll.height / 2, touchSize()))
@@ -255,7 +327,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     fun px(value: Int) = (value*scale).roundToInt()
     fun text(value: String, size: Int = 22, heavy: Boolean = false, color: Int = Color.WHITE) = com.xcloud.tclnative.i18n.LocalizedTextView(context).apply {
         text=value; typeface=if(skin.enabled) skin.font(heavy) else DashboardTheme.font(context, heavy); includeFontPadding=false
-        setTextColor(if(skin.enabled) skin.textColor(color) else color); setTextSize(TypedValue.COMPLEX_UNIT_PX, size*scale)
+        setTextColor(if(skin.enabled && !gameDetails) skin.textColor(color) else color); setTextSize(TypedValue.COMPLEX_UNIT_PX, size*scale)
     }
     fun focusFirst(view: View) { initialFocus = view;explicitFocus=true }
     internal fun keyButton(label: String,action: () -> Unit): TextView = DashboardTheme.button(context,label,scale,action).apply {
@@ -272,9 +344,36 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             button.setTextSize(TypedValue.COMPLEX_UNIT_PX,21*scale)
             button.setPadding(px(15),px(8),px(15),px(8));button.minimumHeight=px(58)
         }
-        val compactBack=fullScreen && label==UiText.text("Voltar")
-        actions.addView(button, LinearLayout.LayoutParams(if(compactBack) px(170) else 0, if(phone) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(if(ps4Guide) 80 else 58),touchSize()), if(compactBack) 0f else 1f).apply {
-            if (actions.childCount > 1) marginStart = px(10)
+        if (gameDetails) {
+            button.setTextColor(Color.WHITE)
+            button.setTextSize(TypedValue.COMPLEX_UNIT_PX, (if (wideDetails) 20 else 14) * scale)
+            button.setPadding(px(12), px(8), px(12), px(8))
+            val plate = android.graphics.drawable.StateListDrawable().apply {
+                fun state(color: Int, focused: Boolean) = GradientDrawable().apply {
+                    setColor(color)
+                    cornerRadius = px(12).toFloat()
+                    setStroke(px(if (focused) 2 else 1).coerceAtLeast(1),
+                        if (focused) Color.WHITE else 0xff64768c.toInt())
+                }
+                val primary = actions.childCount == 0 && dismissOnClick
+                addState(intArrayOf(android.R.attr.state_focused), state(if (primary) 0xff276552.toInt() else 0xff344460.toInt(), true))
+                addState(intArrayOf(), state(if (primary) 0xff1c4b3e.toInt() else 0xff253047.toInt(), false))
+            }
+            button.background = plate
+            button.onFocusChangeListener = null
+        }
+        val fixedWidth = when {
+            wideDetails -> px(224)
+            !gameDetails && fullScreen && label==UiText.text("Voltar") -> px(170)
+            else -> 0
+        }
+        val actionHeight = when {
+            gameDetails -> maxOf(px(52), touchSize())
+            phone -> ViewGroup.LayoutParams.WRAP_CONTENT
+            else -> maxOf(px(if(ps4Guide) 80 else 58),touchSize())
+        }
+        actions.addView(button, LinearLayout.LayoutParams(fixedWidth, actionHeight, if(fixedWidth > 0) 0f else 1f).apply {
+            if (actions.childCount >= (if (gameDetails) 1 else 2)) marginStart = px(10)
         })
         if (initialFocus == null) initialFocus = button
         if(phone) ConsoleHitTargets.install(actions,(0 until actions.childCount).map { actions.getChildAt(it) })

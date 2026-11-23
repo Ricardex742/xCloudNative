@@ -1362,10 +1362,17 @@
     <string name="ui_a2e1f978ce089e42" formatted="false">"공식 Xbox 터치 컨트롤을 불러오는 중…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"공식 HUD 편집"</string>
     <string name="ui_452597b2a054daef">"세션이 시작되었습니다"</string>
-    <string name="ui_ad67e39384589ca1">"남은 세션 시간: {0}"</string>
+    <string name="ui_c6df8b096e900c77">"남은 세션 시간: {0}분"</string>
     <string name="ui_7d959d4dfdf8dd04">"Xbox Cloud Gaming에서 이용할 수 없음"</string>
     <string name="ui_c99dea26471a5ea7">"게임 정보 로드 중…"</string>
     <string name="ui_05ba0638071ec56a">"스토어 정보를 표시할 수 없습니다."</string>
     <string name="ui_d07a340ad020541f">"연령 등급: {0}"</string>
     <string name="ui_baef6be64b483ab9">"스크린샷"</string>
+    <string name="ui_46332f9d834ef8dd">"설명"</string>
+    <string name="ui_c3083b82a1cee53b">"세션의 남은 시간이 제공되지 않았습니다"</string>
+    <string name="ui_7bff6181add2231b">"색상"</string>
+    <string name="ui_8b8dfc312e7a1a17">"색상: {0}"</string>
+    <string name="ui_f94cbdab8f3a9694">"야간"</string>
+    <string name="ui_e37b8e0d5b62b71c">"남은 세션 시간: {0}시간"</string>
+    <string name="ui_bdce1060812213d6">"남은 세션 시간: {0}시간 {1}분"</string>
 </resources>

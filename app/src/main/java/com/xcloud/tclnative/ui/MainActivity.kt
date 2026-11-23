@@ -2037,8 +2037,7 @@ open class MainActivity : Activity() {
                 attempt.awaitFirstFrame(transportFailure)
                 sessionTime.startFromSessionState(signaling.sessionTimeLimitSeconds(),sessionStartedAtMs)
                 if (!remote && activityVisible && transmissionReady && gameplayInputEnabled()) {
-                    sessionStartNotice.show(sessionTime.remainingSeconds(android.os.SystemClock.elapsedRealtime()),
-                        dashboard?.cloudPlaytimeSnapshot() ?: CloudPlaytime())
+                    sessionStartNotice.show(sessionTime.remainingSeconds(android.os.SystemClock.elapsedRealtime()))
                 }
                 renderSessionTime(sessionTime)
                 val recovery = VideoRecoveryPolicy(compatible)
@@ -2441,7 +2440,7 @@ open class MainActivity : Activity() {
             hideSessionTimeNotice()
             return
         }
-        sessionStartNotice.update(seconds, dashboard?.cloudPlaytimeSnapshot() ?: CloudPlaytime())
+        sessionStartNotice.update(seconds)
         if (seconds == null || seconds == 0L) {
             hideSessionTimeWarning()
             return

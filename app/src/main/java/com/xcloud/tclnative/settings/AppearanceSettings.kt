@@ -33,13 +33,43 @@ enum class UiTheme(private val sourceLabel: String,val accent: Int,val hue: Floa
     PS5_NIGHT("PlayStation 5 — Noturno",0xffe3e8f0.toInt(),220f,.12f,ConsoleScene.PS5);
     val label: String get()=UiText.text(sourceLabel)
     val night: Boolean get()=this==PS4_NIGHT || this==PS5_NIGHT
+    val layout: UiTheme get()=when(scene) {
+        ConsoleScene.NONE -> GREEN
+        ConsoleScene.PS4 -> PS4
+        ConsoleScene.PS5 -> PS5
+        else -> this
+    }
+    val layoutLabel: String get()=if(scene==ConsoleScene.NONE) "xCLOUD" else layout.label
+    val colorLabel: String get()=when {
+        night -> UiText.text("Noturno")
+        scene.playStation -> UiText.text("Padrão")
+        else -> label
+    }
+    val colors: List<UiTheme> get()=entries.filter { it.layout==layout }
+
+    companion object {
+        val layouts get()=entries.filter { it.layout==it }
+    }
 }
 
 /** Interface preference only: independent of account, stream profile and video filters. */
 class AppearanceSettingsStore(context: Context) {
     private val prefs=context.getSharedPreferences("app_appearance",Context.MODE_PRIVATE)
     fun read(): UiTheme = UiTheme.entries.firstOrNull { it.name==prefs.getString("theme",null) } ?: UiTheme.GREEN
-    fun save(theme: UiTheme) { prefs.edit().putString("theme",theme.name).apply() }
+    fun save(theme: UiTheme) {
+        val previous=read()
+        prefs.edit()
+            .putString("color_${previous.layout.name}",previous.name)
+            .putString("color_${theme.layout.name}",theme.name)
+            .putString("theme",theme.name).apply()
+    }
+    fun selectLayout(theme: UiTheme): UiTheme {
+        val base=theme.layout
+        val current=read()
+        if(current.layout==base) return current
+        val saved=prefs.getString("color_${base.name}",null)
+        return base.colors.firstOrNull { it.name==saved }?.also(::save) ?: base.also(::save)
+    }
     fun motion(): BackgroundMotion = BackgroundMotion.entries.firstOrNull { it.name==prefs.getString("background_motion",null) } ?: BackgroundMotion.AUTO
     fun saveMotion(mode: BackgroundMotion) { prefs.edit().putString("background_motion",mode.name).apply() }
 }

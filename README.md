@@ -28,8 +28,8 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - Favoritos separados por conta e salvos no aparelho.
 - **Game Pass**, **Transmita seu jogo**, **Adições recentes** e **Todos os jogos**.
 - Catálogos oficiais com nomes, capas e identificação das edições.
-- Toque numa capa ou pressione **A** sobre ela para abrir os detalhes. A tela mostra editora, descrição, classificação indicativa brasileira e capturas quando disponíveis na loja, com ações para jogar na nuvem e criar um atalho para o título.
-- Ao iniciar uma partida na nuvem, um aviso de cinco segundos mostra o tempo restante informado pelo Xbox. O limite da sessão tem prioridade sobre o saldo de horas da conta.
+- Segure uma capa ou pressione **A** sobre ela para abrir os detalhes. A tela mostra editora, descrição, classificação indicativa brasileira e capturas quando disponíveis na loja, com ações para jogar na nuvem e criar um atalho para o título. Um toque curto na capa inicia o jogo diretamente.
+- Ao iniciar uma partida na nuvem, um aviso de cinco segundos mostra quantos minutos restam até o fim da sessão quando o Xbox informa seu prazo.
 - Selos de Game Pass e Xbox Series X|S conforme a inclusão e otimização informadas pelo catálogo.
 - Pesquisa por nome, tolerando diferenças de acentos, pontuação e marcas.
 - Em **Pesquisa › Jogos**, filtro experimental por **Adquiridos**, **Não adquiridos** ou **Propriedade não confirmada**, usando as licenças da conta. O filtro se aplica ao catálogo disponível no app; acesso por assinatura não comprova propriedade. Consultas incompletas ou indisponíveis ficam sem confirmação.
@@ -54,8 +54,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 
 ## Aparência e temas
 
-- **Verde** como tema padrão, preservando a identidade original do app.
-- Seis temas opcionais: **Azul Cibernético**, **Vermelho Vulcânico**, **Dourado Prestígio**, **Laranja Industrial**, **Roxo Galáxia** e **Prata Platina**.
+- O tema **xCLOUD** usa **Verde** por padrão. Em **Cores**, oferece **Azul Cibernético**, **Vermelho Vulcânico**, **Dourado Prestígio**, **Laranja Industrial**, **Roxo Galáxia** e **Prata Platina**.
 - Dashboards nativos opcionais, com composição e navegação próprias:
   - **Xbox 360 — Blades de 2005:** lâminas metálicas curvas, abas com títulos destacados, painel claro, pesquisa acima do perfil e lista de jogos.
   - **Xbox 360 — NXE de 2008:** navegação vertical, cartões em perspectiva, horizonte e piso reflexivo.
@@ -76,7 +75,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - **Troca automática de fundos** ao abrir o aplicativo, a cada hora, diariamente ou semanalmente, usando favoritos ou uma coleção. A escolha permanece salva; a troca pausa durante a partida e é atualizada no retorno ao menu.
 - **Guia lateral opcional** à esquerda ou à direita, com perfil e atalhos do aplicativo. Na partida, reúne os ajustes e diagnósticos disponíveis. O menu central continua como padrão.
 - **Biblioteca completa em grade**, opcional no Series X|S, mantendo a Home em faixa horizontal. Os selos Game Pass e Series podem ser exibidos ou ocultados separadamente nesse tema.
-- Seleção em **Configurações › Aparência e temas › Tema do aplicativo**, por controle ou toque.
+- Escolha o layout em **Configurações › Aparência e temas › Tema do aplicativo**. Em **Cores**, você pode escolher as variantes do xCLOUD, PS4 e PS5. O app lembra a cor de cada tema.
 - Aplicação imediata e escolha salva no aparelho, inclusive ao reabrir o app.
 - Cores dos menus, catálogo, destaques e janelas; as artes e a imagem do jogo mantêm suas cores.
 

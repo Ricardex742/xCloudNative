@@ -6,10 +6,8 @@ import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.view.View
 import android.widget.LinearLayout
-import com.xcloud.tclnative.catalog.CloudPlaytime
 import com.xcloud.tclnative.i18n.LocalizedTextView
 import com.xcloud.tclnative.i18n.UiText
-import java.util.Locale
 import kotlin.math.roundToInt
 
 internal class SessionStartNotice(context: Context) : LinearLayout(context) {
@@ -44,18 +42,22 @@ internal class SessionStartNotice(context: Context) : LinearLayout(context) {
         })
     }
 
-    fun show(seconds: Long?, playtime: CloudPlaytime) {
+    fun show(seconds: Long?) {
         removeCallbacks(dismiss)
         visibility = View.VISIBLE
-        update(seconds, playtime)
+        update(seconds)
         postDelayed(dismiss, 5_000)
     }
 
-    fun update(seconds: Long?, playtime: CloudPlaytime) {
+    fun update(seconds: Long?) {
         if (visibility != View.VISIBLE) return
-        val label = if (seconds == null) playtime.label else {
-            val duration = String.format(Locale.ROOT, "%d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
-            UiText.text("Tempo restante na sessão: {0}", UiText.nested(duration))
+        val minutes = seconds?.let { (it + 59) / 60 }
+        val label = when {
+            minutes == null -> UiText.text("Tempo da sessão não informado")
+            minutes < 60 -> UiText.text("Tempo restante na sessão: {0} min", UiText.nested(minutes))
+            minutes % 60 == 0L -> UiText.text("Tempo restante na sessão: {0} h", UiText.nested(minutes / 60))
+            else -> UiText.text("Tempo restante na sessão: {0} h {1} min",
+                UiText.nested(minutes / 60), UiText.nested(minutes % 60))
         }
         if (time.text.toString() != label) time.text = label
     }

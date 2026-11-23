@@ -71,7 +71,7 @@ class ConsolePanelOpacityTest {
             for(theme in themes) {
                 AppearanceSettingsStore(a).save(theme);DashboardTheme.apply(a,theme)
                 val settings=PlaybackSettingsPanel(a,PlaybackSettingsStore(a),{fail("Scrolling must not change playback")},{},{},{})
-                val dialog=settings.chooseTheme();measure(dialog.panel,1100,648)
+                val dialog=settings.chooseTheme();measure(dialog.panel,1100,480)
                 val scroll=all(dialog.panel).filterIsInstance<ScrollView>().single()
                 assertTrue("$theme picker must actually require scrolling",dialog.body.height>scroll.height)
                 val baseline=snapshot(dialog.panel,"${theme.name.lowercase()}-initial")

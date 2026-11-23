@@ -155,7 +155,6 @@ class ConsoleDashboardUiTest {
                 view.setSearch("33 Immortals");layout(view)
                 assertSame(adapter,grid.adapter);assertEquals(1,adapter.itemCount)
                 grid.findViewHolderForAdapterPosition(0)!!.itemView.performClick()
-                confirmGameDetailsPlay()
                 assertEquals(data[5].titleId,played.last())
             } finally { view.close();controller.pause().stop().destroy() }
         }

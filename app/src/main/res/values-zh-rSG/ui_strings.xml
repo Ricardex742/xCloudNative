@@ -1362,10 +1362,17 @@
     <string name="ui_a2e1f978ce089e42" formatted="false">"正在加载 Xbox 官方触控布局…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"编辑官方触控布局"</string>
     <string name="ui_452597b2a054daef">"你的会话已开始"</string>
-    <string name="ui_ad67e39384589ca1">"会话剩余时间：{0}"</string>
+    <string name="ui_c6df8b096e900c77">"会话剩余时间：{0} 分钟"</string>
     <string name="ui_7d959d4dfdf8dd04">"Xbox Cloud Gaming 暂不可用"</string>
     <string name="ui_c99dea26471a5ea7">"正在加载游戏详情…"</string>
     <string name="ui_05ba0638071ec56a">"无法获取商店详情。"</string>
     <string name="ui_d07a340ad020541f">"年龄分级：{0}"</string>
     <string name="ui_baef6be64b483ab9">"屏幕截图"</string>
+    <string name="ui_46332f9d834ef8dd">"说明"</string>
+    <string name="ui_c3083b82a1cee53b">"未提供会话时限"</string>
+    <string name="ui_7bff6181add2231b">"配色"</string>
+    <string name="ui_8b8dfc312e7a1a17">"配色：{0}"</string>
+    <string name="ui_f94cbdab8f3a9694">"夜间"</string>
+    <string name="ui_e37b8e0d5b62b71c">"会话剩余时间：{0} 小时"</string>
+    <string name="ui_bdce1060812213d6">"会话剩余时间：{0} 小时 {1} 分钟"</string>
 </resources>

@@ -1362,10 +1362,17 @@
     <string name="ui_a2e1f978ce089e42" formatted="false">"Загрузка официального сенсорного управления Xbox…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"Изменить официальную раскладку"</string>
     <string name="ui_452597b2a054daef">"Ваш сеанс начался"</string>
-    <string name="ui_ad67e39384589ca1">"Оставшееся время сеанса: {0}"</string>
+    <string name="ui_c6df8b096e900c77">"Оставшееся время сеанса: {0} мин"</string>
     <string name="ui_7d959d4dfdf8dd04">"Недоступно в Xbox Cloud Gaming"</string>
     <string name="ui_c99dea26471a5ea7">"Загрузка сведений об игре…"</string>
     <string name="ui_05ba0638071ec56a">"Сведения из магазина недоступны."</string>
     <string name="ui_d07a340ad020541f">"Возрастной рейтинг: {0}"</string>
     <string name="ui_baef6be64b483ab9">"Снимки экрана"</string>
+    <string name="ui_46332f9d834ef8dd">"Описание"</string>
+    <string name="ui_c3083b82a1cee53b">"Время сеанса не указано"</string>
+    <string name="ui_7bff6181add2231b">"Цвета"</string>
+    <string name="ui_8b8dfc312e7a1a17">"Цвета: {0}"</string>
+    <string name="ui_f94cbdab8f3a9694">"Ночной"</string>
+    <string name="ui_e37b8e0d5b62b71c">"Оставшееся время сеанса: {0} ч"</string>
+    <string name="ui_bdce1060812213d6">"Оставшееся время сеанса: {0} ч {1} мин"</string>
 </resources>

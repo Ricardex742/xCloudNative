@@ -215,27 +215,66 @@ class DashboardTest {
             view.close(); controller.pause().stop().destroy()
         }
     }
-    @Test fun choosingACoverShowsDetailsAndBothActionsUseItsRealCloudId() {
+    @Test
+    @Config(qualifiers = "w1280dp-h600dp-land-mdpi")
+    fun holdingACoverShowsDetailsWithIndependentDescriptionAndGallery() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
         var played: GameTitle? = null
         var shortcut: GameTitle? = null
+        val images = com.xcloud.tclnative.ui.dashboard.ArtworkBackend.get(activity)
+        fun fixture(name: String, file: String, width: Int, height: Int): String {
+            val url = "https://example.test/$name"
+            val size = images.policy.sizeFor(width, height)
+            val original = javaClass.getResourceAsStream("/console-demo/$file")!!.use { android.graphics.BitmapFactory.decodeStream(it) }
+            val fitted = size.fit(original.width, original.height)
+            val bitmap = Bitmap.createScaledBitmap(original, fitted.width, fitted.height, true)
+            if (bitmap !== original) original.recycle()
+            images.cache.put(com.xcloud.tclnative.ui.dashboard.ArtworkRequest.create(url, size.width, size.height), bitmap)
+            return url
+        }
+        val poster = fixture("poster", "forza.jpg", 384, 576)
+        val hero = fixture("hero", "forza-hero.jpg", 800, 450)
+        val previews = List(4) { i -> fixture("preview-$i", "forza-hero.jpg", 640, 360) }
+        val body = "Explore as estradas, descubra paisagens e participe de corridas. ".repeat(50)
         val view = GameDashboardView(activity, GameLibrary(activity, "selection"), { played = it }, {}, {}, {},
             onGameShortcut = { shortcut = it }, onLoadGameDetails = {
                 assertEquals("TESTGAME0260", it)
-                com.xcloud.tclnative.catalog.StoreGameDetails("Editora", "Descrição do jogo", "10", emptyList())
+                com.xcloud.tclnative.catalog.StoreGameDetails("Editora", body, "10", previews)
             })
         activity.setContentView(view)
-        view.setGames(games + (12..260).map { GameTitle("cloud-$it", "Jogo $it", "TESTGAME%04d".format(it)) })
-        layout(view)
-        view.setSearch("Jogo 260"); layout(view)
+        view.setGames(games + (12..260).map {
+            GameTitle("cloud-$it", "Jogo $it", "TESTGAME%04d".format(it), posterUrl = poster.takeIf { _ -> it == 260 },
+                heroUrl = hero.takeIf { _ -> it == 260 })
+        })
+        layout(activity.window.decorView, 1280, 600)
+        view.setSearch("Jogo 260"); layout(view, 1280, 600)
         val grid = (0 until view.childCount).map(view::getChildAt).filterIsInstance<RecyclerView>().single()
         assertEquals(1, grid.adapter!!.itemCount)
-        grid.getChildAt(0).performClick()
+        assertTrue(grid.getChildAt(0).performLongClick())
         assertNull(played)
         val details = currentGameDetails()
-        val publishView = (details.body.getChildAt(0) as android.widget.LinearLayout).getChildAt(0)
-        assertEquals("Editora", ((publishView as android.widget.LinearLayout).getChildAt(0) as TextView).text.toString())
+        val root = details.window!!.decorView
+        layout(root, 1280, 600)
+        assertEquals("Editora", details.detailsPublisher?.text.toString())
+        val description = details.body.findViewWithTag<TextView>("game-details-description")
+        val cover = details.body.findViewWithTag<View>("game-details-cover")
+        val gallery = details.body.findViewWithTag<android.widget.LinearLayout>("game-details-gallery")
+        assertTrue(details.wideDetails)
+        assertTrue(cover.width > 0 && gallery.width > cover.width)
+        assertEquals(2, gallery.childCount)
+        assertEquals(2, (gallery.getChildAt(0) as ViewGroup).childCount)
+        assertEquals(2, (gallery.getChildAt(1) as ViewGroup).childCount)
+        assertTrue(description.height > (description.parent as View).height)
+        assertTrue(gallery.height > 0)
+        val thumbnail = (gallery.getChildAt(0) as ViewGroup).getChildAt(0)
+        assertTrue(thumbnail.width > 0 && thumbnail.height > 0)
+        val bitmap = android.graphics.Bitmap.createBitmap(root.width, root.height, android.graphics.Bitmap.Config.ARGB_8888)
+        root.draw(android.graphics.Canvas(bitmap))
+        File("build/reports/dashboard/game-details-wide.png").apply { parentFile!!.mkdirs() }.outputStream().use {
+            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+        }
+        bitmap.recycle()
         details.panel.findViewWithTag<View>("game-details-shortcut").performClick()
         assertEquals("cloud-260", shortcut?.titleId)
         assertTrue(details.isShowing)

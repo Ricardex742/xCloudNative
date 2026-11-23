@@ -1362,10 +1362,17 @@
     <string name="ui_a2e1f978ce089e42" formatted="false">"Loading official Xbox touch controls…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"Edit official HUD"</string>
     <string name="ui_452597b2a054daef">"Your session has started"</string>
-    <string name="ui_ad67e39384589ca1">"Session time left: {0}"</string>
+    <string name="ui_c6df8b096e900c77">"Session time left: {0} min"</string>
     <string name="ui_7d959d4dfdf8dd04">"Unavailable on Xbox Cloud Gaming"</string>
     <string name="ui_c99dea26471a5ea7">"Loading game details…"</string>
     <string name="ui_05ba0638071ec56a">"Store details unavailable."</string>
     <string name="ui_d07a340ad020541f">"Age rating: {0}"</string>
     <string name="ui_baef6be64b483ab9">"Screenshots"</string>
+    <string name="ui_46332f9d834ef8dd">"Description"</string>
+    <string name="ui_c3083b82a1cee53b">"Session time unavailable"</string>
+    <string name="ui_7bff6181add2231b">"Colors"</string>
+    <string name="ui_8b8dfc312e7a1a17">"Colors: {0}"</string>
+    <string name="ui_f94cbdab8f3a9694">"Night"</string>
+    <string name="ui_e37b8e0d5b62b71c">"Session time left: {0} h"</string>
+    <string name="ui_bdce1060812213d6">"Session time left: {0} h {1} min"</string>
 </resources>

@@ -1362,10 +1362,17 @@
     <string name="ui_a2e1f978ce089e42" formatted="false">"Xbox の公式タッチ操作を読み込んでいます…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"公式HUDを編集"</string>
     <string name="ui_452597b2a054daef">"セッションが開始されました"</string>
-    <string name="ui_ad67e39384589ca1">"セッションの残り時間: {0}"</string>
+    <string name="ui_c6df8b096e900c77">"セッションの残り時間: {0}分"</string>
     <string name="ui_7d959d4dfdf8dd04">"Xbox Cloud Gaming では利用できません"</string>
     <string name="ui_c99dea26471a5ea7">"ゲームの詳細を読み込んでいます…"</string>
     <string name="ui_05ba0638071ec56a">"ストアの詳細を取得できません。"</string>
     <string name="ui_d07a340ad020541f">"年齢区分: {0}"</string>
     <string name="ui_baef6be64b483ab9">"スクリーンショット"</string>
+    <string name="ui_46332f9d834ef8dd">"説明"</string>
+    <string name="ui_c3083b82a1cee53b">"セッションの残り時間は不明です"</string>
+    <string name="ui_7bff6181add2231b">"カラー"</string>
+    <string name="ui_8b8dfc312e7a1a17">"カラー: {0}"</string>
+    <string name="ui_f94cbdab8f3a9694">"ナイト"</string>
+    <string name="ui_e37b8e0d5b62b71c">"セッションの残り時間: {0}時間"</string>
+    <string name="ui_bdce1060812213d6">"セッションの残り時間: {0}時間{1}分"</string>
 </resources>

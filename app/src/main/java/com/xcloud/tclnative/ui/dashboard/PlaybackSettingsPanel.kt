@@ -123,11 +123,13 @@ class PlaybackSettingsPanel(
     fun showAppearance(onBack: (() -> Unit)?=null): ConsoleDialog {
         if(onBack!=null) appearanceBack=onBack
         val appearance=AppearanceSettingsStore(context)
+        val appearanceTheme=appearance.read()
         val rows=mutableListOf(
-            ConsoleAction(UiText.text("Tema do aplicativo: {0}",UiText.nested(appearance.read().label))) { chooseTheme() }
+            ConsoleAction(UiText.text("Tema do aplicativo: {0}",UiText.nested(appearanceTheme.layoutLabel))) { chooseTheme() }
         )
-        if(appearance.read().scene!=ConsoleScene.NONE) rows+=ConsoleAction(UiText.text("Fundo dinâmico: {0}",UiText.nested(appearance.motion().label))) { chooseBackgroundMotion() }
-        if(appearance.read().scene==ConsoleScene.XBOX_SERIES) rows+=ConsoleAction(UiText.text("Personalizar Series X|S")) {
+        if(appearanceTheme.colors.size>1) rows+=ConsoleAction(UiText.text("Cores: {0}",UiText.nested(appearanceTheme.colorLabel))) { chooseColors() }
+        if(appearanceTheme.scene!=ConsoleScene.NONE) rows+=ConsoleAction(UiText.text("Fundo dinâmico: {0}",UiText.nested(appearance.motion().label))) { chooseBackgroundMotion() }
+        if(appearanceTheme.scene==ConsoleScene.XBOX_SERIES) rows+=ConsoleAction(UiText.text("Personalizar Series X|S")) {
             SeriesPersonalizationPanel(context,backgrounds) { showAppearance() }.show()
         }
         rows+=ConsoleAction(UiText.text("Idioma do aplicativo: {0}",UiText.nested(com.xcloud.tclnative.i18n.AppLanguageStore(context).read().nativeName))) {
@@ -152,25 +154,40 @@ class PlaybackSettingsPanel(
         }
     }
     fun chooseTheme(): ConsoleDialog {
-        enter(SettingsPage.APPEARANCE)
+        val preferences=AppearanceSettingsStore(context)
+        return chooseAppearanceStyle(UiText.text("Tema do aplicativo"),UiTheme.layouts,preferences.read().layout,
+            showColors=false,select=preferences::selectLayout)
+    }
+    private fun chooseColors(): ConsoleDialog {
         val preferences=AppearanceSettingsStore(context)
         val selected=preferences.read()
+        return chooseAppearanceStyle(UiText.text("Cores"),selected.colors,selected,showColors=true) {
+            it.also(preferences::save)
+        }
+    }
+    private fun chooseAppearanceStyle(
+        title: String, choices: List<UiTheme>, selected: UiTheme, showColors: Boolean, select: (UiTheme) -> UiTheme
+    ): ConsoleDialog {
+        enter(SettingsPage.APPEARANCE)
         val host=context
-        return ConsoleDialog(context,UiText.text("Tema do aplicativo")).apply {
-            body.addView(text(UiText.text("Escolha as cores dos menus, do catálogo e das janelas. Verde é o padrão. A escolha fica salva neste aparelho, é aplicada na hora e não altera as cores do jogo."),20,color=DashboardTheme.muted),
-                LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(16) })
-            UiTheme.entries.forEach { theme ->
-                val row=addMenuItem(UiText.text("{0}  ■  {1}",UiText.nested(if(theme==selected) "✓" else "○"),UiText.nested(theme.label))) {
-                    preferences.save(theme)
+        return ConsoleDialog(host,title).apply {
+            for(theme in choices) {
+                val label=if(showColors) theme.colorLabel else theme.layoutLabel
+                val selectedMark=UiText.nested(if(theme==selected) "✓" else "○")
+                val text=if(showColors) UiText.text("{0}  ■  {1}",selectedMark,UiText.nested(label))
+                    else UiText.text("{0}  {1}",selectedMark,UiText.nested(label))
+                val row=addMenuItem(text) {
+                    val applied=select(theme)
                     val root=(host as? android.app.Activity)?.findViewById<android.view.View>(android.R.id.content)
-                    DashboardTheme.apply(host,theme,root)
+                    DashboardTheme.apply(host,applied,root)
                     showAppearance()
                 }
-                row.text=android.text.SpannableString(row.text).apply {
-                    setSpan(android.text.style.ForegroundColorSpan(theme.accent),3,4,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                val swatch=row.text.indexOf('■')
+                if(showColors && swatch>=0) row.text=android.text.SpannableString(row.text).apply {
+                    setSpan(android.text.style.ForegroundColorSpan(theme.accent),swatch,swatch+1,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
                 row.isSelected=theme==selected
-                row.contentDescription=UiText.text("{0}{1}",UiText.nested(theme.label),UiText.nested(if(theme==selected) UiText.text(", selecionado") else ""))
+                row.contentDescription=UiText.text("{0}{1}",UiText.nested(label),UiText.nested(if(theme==selected) UiText.text(", selecionado") else ""))
                 if(theme==selected) focusFirst(row)
             }
             addAction(UiText.text("Voltar")) { showAppearance() };setOnCancelListener { showAppearance() };show()

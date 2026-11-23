@@ -1362,10 +1362,17 @@
     <string name="ui_a2e1f978ce089e42" formatted="false">"Caricamento dei comandi touch ufficiali di Xbox…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"Modifica HUD ufficiale"</string>
     <string name="ui_452597b2a054daef">"La tua sessione è iniziata"</string>
-    <string name="ui_ad67e39384589ca1">"Tempo rimanente della sessione: {0}"</string>
+    <string name="ui_c6df8b096e900c77">"Tempo rimanente della sessione: {0} min"</string>
     <string name="ui_7d959d4dfdf8dd04">"Non disponibile su Xbox Cloud Gaming"</string>
     <string name="ui_c99dea26471a5ea7">"Caricamento dei dettagli del gioco…"</string>
     <string name="ui_05ba0638071ec56a">"Dettagli dello Store non disponibili."</string>
     <string name="ui_d07a340ad020541f">"Classificazione per età: {0}"</string>
     <string name="ui_baef6be64b483ab9">"Screenshot"</string>
+    <string name="ui_46332f9d834ef8dd">"Descrizione"</string>
+    <string name="ui_c3083b82a1cee53b">"Durata della sessione non disponibile"</string>
+    <string name="ui_7bff6181add2231b">"Colori"</string>
+    <string name="ui_8b8dfc312e7a1a17">"Colori: {0}"</string>
+    <string name="ui_f94cbdab8f3a9694">"Notturno"</string>
+    <string name="ui_e37b8e0d5b62b71c">"Tempo rimanente della sessione: {0} h"</string>
+    <string name="ui_bdce1060812213d6">"Tempo rimanente della sessione: {0} h {1} min"</string>
 </resources>
