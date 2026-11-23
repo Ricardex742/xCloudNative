@@ -13,6 +13,7 @@ import com.xcloud.tclnative.touch.OfficialTouchStroke
 import com.xcloud.tclnative.webrtc.GamepadState
 import com.xcloud.tclnative.webrtc.TouchControl
 import com.xcloud.tclnative.webrtc.TouchKind
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /** Draws the supported visual properties from the touch package in the native overlay. */
@@ -58,16 +59,18 @@ internal class OfficialTouchSkin {
                 val y = if (left) state.leftY else state.rightY
                 stroke(style.outlineStroke, style.outlineOpacity * style.opacity, .025f)
                 canvas.drawCircle(0f, 0f, .96f, paint)
-                canvas.translate(x * .55f, y * .55f)
+                val knobRadius = (.40f * appearance.faceScale).coerceAtMost(.78f)
+                val travel = minOf(.55f, .96f - knobRadius) / maxOf(1f, hypot(x, y))
+                canvas.translate(x * travel, y * travel)
                 val alpha = style.knobOpacity * style.opacity
-                background(canvas, style.knobBackground ?: OfficialTouchBackground(color=0x66272d31), .40f, alpha)
+                background(canvas, style.knobBackground ?: OfficialTouchBackground(color=0x66272d31), knobRadius, alpha)
                 stroke(style.knobStroke, alpha, .032f)
-                canvas.drawCircle(0f, 0f, .40f, paint)
-                face(canvas, style.face, .37f, alpha)
+                canvas.drawCircle(0f, 0f, knobRadius, paint)
+                face(canvas, style.face, knobRadius * .925f, alpha)
             }
             else -> {
                 if (style.face != null) {
-                    face(canvas, style.face, .80f, style.opacity)
+                    face(canvas, style.face, (.80f * appearance.faceScale).coerceAtMost(.96f), style.opacity)
                 } else {
                     if (style.background == null) {
                         setColor(if (held) 0xb3364248.toInt() else 0x66364248, style.opacity)

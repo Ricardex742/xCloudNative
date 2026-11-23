@@ -16,6 +16,8 @@ internal sealed interface OfficialTouchLoad {
     enum class Stage { METADATA, NO_BUNDLE, REFERENCE, DISTRIBUTION, FORMAT, TIMEOUT }
 }
 
+internal data class OfficialTouchLayout(val id: String?, val controls: List<HudElement>)
+
 /** Layout and state belong to the Xbox session and survive a replacement WebRTC transport. */
 internal class OfficialTouchSession(private var enabled: Boolean) {
     private var bundle: OfficialTouchBundle? = null
@@ -76,14 +78,20 @@ internal class OfficialTouchSession(private var enabled: Boolean) {
         }
     }
 
-    fun controls(): List<HudElement>? {
+    fun controls(): List<HudElement>? = layout()?.controls
+
+    fun layout(): OfficialTouchLayout? {
         if (!enabled) return null
         val current = bundle ?: return null
-        if (hidden && !manual) return emptyList()
+        if (hidden && !manual) return OfficialTouchLayout(null, emptyList())
         val name = if (hidden) null else layoutName
-        if (name=="") return GameHud.elements(HudPreset.GAMEPAD)
-        val selected = current.controls(name,state) ?: current.controls(null,state)
-        return if (manual && selected?.isEmpty()==true) current.controls(null,state)?.takeUnless { it.isEmpty() }
+        if (name=="") return OfficialTouchLayout(null, GameHud.elements(HudPreset.GAMEPAD))
+        fun selectedLayout(id: String?) = current.controls(id, state)?.let {
+            OfficialTouchLayout(current.layoutId(id), it)
+        }
+        val selected = selectedLayout(name) ?: selectedLayout(null)
+        return if (manual && selected?.controls?.isEmpty()==true)
+            selectedLayout(null)?.takeUnless { it.controls.isEmpty() }
             else selected
     }
 

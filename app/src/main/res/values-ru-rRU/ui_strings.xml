@@ -1360,4 +1360,5 @@
     <string name="ui_a52f6fe663d36ac6" formatted="false">"Официальная раскладка Xbox недоступна в этом сеансе."</string>
     <string name="ui_fe524f1820bb0a0f" formatted="false">"До конца сеанса осталось не более 1 минуты. Сохраните прогресс в игре."</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"Загрузка официального сенсорного управления Xbox…"</string>
+    <string name="ui_ad8d356e4d3358be" formatted="false">"Изменить официальную раскладку"</string>
 </resources>

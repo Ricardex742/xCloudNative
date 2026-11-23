@@ -1360,4 +1360,5 @@
     <string name="ui_a52f6fe663d36ac6" formatted="false">"이 세션에서는 공식 Xbox 레이아웃을 사용할 수 없습니다."</string>
     <string name="ui_fe524f1820bb0a0f" formatted="false">"1분 이내에 이 세션이 종료됩니다. 게임 진행 상황을 저장하세요."</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"공식 Xbox 터치 컨트롤을 불러오는 중…"</string>
+    <string name="ui_ad8d356e4d3358be" formatted="false">"공식 HUD 편집"</string>
 </resources>

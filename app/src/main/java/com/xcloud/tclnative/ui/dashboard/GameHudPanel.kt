@@ -12,7 +12,8 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
                    private val changed: (HudSettings) -> Unit,private val edit: () -> Unit,
                    private val hide: () -> Unit,private val page: (HudPreset) -> Unit,
                    private val activate: (() -> Unit)?=null,private val nativeTouch: (() -> Unit)?=null,
-                   private val officialTouch: (() -> Unit)?=null,private val back: () -> Unit={}) {
+                   private val officialTouch: (() -> Unit)?=null,private val editOfficial: (() -> Unit)? = null,
+                   private val back: () -> Unit={}) {
     fun show(): ConsoleDialog {
         val settings=store.read(game.titleId)
         val automatic=GameHud.automatic(game.titleId,game.name)
@@ -25,6 +26,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         )
         activate?.let { actions.add(0,ConsoleAction(UiText.text("Usar controles na tela"),it)) }
         nativeTouch?.let { actions.add(0,ConsoleAction(com.xcloud.tclnative.settings.TouchMode.NATIVE.label,it)) }
+        editOfficial?.let { actions.add(0, ConsoleAction(UiText.text("Editar HUD oficial"), it)) }
         officialTouch?.let { actions.add(0,ConsoleAction(UiText.text("Usar controles oficiais do Xbox"),it)) }
         actions+=ConsoleAction(UiText.text("Ocultar automaticamente: {0}",UiText.nested(settings.autoHide.label))) {
             val dialog=ConsoleDialog(context,UiText.text("Ocultação automática do controle virtual"))

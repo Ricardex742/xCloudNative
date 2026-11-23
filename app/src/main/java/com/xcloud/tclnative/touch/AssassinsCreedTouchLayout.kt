@@ -22,11 +22,11 @@ internal enum class AssassinsCreedTouchLayout {
             else when {
                 control.id.startsWith("upper-right-") && this == ORIGINS -> {
                     val slot = control.id.substringAfterLast('-').toIntOrNull() ?: 0
-                    Placement(.95f - slot * .066f, .11f, .036f)
+                    Placement(.95f - slot * .066f, .11f, .043f)
                 }
                 control.id.startsWith("upper-") -> null
                 control === movement -> if (this == ORIGINS) Placement(.221f, .505f, .177f) else Placement(.23f, .52f, .147f)
-                control === camera -> if (this == ORIGINS) Placement(.705f, .615f, .080f) else Placement(.70f, .62f, .066f)
+                control === camera -> if (this == ORIGINS) Placement(.705f, .615f, .088f) else Placement(.70f, .62f, .066f)
                 control.kind == TouchKind.DPAD -> if (this == ORIGINS) Placement(.335f, .755f, .108f) else Placement(.34f, .77f, .084f)
                 else -> actions[control.action?.keys]
             }
@@ -34,8 +34,14 @@ internal enum class AssassinsCreedTouchLayout {
         val adjusted = controls.mapIndexed { index, control ->
             val placement = placements[index]
             // Multiple controls can share one action. Keep those in their package slots.
-            if (placement == null || placements.count { it == placement } != 1) control
+            val moved = if (placement == null || placements.count { it == placement } != 1) control
             else control.copy(x=placement.x, y=placement.y, radius=placement.radius * radiusScale)
+            val appearance = moved.officialAppearance
+            val leftBumper = moved.action?.keys == setOf(HudBinding.LB)
+            if (this == ORIGINS && appearance != null && (leftBumper || moved.x >= .60f)) {
+                val stick = moved.kind == TouchKind.LEFT_STICK || moved.kind == TouchKind.RIGHT_STICK
+                moved.copy(officialAppearance = appearance.copy(faceScale = if (stick && !appearance.touchpad) 1.72f else 1.2f))
+            } else moved
         }
         val combat = movement != null && controls.any { HudBinding.RB in it.action?.keys.orEmpty() }
         if (this != ORIGINS || !combat) return adjusted
@@ -83,16 +89,18 @@ internal enum class AssassinsCreedTouchLayout {
             setOf(HudBinding.DOWN) to Placement(.96f, .85f, .040f)
         )
         private val originsActions = sharedActions + mapOf(
-            setOf(HudBinding.LB) to Placement(.124f, .306f, .070f),
-            setOf(HudBinding.LT) to Placement(.671f, .832f, .062f),
-            setOf(HudBinding.L3) to Placement(.669f, .203f, .041f),
-            setOf(HudBinding.R3) to Placement(.704f, .402f, .041f),
-            setOf(HudBinding.RB) to Placement(.822f, .501f, .070f),
-            setOf(HudBinding.RT) to Placement(.775f, .758f, .071f),
-            setOf(HudBinding.RB, HudBinding.RT) to Placement(.771f, .259f, .057f),
-            setOf(HudBinding.B) to Placement(.942f, .412f, .046f),
-            setOf(HudBinding.A) to Placement(.942f, .624f, .046f),
-            setOf(HudBinding.X) to Placement(.869f, .772f, .046f)
+            setOf(HudBinding.LB) to Placement(.122f, .303f, .079f),
+            setOf(HudBinding.LT) to Placement(.671f, .832f, .071f),
+            setOf(HudBinding.L3) to Placement(.669f, .203f, .048f),
+            setOf(HudBinding.R3) to Placement(.704f, .402f, .048f),
+            setOf(HudBinding.RB) to Placement(.822f, .501f, .079f),
+            setOf(HudBinding.RT) to Placement(.775f, .758f, .081f),
+            setOf(HudBinding.RB, HudBinding.RT) to Placement(.771f, .259f, .065f),
+            setOf(HudBinding.Y) to Placement(.87f, .28f, .058f),
+            setOf(HudBinding.B) to Placement(.942f, .412f, .053f),
+            setOf(HudBinding.A) to Placement(.942f, .624f, .053f),
+            setOf(HudBinding.X) to Placement(.869f, .772f, .053f),
+            setOf(HudBinding.DOWN) to Placement(.96f, .85f, .046f)
         )
 
         fun forGame(game: GameTitle): AssassinsCreedTouchLayout? {

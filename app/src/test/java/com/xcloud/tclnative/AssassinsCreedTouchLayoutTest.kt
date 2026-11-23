@@ -63,7 +63,9 @@ class AssassinsCreedTouchLayoutTest {
         val layout = AssassinsCreedTouchLayout.ORIGINS
         val placed = layout.place(packageControls, 1280, 606)
         assertEquals(extra, placed[0])
-        assertEquals(cameraExtra, placed[1])
+        assertEquals(cameraExtra.x, placed[1].x, 0f)
+        assertEquals(cameraExtra.y, placed[1].y, 0f)
+        assertTrue(placed[1].officialAppearance!!.faceScale > 1f)
         assertTrue(placed[2].radius > .15f && placed[2].y < main.y)
         assertTrue(placed[3].y < camera.y)
 

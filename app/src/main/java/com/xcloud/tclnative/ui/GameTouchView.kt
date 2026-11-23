@@ -30,12 +30,18 @@ class GameTouchView(context: Context,
     private val skin=HudSkin()
     private val officialSkin=OfficialTouchSkin()
     private var automatic=HudPreset.GAMEPAD
-    private var assassinsCreedLayout: AssassinsCreedTouchLayout? = null
+    private var adjustOfficialLayout: ((List<HudElement>, Int, Int) -> List<HudElement>)? = null
     var configuration=HudSettings()
         private set
     private var model=VirtualGamepad(1,1)
-    private var officialControls: List<HudElement>? = null
-    val usingOfficialControls get() = officialControls!=null
+    private var officialLayout: OfficialTouchLayout? = null
+    private var officialPositions: Map<String, HudPlacement> = emptyMap()
+    private data class OfficialEdit(val layout: OfficialTouchLayout, var positions: Map<String, HudPlacement>)
+    private var officialEdit: OfficialEdit? = null
+    private val displayedOfficialLayout get() = officialEdit?.layout ?: officialLayout
+    val usingOfficialControls get() = displayedOfficialLayout != null
+    internal val canEditOfficialHud get() = officialLayout?.let { it.id != null && it.controls.isNotEmpty() } == true &&
+        (mode == TouchMode.VIRTUAL || mode == TouchMode.NATIVE)
     val preset: HudPreset get()=model.preset
     private var mode=TouchMode.OFF
     private var autoHidden=false
@@ -44,7 +50,7 @@ class GameTouchView(context: Context,
     private var gameplayTouchSuspended=false
     private val virtualPointers=mutableSetOf<Int>()
     val controlsVisible: Boolean get()=(mode==TouchMode.VIRTUAL || mode==TouchMode.NATIVE && usingOfficialControls) &&
-        officialControls?.isEmpty()!=true && !autoHidden && !gameplayTouchSuspended
+        displayedOfficialLayout?.controls?.isEmpty()!=true && !autoHidden && !gameplayTouchSuspended
     private val autoHideTask=Runnable { if(canAutoHide() && configuration.autoHide.idle) hideAutomatically() }
     var immediateNativeDispatch=true
     private val native=mutableMapOf<Int,NativePointer>()
@@ -58,8 +64,11 @@ class GameTouchView(context: Context,
     /** Reset after the previous report was frozen, not when opening a menu or hiding the view. */
     fun beginSession() {
         releaseInputs()
-        officialControls=null
-        assassinsCreedLayout=null
+        officialLayout=null
+        officialEdit=null
+        officialPositions=emptyMap()
+        adjustOfficialLayout=null
+        isEditing=false
         nativeEvents=NativeEvents()
         lastHudPress=UiText.text("nenhum")
     }
@@ -85,6 +94,8 @@ class GameTouchView(context: Context,
     private var dragX=0f; private var dragY=0f
     private var editAction: String?=null
     var onHudSaved: (HudSettings) -> Boolean = { true }
+    internal var onReadOfficialHud: (String) -> Map<String, HudPlacement> = { emptyMap() }
+    internal var onOfficialHudSaved: (String, Map<String, HudPlacement>) -> Boolean = { _, _ -> true }
     var onBindingRequested: (String,HudAction?) -> Unit = { _,_ -> }
     var onGesturesRequested: (String,Map<HudSwipe,HudGesture>) -> Unit = { _,_ -> }
     private val lookReset=Runnable { if(mode==TouchMode.VIRTUAL && !isEditing) publish() }
@@ -146,11 +157,12 @@ class GameTouchView(context: Context,
     }
 
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
-        releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE
+        releaseInputs(); officialEdit=null;isEditing=false;menuButton.visibility=VISIBLE
         autoHidden=false
         if(game!=null) {
             automatic=GameHud.automatic(game.titleId,game.name)
-            assassinsCreedLayout=AssassinsCreedTouchLayout.forGame(game)
+            adjustOfficialLayout = AssassinsCreedTouchLayout.forGame(game)?.let { it::place }
+                ?: if (MinecraftDungeonsTouchLayout.appliesTo(game)) MinecraftDungeonsTouchLayout::place else null
         }
         if(settings!=null) configuration=settings
         this.mode=mode
@@ -171,18 +183,29 @@ class GameTouchView(context: Context,
     }
     fun showPage(page: HudPreset) { releaseInputs(); model.setPage(page);scheduleAutoHide(); invalidate() }
     private fun rebuild(page: HudPreset=preset) {
-        val controls = officialControls?.let {
-            assassinsCreedLayout?.place(it, width, height) ?: it
+        val controls = displayedOfficialLayout?.controls?.let { supplied ->
+            val adjusted = adjustOfficialLayout?.invoke(supplied, width, height) ?: supplied
+            val positions = officialEdit?.positions ?: officialPositions
+            if (positions.isEmpty()) adjusted else adjusted.map { element ->
+                val edit = positions[element.id]
+                if (edit == null) element
+                else element.copy(x = edit.x, y = edit.y, radius = element.radius * edit.scale)
+            }
         }
         model=VirtualGamepad(width.coerceAtLeast(1),height.coerceAtLeast(1),
             if (controls == null) page else HudPreset.GAMEPAD,
             if (controls == null) configuration else HudSettings(),
             controls)
     }
-    internal fun installOfficialControls(controls: List<HudElement>?) {
-        if (officialControls==controls || isEditing && controls!=null) return
+    internal fun installOfficialControls(layout: OfficialTouchLayout?) {
+        if (officialLayout == layout || isEditing && officialEdit == null && layout != null) return
+        if (officialLayout?.id != layout?.id) {
+            officialPositions = layout?.id?.let(onReadOfficialHud) ?: emptyMap()
+        }
+        officialLayout = layout
+        // Keep the editor on the layout it opened while the Xbox sends new layouts or visibility.
+        if (officialEdit != null) return
         releaseInputs()
-        officialControls=controls
         autoHidden=false
         rebuild(configuration.preset ?: automatic)
         scheduleAutoHide()
@@ -191,30 +214,63 @@ class GameTouchView(context: Context,
     override fun refreshLanguage() { menuButton.contentDescription=UiText.text("Atalhos da partida");releaseInputs();rebuild();scheduleAutoHide();invalidate() }
     fun beginEditing() {
         if(mode!=TouchMode.VIRTUAL || usingOfficialControls) return
+        openEditor()
+    }
+    internal fun beginOfficialEditing() {
+        val layout = officialLayout ?: return
+        if (!canEditOfficialHud || isEditing) return
+        officialEdit = OfficialEdit(layout, officialPositions)
+        openEditor()
+    }
+    private fun openEditor() {
         releaseInputs();autoHidden=false; beforeEdit=configuration; beforeEditPreset=preset; selected=null; isEditing=true;menuButton.visibility=GONE; invalidate()
     }
     fun cancelEditing() {
-        if(!isEditing) return
-        releaseInputs(); configuration=beforeEdit; rebuild(beforeEditPreset); isEditing=false;menuButton.visibility=VISIBLE;scheduleAutoHide(); invalidate()
+        if (!isEditing) return
+        if (officialEdit == null) configuration = beforeEdit
+        closeEditor()
+    }
+    private fun closeEditor() {
+        releaseInputs()
+        officialEdit = null
+        isEditing = false
+        rebuild(beforeEditPreset)
+        menuButton.visibility = VISIBLE
+        scheduleAutoHide()
+        invalidate()
+    }
+    private fun saveEditing() {
+        val edit = officialEdit
+        if (edit == null) {
+            if (onHudSaved(configuration)) closeEditor()
+        } else {
+            val id = edit.layout.id ?: return
+            if (!onOfficialHudSaved(id, edit.positions)) return
+            if (officialLayout?.id == id) officialPositions = edit.positions
+            closeEditor()
+        }
     }
     fun setEditedBinding(id: String,binding: HudBinding) {
-        if(!isEditing) return
+        if(!isEditing || officialEdit != null) return
         val control=model.controls.firstOrNull { it.id==id } ?: return
         placement(control) { it.copy(binding=binding,action=null) }
     }
     fun setEditedAction(id: String,action: HudAction) {
-        if(!isEditing) return
+        if(!isEditing || officialEdit != null) return
         val control=model.controls.firstOrNull { it.id==id } ?: return
         placement(control) { it.copy(binding=null,action=action) }
     }
     fun setEditedGestures(id: String,gestures: Map<HudSwipe,HudGesture>) {
-        if(!isEditing) return
+        if(!isEditing || officialEdit != null) return
         val control=model.controls.firstOrNull { it.id==id } ?: return
         placement(control) { it.copy(gestures=gestures) }
     }
     private fun placement(control: TouchControl,change: (HudPlacement) -> HudPlacement) {
-        val old=configuration.placements[control.id] ?: HudPlacement(control.x/width,control.y/height)
-        configuration=configuration.copy(placements=configuration.placements+(control.id to change(old)))
+        val edit = officialEdit
+        val positions = edit?.positions ?: configuration.placements
+        val old = positions[control.id] ?: HudPlacement(control.x/width,control.y/height)
+        val updated = positions + (control.id to change(old))
+        if (edit != null) edit.positions = updated else configuration=configuration.copy(placements=updated)
         rebuild(); invalidate()
     }
     fun releaseInputs() {
@@ -406,8 +462,8 @@ class GameTouchView(context: Context,
         y in height*.035f..height*.105f && x in width*.57f..width*.70f -> "save"
         y in height*.90f..height*.985f && selected!=null && x in width*.33f..width*.43f -> "smaller"
         y in height*.90f..height*.985f && selected!=null && x in width*.43f..width*.53f -> "larger"
-        y in height*.90f..height*.985f && selected!=null && x in width*.53f..width*.69f -> "binding"
-        y in height*.90f..height*.985f && selected!=null && x in width*.69f..width*.82f -> "gestures"
+        officialEdit == null && y in height*.90f..height*.985f && selected!=null && x in width*.53f..width*.69f -> "binding"
+        officialEdit == null && y in height*.90f..height*.985f && selected!=null && x in width*.69f..width*.82f -> "gestures"
         else -> null
     }
     private fun editTouch(event: MotionEvent): Boolean {
@@ -419,7 +475,7 @@ class GameTouchView(context: Context,
             MotionEvent.ACTION_DOWN -> {
                 editPointer=id; editAction=editorAction(x,y)
                 if(editAction==null) {
-                    val control=model.hit(x,y)?.takeIf { it.kind!=TouchKind.CAMERA }
+                    val control=model.hit(x,y, includeDisabled = officialEdit != null)?.takeIf { it.kind!=TouchKind.CAMERA }
                     selected=control?.id
                     if(control!=null) { dragX=x-control.x; dragY=y-control.y }
                 }
@@ -428,8 +484,9 @@ class GameTouchView(context: Context,
                 val i=event.findPointerIndex(editPointer!!)
                 val control=model.controls.firstOrNull { it.id==selected }
                 if(i>=0 && control!=null) placement(control) {
+                    val official = officialEdit != null
                     it.copy(x=((event.getX(i)-dragX)/width).coerceIn(.025f,.975f),
-                        y=((event.getY(i)-dragY)/height).coerceIn(.14f,.88f))
+                        y=((event.getY(i)-dragY)/height).coerceIn(if (official) .025f else .14f, if (official) .975f else .88f))
                 }
             }
             MotionEvent.ACTION_UP,MotionEvent.ACTION_POINTER_UP -> if(id==editPointer) {
@@ -437,8 +494,14 @@ class GameTouchView(context: Context,
                 editPointer=null; editAction=null
                 when(command) {
                     "cancel" -> cancelEditing()
-                    "reset" -> { configuration=HudSettings(preset=configuration.preset,footballScheme=configuration.footballScheme); rebuild(); selected=null }
-                    "save" -> if(onHudSaved(configuration)) { releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE;scheduleAutoHide() }
+                    "reset" -> {
+                        val edit = officialEdit
+                        if (edit != null) edit.positions = emptyMap()
+                        else configuration=HudSettings(preset=configuration.preset,footballScheme=configuration.footballScheme)
+                        rebuild()
+                        selected=null
+                    }
+                    "save" -> saveEditing()
                     "smaller","larger" -> model.controls.firstOrNull { it.id==selected }?.let { control ->
                         placement(control) { it.copy(scale=(it.scale+if(command=="larger") .10f else -.10f).coerceIn(.55f,1.7f)) }
                     }
@@ -466,6 +529,13 @@ class GameTouchView(context: Context,
         if (appearance != null) officialSkin.draw(canvas, control, appearance, state, held)
         else skin.draw(canvas,control,preset,state,held,isEditing && selected==control.id,
             if (usingOfficialControls) 62 else configuration.opacity,isEditing,model.gestureLabel(control))
+        if (officialEdit != null) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = if (selected == control.id) 3f else 1.5f
+            paint.color = if (selected == control.id) DashboardTheme.accent else 0x88ffffff.toInt()
+            canvas.drawCircle(control.x, control.y, control.radius, paint)
+            paint.style = Paint.Style.FILL
+        }
     }
     private fun drawEditor(canvas: Canvas) {
         fun button(label: String,left: Float,right: Float,top: Float,bottom: Float,accent: Boolean=false) {
@@ -485,7 +555,7 @@ class GameTouchView(context: Context,
         button(UiText.text("Salvar"),.57f,.70f,.035f,.105f,true)
         selected?.let { id -> model.controls.firstOrNull { it.id==id }?.let { control ->
             button("−",.33f,.43f,.90f,.985f); button("+",.43f,.53f,.90f,.985f)
-            if(control.action!=null) {
+            if(officialEdit == null && control.action!=null) {
                 button(UiText.text("Ação: {0}",UiText.nested(control.action.label)),.53f,.69f,.90f,.985f)
                 button(UiText.text("Gestos"),.69f,.82f,.90f,.985f)
             }

@@ -66,6 +66,16 @@ class GameHudUiTest {
                    "action":"leftBumper","actionThreshold":0.5}
                 ]}}}
             """.trimIndent().toByteArray(),
+            "layouts/neutral/adventure.json" to """
+                {"content":{
+                   "left":{"inner":[{"type":"joystick","axis":[
+                       {"input":"axisX","output":"leftJoystickX"},{"input":"axisY","output":"leftJoystickY"}]}]},
+                   "center":{"inner":[{"type":"button","action":"view"}]},
+                   "lower":{"center":{"type":"button","action":"gamepadX"},
+                       "rightCenter":[{"type":"button","action":"gamepadA","visible":false},
+                           {"type":"button","action":"gamepadY","enabled":false}]}
+                }}
+            """.trimIndent().toByteArray(),
             "layouts/pt/pt-BR/optional.json" to "[not a layout]".toByteArray(),
             "assets/neutral/@1.0x/Action.png" to art.toByteArray()
         )
@@ -99,6 +109,13 @@ class GameHudUiTest {
         assertEquals(HudBinding.LB.button, withBlock.state().buttons)
         withBlock.up(1)
         assertEquals(GamepadState(), withBlock.state())
+        val adventure = bundle.controls("adventure", bundle.newState())!!
+        assertEquals(TouchKind.LEFT_STICK, adventure.first().kind)
+        assertEquals(HudStickAxis.BOTH, adventure.first().stickAxis)
+        assertTrue(adventure.any { it.binding == HudBinding.VIEW })
+        assertTrue(adventure.any { it.binding == HudBinding.X })
+        assertFalse(adventure.any { it.binding == HudBinding.A })
+        assertFalse(adventure.single { it.binding == HudBinding.Y }.officialAppearance!!.enabled)
         xbox.load(OfficialTouchLoad.Ready(bundle))
         val controls=xbox.controls()!!
         val appearance = controls.single().officialAppearance!!
@@ -120,7 +137,7 @@ class GameHudUiTest {
             controls.single().id to HudPlacement(.15f, .20f, binding=HudBinding.Y)
         ))
         view.configure(TouchMode.VIRTUAL,GameTitle("test","Test game"),hud)
-        view.installOfficialControls(controls)
+        view.installOfficialControls(xbox.layout())
         layout(view)
         val button=VirtualGamepad(1280,720,official=controls).controls.single()
         val render=Bitmap.createBitmap(1280,720,Bitmap.Config.ARGB_8888)
@@ -145,11 +162,11 @@ class GameHudUiTest {
         view.applyHud(hud.copy(scale=75, opacity=100))
         assertEquals(HudBinding.A.button,state.buttons)
         xbox.receive(OfficialTouchNotice.Hide)
-        view.installOfficialControls(xbox.controls())
+        view.installOfficialControls(xbox.layout())
         assertEquals(GamepadState(),state)
         assertFalse(view.controlsVisible)
         xbox.receive(OfficialTouchNotice.ShowDefault)
-        view.installOfficialControls(xbox.controls())
+        view.installOfficialControls(xbox.layout())
         assertTrue(view.controlsVisible)
         view.configure(TouchMode.NATIVE,GameTitle("test","Test game"))
         event(view,MotionEvent.ACTION_DOWN,now+10,Triple(0,button.x,button.y))
@@ -162,6 +179,71 @@ class GameHudUiTest {
         view.releaseInputs()
         assertEquals(GamepadState(),state)
         assertEquals(2,direct.last().type)
+        controller.pause().stop().destroy()
+    }
+
+    @Test fun officialEditorSavesGeometryForOneLayoutAndKeepsLiveUpdatesAndCommands() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val store = GameHudStore(activity)
+        val game = GameTitle("test-official-editor", "Test game")
+        var state = GamepadState()
+        val direct = mutableListOf<NativePointer>()
+        val view = GameTouchView(activity, { state = it }, { direct.addAll(it) }, { _, _ -> .25f to .5f }, {})
+        activity.setContentView(view)
+        val style = OfficialTouchStyle()
+        val control = HudElement("right-inner-0", "LB", .75f, .62f, .05f,
+            binding = HudBinding.LB, officialAppearance = OfficialTouchAppearance(style, style, enabled = true))
+        val combat = OfficialTouchLayout("combat", listOf(control))
+        val navigation = OfficialTouchLayout("navigation", listOf(control.copy(binding = HudBinding.B, action = HudAction(HudBinding.B))))
+        val local = HudSettings(placements = mapOf(control.id to HudPlacement(.20f, .30f, binding = HudBinding.Y)))
+        store.save(game.titleId, local)
+        view.onReadOfficialHud = { store.readOfficial(game.titleId, it) }
+        view.onOfficialHudSaved = { id, positions -> store.saveOfficial(game.titleId, id, positions); true }
+        view.configure(TouchMode.NATIVE, game, local)
+        view.installOfficialControls(combat)
+        layout(view)
+
+        val panel = GameHudPanel(activity, game, store, {}, {}, {}, {},
+            editOfficial = view::beginOfficialEditing).show()
+        fun findEditorRow(child: View): TextView? {
+            if (child is TextView && child.isClickable && child.text == "Editar HUD oficial") return child
+            if (child is ViewGroup) for (i in 0 until child.childCount) {
+                findEditorRow(child.getChildAt(i))?.let { return it }
+            }
+            return null
+        }
+        assertTrue(findEditorRow(panel.body)!!.performClick())
+        assertTrue(view.isEditing)
+        val now = SystemClock.uptimeMillis()
+        event(view, MotionEvent.ACTION_DOWN, now, Triple(0, 960f, 446f))
+        event(view, MotionEvent.ACTION_MOVE, now + 1, Triple(0, 800f, 360f))
+        event(view, MotionEvent.ACTION_UP, now + 2, Triple(0, 800f, 360f))
+        tap(view, 610f, 690f)
+        view.installOfficialControls(navigation)
+        tap(view, 810f, 53f)
+        assertFalse(view.isEditing)
+        assertEquals(GamepadState(), state)
+        assertTrue(direct.isEmpty())
+        val saved = store.readOfficial(game.titleId, "combat").getValue(control.id)
+        assertEquals(.625f, saved.x, .01f)
+        assertEquals(1.1f, saved.scale, .001f)
+        assertTrue(store.readOfficial(game.titleId, "navigation").isEmpty())
+        assertEquals(local, store.read(game.titleId))
+
+        view.installOfficialControls(combat)
+        event(view, MotionEvent.ACTION_DOWN, now + 5, Triple(0, 800f, 360f))
+        assertEquals(HudBinding.LB.button, state.buttons)
+        event(view, MotionEvent.ACTION_UP, now + 6, Triple(0, 800f, 360f))
+        view.beginOfficialEditing()
+        tap(view, 645f, 53f)
+        tap(view, 480f, 53f)
+        assertEquals(saved, store.readOfficial(game.titleId, "combat").getValue(control.id))
+        view.beginOfficialEditing()
+        tap(view, 645f, 53f)
+        tap(view, 810f, 53f)
+        assertTrue(store.readOfficial(game.titleId, "combat").isEmpty())
+        assertEquals(local, store.read(game.titleId))
         controller.pause().stop().destroy()
     }
     @Test fun comboPickerDoesNotApplyIntermediateChoicesAndAllowsClearingASwipe() {

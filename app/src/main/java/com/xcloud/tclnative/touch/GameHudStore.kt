@@ -32,6 +32,41 @@ class GameHudStore(private val context: Context) {
         val prefs = prefs(id)
         return readLayout(prefs.getString("layout", null)) { prefs.edit().remove("layout").apply() }
     }
+
+    private fun officialKey(layoutId: String) = "official:" + GameLibrary.accountKey(layoutId)
+
+    internal fun readOfficial(id: String, layoutId: String): Map<String, HudPlacement> {
+        val raw = prefs(id).getString(officialKey(layoutId), null) ?: return emptyMap()
+        if (raw.length > 65536) return emptyMap()
+        val positions = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
+        return positions.keys().asSequence().take(128).mapNotNull { key ->
+            val item = positions.optJSONObject(key) ?: return@mapNotNull null
+            readPosition(item)?.let { key to it }
+        }.toMap()
+    }
+
+    internal fun saveOfficial(id: String, layoutId: String, placements: Map<String, HudPlacement>) {
+        val key = officialKey(layoutId)
+        val editor = prefs(id).edit()
+        if (placements.isEmpty()) editor.remove(key)
+        else {
+            val positions = JSONObject()
+            placements.forEach { (controlId, geometry) ->
+                positions.put(controlId, JSONObject().put("x", geometry.x).put("y", geometry.y).put("scale", geometry.scale))
+            }
+            editor.putString(key, positions.toString())
+        }
+        commit(editor)
+    }
+
+    private fun readPosition(item: JSONObject): HudPlacement? {
+        val x = item.optDouble("x", Double.NaN).toFloat()
+        val y = item.optDouble("y", Double.NaN).toFloat()
+        val scale = item.optDouble("scale", 1.0).toFloat()
+        if (!x.isFinite() || !y.isFinite() || !scale.isFinite()) return null
+        return HudPlacement(x.coerceIn(0f, 1f), y.coerceIn(0f, 1f), scale.coerceIn(.55f, 1.7f))
+    }
+
     private fun readLayout(raw: String?, discard: (() -> Unit)? = null): HudSettings { return try {
         val text=raw ?: return HudSettings()
         if(text.length>65536) return HudSettings()
@@ -44,9 +79,7 @@ class GameHudStore(private val context: Context) {
         val positions=data.optJSONObject("controls") ?: JSONObject()
         val overrides=positions.keys().asSequence().take(64).mapNotNull { key ->
             val item=positions.optJSONObject(key) ?: return@mapNotNull null
-            val x=item.optDouble("x",Double.NaN).toFloat(); val y=item.optDouble("y",Double.NaN).toFloat()
-            val size=item.optDouble("scale",1.0).toFloat()
-            if(!x.isFinite() || !y.isFinite() || !size.isFinite()) return@mapNotNull null
+            val position = readPosition(item) ?: return@mapNotNull null
             val gestures=item.optJSONObject("gestures")?.let { mapping ->
                 HudSwipe.entries.mapNotNull gesture@ { direction ->
                     val saved=mapping.optJSONObject(direction.name) ?: return@gesture null
@@ -54,8 +87,8 @@ class GameHudStore(private val context: Context) {
                     direction to HudGesture(saved.optString("label",input.label).take(48),input)
                 }.toMap()
             }
-            key to HudPlacement(x.coerceIn(0f,1f),y.coerceIn(0f,1f),size.coerceIn(.55f,1.7f),
-                HudBinding.entries.firstOrNull { it.name==item.optString("binding") },action(item.optJSONArray("keys")),gestures)
+            key to position.copy(binding = HudBinding.entries.firstOrNull { it.name == item.optString("binding") },
+                action = action(item.optJSONArray("keys")), gestures = gestures)
         }.toMap()
         HudSettings(HudPreset.entries.firstOrNull { it.name==data.optString("preset") },
             data.optInt("opacity",62).coerceIn(20,100),data.optInt("scale",100).coerceIn(75,150),

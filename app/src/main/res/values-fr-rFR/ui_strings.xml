@@ -1360,4 +1360,5 @@
     <string name="ui_a52f6fe663d36ac6" formatted="false">"La disposition officielle Xbox est indisponible pour cette session."</string>
     <string name="ui_fe524f1820bb0a0f" formatted="false">"Il reste au maximum 1 minute. Sauvegardez votre progression dans le jeu."</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"Chargement des commandes tactiles officielles Xbox…"</string>
+    <string name="ui_ad8d356e4d3358be" formatted="false">"Modifier le HUD officiel"</string>
 </resources>

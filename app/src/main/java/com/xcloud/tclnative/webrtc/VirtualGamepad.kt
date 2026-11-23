@@ -55,12 +55,12 @@ class VirtualGamepad(private val width: Int,private val height: Int,
             else -> hypot(dx,dy)<=r
         }
     }
-    fun hit(x: Float,y: Float): TouchControl? {
+    fun hit(x: Float,y: Float, includeDisabled: Boolean = false): TouchControl? {
         var closest: TouchControl?=null;var distance=Float.POSITIVE_INFINITY
         // A large overlapping button must not steal a tap on another button's center.
         for(index in controls.indices.reversed()) {
             val c=controls[index]
-            if(c.kind==TouchKind.CAMERA || c.officialAppearance?.enabled==false || !inside(c,x,y)) continue
+            if(c.kind==TouchKind.CAMERA || !includeDisabled && c.officialAppearance?.enabled==false || !inside(c,x,y)) continue
             val squared=(x-c.x)*(x-c.x)+(y-c.y)*(y-c.y)
             if(squared<distance) { closest=c;distance=squared }
         }

@@ -373,6 +373,19 @@ open class MainActivity : Activity() {
             if(game==null) false else try { hudStore.save(game.titleId,settings); true }
             catch(error: java.io.IOException) { Toast.makeText(this,error.message,Toast.LENGTH_LONG).show(); false }
         }
+        touchView.onReadOfficialHud = { layout ->
+            activeGame?.let { hudStore.readOfficial(it.titleId, layout) }.orEmpty()
+        }
+        touchView.onOfficialHudSaved = { layout, positions ->
+            val game = activeGame
+            if (game == null) false else try {
+                hudStore.saveOfficial(game.titleId, layout, positions)
+                true
+            } catch (error: java.io.IOException) {
+                Toast.makeText(this, error.message, Toast.LENGTH_LONG).show()
+                false
+            }
+        }
         touchView.onBindingRequested={ id,action ->
             com.xcloud.tclnative.ui.dashboard.HudActionDialogs.action(this,action) { chosen ->
                 if(chosen!=null) touchView.setEditedAction(id,chosen)
@@ -1368,13 +1381,13 @@ open class MainActivity : Activity() {
         if (officialTouch!==session || !transmissionReady || sessionSaved ||
             controlPanel.visibility!=View.GONE || transitionPanel.exiting ||
             transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) return false
-        val controls = session.controls()
-        if (controls==null) {
+        val layout = session.layout()
+        if (layout==null) {
             touchView.installOfficialControls(null)
             return false
         }
         if (currentTouchMode==TouchMode.OFF && !enableGameHud(keepOfficial=true)) return false
-        touchView.installOfficialControls(controls)
+        touchView.installOfficialControls(layout)
         return true
     }
     private fun useOfficialTouch() {
@@ -1471,7 +1484,8 @@ open class MainActivity : Activity() {
             activate=if(currentTouchMode==TouchMode.VIRTUAL && !touchView.usingOfficialControls) null
                 else ({ if(enableGameHud()) showGameHudSettings(onBack) }),
             nativeTouch=if(currentTouchMode==TouchMode.NATIVE || webrtcClient?.canUseNativeTouch()!=true) null else ({ enableNativeTouch() }),
-            officialTouch=officialTouch?.let { ::useOfficialTouch },back=onBack).show()
+            officialTouch=officialTouch?.let { ::useOfficialTouch },back=onBack,
+            editOfficial = if (touchView.canEditOfficialHud) touchView::beginOfficialEditing else null).show()
     }
     private fun chooseLaunchMode(signaling: XCloudSignalingClient,game: GameTitle) {
         val saved = activeGame

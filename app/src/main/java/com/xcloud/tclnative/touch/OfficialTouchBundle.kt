@@ -21,8 +21,10 @@ internal class OfficialTouchBundle private constructor(
     private val context: JSONObject,
     private val iconsFromBundle: Map<String, Bitmap>
 ) {
+    fun layoutId(name: String?): String = name?.lowercase(Locale.ROOT) ?: defaultLayout
+
     fun controls(name: String?, state: JSONObject): List<HudElement>? {
-        val layout = layouts[name?.lowercase(Locale.ROOT) ?: defaultLayout] ?: return null
+        val layout = layouts[layoutId(name)] ?: return null
         val content = layout.optJSONObject("content") ?: return null
         val result = mutableListOf<HudElement>()
         var unsupported = content.has("layers")
@@ -52,14 +54,22 @@ internal class OfficialTouchBundle private constructor(
             if (resolve(item.opt("visible")) == false) return
             val type = item.optString("type")
             val keys = actions(item.opt("action"))
-            val mapping = resolve(item.opt("axis")) as? JSONObject
-            val axis = mapping?.optString("output")?.lowercase(Locale.ROOT).orEmpty()
+            val mapping = resolve(item.opt("axis"))
+            val mappings = if (mapping is JSONArray) (0 until minOf(8, mapping.length())).map { resolve(mapping.opt(it)) }
+                else listOf(mapping)
+            val outputs = mappings.mapNotNull {
+                val entry = it as? JSONObject ?: return@mapNotNull null
+                (resolve(entry.opt("output")) as? String)?.lowercase(Locale.ROOT)
+            }
+            val stick = outputs.firstOrNull { it.startsWith("leftjoystick") || it.startsWith("rightjoystick") }
+                ?.let { if (it.startsWith("leftjoystick")) "leftjoystick" else "rightjoystick" }
+            val axes = outputs.filter { stick != null && it.startsWith(stick) }.map { it.last() }.toSet()
             val kind = when (type) {
                 "button" -> TouchKind.BUTTON.takeIf { keys.isNotEmpty() }
                 "directionalPad" -> TouchKind.DPAD
-                "joystick", "touchpad" -> when {
-                    axis.startsWith("leftjoystick") -> TouchKind.LEFT_STICK
-                    axis.startsWith("rightjoystick") -> TouchKind.RIGHT_STICK
+                "joystick", "touchpad" -> when (stick) {
+                    "leftjoystick" -> TouchKind.LEFT_STICK
+                    "rightjoystick" -> TouchKind.RIGHT_STICK
                     else -> null
                 }
                 "blank" -> return
@@ -83,8 +93,8 @@ internal class OfficialTouchBundle private constructor(
             }
             result += HudElement(id,label,x,y,radius,kind,keys.singleOrNull(),action=action,
                 stickAxis=when {
-                    axis.endsWith('x') -> HudStickAxis.HORIZONTAL
-                    axis.endsWith('y') -> HudStickAxis.VERTICAL
+                    axes == setOf('x') -> HudStickAxis.HORIZONTAL
+                    axes == setOf('y') -> HudStickAxis.VERTICAL
                     else -> HudStickAxis.BOTH
                 },
                 officialAppearance=OfficialTouchAppearance(
@@ -95,7 +105,7 @@ internal class OfficialTouchBundle private constructor(
                 ),
                 axisActionThreshold = axisActionThreshold)
         }
-        listOf("left" to .205f, "right" to .795f).forEach { (side, x) ->
+        listOf("left" to .205f, "center" to .50f, "right" to .795f).forEach { (side, x) ->
             val wheel = resolve(content.opt(side)) as? JSONObject ?: return@forEach
             val inner = wheel.optJSONArray("inner")
             val size = minOf(inner?.length() ?: 0, 4)
@@ -122,6 +132,16 @@ internal class OfficialTouchBundle private constructor(
             val x = if(side == "left") .15f else .89f
             for (index in 0 until minOf(4,upper.length())) {
                 add(upper.opt(index),"upper-$side-$index",x + sign * index * .063f,.14f,.043f)
+            }
+        }
+        val lower = resolve(content.opt("lower")) as? JSONObject
+        if (lower != null) {
+            add(lower.opt("center"), "lower-center", .50f, .90f, .043f)
+            for ((side, sign) in listOf("leftCenter" to -1, "rightCenter" to 1)) {
+                val row = resolve(lower.opt(side)) as? JSONArray ?: continue
+                for (index in 0 until minOf(4, row.length())) {
+                    add(row.opt(index), "lower-$side-$index", .50f + sign * (index + 1) * .061f, .90f, .043f)
+                }
             }
         }
         return result.takeUnless { it.isEmpty() && unsupported }

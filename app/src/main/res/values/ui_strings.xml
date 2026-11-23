@@ -1360,4 +1360,5 @@
     <string name="ui_a52f6fe663d36ac6" formatted="false">"O layout oficial do Xbox está indisponível nesta partida."</string>
     <string name="ui_fe524f1820bb0a0f" formatted="false">"Resta até 1 minuto nesta partida. Salve seu progresso no jogo."</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"Carregando os controles oficiais do Xbox…"</string>
+    <string name="ui_ad8d356e4d3358be" formatted="false">"Editar HUD oficial"</string>
 </resources>
