@@ -10,7 +10,8 @@ data class TouchControl(val label: String,val x: Float,val y: Float,val radius: 
                         val shape: HudShape=HudShape.CIRCLE,val dragLook: Boolean=false,val page: HudPreset?=null,
                         val action: HudAction?=binding?.let { HudAction(it) },
                         val gestures: Map<HudSwipe,HudGesture> = emptyMap(),val stickAxis: HudStickAxis = HudStickAxis.BOTH,
-                        val officialAppearance: OfficialTouchAppearance? = null)
+                        val officialAppearance: OfficialTouchAppearance? = null,
+                        val axisActionThreshold: Float? = null)
 
 /** No game-state inference: context pages are switched explicitly, gestures combine simultaneous inputs. */
 class VirtualGamepad(private val width: Int,private val height: Int,
@@ -43,7 +44,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         TouchControl(element.label,((custom?.x ?: element.x)*width).coerceIn(paddingX,width-paddingX),
             ((custom?.y ?: element.y)*height).coerceIn(r,height-r),r,element.kind,action?.buttons ?: 0,
             element.id,binding,element.icon,element.shape,element.dragLook,element.page,action,gestures,element.stickAxis,
-            element.officialAppearance)
+            element.officialAppearance,element.axisActionThreshold)
     }
     private fun inside(c: TouchControl,x: Float,y: Float,slack: Float=1f): Boolean {
         val dx=abs(x-c.x); val dy=abs(y-c.y); val r=c.radius*slack
@@ -170,7 +171,8 @@ class VirtualGamepad(private val width: Int,private val height: Int,
             val control=contact.control
             val dx=if(control.stickAxis==HudStickAxis.VERTICAL) 0f else (contact.x-control.x)/control.radius
             val dy=if(control.stickAxis==HudStickAxis.HORIZONTAL) 0f else (contact.y-control.y)/control.radius
-            val length=maxOf(1f,hypot(dx,dy))
+            val magnitude = hypot(dx,dy)
+            val length=maxOf(1f,magnitude)
             when(control.kind) {
                 TouchKind.LEFT_STICK -> { leftX=dx/length;leftY=dy/length;if(sprinting(contact,sprint)) combine(sprint?.action) }
                 TouchKind.RIGHT_STICK -> { rightX=dx/length;rightY=dy/length }
@@ -180,6 +182,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
                 TouchKind.CAMERA -> Unit
                 else -> combine(action(contact))
             }
+            control.axisActionThreshold?.let { if (magnitude >= it) combine(action(contact)) }
             if(contact.lookAt!=Long.MIN_VALUE && now-contact.lookAt<LOOK_IDLE_MS &&
                 (look==null || contact.lookAt>look.lookAt)) look=contact
         }

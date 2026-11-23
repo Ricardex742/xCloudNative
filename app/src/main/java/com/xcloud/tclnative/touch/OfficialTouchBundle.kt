@@ -73,6 +73,9 @@ internal class OfficialTouchBundle private constructor(
                 return readStyle(layers, type == "joystick") { resolve(it) }
             }
             val action = keys.takeIf { it.isNotEmpty() }?.let(::HudAction)
+            val axisActionThreshold = if (action != null && (type == "joystick" || type == "touchpad")) {
+                (resolve(item.opt("actionThreshold")) as? Number)?.toFloat()?.takeIf { it in 0f..1f } ?: 0f
+            } else null
             val label = action?.label ?: when (kind) {
                 TouchKind.LEFT_STICK -> "L"
                 TouchKind.RIGHT_STICK -> "R"
@@ -89,7 +92,8 @@ internal class OfficialTouchBundle private constructor(
                     if (type == "joystick") style("moving", "activated") else style("activated"),
                     enabled,
                     touchpad = type == "touchpad"
-                ))
+                ),
+                axisActionThreshold = axisActionThreshold)
         }
         listOf("left" to .205f, "right" to .795f).forEach { (side, x) ->
             val wheel = resolve(content.opt(side)) as? JSONObject ?: return@forEach

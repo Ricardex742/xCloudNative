@@ -7,6 +7,7 @@ import com.xcloud.tclnative.touch.HudBinding
 import com.xcloud.tclnative.touch.HudElement
 import com.xcloud.tclnative.touch.OfficialTouchAppearance
 import com.xcloud.tclnative.touch.OfficialTouchStyle
+import com.xcloud.tclnative.webrtc.GamepadState
 import com.xcloud.tclnative.webrtc.TouchKind
 import com.xcloud.tclnative.webrtc.VirtualGamepad
 import org.junit.Assert.*
@@ -14,10 +15,11 @@ import org.junit.Test
 
 class AssassinsCreedTouchLayoutTest {
     @Test fun onlySupportedTitlesUseThePlacement() {
-        assertTrue(AssassinsCreedTouchLayout.appliesTo(GameTitle("origins", "Assassin’s Creed® Origins")))
-        assertTrue(AssassinsCreedTouchLayout.appliesTo(GameTitle("odyssey", "Localized",
+        assertEquals(AssassinsCreedTouchLayout.ORIGINS,
+            AssassinsCreedTouchLayout.forGame(GameTitle("origins", "Assassin’s Creed® Origins")))
+        assertEquals(AssassinsCreedTouchLayout.ODYSSEY, AssassinsCreedTouchLayout.forGame(GameTitle("odyssey", "Localized",
             englishName = "Assassin's Creed Odyssey - Gold Edition")))
-        assertFalse(AssassinsCreedTouchLayout.appliesTo(GameTitle("valhalla", "Assassin's Creed Valhalla")))
+        assertNull(AssassinsCreedTouchLayout.forGame(GameTitle("valhalla", "Assassin's Creed Valhalla")))
     }
 
     @Test fun movedControlsStillSendThePackageActionsAndLeaveUnknownSlotsInPlace() {
@@ -30,7 +32,7 @@ class AssassinsCreedTouchLayoutTest {
         val combo = HudElement("right-outer-4-0", "RB + RT", .79f, .86f, .05f,
             action = HudAction(HudBinding.RB, HudBinding.RT), officialAppearance = appearance)
         val unknown = combo.copy(id = "right-outer-5-0", action = HudAction(HudBinding.GUIDE))
-        val controls = AssassinsCreedTouchLayout.place(listOf(move, directional, combo, unknown), 1520, 720)
+        val controls = AssassinsCreedTouchLayout.ODYSSEY.place(listOf(move, directional, combo, unknown), 1520, 720)
         assertTrue(controls[0].y < move.y)
         assertTrue(controls[0].radius > move.radius)
         assertTrue(controls[1].x > controls[0].x && controls[1].y > controls[0].y)
@@ -44,5 +46,45 @@ class AssassinsCreedTouchLayoutTest {
         assertEquals(attack, gamepad.down(1, attack.x, attack.y))
         assertEquals(HudBinding.RB.button, gamepad.state().buttons)
         assertEquals(1f, gamepad.state().rightTrigger, 0f)
+    }
+
+    @Test fun originsEnlargesThePrimarySticksAndKeepsIndependentBlockAndHeavyAttack() {
+        val style = OfficialTouchStyle()
+        val appearance = OfficialTouchAppearance(style, style, enabled = true)
+        val main = HudElement("left-inner-0", "L", .205f, .67f, .085f, TouchKind.LEFT_STICK,
+            officialAppearance = appearance)
+        val extra = main.copy(id = "left-outer-6-0", x = .10f, y = .76f, radius = .032f)
+        val camera = main.copy(id = "right-inner-0", kind = TouchKind.RIGHT_STICK, x = .79f)
+        val cameraExtra = camera.copy(id = "right-outer-5-0", y = .90f, radius = .032f)
+        val combo = HudElement("right-outer-4-0", "RB + RT", .79f, .86f, .05f,
+            action = HudAction(HudBinding.RB, HudBinding.RT), officialAppearance = appearance)
+        val packageControls = listOf(extra, cameraExtra, main, camera, combo)
+        val layout = AssassinsCreedTouchLayout.ORIGINS
+        val placed = layout.place(packageControls, 1280, 606)
+        assertEquals(extra, placed[0])
+        assertEquals(cameraExtra, placed[1])
+        assertTrue(placed[2].radius > .15f && placed[2].y < main.y)
+        assertTrue(placed[3].y < camera.y)
+
+        val gamepad = VirtualGamepad(1280, 606, official = placed)
+        fun press(binding: HudBinding): GamepadState {
+            val control = gamepad.controls.single { it.action?.keys == setOf(binding) }
+            assertEquals(control, gamepad.down(1, control.x, control.y))
+            val pressed = gamepad.state()
+            gamepad.up(1)
+            assertEquals(GamepadState(), gamepad.state())
+            return pressed
+        }
+        val block = press(HudBinding.LB)
+        assertEquals(HudBinding.LB.button, block.buttons)
+        assertEquals(0f, block.rightTrigger, 0f)
+        val heavyAttack = press(HudBinding.RT)
+        assertEquals(0, heavyAttack.buttons)
+        assertEquals(1f, heavyAttack.rightTrigger, 0f)
+
+        val packageLb = combo.copy(id = "package-lb", action = HudAction(HudBinding.LB))
+        assertEquals("package-lb", layout.place(packageControls + packageLb, 1280, 606)
+            .single { it.action?.keys == setOf(HudBinding.LB) }.id)
+        assertTrue(layout.place(emptyList(), 1280, 606).isEmpty())
     }
 }

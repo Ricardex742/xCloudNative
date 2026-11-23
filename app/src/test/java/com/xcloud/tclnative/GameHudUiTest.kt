@@ -60,6 +60,12 @@ class GameHudUiTest {
                      "activated":{"background":{"type":"color","value":"#0f08"}}}}
                 ]}}}
             """.trimIndent().toByteArray(),
+            "layouts/neutral/block.json" to """
+                {"content":{"left":{"inner":[
+                  {"type":"joystick","axis":{"input":"axisXY","output":"leftJoystick"},
+                   "action":"leftBumper","actionThreshold":0.5}
+                ]}}}
+            """.trimIndent().toByteArray(),
             "layouts/pt/pt-BR/optional.json" to "[not a layout]".toByteArray(),
             "assets/neutral/@1.0x/Action.png" to art.toByteArray()
         )
@@ -85,6 +91,14 @@ class GameHudUiTest {
             archive.writeBytes(output.toByteArray())
             OfficialTouchBundle.parse(archive,"pt-BR")
         } finally { archive.delete() }
+        val withBlock = VirtualGamepad(1280, 720, official = bundle.controls("block", bundle.newState())!!)
+        val stick = withBlock.controls.single()
+        withBlock.down(1, stick.x, stick.y)
+        assertEquals(0, withBlock.state().buttons)
+        withBlock.move(1, stick.x + stick.radius * .75f, stick.y)
+        assertEquals(HudBinding.LB.button, withBlock.state().buttons)
+        withBlock.up(1)
+        assertEquals(GamepadState(), withBlock.state())
         xbox.load(OfficialTouchLoad.Ready(bundle))
         val controls=xbox.controls()!!
         val appearance = controls.single().officialAppearance!!

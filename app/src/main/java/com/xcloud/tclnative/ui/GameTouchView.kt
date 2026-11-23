@@ -30,7 +30,7 @@ class GameTouchView(context: Context,
     private val skin=HudSkin()
     private val officialSkin=OfficialTouchSkin()
     private var automatic=HudPreset.GAMEPAD
-    private var useAssassinsCreedPlacement=false
+    private var assassinsCreedLayout: AssassinsCreedTouchLayout? = null
     var configuration=HudSettings()
         private set
     private var model=VirtualGamepad(1,1)
@@ -59,7 +59,7 @@ class GameTouchView(context: Context,
     fun beginSession() {
         releaseInputs()
         officialControls=null
-        useAssassinsCreedPlacement=false
+        assassinsCreedLayout=null
         nativeEvents=NativeEvents()
         lastHudPress=UiText.text("nenhum")
     }
@@ -150,7 +150,7 @@ class GameTouchView(context: Context,
         autoHidden=false
         if(game!=null) {
             automatic=GameHud.automatic(game.titleId,game.name)
-            useAssassinsCreedPlacement=AssassinsCreedTouchLayout.appliesTo(game)
+            assassinsCreedLayout=AssassinsCreedTouchLayout.forGame(game)
         }
         if(settings!=null) configuration=settings
         this.mode=mode
@@ -172,7 +172,7 @@ class GameTouchView(context: Context,
     fun showPage(page: HudPreset) { releaseInputs(); model.setPage(page);scheduleAutoHide(); invalidate() }
     private fun rebuild(page: HudPreset=preset) {
         val controls = officialControls?.let {
-            if (useAssassinsCreedPlacement) AssassinsCreedTouchLayout.place(it, width, height) else it
+            assassinsCreedLayout?.place(it, width, height) ?: it
         }
         model=VirtualGamepad(width.coerceAtLeast(1),height.coerceAtLeast(1),
             if (controls == null) page else HudPreset.GAMEPAD,
