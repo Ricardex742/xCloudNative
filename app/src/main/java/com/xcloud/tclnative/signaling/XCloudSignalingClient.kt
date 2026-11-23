@@ -44,6 +44,7 @@ import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.File
 import java.io.IOException
+import java.io.OutputStream
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
@@ -243,7 +244,7 @@ class XCloudSignalingClient(
         var temporary: File? = null
         return try {
             temporary = File.createTempFile("xbox-touch-", ".takx",cache)
-            downloadTouchBundle(url,temporary)
+            temporary.outputStream().use { downloadTouchBundle(url,it) }
             val bundle = try {
                 OfficialTouchBundle.parse(temporary,locale)
             } catch (error: Exception) {
@@ -260,7 +261,7 @@ class XCloudSignalingClient(
         }
     }
 
-    private suspend fun downloadTouchBundle(url: okhttp3.HttpUrl, file: File) {
+    private suspend fun downloadTouchBundle(url: okhttp3.HttpUrl, output: OutputStream) {
         val maximum = 32L*1024*1024
         var target = url
         repeat(4) {
@@ -270,7 +271,7 @@ class XCloudSignalingClient(
                 if (!response.isSuccessful) throw CloudHttpException("TOUCH_BUNDLE_CDN",response.code,null,null)
                 val body = response.body ?: throw IOException("TOUCH_BUNDLE: empty")
                 require(body.contentLength()<=maximum)
-                body.byteStream().use { input -> file.outputStream().use { output ->
+                body.byteStream().use { input ->
                     val buffer = ByteArray(32*1024)
                     var bytes = 0L
                     while (true) {
@@ -280,7 +281,7 @@ class XCloudSignalingClient(
                         require(bytes<=maximum)
                         output.write(buffer,0,count)
                     }
-                } }
+                }
                 null
             } ?: return
             target = target.resolve(next)?.takeIf(::officialBundleLocation) ?: throw IOException("TOUCH_BUNDLE: redirect")
