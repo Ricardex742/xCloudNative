@@ -82,6 +82,7 @@ class DashboardArtworkTest {
             assertEquals(count,server.requestCount)
             first.requestFocus()
             view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
+            confirmGameDetailsPlay()
             assertEquals(games.first().titleId,played)
         } finally { view.close(); server.shutdown(); controller.pause().stop().destroy() }
     }

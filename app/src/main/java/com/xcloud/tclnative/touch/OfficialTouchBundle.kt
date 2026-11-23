@@ -83,6 +83,9 @@ internal class OfficialTouchBundle private constructor(
                 return readStyle(layers, type == "joystick") { resolve(it) }
             }
             val action = keys.takeIf { it.isNotEmpty() }?.let(::HudAction)
+            val toggle = type == "button" && resolve(item.opt("toggle")) == true
+            val scale = (resolve(item.opt("scale")) as? Number)?.toFloat()
+                ?.takeIf { it.isFinite() && it > 0f }?.coerceIn(.25f, 3f) ?: 1f
             val axisActionThreshold = if (action != null && (type == "joystick" || type == "touchpad")) {
                 (resolve(item.opt("actionThreshold")) as? Number)?.toFloat()?.takeIf { it in 0f..1f } ?: 0f
             } else null
@@ -91,7 +94,8 @@ internal class OfficialTouchBundle private constructor(
                 TouchKind.RIGHT_STICK -> "R"
                 else -> "+"
             }
-            result += HudElement(id,label,x,y,radius,kind,keys.singleOrNull(),action=action,
+            result += HudElement(id,label,x,y,radius * scale,kind,keys.singleOrNull(),action=action,
+                dragLook = type == "touchpad" && kind == TouchKind.RIGHT_STICK,
                 stickAxis=when {
                     axes == setOf('x') -> HudStickAxis.HORIZONTAL
                     axes == setOf('y') -> HudStickAxis.VERTICAL
@@ -99,15 +103,22 @@ internal class OfficialTouchBundle private constructor(
                 },
                 officialAppearance=OfficialTouchAppearance(
                     if (enabled) style("idle") else style("disabled"),
-                    if (type == "joystick") style("moving", "activated") else style("activated"),
+                    when {
+                        type == "joystick" -> style("moving", "activated")
+                        type == "touchpad" && action == null -> style("moving")
+                        else -> style("activated")
+                    },
                     enabled,
-                    touchpad = type == "touchpad"
+                    touchpad = type == "touchpad",
+                    toggled = if (toggle) style("toggled", "activated") else null
                 ),
-                axisActionThreshold = axisActionThreshold)
+                axisActionThreshold = axisActionThreshold,
+                relativeStick = type == "joystick" && resolve(item.opt("relative")) != false,
+                toggle = toggle)
         }
         listOf("left" to .205f, "center" to .50f, "right" to .795f).forEach { (side, x) ->
             val wheel = resolve(content.opt(side)) as? JSONObject ?: return@forEach
-            val inner = wheel.optJSONArray("inner")
+            val inner = resolve(wheel.opt("inner")) as? JSONArray
             val size = minOf(inner?.length() ?: 0, 4)
             for (index in 0 until size) {
                 val offset = if(size == 1) 0.0 else 1.0
@@ -115,7 +126,7 @@ internal class OfficialTouchBundle private constructor(
                 add(inner?.opt(index),"$side-inner-$index", x + (cos(angle)*.056*offset).toFloat(),
                     .67f + (sin(angle)*.091*offset).toFloat(), if(size == 1) .085f else .046f)
             }
-            val outer = wheel.optJSONArray("outer")
+            val outer = resolve(wheel.opt("outer")) as? JSONArray
             for (index in 0 until minOf(8, outer?.length() ?: 0)) {
                 val item = resolve(outer?.opt(index))
                 val group = if (item is JSONArray) (0 until minOf(4,item.length())).map(item::opt) else listOf(item)
@@ -128,7 +139,8 @@ internal class OfficialTouchBundle private constructor(
             }
         }
         for ((side,sign) in listOf("left" to 1, "right" to -1)) {
-            val upper = (resolve(content.opt("upper")) as? JSONObject)?.optJSONArray(side) ?: continue
+            val row = resolve(content.opt("upper")) as? JSONObject
+            val upper = resolve(row?.opt(side)) as? JSONArray ?: continue
             val x = if(side == "left") .15f else .89f
             for (index in 0 until minOf(4,upper.length())) {
                 add(upper.opt(index),"upper-$side-$index",x + sign * index * .063f,.14f,.043f)
@@ -216,7 +228,14 @@ internal class OfficialTouchBundle private constructor(
             "interact" to HudIcon.USE, "aim" to HudIcon.AIM, "shoot" to HudIcon.FIRE, "jump" to HudIcon.JUMP,
             "crouch" to HudIcon.CROUCH, "sprint" to HudIcon.SPRINT, "reload" to HudIcon.RELOAD,
             "melee" to HudIcon.MELEE, "map" to HudIcon.MAP, "pause" to HudIcon.PAUSE, "attack" to HudIcon.ATTACK,
-            "brakepedal" to HudIcon.BRAKE, "gaspedal" to HudIcon.ACCELERATE
+            "brakepedal" to HudIcon.BRAKE, "gaspedal" to HudIcon.ACCELERATE,
+            "fire" to HudIcon.FIRE, "look" to HudIcon.CAMERA, "targetlock" to HudIcon.AIM,
+            "weaponselect" to HudIcon.WEAPON, "walk" to HudIcon.SPRINT, "run" to HudIcon.SPRINT,
+            "move" to HudIcon.SPRINT, "move2" to HudIcon.SPRINT, "cover" to HudIcon.CROUCH,
+            "map2" to HudIcon.MAP, "titlemenu" to HudIcon.PAUSE, "inventory" to HudIcon.WEAPON,
+            "block" to HudIcon.SHIELD, "specialability" to HudIcon.SPECIAL, "ability" to HudIcon.SPECIAL,
+            "dodge" to HudIcon.DASH, "dash" to HudIcon.DASH, "roll" to HudIcon.DASH,
+            "sword" to HudIcon.ATTACK, "lightsword" to HudIcon.ATTACK, "heavysword" to HudIcon.ATTACK
         )
         private const val MAX_ARCHIVE_ENTRIES = 20_000
         private const val MAX_MEMBER_BYTES = 192 * 1024

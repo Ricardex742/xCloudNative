@@ -7,14 +7,16 @@ import java.util.Locale
 /** Movement fallback for the adventure overlay when the package has no left stick. */
 internal object MinecraftDungeonsTouchLayout {
     private val movement = HudElement(
-        "dungeons-movement", "L", .18f, .76f, .13f,
+        "dungeons-movement", "L", .215f, .50f, .135f,
         TouchKind.LEFT_STICK, officialAppearance = OfficialTouchAppearance(
             OfficialTouchStyle(), OfficialTouchStyle(), enabled = true
-        )
+        ), relativeStick = true
     )
 
     fun appliesTo(game: GameTitle): Boolean = listOfNotNull(game.englishName, game.name, game.titleId).any {
-        it.uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]"), "").startsWith("MINECRAFTDUNGEONS")
+        val name = it.uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]"), "")
+        name.startsWith("MINECRAFTDUNGEONS") && !name.startsWith("MINECRAFTDUNGEONSII") &&
+            !name.startsWith("MINECRAFTDUNGEONS2")
     }
 
     fun place(controls: List<HudElement>, width: Int, height: Int): List<HudElement> {

@@ -40,6 +40,7 @@ import com.xcloud.tclnative.catalog.withMetadataFallback
 import java.io.File
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.signaling.SessionTimeLimit
+import com.xcloud.tclnative.touch.MinecraftDungeonsTouchLayout
 import com.xcloud.tclnative.touch.OfficialTouchLoad
 import com.xcloud.tclnative.touch.OfficialTouchSession
 import com.xcloud.tclnative.net.CloudHttpException
@@ -166,6 +167,7 @@ open class MainActivity : Activity() {
     private var officialTouch: OfficialTouchSession? = null
     private var loadOfficialTouch: (() -> Unit)? = null
     private lateinit var sessionTimeView: TextView
+    private lateinit var sessionStartNotice: SessionStartNotice
     private val dismissSessionTimeNotice = Runnable { sessionTimeView.visibility = View.GONE }
     private lateinit var guideTouchControls: GuideTouchControls
     private var currentTouchMode=TouchMode.OFF
@@ -351,6 +353,11 @@ open class MainActivity : Activity() {
                     params.topMargin = (48 * resources.displayMetrics.density).toInt() + cutout.top
                     sessionTimeView.layoutParams = params
                 }
+                if (::sessionStartNotice.isInitialized) {
+                    val params = sessionStartNotice.layoutParams as FrameLayout.LayoutParams
+                    params.bottomMargin = (18 * resources.displayMetrics.density).toInt() + cutout.bottom
+                    sessionStartNotice.layoutParams = params
+                }
                 com.xcloud.tclnative.ui.dashboard.StatisticsOverlayStyle.apply(statsView,statisticsSettings,displayCutout)
                 renderStatistics()
             }
@@ -362,7 +369,7 @@ open class MainActivity : Activity() {
                 val officialWithNative = currentTouchMode==TouchMode.NATIVE && touchView.usingOfficialControls
                 if ((currentTouchMode==TouchMode.VIRTUAL || officialWithNative) &&
                     transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE)
-                    publishGamepad(0,temporary=officialWithNative)
+                    publishGamepad(0, temporary = officialWithNative, preserveButtonEdges = officialWithNative)
             },
             onPointers={ events -> if(transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) webrtcClient?.sendPointers(events) },
             coordinates=surfaceRenderer::touchCoordinates,
@@ -410,6 +417,10 @@ open class MainActivity : Activity() {
         }
         rootLayout.addView(sessionTimeView, FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
             topMargin = (48 * density).toInt() + displayCutout.top
+        })
+        sessionStartNotice = SessionStartNotice(this)
+        rootLayout.addView(sessionStartNotice, FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = (18 * density).toInt() + displayCutout.bottom
         })
         rootLayout.addView(networkIndicator)
         transitionPanel=SessionTransitionView(this)
@@ -658,6 +669,7 @@ open class MainActivity : Activity() {
                 loginView?.close(); loginView=null
                 return@launch // No catalog/grid or background galleries while the shortcut enters its game.
             }
+            val catalog = createCatalogService(catalogCache,catalogWork::await)
             val view = GameDashboardView(this@MainActivity, library,
                 onPlay = { game -> chooseLaunchMode(signaling, game) },
                 onSearch = { showCatalogSearch() },
@@ -668,7 +680,7 @@ open class MainActivity : Activity() {
                 onOwnershipNeeded = { requestOwnership() },onGameShortcut={ showGameShortcut(it) },
                 onFriends={ showFriends { dashboard?.restoreFocus() } },
                 onThemeSettings={ page -> showSettings(session,page) { dashboard?.restoreFocus() } },
-                onRemotePlay={ showRemotePlay() })
+                onRemotePlay={ showRemotePlay() }, onLoadGameDetails=catalog::gameDetails)
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)
@@ -687,7 +699,6 @@ open class MainActivity : Activity() {
             currentSignaling = signaling
             syncHomeShortcuts()
             if (!sessionSaved) launchPendingShortcut()
-            val catalog = createCatalogService(catalogCache,catalogWork::await)
             val baseIds=allGames.mapTo(hashSetOf()) { it.titleId }
             val nativeMetadata = async {
                 catalog.hydrate(allGames, onProgress = { progress -> withContext(Dispatchers.Main) {
@@ -1386,7 +1397,9 @@ open class MainActivity : Activity() {
             touchView.installOfficialControls(null)
             return false
         }
-        if (currentTouchMode==TouchMode.OFF && !enableGameHud(keepOfficial=true)) return false
+        val dungeonsOverlay = layout.id != null && layout.controls.isNotEmpty() && currentTouchMode == TouchMode.NATIVE &&
+            activeGame?.let(MinecraftDungeonsTouchLayout::appliesTo) == true
+        if ((currentTouchMode == TouchMode.OFF || dungeonsOverlay) && !enableGameHud(keepOfficial = true)) return false
         touchView.installOfficialControls(layout)
         return true
     }
@@ -1821,6 +1834,8 @@ open class MainActivity : Activity() {
             remote -> if (choice != TouchMode.OFF && inputDevice.touchDevice) TouchMode.VIRTUAL else TouchMode.OFF
             sessionDesktopMode!=DesktopInputMode.OFF -> TouchMode.OFF
             preferHybrid -> TouchMode.NATIVE
+            choice == TouchMode.AUTO && inputDevice.touchDevice && game.offersOfficialTouch() &&
+                MinecraftDungeonsTouchLayout.appliesTo(game) -> TouchMode.VIRTUAL
             else -> DeviceInputPolicy.resolve(inputDevice,choice,game)
         }
         val official = if (!remote && inputDevice.touchDevice && sessionDesktopMode==DesktopInputMode.OFF &&
@@ -1899,7 +1914,6 @@ open class MainActivity : Activity() {
                         sessionStartedAtMs = android.os.SystemClock.elapsedRealtime()
                         tracker.begin(sessionStartedAtMs,NetworkSnapshot.read(this@MainActivity))
                         runCatching { startupReportStore.clear() }
-                        firstFrame.complete(Unit)
                         finishLoading(forPlayback = true)
                         updateJoystickDispatch()
                         currentTouchMode=touchMode
@@ -1911,6 +1925,7 @@ open class MainActivity : Activity() {
                         hudTextView.text = UiText.text("Vídeo nativo ativo [{0}]",UiText.nested(gameName))
                         hudTextView.setTextColor(Color.GREEN)
                         transmissionReady=true;renderStatistics();resynchronizeUsbInput()
+                        firstFrame.complete(Unit)
                     }
                 }
                 surfaceRenderer.onRenderError = { error -> transportFailure.complete(RenderFailureException(error)) }
@@ -2021,6 +2036,10 @@ open class MainActivity : Activity() {
                 if (!firstFrame.isCompleted) queuePanel.updateProgress("VIDEO:")
                 attempt.awaitFirstFrame(transportFailure)
                 sessionTime.startFromSessionState(signaling.sessionTimeLimitSeconds(),sessionStartedAtMs)
+                if (!remote && activityVisible && transmissionReady && gameplayInputEnabled()) {
+                    sessionStartNotice.show(sessionTime.remainingSeconds(android.os.SystemClock.elapsedRealtime()),
+                        dashboard?.cloudPlaytimeSnapshot() ?: CloudPlaytime())
+                }
                 renderSessionTime(sessionTime)
                 val recovery = VideoRecoveryPolicy(compatible)
                 var visibilityEpoch = videoVisibilityEpoch
@@ -2406,6 +2425,11 @@ open class MainActivity : Activity() {
     }
 
     private fun hideSessionTimeNotice() {
+        if (::sessionStartNotice.isInitialized) sessionStartNotice.hide()
+        hideSessionTimeWarning()
+    }
+
+    private fun hideSessionTimeWarning() {
         if (!::sessionTimeView.isInitialized) return
         sessionTimeView.removeCallbacks(dismissSessionTimeNotice)
         sessionTimeView.visibility = View.GONE
@@ -2413,8 +2437,13 @@ open class MainActivity : Activity() {
 
     private fun renderSessionTime(limit: SessionTimeLimit) {
         val seconds = limit.remainingSeconds(android.os.SystemClock.elapsedRealtime())
-        if (seconds == null || seconds == 0L || !activityVisible || !transmissionReady || !gameplayInputEnabled()) {
+        if (!activityVisible || !transmissionReady || !gameplayInputEnabled()) {
             hideSessionTimeNotice()
+            return
+        }
+        sessionStartNotice.update(seconds, dashboard?.cloudPlaytimeSnapshot() ?: CloudPlaytime())
+        if (seconds == null || seconds == 0L) {
+            hideSessionTimeWarning()
             return
         }
         val minutes = limit.takeWarningMinutes(seconds) ?: return
@@ -2462,10 +2491,10 @@ open class MainActivity : Activity() {
         val guideButtons=if (::guideTouchControls.isInitialized) guideTouchControls.buttons else 0
         return gyro.apply(if (guideButtons==0) merged else merged.copy(buttons=merged.buttons or guideButtons))
     }
-    private fun publishGamepad(slot: Int, temporary: Boolean = false) {
+    private fun publishGamepad(slot: Int, temporary: Boolean = false, preserveButtonEdges: Boolean = false) {
         val auxiliary=slot==0 && currentTouchMode==TouchMode.NATIVE && controllers.sourceFor(0)==null &&
             (temporary || sessionSettings?.gyroNativeTouch==true)
-        webrtcClient?.updateGamepad(combinedInput(slot),slot,auxiliary)
+        webrtcClient?.updateGamepad(combinedInput(slot), slot, auxiliary, preserveButtonEdges)
     }
     private fun setDesktopCapture(enabled: Boolean) {
         val active=enabled && sessionDesktopMode!=DesktopInputMode.OFF && webrtcClient!=null

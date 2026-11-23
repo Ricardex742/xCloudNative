@@ -66,6 +66,12 @@ class GameHudUiTest {
                    "action":"leftBumper","actionThreshold":0.5}
                 ]}}}
             """.trimIndent().toByteArray(),
+            "layouts/neutral/aim.json" to """
+                {"content":{"right":{"inner":[{"type":"touchpad",
+                   "axis":{"input":"axisXY","output":"rightJoystick"},"action":"rightTrigger"}]},
+                   "upper":{"right":[{"type":"button","action":"leftTrigger","toggle":true,
+                   "styles":{"toggled":{"faceImage":{"type":"icon","value":"aim"}}}}]}}}
+            """.trimIndent().toByteArray(),
             "layouts/neutral/adventure.json" to """
                 {"content":{
                    "left":{"inner":[{"type":"joystick","axis":[
@@ -109,6 +115,25 @@ class GameHudUiTest {
         assertEquals(HudBinding.LB.button, withBlock.state().buttons)
         withBlock.up(1)
         assertEquals(GamepadState(), withBlock.state())
+        val aimLayout = bundle.controls("aim", bundle.newState())!!
+        val withAim = VirtualGamepad(1280, 720, official = aimLayout)
+        val aim = withAim.controls.single { it.toggle }
+        val camera = withAim.controls.single { it.dragLook }
+        withAim.down(1, aim.x, aim.y)
+        withAim.up(1)
+        assertTrue(withAim.toggled(aim))
+        assertEquals(1f, withAim.state().leftTrigger, 0f)
+        withAim.down(1, aim.x, aim.y)
+        withAim.up(1)
+        assertEquals(GamepadState(), withAim.state())
+        withAim.down(1, camera.x + 20f, camera.y, now = 100)
+        assertEquals(0f, withAim.state(100).rightX, 0f)
+        assertEquals(1f, withAim.state(100).rightTrigger, 0f)
+        withAim.move(1, camera.x + 30f, camera.y, now = 110)
+        assertTrue(withAim.state(110).rightX > 0f)
+        assertEquals(0f, withAim.state(150).rightX, 0f)
+        withAim.up(1, now = 151)
+        assertEquals(GamepadState(), withAim.state(151))
         val adventure = bundle.controls("adventure", bundle.newState())!!
         assertEquals(TouchKind.LEFT_STICK, adventure.first().kind)
         assertEquals(HudStickAxis.BOTH, adventure.first().stickAxis)

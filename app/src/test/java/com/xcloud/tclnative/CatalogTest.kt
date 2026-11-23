@@ -13,6 +13,22 @@ import org.junit.Test
 import java.net.Proxy
 
 class CatalogTest {
+    @Test fun detailsUseTheBrazilianRatingAndOnlyCatalogScreenshots() {
+        val details = StoreMetadata.gameDetails(JSONObject("""
+            {"LocalizedProperties":[{"Language":"pt-BR","PublisherName":"Estúdio","ProductDescription":"Aventura.",
+               "Images":[{"ImagePurpose":"Poster","Uri":"//example.com/poster.png"},
+                         {"ImagePurpose":"Screenshot","Uri":"//example.com/level.jpg"},
+                         {"ImagePurpose":"Screenshot","Uri":"//example.com/level.jpg"}]}],
+             "MarketProperties":[{"Markets":["BR"],"ContentRatings":[
+                {"RatingSystem":"ESRB","RatingId":"ESRB:E"},
+                {"RatingSystem":"DJCTQ","RatingId":"DJCTQ:10"}]}]}
+        """.trimIndent()))
+        assertEquals("Estúdio", details.publisher)
+        assertEquals("Aventura.", details.description)
+        assertEquals("10", details.rating)
+        assertEquals(listOf("https://example.com/level.jpg"), details.screenshots)
+    }
+
     @Test fun officialArtEnrichesOnlyExistingCloudTitlesAndPreservesTheirLaunchIds() {
         val games = listOf(GameTitle("FORZA", "Old name", "ABC"), GameTitle("SECOND", "Second", "DEF"))
         val data = JSONObject("""{"Products":{"ABC":{"ProductTitle":"Forza Horizon 5","Image_Poster":{"URL":"//store.example/poster.jpg"},"Image_Tile":{"URL":"https://store.example/tile.jpg"}},"NOT-CLOUD":{"ProductTitle":"Must not appear"}}}""")

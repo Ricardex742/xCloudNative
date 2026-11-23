@@ -135,6 +135,20 @@ class CatalogService(
             .readResponse { JSONObject(it.checkedBody("STORE_ART")) }
     }
 
+    suspend fun gameDetails(productId: String): StoreGameDetails? = withContext(Dispatchers.IO) {
+        if (!productId.matches(Regex("[A-Za-z0-9]{12}"))) return@withContext null
+        beforeRequest()
+        try {
+            StoreMetadata.products(storeProducts(listOf(productId), "pt-br,en-us"))
+                .firstOrNull { it.optString("ProductId", it.optString("StoreId")).equals(productId, true) }
+                ?.let(StoreMetadata::gameDetails)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     /** Hydrate unmatched public products without inserting them into the authenticated native catalog. */
     suspend fun hydrateOfficialGallery(gallery: OfficialGallery, knownProducts: Set<String>,
                                       knownEnglishProducts: Set<String> = emptySet(),

@@ -81,12 +81,14 @@ class GameDashboardView(
     private val onGameShortcut: ((GameTitle) -> Unit)?=null,
     private val onFriends: (() -> Unit)?=null,
     private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() },
-    onRemotePlay: (() -> Unit)? = null
+    onRemotePlay: (() -> Unit)? = null,
+    private val onLoadGameDetails: (suspend (String) -> com.xcloud.tclnative.catalog.StoreGameDetails?)? = null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val favoriteWrites = Mutex()
     private val posters = PosterLoader(context, scope,frameBound=true)
+    private var gameDetails: ConsoleDialog? = null
     private val consoleBackdrop = ConsoleThemeBackdrop(context)
     private val seriesStore=SeriesPersonalizationStore(context)
     private var seriesPreferences=seriesStore.read()
@@ -426,7 +428,7 @@ class GameDashboardView(
         addView(footer); addView(catalogNote); addView(metadataNote)
         serviceSelector?.let { addView(it.button) }
         addView(resumeSessionButton)
-        hint("A", UiText.text("SELECIONAR")) { selectedCard?.let(::playCard) }
+        hint("A", UiText.text("SELECIONAR")) { selectedCard?.let(::showGameDetails) }
         hint("B", UiText.text("VOLTAR")) { back() }
         hint("Y", UiText.text("FAVORITAR")) { toggleSelectedFavorite() }
         hint("X", UiText.text("BUSCAR"), onSearch)
@@ -1124,6 +1126,21 @@ class GameDashboardView(
     private fun playCard(card: CatalogCard) {
         val game=card.playableGame()
         if(game!=null) onPlay(game) else card.product?.let(onPlayProduct)
+    }
+    private fun showGameDetails(card: CatalogCard) {
+        if (closed || gameDetails?.isShowing == true) return
+        val game = card.playableGame()
+        val shortcut = onGameShortcut
+        val dialog = GameDetailsPanel(context, card, scope, onLoadGameDetails, { playCard(card) },
+            if (game != null && shortcut != null) ({ shortcut(game) }) else null).dialog
+        gameDetails = dialog
+        dialog.setOnDismissListener {
+            if (gameDetails === dialog) {
+                gameDetails = null
+                if (!closed && !artworkPaused) restoreFocus()
+            }
+        }
+        dialog.show()
     }
     private fun showOriginalCategories() {
         originalBrowsing=false;navigation.visibility=VISIBLE;consoleTabRow.visibility=VISIBLE;grid.visibility=GONE;consoleBack.visibility=GONE;emptyState.visibility=GONE
@@ -2218,7 +2235,7 @@ class GameDashboardView(
             // Holders from the previous snapshot can still exist until the next layout.
             // Resolve the current position/binding instead of launching the captured old card.
             card.setOnClickListener {
-                items.getOrNull(holder.bindingAdapterPosition)?.let { current -> updateSelected(current); playCard(current) }
+                items.getOrNull(holder.bindingAdapterPosition)?.let { current -> updateSelected(current); showGameDetails(current) }
             }
             card.setOnLongClickListener {
                 val game=items.getOrNull(holder.bindingAdapterPosition)?.playableGame()
@@ -2528,7 +2545,7 @@ class GameDashboardView(
     override fun onAttachedToWindow() { super.onAttachedToWindow();appearancePrefs.registerOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=true;refreshSeriesPreferences() }
     override fun onDetachedFromWindow() { closeServiceMenu();if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false };super.onDetachedFromWindow() }
     fun close() { if (!closed) {
-        closed = true;closeServiceMenu();if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false }
+        closed = true;gameDetails?.dismiss();closeServiceMenu();if(appearanceListening) { appearancePrefs.unregisterOnSharedPreferenceChangeListener(appearanceListener);appearanceListening=false }
         consoleBackdrop.close();shortcutSkins.forEach { it.clear() };scope.cancel(); posters.close(); grid.adapter = null
     } }
     companion object { const val COLUMNS = 6 }

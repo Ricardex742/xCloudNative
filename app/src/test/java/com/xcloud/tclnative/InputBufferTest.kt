@@ -6,6 +6,24 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class InputBufferTest {
+    @Test fun officialTapInNativeModeReleasesOnlyAfterItsQueuedPress() {
+        val packets = java.util.concurrent.LinkedBlockingQueue<ByteArray>()
+        val pump = com.xcloud.tclnative.webrtc.RealtimeInputPump({ 0 }, { packets.offer(it); true },
+            { fail("Send failed") }, initialGamepads = emptySet())
+        try {
+            pump.update(GamepadState(buttons = 16))
+            pump.releaseAfterNeutral(preserveButtonEdges = true)
+            pump.start()
+            val buttons = List(2) {
+                val packet = packets.poll(2, java.util.concurrent.TimeUnit.SECONDS) ?: error("Missing gamepad packet")
+                java.nio.ByteBuffer.wrap(packet).order(java.nio.ByteOrder.LITTLE_ENDIAN).getShort(16).toInt()
+            }
+            assertEquals(listOf(16, 0), buttons)
+        } finally {
+            pump.close()
+        }
+    }
+
     @Test fun guideCountersCountEdgesAcceptedByTheChannel() {
         val pump=com.xcloud.tclnative.webrtc.RealtimeInputPump({0},{true},{fail("Input failed")})
         try {

@@ -96,11 +96,12 @@ class RealtimeInputPump(
     }
     fun remove(index: Int) { synchronized(lock) { active.remove(index);retireAfterNeutral.remove(index);revisions[index]++; buffers[index].update(GamepadState()); buffers[index].discardBacklog() } }
     /** Auxiliary aim must release its stick before becoming idle. The touch slot stays connected. */
-    fun releaseAfterNeutral(index: Int=0) {
+    fun releaseAfterNeutral(index: Int=0, preserveButtonEdges: Boolean = false) {
         require(index in 0..3)
         synchronized(lock) {
             if(index !in active || index in retireAfterNeutral) return
-            buffers[index].update(GamepadState());buffers[index].discardBacklog()
+            buffers[index].update(GamepadState())
+            if (!preserveButtonEdges) buffers[index].discardBacklog()
             retireAfterNeutral[index]=++revisions[index]
             thread?.let(LockSupport::unpark)
         }
@@ -161,6 +162,7 @@ class RealtimeInputPump(
                             for (index in buffers.indices) {
                                 if (index in active) states[index] = buffers[index].next() else states.remove(index)
                                 val revision = retireAfterNeutral[index] ?: continue
+                                if (states[index] != neutral || buffers[index].hasEdges()) continue
                                 retirementRevisions[index] = revision
                                 retiringMask = retiringMask or (1 shl index)
                             }

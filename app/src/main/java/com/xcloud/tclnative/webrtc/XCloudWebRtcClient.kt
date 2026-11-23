@@ -541,12 +541,13 @@ class XCloudWebRtcClient(
         }
         return accepted
     }
-    fun updateGamepad(state: GamepadState, index: Int = 0,auxiliary: Boolean=false) {
+    fun updateGamepad(state: GamepadState, index: Int = 0, auxiliary: Boolean = false,
+                      preserveButtonEdges: Boolean = false) {
         require(index in 0..3)
         synchronized(pumpLock) {
             if(closed.get() || inputRegistrationFailed) return
             if(auxiliary && touchEnabled && index==0 && state==GamepadState()) {
-                if(gamepads.remove(index)!=null) inputPump?.releaseAfterNeutral(index)
+                if (gamepads.remove(index) != null) inputPump?.releaseAfterNeutral(index, preserveButtonEdges)
                 return
             }
             val added=index !in gamepads

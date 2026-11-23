@@ -215,18 +215,31 @@ class DashboardTest {
             view.close(); controller.pause().stop().destroy()
         }
     }
-    @Test fun choosingACoverLaunchesItsRealCloudIdAndSearchIncludesTheFullCatalog() {
+    @Test fun choosingACoverShowsDetailsAndBothActionsUseItsRealCloudId() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
         var played: GameTitle? = null
-        val view = GameDashboardView(activity, GameLibrary(activity, "selection"), { played = it }, {}, {}, {})
+        var shortcut: GameTitle? = null
+        val view = GameDashboardView(activity, GameLibrary(activity, "selection"), { played = it }, {}, {}, {},
+            onGameShortcut = { shortcut = it }, onLoadGameDetails = {
+                assertEquals("TESTGAME0260", it)
+                com.xcloud.tclnative.catalog.StoreGameDetails("Editora", "Descrição do jogo", "10", emptyList())
+            })
         activity.setContentView(view)
-        view.setGames(games + (12..260).map { GameTitle("cloud-$it", "Jogo $it") })
+        view.setGames(games + (12..260).map { GameTitle("cloud-$it", "Jogo $it", "TESTGAME%04d".format(it)) })
         layout(view)
         view.setSearch("Jogo 260"); layout(view)
         val grid = (0 until view.childCount).map(view::getChildAt).filterIsInstance<RecyclerView>().single()
         assertEquals(1, grid.adapter!!.itemCount)
         grid.getChildAt(0).performClick()
+        assertNull(played)
+        val details = currentGameDetails()
+        val publishView = (details.body.getChildAt(0) as android.widget.LinearLayout).getChildAt(0)
+        assertEquals("Editora", ((publishView as android.widget.LinearLayout).getChildAt(0) as TextView).text.toString())
+        details.panel.findViewWithTag<View>("game-details-shortcut").performClick()
+        assertEquals("cloud-260", shortcut?.titleId)
+        assertTrue(details.isShowing)
+        confirmGameDetailsPlay()
         assertEquals("cloud-260", played?.titleId)
         view.close(); controller.pause().stop().destroy()
     }
@@ -302,6 +315,7 @@ class DashboardTest {
         assertTrue(down.requestFocus())
         assertEquals(games[7].titleId, view.selectedGame?.titleId)
         key(view, KeyEvent.KEYCODE_BUTTON_A)
+        confirmGameDetailsPlay()
         assertEquals(games[7].titleId, played?.titleId)
         view.close(); controller.pause().stop().destroy()
     }

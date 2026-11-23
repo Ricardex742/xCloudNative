@@ -1361,4 +1361,11 @@
     <string name="ui_fe524f1820bb0a0f" formatted="false">"До конца сеанса осталось не более 1 минуты. Сохраните прогресс в игре."</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"Загрузка официального сенсорного управления Xbox…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"Изменить официальную раскладку"</string>
+    <string name="ui_452597b2a054daef">"Ваш сеанс начался"</string>
+    <string name="ui_ad67e39384589ca1">"Оставшееся время сеанса: {0}"</string>
+    <string name="ui_7d959d4dfdf8dd04">"Недоступно в Xbox Cloud Gaming"</string>
+    <string name="ui_c99dea26471a5ea7">"Загрузка сведений об игре…"</string>
+    <string name="ui_05ba0638071ec56a">"Сведения из магазина недоступны."</string>
+    <string name="ui_d07a340ad020541f">"Возрастной рейтинг: {0}"</string>
+    <string name="ui_baef6be64b483ab9">"Снимки экрана"</string>
 </resources>

@@ -93,7 +93,7 @@ class OfficialGalleryUiTest {
             release.countDown();layout(view)
             assertFalse("Gallery traversal ran on Main",onMain.get())
             assertEquals(LibraryTab.ALL,view.activeTab);assertEquals(1,grid.adapter!!.itemCount)
-            grid.getChildAt(0).performClick();assertEquals(wanted,selected!!.productId)
+            grid.getChildAt(0).performClick();confirmGameDetailsPlay();assertEquals(wanted,selected!!.productId)
             view.setSearch("");view.selectTab(LibraryTab.PURCHASED);layout(view)
             assertEquals(3781,grid.adapter!!.itemCount)
             view.selectTab(LibraryTab.GAME_PASS);layout(view)
@@ -113,6 +113,7 @@ class OfficialGalleryUiTest {
             val grid=all(view).filterIsInstance<RecyclerView>().single()
             val holder=grid.findViewHolderForAdapterPosition(2)!!
             holder.itemView.requestFocus();holder.itemView.performClick()
+            confirmGameDetailsPlay()
             val wanted=selected!!.productId
             var replacements=0;var moves=0
             grid.adapter!!.registerAdapterDataObserver(object: RecyclerView.AdapterDataObserver() {
@@ -128,7 +129,7 @@ class OfficialGalleryUiTest {
             assertEquals(1,replacements);assertEquals(0,moves)
             val focused=grid.focusedChild
             assertNotNull("Focused product must remain reachable after hydration changes its position",focused)
-            focused.performClick();assertEquals(wanted,selected!!.productId)
+            focused.performClick();confirmGameDetailsPlay();assertEquals(wanted,selected!!.productId)
             assertTrue(selected!!.name!!.startsWith("Nome"))
             assertFalse(focused.contentDescription.toString().contains("comprado"))
             view.updateOwnership(mapOf(wanted to Ownership.OWNED))
@@ -137,6 +138,7 @@ class OfficialGalleryUiTest {
             assertSame(purchased, grid.focusedChild)
             assertTrue(purchased.contentDescription.toString().endsWith(", comprado"))
             purchased.performClick()
+            confirmGameDetailsPlay()
             assertEquals(wanted, selected!!.productId)
         } finally { view.close();controller.pause().stop().destroy() }
     }
@@ -197,6 +199,7 @@ class OfficialGalleryUiTest {
             view.setSearch("Battlefield 6");layout(view)
             assertEquals(1,grid.adapter!!.itemCount)
             grid.getChildAt(0).requestFocus();grid.getChildAt(0).performClick()
+            confirmGameDetailsPlay()
             assertEquals("BATTLEFIELD",launched!!.titleId);assertEquals("Battlefield™ 6",launched!!.name)
             assertEquals(authenticated.supportedInputTypes,launched!!.supportedInputTypes);assertNull(lookedUp)
             view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));view.awaitFavoriteWrites();layout(view)
@@ -222,10 +225,11 @@ class OfficialGalleryUiTest {
             assertEquals(560,grid.adapter!!.itemCount)
             assertNull(view.selectedGame)
             grid.getChildAt(0).performClick()
-            assertNotNull(selected);assertNull(launched)
+            assertNotNull(selected);confirmGameDetailsPlay();assertNull(launched)
             val binding=GameTitle("server-validated-id",selected!!.productId,supportedInputTypes=setOf("NativeTouch"))
             view.bindGalleryProduct(selected!!.productId,binding);layout(view)
             grid.getChildAt(0).performClick()
+            confirmGameDetailsPlay()
             assertEquals(binding.titleId,launched!!.titleId)
             assertEquals(setOf("NativeTouch"),launched!!.supportedInputTypes)
             view.setOfficialGallery(OfficialGalleryKind.PURCHASED,source("purchased",OfficialGalleryKind.PURCHASED))

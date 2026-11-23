@@ -1361,4 +1361,11 @@
     <string name="ui_fe524f1820bb0a0f" formatted="false">"本局最多剩余 1 分钟，请在游戏内保存进度。"</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"正在加载 Xbox 官方触控布局…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"编辑官方触控布局"</string>
+    <string name="ui_452597b2a054daef">"你的会话已开始"</string>
+    <string name="ui_ad67e39384589ca1">"会话剩余时间：{0}"</string>
+    <string name="ui_7d959d4dfdf8dd04">"Xbox Cloud Gaming 暂不可用"</string>
+    <string name="ui_c99dea26471a5ea7">"正在加载游戏详情…"</string>
+    <string name="ui_05ba0638071ec56a">"无法获取商店详情。"</string>
+    <string name="ui_d07a340ad020541f">"年龄分级：{0}"</string>
+    <string name="ui_baef6be64b483ab9">"屏幕截图"</string>
 </resources>

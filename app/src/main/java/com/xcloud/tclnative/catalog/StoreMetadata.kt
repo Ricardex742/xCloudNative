@@ -7,8 +7,41 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
+data class StoreGameDetails(
+    val publisher: String?,
+    val description: String?,
+    val rating: String?,
+    val screenshots: List<String>
+)
+
 /** Handles Store v7 arrays and the older Game Pass object map without changing cloud launch IDs. */
 object StoreMetadata {
+    fun gameDetails(data: JSONObject): StoreGameDetails {
+        val local = localized(data)
+        val images = local?.optJSONArray("Images")
+        val screenshots = (0 until (images?.length() ?: 0)).asSequence()
+            .mapNotNull { images?.optJSONObject(it) }
+            .filter { it.optString("ImagePurpose").equals("Screenshot", true) }
+            .mapNotNull { CatalogService.imageUrl(it.text("Uri")) }
+            .distinct().take(4).toList()
+        val markets = data.optJSONArray("MarketProperties")
+        val brazil = (0 until (markets?.length() ?: 0)).asSequence().mapNotNull { markets?.optJSONObject(it) }
+            .firstOrNull { market ->
+                val codes = market.optJSONArray("Markets")
+                (0 until (codes?.length() ?: 0)).any { codes?.optString(it).equals("BR", true) }
+            }
+        val ratings = brazil?.optJSONArray("ContentRatings")
+        val rating = (0 until (ratings?.length() ?: 0)).asSequence().mapNotNull { ratings?.optJSONObject(it) }
+            .filter { it.optString("RatingSystem").equals("DJCTQ", true) }
+            .firstNotNullOfOrNull { it.text("RatingId") }
+        return StoreGameDetails(
+            local?.text("PublisherName") ?: data.text("PublisherName") ?: data.optJSONObject("Properties")?.text("PublisherName"),
+            local?.let { it.text("ProductDescription") ?: it.text("ShortDescription") }?.take(12_000),
+            rating?.let { it.substringAfterLast(':').take(80) },
+            screenshots
+        )
+    }
+
     fun galleryProduct(data: JSONObject): GalleryProduct? {
         val id = (data.text("ProductId") ?: data.text("StoreId"))?.let(GamePassCatalog::productKey) ?: return null
         val local = localized(data)

@@ -98,7 +98,9 @@ class GameTouchView(context: Context,
     internal var onOfficialHudSaved: (String, Map<String, HudPlacement>) -> Boolean = { _, _ -> true }
     var onBindingRequested: (String,HudAction?) -> Unit = { _,_ -> }
     var onGesturesRequested: (String,Map<HudSwipe,HudGesture>) -> Unit = { _,_ -> }
-    private val lookReset=Runnable { if(mode==TouchMode.VIRTUAL && !isEditing) publish() }
+    private val lookReset=Runnable {
+        if (!isEditing && (mode == TouchMode.VIRTUAL || mode == TouchMode.NATIVE && usingOfficialControls)) publish()
+    }
     private var menuButtonFocused=false
     private val menuButton=TextView(context).apply {
         setPadding(0,0,0,0)
@@ -162,7 +164,11 @@ class GameTouchView(context: Context,
         if(game!=null) {
             automatic=GameHud.automatic(game.titleId,game.name)
             adjustOfficialLayout = AssassinsCreedTouchLayout.forGame(game)?.let { it::place }
-                ?: if (MinecraftDungeonsTouchLayout.appliesTo(game)) MinecraftDungeonsTouchLayout::place else null
+                ?: when {
+                    MinecraftDungeonsTouchLayout.appliesTo(game) -> MinecraftDungeonsTouchLayout::place
+                    Gears5TouchLayout.appliesTo(game) -> Gears5TouchLayout::place
+                    else -> null
+                }
         }
         if(settings!=null) configuration=settings
         this.mode=mode
@@ -199,13 +205,14 @@ class GameTouchView(context: Context,
     }
     internal fun installOfficialControls(layout: OfficialTouchLayout?) {
         if (officialLayout == layout || isEditing && officialEdit == null && layout != null) return
+        // Release under the previous routing mode before a disappearance disables gamepad publishing.
+        if (officialEdit == null) releaseInputs()
         if (officialLayout?.id != layout?.id) {
             officialPositions = layout?.id?.let(onReadOfficialHud) ?: emptyMap()
         }
         officialLayout = layout
         // Keep the editor on the layout it opened while the Xbox sends new layouts or visibility.
         if (officialEdit != null) return
-        releaseInputs()
         autoHidden=false
         rebuild(configuration.preset ?: automatic)
         scheduleAutoHide()
@@ -526,7 +533,7 @@ class GameTouchView(context: Context,
     private fun drawControl(canvas: Canvas,control: TouchControl,state: GamepadState) {
         val appearance = control.officialAppearance
         val held = model.held(control)
-        if (appearance != null) officialSkin.draw(canvas, control, appearance, state, held)
+        if (appearance != null) officialSkin.draw(canvas, control, appearance, state, held, model.toggled(control))
         else skin.draw(canvas,control,preset,state,held,isEditing && selected==control.id,
             if (usingOfficialControls) 62 else configuration.opacity,isEditing,model.gestureLabel(control))
         if (officialEdit != null) {

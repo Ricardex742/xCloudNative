@@ -145,6 +145,7 @@ class ConsoleDashboardUiTest {
                 view.awaitFavoriteWrites()
                 assertTrue(library.isFavorite(data[1].titleId))
                 view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
+                confirmGameDetailsPlay()
                 assertEquals(listOf(data[1].titleId),played)
                 if(theme==UiTheme.XBOX_ORIGINAL) {
                     view.back();layout(view);assertEquals(View.GONE,grid.visibility)
@@ -154,6 +155,7 @@ class ConsoleDashboardUiTest {
                 view.setSearch("33 Immortals");layout(view)
                 assertSame(adapter,grid.adapter);assertEquals(1,adapter.itemCount)
                 grid.findViewHolderForAdapterPosition(0)!!.itemView.performClick()
+                confirmGameDetailsPlay()
                 assertEquals(data[5].titleId,played.last())
             } finally { view.close();controller.pause().stop().destroy() }
         }

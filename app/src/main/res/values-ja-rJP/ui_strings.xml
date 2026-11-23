@@ -1361,4 +1361,11 @@
     <string name="ui_fe524f1820bb0a0f" formatted="false">"残り時間は1分以内です。ゲームの進行状況を保存してください。"</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"Xbox の公式タッチ操作を読み込んでいます…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"公式HUDを編集"</string>
+    <string name="ui_452597b2a054daef">"セッションが開始されました"</string>
+    <string name="ui_ad67e39384589ca1">"セッションの残り時間: {0}"</string>
+    <string name="ui_7d959d4dfdf8dd04">"Xbox Cloud Gaming では利用できません"</string>
+    <string name="ui_c99dea26471a5ea7">"ゲームの詳細を読み込んでいます…"</string>
+    <string name="ui_05ba0638071ec56a">"ストアの詳細を取得できません。"</string>
+    <string name="ui_d07a340ad020541f">"年齢区分: {0}"</string>
+    <string name="ui_baef6be64b483ab9">"スクリーンショット"</string>
 </resources>

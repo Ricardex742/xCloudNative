@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 133
-        versionName = "0.41.20-official-hud-editor"
+        versionCode = 134
+        versionName = "0.41.21-game-details"
     }
 
     signingConfigs {

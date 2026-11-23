@@ -39,8 +39,13 @@ internal class OfficialTouchSkin {
         close()
     }
 
-    fun draw(canvas: Canvas, control: TouchControl, appearance: OfficialTouchAppearance, state: GamepadState, held: Boolean) {
-        val style = if (held) appearance.active else appearance.idle
+    fun draw(canvas: Canvas, control: TouchControl, appearance: OfficialTouchAppearance, state: GamepadState,
+             held: Boolean, toggled: Boolean = false) {
+        val style = when {
+            held && !control.toggle -> appearance.active
+            toggled -> appearance.toggled ?: appearance.active
+            else -> appearance.idle
+        }
         if (style.opacity == 0f) return
         canvas.save()
         canvas.translate(control.x, control.y)

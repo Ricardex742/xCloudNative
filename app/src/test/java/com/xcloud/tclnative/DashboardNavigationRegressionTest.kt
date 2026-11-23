@@ -79,6 +79,7 @@ class DashboardNavigationRegressionTest {
             tap(cover, MotionEvent.ACTION_CANCEL)
             assertTrue(played.isEmpty())
             tap(cover)
+            confirmGameDetailsPlay()
             assertEquals(listOf("NAV-1"), played)
             assertTrue(cover.isFocusableInTouchMode)
 
@@ -206,7 +207,7 @@ class DashboardNavigationRegressionTest {
                     layout(v);selected(v,i)
                 }
                 repeat(3) { v.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT));layout(v);selected(v,31) }
-                v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));assertEquals(listOf("NAV-31"),played)
+                v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));confirmGameDetailsPlay();assertEquals(listOf("NAV-31"),played)
                 for(i in 30 downTo 0) { v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT));layout(v);selected(v,i) }
                 // Joystick/Android focus searches must use the same ordered path.
                 grid(v).focusSearch(v.findFocus(),View.FOCUS_RIGHT);layout(v);selected(v,1)

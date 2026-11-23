@@ -1361,4 +1361,11 @@
     <string name="ui_fe524f1820bb0a0f" formatted="false">"Up to 1 minute left in this session. Save your progress in the game."</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"Loading official Xbox touch controls…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"Edit official HUD"</string>
+    <string name="ui_452597b2a054daef">"Your session has started"</string>
+    <string name="ui_ad67e39384589ca1">"Session time left: {0}"</string>
+    <string name="ui_7d959d4dfdf8dd04">"Unavailable on Xbox Cloud Gaming"</string>
+    <string name="ui_c99dea26471a5ea7">"Loading game details…"</string>
+    <string name="ui_05ba0638071ec56a">"Store details unavailable."</string>
+    <string name="ui_d07a340ad020541f">"Age rating: {0}"</string>
+    <string name="ui_baef6be64b483ab9">"Screenshots"</string>
 </resources>

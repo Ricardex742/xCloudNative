@@ -81,7 +81,9 @@ data class HudElement(val id: String,val label: String,val x: Float,val y: Float
                       val action: HudAction?=binding?.let { HudAction(it) },
                       val gestures: Map<HudSwipe,HudGesture> = emptyMap(),val stickAxis: HudStickAxis = HudStickAxis.BOTH,
                       val officialAppearance: OfficialTouchAppearance? = null,
-                      val axisActionThreshold: Float? = null)
+                      val axisActionThreshold: Float? = null,
+                      val relativeStick: Boolean = false,
+                      val toggle: Boolean = false)
 
 object GameHud {
     private fun key(value: String)=value.uppercase(Locale.ROOT).replace(Regex("[^A-Z0-9]"),"")

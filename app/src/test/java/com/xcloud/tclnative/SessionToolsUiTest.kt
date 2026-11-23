@@ -24,6 +24,27 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class SessionToolsUiTest {
+    @Test fun sessionStartNoticeDisplaysConfirmedTimeAndDisappearsAfterFiveSeconds() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val notice = com.xcloud.tclnative.ui.SessionStartNotice(activity)
+        activity.setContentView(notice)
+        layout(notice)
+        try {
+            val playtime = com.xcloud.tclnative.catalog.CloudPlaytime(com.xcloud.tclnative.catalog.CloudPlaytimeStatus.UNLIMITED)
+            notice.show(null, playtime)
+            assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("ilimitado") })
+            notice.update(3_661, playtime)
+            assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("1:01:01") })
+            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(4_999))
+            assertEquals(View.VISIBLE, notice.visibility)
+            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1))
+            assertEquals(View.GONE, notice.visibility)
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Before fun setup() {
         val app=RuntimeEnvironment.getApplication()
         app.getSharedPreferences("stream_statistics",0).edit().clear().commit()

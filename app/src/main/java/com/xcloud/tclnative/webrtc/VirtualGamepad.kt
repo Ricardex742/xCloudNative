@@ -11,7 +11,9 @@ data class TouchControl(val label: String,val x: Float,val y: Float,val radius: 
                         val action: HudAction?=binding?.let { HudAction(it) },
                         val gestures: Map<HudSwipe,HudGesture> = emptyMap(),val stickAxis: HudStickAxis = HudStickAxis.BOTH,
                         val officialAppearance: OfficialTouchAppearance? = null,
-                        val axisActionThreshold: Float? = null)
+                        val axisActionThreshold: Float? = null,
+                        val relativeStick: Boolean = false,
+                        val toggle: Boolean = false)
 
 /** No game-state inference: context pages are switched explicitly, gestures combine simultaneous inputs. */
 class VirtualGamepad(private val width: Int,private val height: Int,
@@ -24,6 +26,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
     private data class Release(val id: String,val action: HudAction,val until: Long)
     private val contacts=mutableMapOf<Int,Contact>()
     private val releases=mutableListOf<Release>()
+    private val toggled=mutableSetOf<String>()
     var preset=preset
         private set
     var controls=layout(preset)
@@ -44,7 +47,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         TouchControl(element.label,((custom?.x ?: element.x)*width).coerceIn(paddingX,width-paddingX),
             ((custom?.y ?: element.y)*height).coerceIn(r,height-r),r,element.kind,action?.buttons ?: 0,
             element.id,binding,element.icon,element.shape,element.dragLook,element.page,action,gestures,element.stickAxis,
-            element.officialAppearance,element.axisActionThreshold)
+            element.officialAppearance,element.axisActionThreshold,element.relativeStick,element.toggle)
     }
     private fun inside(c: TouchControl,x: Float,y: Float,slack: Float=1f): Boolean {
         val dx=abs(x-c.x); val dy=abs(y-c.y); val r=c.radius*slack
@@ -57,20 +60,26 @@ class VirtualGamepad(private val width: Int,private val height: Int,
     }
     fun hit(x: Float,y: Float, includeDisabled: Boolean = false): TouchControl? {
         var closest: TouchControl?=null;var distance=Float.POSITIVE_INFINITY
+        var touchpad: TouchControl?=null
         // A large overlapping button must not steal a tap on another button's center.
         for(index in controls.indices.reversed()) {
             val c=controls[index]
             if(c.kind==TouchKind.CAMERA || !includeDisabled && c.officialAppearance?.enabled==false || !inside(c,x,y)) continue
+            if (!includeDisabled && c.dragLook && c.officialAppearance?.touchpad == true && c.action == null) {
+                if (touchpad == null) touchpad = c
+                continue
+            }
             val squared=(x-c.x)*(x-c.x)+(y-c.y)*(y-c.y)
             if(squared<distance) { closest=c;distance=squared }
         }
-        return closest ?: controls.firstOrNull { it.kind==TouchKind.CAMERA && x>=width*.36f && x<=width*.985f && y>=height*.18f && y<=height*.95f }
+        return closest ?: touchpad ?: controls.firstOrNull { it.kind==TouchKind.CAMERA && x>=width*.36f && x<=width*.985f && y>=height*.18f && y<=height*.95f }
     }
     fun down(id: Int,x: Float,y: Float,now: Long=System.nanoTime()/1_000_000,receivedAt: Long=now): TouchControl? {
         val control=hit(x,y) ?: return null
         if(control.kind in setOf(TouchKind.LEFT_STICK,TouchKind.RIGHT_STICK,TouchKind.DPAD,TouchKind.CAMERA) &&
             contacts.values.any { it.control.id==control.id }) return null
         releases.removeAll { it.id==control.id }
+        if (control.toggle && !toggled.add(control.id)) toggled.remove(control.id)
         contacts[id]=Contact(control,x,y,now,actionAt=receivedAt)
         return control
     }
@@ -86,7 +95,9 @@ class VirtualGamepad(private val width: Int,private val height: Int,
             if(magnitude>0f) {
                 val dz=settings.lookDeadzone.coerceIn(0,35)/100f
                 val strength=(dz+(1-dz)*magnitude.coerceAtMost(1f).pow(.75f)).coerceAtMost(1f)
-                c.lookX=vx/magnitude*strength; c.lookY=vy/magnitude*strength; c.lookAt=receivedAt
+                c.lookX=if(c.control.stickAxis==HudStickAxis.VERTICAL) 0f else vx/magnitude*strength
+                c.lookY=if(c.control.stickAxis==HudStickAxis.HORIZONTAL) 0f else vy/magnitude*strength
+                c.lookAt=receivedAt
             }
         }
         if(c.control.gestures.isNotEmpty()) {
@@ -121,7 +132,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
     }
     /** Movement survives page changes; removed actions and pending gesture releases are cleared. */
     fun setPage(next: HudPreset) {
-        preset=next; controls=layout(next); releases.clear()
+        preset=next; controls=layout(next); releases.clear(); toggled.clear()
         val nextById=controls.associateBy { it.id }
         contacts.entries.removeAll { (_,contact) ->
             val control=nextById[contact.control.id]
@@ -130,7 +141,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
     }
     /** ACTION_DOWN begins a new Android gesture: old fingers can no longer be held. */
     fun startGesture(): Int = contacts.size.also { contacts.clear() }
-    fun clear() { contacts.clear(); releases.clear() }
+    fun clear() { contacts.clear(); releases.clear(); toggled.clear() }
     private fun sprinting(contact: Contact,sprint: TouchControl?): Boolean {
         if(!settings.sprintGesture || preset.family!=HudPreset.CALL_OF_DUTY ||
             contact.control.kind!=TouchKind.LEFT_STICK || sprint==null) return false
@@ -143,6 +154,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
     }
     fun held(control: TouchControl)=contacts.values.any { it.control.id==control.id ||
         control.id=="sprint" && sprinting(it,control) } || releases.any { it.id==control.id }
+    fun toggled(control: TouchControl) = control.id in toggled
     fun nextLookReset(now: Long): Long? {
         var latest=Long.MIN_VALUE
         for(c in contacts.values) if(c.lookAt!=Long.MIN_VALUE && c.lookAt+LOOK_IDLE_MS>now) latest=maxOf(latest,c.lookAt)
@@ -169,23 +181,26 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         val sprint=if(preset.family==HudPreset.CALL_OF_DUTY && settings.sprintGesture) controls.firstOrNull { it.id=="sprint" } else null
         for(contact in contacts.values) {
             val control=contact.control
-            val dx=if(control.stickAxis==HudStickAxis.VERTICAL) 0f else (contact.x-control.x)/control.radius
-            val dy=if(control.stickAxis==HudStickAxis.HORIZONTAL) 0f else (contact.y-control.y)/control.radius
+            val originX=if (control.relativeStick) contact.startX else control.x
+            val originY=if (control.relativeStick) contact.startY else control.y
+            val dx=if(control.stickAxis==HudStickAxis.VERTICAL) 0f else (contact.x-originX)/control.radius
+            val dy=if(control.stickAxis==HudStickAxis.HORIZONTAL) 0f else (contact.y-originY)/control.radius
             val magnitude = hypot(dx,dy)
             val length=maxOf(1f,magnitude)
             when(control.kind) {
                 TouchKind.LEFT_STICK -> { leftX=dx/length;leftY=dy/length;if(sprinting(contact,sprint)) combine(sprint?.action) }
-                TouchKind.RIGHT_STICK -> { rightX=dx/length;rightY=dy/length }
+                TouchKind.RIGHT_STICK -> if (!control.dragLook) { rightX=dx/length;rightY=dy/length }
                 TouchKind.DPAD -> buttons=buttons or
                     (if(dx<-.25f) 1024 else if(dx>.25f) 2048 else 0) or
                     (if(dy<-.25f) 256 else if(dy>.25f) 512 else 0)
                 TouchKind.CAMERA -> Unit
-                else -> combine(action(contact))
+                else -> if (!control.toggle) combine(action(contact))
             }
             control.axisActionThreshold?.let { if (magnitude >= it) combine(action(contact)) }
             if(contact.lookAt!=Long.MIN_VALUE && now-contact.lookAt<LOOK_IDLE_MS &&
                 (look==null || contact.lookAt>look.lookAt)) look=contact
         }
+        for(control in controls) if (toggled(control)) combine(control.action)
         for(release in releases) combine(release.action)
         if(steering!=0f) leftX=steering.coerceIn(-1f,1f)
         if(look!=null) { rightX=look.lookX;rightY=look.lookY }

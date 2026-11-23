@@ -11,6 +11,7 @@ class MinecraftDungeonsTouchLayoutTest {
     @Test fun playableOverlayWithoutMovementGetsOneLeftStick() {
         assertTrue(MinecraftDungeonsTouchLayout.appliesTo(GameTitle("dungeons", "Minecraft Dungeons")))
         assertFalse(MinecraftDungeonsTouchLayout.appliesTo(GameTitle("legends", "Minecraft Legends")))
+        assertFalse(MinecraftDungeonsTouchLayout.appliesTo(GameTitle("sequel", "Minecraft Dungeons II")))
         val style = OfficialTouchStyle()
         val appearance = OfficialTouchAppearance(style, style, enabled = true)
         val attack = HudElement("right-inner-0", "A", .8f, .64f, .07f,
@@ -25,9 +26,15 @@ class MinecraftDungeonsTouchLayoutTest {
         assertTrue(layout.place(emptyList(), 1280, 606).isEmpty())
         val gamepad = VirtualGamepad(1280, 606, official = playable)
         val stick = gamepad.controls.single { it.kind == TouchKind.LEFT_STICK }
+        assertEquals(.50f * 606, stick.y, .001f)
         assertNotNull(gamepad.down(1, stick.x, stick.y))
         gamepad.move(1, stick.x + stick.radius / 2, stick.y, now = 10)
         assertEquals(.5f, gamepad.state().leftX, .001f)
+        assertEquals(0, gamepad.state().buttons)
+        val sword = gamepad.controls.first()
+        assertNotNull(gamepad.down(2, sword.x, sword.y))
+        assertEquals(HudBinding.A.button, gamepad.state().buttons)
+        gamepad.up(2)
         assertEquals(0, gamepad.state().buttons)
     }
 }

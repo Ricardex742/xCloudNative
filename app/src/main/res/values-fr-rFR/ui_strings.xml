@@ -1361,4 +1361,11 @@
     <string name="ui_fe524f1820bb0a0f" formatted="false">"Il reste au maximum 1 minute. Sauvegardez votre progression dans le jeu."</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"Chargement des commandes tactiles officielles Xbox…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"Modifier le HUD officiel"</string>
+    <string name="ui_452597b2a054daef">"Votre session a commencé"</string>
+    <string name="ui_ad67e39384589ca1">"Temps restant dans la session : {0}"</string>
+    <string name="ui_7d959d4dfdf8dd04">"Indisponible sur Xbox Cloud Gaming"</string>
+    <string name="ui_c99dea26471a5ea7">"Chargement des détails du jeu…"</string>
+    <string name="ui_05ba0638071ec56a">"Détails du Store indisponibles."</string>
+    <string name="ui_d07a340ad020541f">"Classification par âge : {0}"</string>
+    <string name="ui_baef6be64b483ab9">"Captures d’écran"</string>
 </resources>

@@ -1361,4 +1361,11 @@
     <string name="ui_fe524f1820bb0a0f" formatted="false">"1분 이내에 이 세션이 종료됩니다. 게임 진행 상황을 저장하세요."</string>
     <string name="ui_a2e1f978ce089e42" formatted="false">"공식 Xbox 터치 컨트롤을 불러오는 중…"</string>
     <string name="ui_ad8d356e4d3358be" formatted="false">"공식 HUD 편집"</string>
+    <string name="ui_452597b2a054daef">"세션이 시작되었습니다"</string>
+    <string name="ui_ad67e39384589ca1">"남은 세션 시간: {0}"</string>
+    <string name="ui_7d959d4dfdf8dd04">"Xbox Cloud Gaming에서 이용할 수 없음"</string>
+    <string name="ui_c99dea26471a5ea7">"게임 정보 로드 중…"</string>
+    <string name="ui_05ba0638071ec56a">"스토어 정보를 표시할 수 없습니다."</string>
+    <string name="ui_d07a340ad020541f">"연령 등급: {0}"</string>
+    <string name="ui_baef6be64b483ab9">"스크린샷"</string>
 </resources>

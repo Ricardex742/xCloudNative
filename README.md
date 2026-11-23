@@ -28,6 +28,8 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - Favoritos separados por conta e salvos no aparelho.
 - **Game Pass**, **Transmita seu jogo**, **Adições recentes** e **Todos os jogos**.
 - Catálogos oficiais com nomes, capas e identificação das edições.
+- Toque numa capa ou pressione **A** sobre ela para abrir os detalhes. A tela mostra editora, descrição, classificação indicativa brasileira e capturas quando disponíveis na loja, com ações para jogar na nuvem e criar um atalho para o título.
+- Ao iniciar uma partida na nuvem, um aviso de cinco segundos mostra o tempo restante informado pelo Xbox. O limite da sessão tem prioridade sobre o saldo de horas da conta.
 - Selos de Game Pass e Xbox Series X|S conforme a inclusão e otimização informadas pelo catálogo.
 - Pesquisa por nome, tolerando diferenças de acentos, pontuação e marcas.
 - Em **Pesquisa › Jogos**, filtro experimental por **Adquiridos**, **Não adquiridos** ou **Propriedade não confirmada**, usando as licenças da conta. O filtro se aplica ao catálogo disponível no app; acesso por assinatura não comprova propriedade. Consultas incompletas ou indisponíveis ficam sem confirmação.

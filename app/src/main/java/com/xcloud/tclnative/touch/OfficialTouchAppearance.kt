@@ -24,5 +24,6 @@ data class OfficialTouchAppearance(
     val active: OfficialTouchStyle,
     val enabled: Boolean,
     val touchpad: Boolean = false,
-    val faceScale: Float = 1f
+    val faceScale: Float = 1f,
+    val toggled: OfficialTouchStyle? = null
 )
