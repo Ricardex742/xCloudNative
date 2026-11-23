@@ -91,7 +91,7 @@ class ConsolePolishUiTest {
             val title=all(card).filterIsInstance<TextView>().single { it.text.toString()=="Battlefield™ 6" }
             assertTrue(title.layout.getLineBottom(0)<=title.height-title.compoundPaddingBottom)
             capture(v,"one-focus")
-            v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));assertEquals(listOf("POLISH-1"),played)
+            v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));confirmGameDetailsPlay();assertEquals(listOf("POLISH-1"),played)
         } finally { v.close();controller.pause().stop().destroy() }
     }
 
@@ -117,7 +117,7 @@ class ConsolePolishUiTest {
             val focus=bitmap(second);val x=imageBounds.left-2;val y=imageBounds.centerY()
             val edge=focus.getPixel(x,y);assertTrue(Color.green(edge)>170 && Color.green(edge)>Color.red(edge));focus.recycle()
             capture(v,"series-bright")
-            v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));assertEquals(listOf("POLISH-1"),played)
+            v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));confirmGameDetailsPlay();assertEquals(listOf("POLISH-1"),played)
             layout(v,2260,1080)
             assertEquals("Square cover at fractional phone scaling",secondImage.width,secondImage.height)
         } finally { v.close();controller.pause().stop().destroy() }
@@ -181,7 +181,7 @@ class ConsolePolishUiTest {
                 second.requestFocus();layout(v)
                 assertSame(second,v.findFocus());assertEquals("POLISH-1",v.selectedGame!!.titleId)
                 v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_Y));v.awaitFavoriteWrites();layout(v);assertTrue(second.contentDescription.contains("favorito"))
-                v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));assertEquals(listOf("POLISH-1"),played)
+                v.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));confirmGameDetailsPlay();assertEquals(listOf("POLISH-1"),played)
             } finally { v.close();controller.pause().stop().destroy() }
         }
     }

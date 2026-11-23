@@ -122,7 +122,7 @@ class SeriesPersonalizationUiTest {
                 assertTrue("Bottom focus border must remain inside the final item",(pixels.height-12 until pixels.height).any { y ->
                     (0 until pixels.width).count { x -> pixels.getPixel(x,y)==0xff63b814.toInt() }>pixels.width*.75
                 });pixels.recycle()
-                view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));assertEquals(listOf("GRID-69"),played)
+                view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A));confirmGameDetailsPlay();assertEquals(listOf("GRID-69"),played)
                 capture(view,"library-grid-${size.first}")
                 view.selectTab(LibraryTab.RECENT);layout(view,size.first,size.second)
                 assertEquals(RecyclerView.HORIZONTAL,manager.orientation);assertEquals(1,manager.spanCount)

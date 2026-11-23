@@ -89,6 +89,7 @@ class LowMemoryDeviceTest {
                         assertEquals("LOW-$index",view.selectedGame?.titleId)
                     }
                     view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
+                    confirmGameDetailsPlay()
                     assertEquals("LOW-29",played.last())
                     view.pauseArtwork();view.resumeArtwork();layout(view)
                     assertEquals("LOW-29",view.selectedGame?.titleId)
