@@ -40,6 +40,7 @@ import com.xcloud.tclnative.catalog.withMetadataFallback
 import java.io.File
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.signaling.SessionTimeLimit
+import com.xcloud.tclnative.touch.OfficialTouchLoad
 import com.xcloud.tclnative.touch.OfficialTouchSession
 import com.xcloud.tclnative.net.CloudHttpException
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
@@ -163,6 +164,7 @@ open class MainActivity : Activity() {
     } }
     private lateinit var touchView: GameTouchView
     private var officialTouch: OfficialTouchSession? = null
+    private var loadOfficialTouch: (() -> Unit)? = null
     private lateinit var sessionTimeView: TextView
     private val dismissSessionTimeNotice = Runnable { sessionTimeView.visibility = View.GONE }
     private lateinit var guideTouchControls: GuideTouchControls
@@ -1301,7 +1303,7 @@ open class MainActivity : Activity() {
     private fun showLiveDiagnostics(onBack: () -> Unit) {
         val session = listOfNotNull(controllerPath.buttonDiagnostics(), gyro.diagnostics(),
             playbackSignaling?.keepAliveDiagnostics(), webrtcClient?.inputDiagnostics(), webrtcClient?.iceDiagnostics(),
-            transmissionRecovery?.diagnostics()).joinToString("\n")
+            transmissionRecovery?.diagnostics(), officialTouch?.diagnostics()).joinToString("\n")
         showCopyableErrorDialog(UiText.text("Áudio e vídeo"),UiText.text("{0} {1} | Android {2} | {3}\n{4}\n{5}\n{6}\n{7}",UiText.nested(Build.MANUFACTURER),UiText.nested(Build.MODEL),UiText.nested(Build.VERSION.RELEASE),UiText.nested(Build.HARDWARE),UiText.nested(videoDiagnostics()),UiText.nested(playbackSignaling?.profileDiagnostics() ?: ""),UiText.nested(webrtcClient?.audioDiagnostics() ?: ""),UiText.nested(streamHistory.report()))+"\n"+session,onBack=onBack)
     }
     private fun pressXboxButton() {
@@ -1377,12 +1379,21 @@ open class MainActivity : Activity() {
     }
     private fun useOfficialTouch() {
         val session = officialTouch ?: return
-        session.enabled = true
+        val load = loadOfficialTouch ?: return
+        session.selectManually()
+        if (!session.loaded) {
+            load()
+            Toast.makeText(this,UiText.text("Carregando os controles oficiais do Xbox…"),Toast.LENGTH_SHORT).show()
+        } else finishManualOfficialTouch(session)
+    }
+    private fun finishManualOfficialTouch(session: OfficialTouchSession) {
+        if (!activityVisible || sessionSaved || transitionPanel.exiting ||
+            transmissionRecovery?.phase!=TransmissionRecoveryState.Phase.ACTIVE) return
         if (applyOfficialTouch(session)) touchView.revealControls()
         else Toast.makeText(this,UiText.text("O layout oficial do Xbox está indisponível nesta partida."),Toast.LENGTH_SHORT).show()
     }
     private fun disableOfficialTouch() {
-        officialTouch?.enabled = false
+        officialTouch?.disable()
         touchView.installOfficialControls(null)
     }
     private fun hideGameHud() {
@@ -1808,6 +1819,7 @@ open class MainActivity : Activity() {
         configureVideoOutput(settings, playing = true)
         playback.start(origin, prepare = {
             officialTouch = official
+            loadOfficialTouch = null
             controlPanel.visibility = View.GONE
             statsView.visibility = View.GONE
             statsView.text = UiText.text("Estatísticas: aguardando amostras WebRTC...")
@@ -2090,18 +2102,26 @@ open class MainActivity : Activity() {
                 }
                 kotlinx.coroutines.coroutineScope {
                     launch { signaling.maintainSession() }
-                    if (official!=null) launch {
-                        val bundle = try {
-                            withTimeoutOrNull(20_000) { signaling.officialTouchBundle(game,sessionOptions.locale) }
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (_: Exception) {
-                            null
+                    if (official!=null) {
+                        loadOfficialTouch = {
+                            if (generation==playbackGeneration && officialTouch===official && official.beginLoad()) launch {
+                                val result = try {
+                                    withTimeoutOrNull(20_000) {
+                                        signaling.officialTouchBundle(game,sessionOptions.locale,cacheDir)
+                                    } ?: OfficialTouchLoad.Failed(OfficialTouchLoad.Stage.TIMEOUT)
+                                } catch (error: CancellationException) {
+                                    throw error
+                                } catch (_: Exception) {
+                                    OfficialTouchLoad.Failed(OfficialTouchLoad.Stage.METADATA)
+                                }
+                                if (generation==playbackGeneration && officialTouch===official) {
+                                    val manual = official.waitingForManualLoad
+                                    official.load(result)
+                                    if (manual) finishManualOfficialTouch(official) else applyOfficialTouch(official)
+                                }
+                            }
                         }
-                        if (generation==playbackGeneration && officialTouch===official) {
-                            official.load(bundle)
-                            applyOfficialTouch(official)
-                        }
+                        loadOfficialTouch?.invoke()
                     }
                     while (isActive) {
                         if(recoveryState.phase!=TransmissionRecoveryState.Phase.ACTIVE) {
@@ -2229,6 +2249,7 @@ open class MainActivity : Activity() {
                         statsView.visibility = View.GONE
                         hideSessionTimeNotice()
                         officialTouch = null
+                        loadOfficialTouch = null
                     }
                     allowTransitionFrame()
                     videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()
@@ -2350,6 +2371,7 @@ open class MainActivity : Activity() {
         val (generation, closing) = playback.cancel()
         activeGame = null
         officialTouch = null
+        loadOfficialTouch = null
         shortcutSwitchDialog?.dismiss()
         gameMenuDialog?.dismiss()
         videoRecoveryDialog?.dismiss();nativeTouchDialog?.dismiss()

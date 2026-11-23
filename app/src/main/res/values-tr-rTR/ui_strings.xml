@@ -1359,4 +1359,5 @@
     <string name="ui_c6bd348ff9537470" formatted="false">"Resmi Xbox dokunmatik kontrollerini kullan"</string>
     <string name="ui_a52f6fe663d36ac6" formatted="false">"Resmi Xbox düzeni bu oturumda kullanılamıyor."</string>
     <string name="ui_fe524f1820bb0a0f" formatted="false">"Bu oturumda en fazla 1 dakika kaldı. Oyun ilerlemenizi kaydedin."</string>
+    <string name="ui_a2e1f978ce089e42" formatted="false">"Resmî Xbox dokunmatik kontrolleri yükleniyor…"</string>
 </resources>

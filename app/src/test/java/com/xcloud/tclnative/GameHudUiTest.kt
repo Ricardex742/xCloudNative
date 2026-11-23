@@ -49,7 +49,9 @@ class GameHudUiTest {
         val files=mapOf(
             "takxmanifest.json" to """{"assets":"assets","layouts":"layouts","defaultLayout":"Default","contextFile":"context.json"}""".toByteArray(),
             "context.json" to """{"state":{"show":false}}""".toByteArray(),
-            "layouts/neutral/Default.json" to """{"content":{"right":{"inner":[{"type":"button","action":["gamepadA","rightTrigger"],"visible":{"${'$'}ref":"../../context.json#/state/show"},"styles":{"default":{"faceImage":{"type":"asset","value":"Action"}}}}]}}}""".toByteArray(),
+            "layouts/neutral/Default.json" to """{"content":{"right":{"inner":[{"type":"button","action":"gamepadB"}]}}}""".toByteArray(),
+            "layouts/pt/pt-BR/Default.json" to """{"content":{"right":{"inner":[{"type":"button","action":["gamepadA","rightTrigger"],"visible":{"${'$'}ref":"../../context.json#/state/show"},"styles":{"default":{"faceImage":{"type":"asset","value":"Action"}}}}]}}}""".toByteArray(),
+            "layouts/pt/pt-BR/optional.json" to "[not a layout]".toByteArray(),
             "assets/neutral/@1.0x/Action.png" to art.toByteArray()
         )
         ZipOutputStream(output).use { zip ->
@@ -59,11 +61,29 @@ class GameHudUiTest {
                 zip.closeEntry()
             }
         }
-        val xbox=OfficialTouchSession(true)
-        xbox.receive(OfficialTouchNotice.Patch("""[{"op":"replace","path":"/state/show","value":true}]"""))
-        xbox.load(OfficialTouchBundle.parse(output.toByteArray(),"pt-BR"))
+        val xbox=OfficialTouchSession(false)
+        assertTrue(xbox.beginLoad())
+        xbox.receive(OfficialTouchNotice.Hide)
+        xbox.receive(OfficialTouchNotice.Patch("""[{"op":"replace","path":"show","value":true}]"""))
+        xbox.load(OfficialTouchLoad.Failed(OfficialTouchLoad.Stage.REFERENCE,403))
+        assertEquals("TOUCH_LAYOUT/UNAVAILABLE_REFERENCE/HTTP_403",xbox.diagnostics())
+        xbox.selectManually()
+        assertTrue(xbox.waitingForManualLoad)
+        assertTrue(xbox.beginLoad())
+        assertFalse(xbox.beginLoad())
+        val archive=File.createTempFile("touch-layout", ".takx")
+        val bundle=try {
+            archive.writeBytes(output.toByteArray())
+            OfficialTouchBundle.parse(archive,"pt-BR")
+        } finally { archive.delete() }
+        xbox.load(OfficialTouchLoad.Ready(bundle))
         val controls=xbox.controls()!!
         assertNotNull(controls.single().image)
+        xbox.receive(OfficialTouchNotice.Show("layout-missing-from-package"))
+        assertEquals(controls,xbox.controls())
+        xbox.receive(OfficialTouchNotice.Show(""))
+        assertTrue(xbox.controls()!!.any { it.binding==HudBinding.A })
+        xbox.receive(OfficialTouchNotice.ShowDefault)
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         var state=GamepadState()
         val direct=mutableListOf<NativePointer>()

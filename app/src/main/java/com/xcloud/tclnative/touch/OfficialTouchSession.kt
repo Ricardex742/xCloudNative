@@ -10,28 +10,59 @@ sealed interface OfficialTouchNotice {
     data class Patch(val json: String) : OfficialTouchNotice
 }
 
+internal sealed interface OfficialTouchLoad {
+    data class Ready(val bundle: OfficialTouchBundle) : OfficialTouchLoad
+    data class Failed(val stage: Stage, val http: Int? = null) : OfficialTouchLoad
+    enum class Stage { METADATA, NO_BUNDLE, REFERENCE, DISTRIBUTION, FORMAT, TIMEOUT }
+}
+
 /** Layout and state belong to the Xbox session and survive a replacement WebRTC transport. */
-internal class OfficialTouchSession(var enabled: Boolean) {
+internal class OfficialTouchSession(private var enabled: Boolean) {
     private var bundle: OfficialTouchBundle? = null
     private var state = JSONObject()
     private var layoutName: String? = null
     private var hidden = false
+    private var manual = false
     private val initialPatches = ArrayDeque<String>()
-    private var failed = false
+    private var loading = false
+    private var failure: OfficialTouchLoad.Failed? = null
+    val waitingForManualLoad get() = manual && bundle == null
+    val loaded get() = bundle != null
 
-    fun load(bundle: OfficialTouchBundle?) {
-        this.bundle = bundle
-        failed = bundle == null
-        if (bundle != null) {
-            state = bundle.newState()
+    fun beginLoad(): Boolean {
+        if (loading || loaded) return false
+        loading = true
+        failure = null
+        return true
+    }
+
+    fun load(result: OfficialTouchLoad) {
+        loading = false
+        failure = result as? OfficialTouchLoad.Failed
+        if (result is OfficialTouchLoad.Ready) {
+            bundle = result.bundle
+            state = result.bundle.newState()
             initialPatches.forEach(::applyPatch)
+            initialPatches.clear()
         }
-        initialPatches.clear()
+    }
+
+    fun selectManually() {
+        enabled = true
+        manual = true
+    }
+
+    fun disable() {
+        enabled = false
+        manual = false
     }
 
     fun receive(notice: OfficialTouchNotice) {
         when (notice) {
-            OfficialTouchNotice.Hide -> hidden = true
+            OfficialTouchNotice.Hide -> {
+                hidden = true
+                if (loaded) manual = false
+            }
             OfficialTouchNotice.ShowDefault -> {
                 hidden = false
                 layoutName = null
@@ -48,30 +79,43 @@ internal class OfficialTouchSession(var enabled: Boolean) {
     fun controls(): List<HudElement>? {
         if (!enabled) return null
         val current = bundle ?: return null
-        if (hidden) return emptyList()
-        return current.controls(layoutName,state)
+        if (hidden && !manual) return emptyList()
+        val name = if (hidden) null else layoutName
+        if (name=="") return GameHud.elements(HudPreset.GAMEPAD)
+        val selected = current.controls(name,state) ?: current.controls(null,state)
+        return if (manual && selected?.isEmpty()==true) current.controls(null,state)?.takeUnless { it.isEmpty() }
+            else selected
     }
 
-    fun diagnostics() = "TOUCH_LAYOUT/" + when {
-        failed -> "UNAVAILABLE"
-        bundle == null -> "LOADING"
-        !enabled -> "AVAILABLE"
-        hidden -> "HIDDEN"
-        controls() == null -> "UNSUPPORTED_LAYOUT"
-        else -> "ACTIVE"
+    fun diagnostics(): String {
+        val status = failure?.let {
+            "UNAVAILABLE_${it.stage.name}" + (it.http?.let { code -> "/HTTP_$code" } ?: "")
+        } ?: when {
+            !loaded -> "LOADING"
+            !enabled -> "AVAILABLE"
+            hidden && !manual -> "HIDDEN"
+            controls() == null -> "UNSUPPORTED_LAYOUT"
+            else -> "ACTIVE"
+        }
+        return "TOUCH_LAYOUT/$status"
     }
 
     private fun patch(json: String) {
         if (bundle != null) applyPatch(json)
-        else if (!failed && initialPatches.size<16) initialPatches.addLast(json)
+        else {
+            if (initialPatches.size==16) initialPatches.removeFirst()
+            initialPatches.addLast(json)
+        }
     }
 
     private fun applyPatch(json: String) {
         val ops = runCatching { JSONArray(json) }.getOrNull() ?: return
         for (index in 0 until minOf(32,ops.length())) {
             val op = ops.optJSONObject(index) ?: continue
-            val path = OfficialTouchBundle.pointer(op.optString("path"))?.takeIf { it.size > 1 && it[0] == "state" } ?: continue
-            val parent = path.subList(1,path.lastIndex).fold(state as Any?) { node,key -> OfficialTouchBundle.select(node,key) }
+            val raw = op.optString("path").takeIf { it.isNotBlank() } ?: continue
+            val tokens = OfficialTouchBundle.pointer("/"+raw.removePrefix("/")) ?: continue
+            val path = if (tokens.first()=="state" && tokens.size>1 && !state.has("state")) tokens.drop(1) else tokens
+            val parent = path.dropLast(1).fold(state as Any?) { node,key -> OfficialTouchBundle.select(node,key) }
                 as? JSONObject ?: continue
             val key = path.last()
             when(op.optString("op")) {

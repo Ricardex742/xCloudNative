@@ -3,6 +3,7 @@ package com.xcloud.tclnative
 import com.xcloud.tclnative.auth.XCloudSession
 import com.xcloud.tclnative.diagnostics.PlaybackStage
 import com.xcloud.tclnative.signaling.XCloudSignalingClient
+import com.xcloud.tclnative.touch.OfficialTouchLoad
 import com.xcloud.tclnative.webrtc.StreamingPeer
 import com.xcloud.tclnative.webrtc.StreamResolution
 import com.xcloud.tclnative.webrtc.StreamProfile
@@ -27,6 +28,7 @@ import org.junit.Test
 import org.webrtc.IceCandidate
 import java.io.IOException
 import java.io.ByteArrayOutputStream
+import kotlin.io.path.createTempDirectory
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import java.net.Proxy
@@ -87,6 +89,8 @@ class SignalingTest {
                         }
                     }
                     "POST" to "/v5/sessions/cloud/play" -> response("""{"sessionPath":"/session"}""")
+                    "POST" to "/v2/titles/inputconfigs" -> response("""[{"supportedTabs":[
+                        {"id":"older-tab","tabVersion":"1.2"},{"id":"demo-tab","tabVersion":"1.10"}]}]""")
                     "GET" to "/v1/sessions/tabs/demo-tab/download?noRedirect=true" ->
                         response("https://cdn.xbox.com/demo.takx?signature=test")
                     "GET" to "/session/state" -> when {
@@ -135,25 +139,41 @@ class SignalingTest {
                     zip.closeEntry()
                 }
         }
+        val downloads=CopyOnWriteArrayList<String>()
         val http=OkHttpClient.Builder().proxy(Proxy.NO_PROXY).addInterceptor { chain ->
             val request=chain.request()
-            if(request.url.host!="cdn.xbox.com") chain.proceed(request)
-            else {
-                assertNull(request.header("Authorization"))
-                Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(200)
-                    .message("OK").body(bytes.toByteArray().toResponseBody()).build()
+            val host=request.url.host
+            if(host !in setOf("cdn.xbox.com","assets.azurefd.net")) return@addInterceptor chain.proceed(request)
+            assertNull(request.header("Authorization"))
+            downloads.add(host)
+            val reply=Response.Builder().request(request).protocol(Protocol.HTTP_1_1)
+            if (host=="cdn.xbox.com") {
+                reply.code(302).message("Found").header("Location","https://assets.azurefd.net/demo.takx?signature=test")
+                    .body("".toResponseBody()).build()
+            } else {
+                reply.code(200).message("OK").body(bytes.toByteArray().toResponseBody()).build()
             }
         }.build()
         val client=XCloudSignalingClient(XCloudSession("test-token",server.url("/").toString(),"hash",
             transferToken="console-token"),http,{ now+=it },{ now })
-        val game=com.xcloud.tclnative.signaling.GameTitle("real-id","Test",touchBundleIds=listOf("demo-tab"))
-        assertNull(client.officialTouchBundle(game,"pt-BR"))
-        client.startAndConnectWebRtcSession(game.titleId,peer) {}.getOrThrow()
-        val pack=client.officialTouchBundle(game,"pt-BR")!!
-        assertEquals("A",pack.controls(null,pack.newState())!!.single().label)
-        val request=requests.single { it.path?.startsWith("/v1/sessions/tabs/")==true }
-        assertEquals("Bearer test-token",request.getHeader("Authorization"))
-        client.stop()
+        val game=com.xcloud.tclnative.signaling.GameTitle("real-id","Test",xboxTitleId="123456",touchBundleIds=listOf("stale-tab"))
+        val cache=createTempDirectory().toFile()
+        try {
+            assertTrue(client.officialTouchBundle(game,"pt-BR",cache) is OfficialTouchLoad.Failed)
+            client.startAndConnectWebRtcSession(game.titleId,peer) {}.getOrThrow()
+            val pack=(client.officialTouchBundle(game,"pt-BR",cache) as OfficialTouchLoad.Ready).bundle
+            assertEquals("A",pack.controls(null,pack.newState())!!.single().label)
+            val config=requests.single { it.path=="/v2/titles/inputconfigs" }
+            assertEquals("123456",JSONObject(config.body.readUtf8()).getJSONArray("titleIds").getString(0))
+            val tabs=requests.filter { it.path?.startsWith("/v1/sessions/tabs/")==true }
+            assertEquals(listOf("stale-tab","demo-tab"),tabs.map { it.path!!.split('/')[4] })
+            tabs.forEach { assertEquals("Bearer test-token",it.getHeader("Authorization")) }
+            assertEquals(listOf("cdn.xbox.com","assets.azurefd.net"),downloads)
+            assertTrue(cache.listFiles()!!.isEmpty())
+        } finally {
+            client.stop()
+            cache.deleteRecursively()
+        }
     }
 
     @Test fun sessionLimitStartsWithTheFirstFrameAndWarnsAtFiveAndOneMinute() = runBlocking {

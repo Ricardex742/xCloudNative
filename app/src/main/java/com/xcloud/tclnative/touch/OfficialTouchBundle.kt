@@ -6,8 +6,10 @@ import com.xcloud.tclnative.webrtc.TouchKind
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.Locale
-import java.util.zip.ZipInputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -128,104 +130,91 @@ internal class OfficialTouchBundle private constructor(
             "melee" to HudIcon.MELEE, "map" to HudIcon.MAP, "pause" to HudIcon.PAUSE, "attack" to HudIcon.ATTACK,
             "brakepedal" to HudIcon.BRAKE, "gaspedal" to HudIcon.ACCELERATE
         )
-        private const val MAX_ARCHIVE_ENTRIES = 512
-        private const val MAX_JSON_BYTES = 192 * 1024
-        private const val MAX_UNPACKED_BYTES = 16 * 1024 * 1024
-        private data class Entries(val json: Map<String, JSONObject>, val images: Map<String, ByteArray>)
+        private const val MAX_ARCHIVE_ENTRIES = 20_000
+        private const val MAX_MEMBER_BYTES = 192 * 1024
 
-        fun parse(bytes: ByteArray, locale: String): OfficialTouchBundle {
-            val entries = readEntries(bytes)
-            val files = entries.json
-            val manifest = files["takxmanifest.json"] ?: error("TOUCH_BUNDLE: no manifest")
-            val path = cleanPath(manifest.optString("layouts", "layouts"))
-            val default = manifest.optString("defaultLayout").lowercase(Locale.ROOT).takeIf { it.isNotBlank() }
-                ?: error("TOUCH_BUNDLE: no default layout")
-            val choices = locale.lowercase(Locale.ROOT).split('-').runningReduce { a,b -> "$a-$b" }
-            val language = listOf("neutral") + choices
+        fun parse(file: File, locale: String): OfficialTouchBundle = ZipFile(file).use { zip ->
+            require(zip.size() <= MAX_ARCHIVE_ENTRIES)
+            val entries = zip.entries().asSequence().filterNot { it.isDirectory }.mapNotNull { entry ->
+                normalizedPath(entry.name)?.let { name -> name to entry }
+            }.toMap()
+            val manifest = json(zip,entries["takxmanifest.json"]) ?: error("TOUCH_BUNDLE: no manifest")
+            val path = normalizedPath(manifest.optString("layouts", "layouts")) ?: error("TOUCH_BUNDLE: layouts")
+            val folders = listOf(path, "$path/en", "$path/en-us", "$path/en/en-us", "$path/neutral") +
+                localeFolders(path,locale)
             val layouts = linkedMapOf<String, JSONObject>()
-            for (directory in language) {
-                val prefix = "$path/$directory/"
-                for ((file, value) in files) {
-                    if (file.startsWith(prefix) && value.optJSONObject("content")!=null) {
-                        layouts[file.removePrefix(prefix).removeSuffix(".json")] = value
-                    }
+            for (directory in folders) {
+                for ((name,entry) in entries) {
+                    if (name.substringBeforeLast('/',"")!=directory || !name.endsWith(".json")) continue
+                    val layout = json(zip,entry)?.takeIf { it.optJSONObject("content")!=null } ?: continue
+                    layouts[name.substringAfterLast('/').removeSuffix(".json")] = layout
+                    require(layouts.size<=128) { "TOUCH_BUNDLE: too many layouts" }
                 }
             }
-            require(layouts.containsKey(default)) { "TOUCH_BUNDLE: default layout unavailable" }
-            val context = manifest.optString("contextFile").takeIf { it.isNotBlank() }
-                ?.let { files[cleanPath(it)] } ?: JSONObject()
-            val assets = manifest.optString("assets").takeIf { it.isNotBlank() }?.let(::cleanPath)
-            return OfficialTouchBundle(layouts,default,context,
-                if(assets==null) emptyMap() else decodeImages(entries.images,assets,language))
+            require(layouts.isNotEmpty()) { "TOUCH_BUNDLE: layouts unavailable" }
+            val declared = manifest.optString("defaultLayout").lowercase(Locale.ROOT).removeSuffix(".json")
+            val default = declared.takeIf(layouts::containsKey) ?: layouts.keys.sorted().first()
+            val contextPath = normalizedPath(manifest.optString("contextFile","context.json"))
+            val context = json(zip,entries[contextPath]) ?: JSONObject()
+            val assets = normalizedPath(manifest.optString("assets"))
+            OfficialTouchBundle(layouts,default,context,
+                if (assets==null) emptyMap() else decodeImages(zip,entries,assets,locale))
         }
 
-        private fun cleanPath(path: String): String {
+        private fun localeFolders(root: String, locale: String): List<String> {
+            val parts = locale.lowercase(Locale.ROOT).split('-')
+            val tags = parts.runningReduce { a,b -> "$a-$b" }
+            return tags.flatMapIndexed { index,tag ->
+                listOf("$root/$tag", "$root/${tags.take(index+1).joinToString("/")}")
+            }.distinct()
+        }
+
+        private fun normalizedPath(path: String): String? {
             val normalized = path.trim('/').lowercase(Locale.ROOT)
-            require(normalized.isNotBlank() && '\\' !in normalized && normalized.split('/').none { it in listOf("",".","..") })
-            return normalized
+            return normalized.takeIf { it.isNotBlank() && it.length<=512 && '\\' !in it &&
+                it.split('/').none { part -> part in listOf("",".","..") } }
         }
 
-        private fun readEntries(bytes: ByteArray): Entries {
-            val files = mutableMapOf<String, JSONObject>()
-            val images = linkedMapOf<String, ByteArray>()
-            val buffer = ByteArray(8192)
-            var total = 0
-            var entries = 0
-            var imageBytes = 0
-            ZipInputStream(bytes.inputStream()).use { zip ->
+        private fun json(zip: ZipFile, entry: ZipEntry?): JSONObject? =
+            entry?.let { member -> runCatching {
+                JSONObject(readMember(zip,member).toString(Charsets.UTF_8).trimStart('\uFEFF').trim())
+            }.getOrNull() }
+
+        private fun readMember(zip: ZipFile, entry: ZipEntry): ByteArray {
+            require(entry.size<=MAX_MEMBER_BYTES)
+            return zip.getInputStream(entry).use { input ->
+                val output = ByteArrayOutputStream()
+                val buffer = ByteArray(8192)
                 while (true) {
-                    val entry = zip.nextEntry ?: break
-                    require(++entries <= MAX_ARCHIVE_ENTRIES)
-                    val name = cleanPath(entry.name)
-                    val jsonEntry = !entry.isDirectory && name.endsWith(".json")
-                    val imageEntry = !entry.isDirectory && name.endsWith(".png") && imageBytes < 3*1024*1024
-                    var output = if (jsonEntry || imageEntry) ByteArrayOutputStream() else null
-                    while (true) {
-                        val count = zip.read(buffer)
-                        if (count < 0) break
-                        total += count
-                        require(total <= MAX_UNPACKED_BYTES)
-                        output?.let { retained ->
-                            if (retained.size() + count <= MAX_JSON_BYTES) retained.write(buffer,0,count)
-                            else if (jsonEntry) error("TOUCH_BUNDLE: oversized layout")
-                            else output = null
-                        }
-                    }
-                    output?.let { retained ->
-                        if (jsonEntry) {
-                            val json = JSONObject(retained.toString("UTF-8").trimStart('\uFEFF').trim())
-                            require(files.put(name,json)==null)
-                        } else {
-                            imageBytes += retained.size()
-                            images[name] = retained.toByteArray()
-                        }
-                    }
-                    zip.closeEntry()
+                    val count = input.read(buffer)
+                    if (count<0) break
+                    require(output.size()+count<=MAX_MEMBER_BYTES)
+                    output.write(buffer,0,count)
                 }
+                output.toByteArray()
             }
-            return Entries(files,images)
         }
 
-        private fun decodeImages(images: Map<String, ByteArray>, root: String, language: List<String>): Map<String, Bitmap> {
-            val selected = linkedMapOf<String, ByteArray>()
-            for (directory in language) {
-                val prefix = "$root/$directory/"
-                // Prefer the lowest available density. A HUD glyph uses at most 128 px here.
-                val choices = images.entries.filter { it.key.startsWith(prefix) }.sortedBy {
-                    it.key.removePrefix(prefix).substringBefore('/').removePrefix("@").removeSuffix("x").toFloatOrNull()
+        private fun decodeImages(zip: ZipFile, entries: Map<String, ZipEntry>, root: String, locale: String): Map<String, Bitmap> {
+            val selected = linkedMapOf<String, ZipEntry>()
+            val folders = listOf("$root/en", "$root/en-us", "$root/en/en-us", "$root/neutral") + localeFolders(root,locale)
+            for (directory in folders) {
+                val choices = entries.entries.filter { it.key.startsWith("$directory/@") && it.key.endsWith(".png") &&
+                    it.value.size<=MAX_MEMBER_BYTES }.sortedBy {
+                    it.key.removePrefix("$directory/").substringBefore('/').removePrefix("@").removeSuffix("x").toFloatOrNull()
                         ?: 1f
                 }
-                val byName = choices.groupBy { it.key.removePrefix(prefix).substringAfter('/').removeSuffix(".png") }
-                for ((key, candidates) in byName) selected[key] = candidates.first().value
+                for ((key, variants) in choices.groupBy { it.key.substringAfterLast('/').removeSuffix(".png") })
+                    selected[key] = variants.first().value
             }
-            return selected.entries.take(48).mapNotNull { (name, bytes) ->
+            return selected.entries.take(48).mapNotNull { (name, entry) ->
+                val bytes = runCatching { readMember(zip,entry) }.getOrNull() ?: return@mapNotNull null
                 val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
                 BitmapFactory.decodeByteArray(bytes,0,bytes.size,options)
                 val size = maxOf(options.outWidth,options.outHeight)
                 if(size !in 1..2048 || options.outMimeType!="image/png") return@mapNotNull null
                 options.inJustDecodeBounds = false
-                options.inSampleSize = Integer.highestOneBit((size+127)/128 - 1).coerceAtLeast(1)*2
-                if(size<=128) options.inSampleSize = 1
+                options.inSampleSize = if (size<=128) 1 else Integer.highestOneBit((size+127)/128 - 1)*2
                 BitmapFactory.decodeByteArray(bytes,0,bytes.size,options)?.let { name to it }
             }.toMap()
         }

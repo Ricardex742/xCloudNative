@@ -16,6 +16,8 @@ class StreamingSessionMessagesTest {
         assertEquals(OfficialTouchNotice.Show("combat","[]"),show.touchLayout)
         assertTrue(show.replies.isEmpty())
         assertFalse(parser.diagnostics().contains("combat"))
+        message.put("content",JSONObject().put("layoutId",""))
+        assertEquals(OfficialTouchNotice.Show(""),parser.receive(message).touchLayout)
         assertNull(parser.receive(message.put("type","TransactionStart")).touchLayout)
         message.put("type","Message").put("target","/streaming/touchcontrols/hide")
         assertEquals(OfficialTouchNotice.Hide,parser.receive(message).touchLayout)

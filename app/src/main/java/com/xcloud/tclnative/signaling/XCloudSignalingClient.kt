@@ -15,6 +15,8 @@ import com.xcloud.tclnative.net.checkedBody
 import com.xcloud.tclnative.net.CloudHttpException
 import com.xcloud.tclnative.net.CloudRequestException
 import com.xcloud.tclnative.touch.OfficialTouchBundle
+import com.xcloud.tclnative.touch.OfficialTouchLoad
+import com.xcloud.tclnative.touch.OfficialTouchLoad.Stage
 import com.xcloud.tclnative.webrtc.StreamingPeer
 import com.xcloud.tclnative.webrtc.StreamResolution
 import com.xcloud.tclnative.catalog.XboxProfile
@@ -35,10 +37,12 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
@@ -126,7 +130,7 @@ class XCloudSignalingClient(
     private suspend fun request(path: String, stage: String, method: String = "GET", body: JSONObject? = null,
                                 client: OkHttpClient = requestClient, query: Map<String,String> = emptyMap(),
                                 base: String = session.baseUri, resolution: StreamResolution = defaultProfile.resolution,
-                                bearer: String = authorization.gssvToken): String {
+                                bearer: String = authorization.gssvToken, returnRedirect: Boolean = false): String {
         if (remotePlay) check(path == "/v6/servers/home" || path.startsWith("$sessionRoot/"))
         val url=CloudProtocol.sessionUrl(base,path).newBuilder().apply {
             query.forEach { (key,value) -> addQueryParameter(key,value) }
@@ -141,6 +145,10 @@ class XCloudSignalingClient(
         }
         return try {
             client.newCall(builder.build()).readResponse {
+                if (returnRedirect) {
+                    if (it.code in 300..399) return@readResponse it.header("Location").orEmpty()
+                    return@readResponse it.checkedBody(stage,maxBytes=8192)
+                }
                 if (stage == "CATALOG") it.checkedBody(stage, maxBytes = 16L * 1024 * 1024)
                 else it.checkedBody(stage)
             }
@@ -177,53 +185,130 @@ class XCloudSignalingClient(
             touchBundleIds = touchBundleIds(details))
     }
 
-    internal suspend fun officialTouchBundle(game: GameTitle, locale: String): OfficialTouchBundle? = withContext(Dispatchers.IO) {
-        val allocation = active.get() ?: return@withContext null
-        if (remotePlay || !game.offersOfficialTouch()) return@withContext null
-        val base = allocation.attempt.profile.baseUri
-        val ids = game.touchBundleIds.ifEmpty {
-            val titleId = game.xboxTitleId?.takeIf { it.matches(Regex("[0-9]{1,10}")) } ?: return@withContext null
-            val payload = JSONObject().put("titleIds",org.json.JSONArray().put(titleId)).put("titleIdType","xboxTitleId")
-            val configs = org.json.JSONArray(request("/v2/titles/inputconfigs","TOUCH_CONFIG","POST",payload,
-                client=touchBundleClient,base=base))
-            if (configs.length()!=1) return@withContext null
-            touchBundleIds(configs.optJSONObject(0))
-        }
-        for (id in ids) {
-            if (active.get() !== allocation) return@withContext null
-            try {
-                val signedLocation = request("/v1/sessions/tabs/$id/download","TOUCH_BUNDLE",
-                    client=touchBundleClient,query=mapOf("noRedirect" to "true"),base=base).trim()
-                val url = signedLocation.takeIf { it.length <= 8192 }?.toHttpUrlOrNull()
-                    ?: continue
-                if (!url.isHttps || url.port!=443 || url.username.isNotEmpty() || url.password.isNotEmpty() ||
-                    url.fragment!=null || !officialBundleHost(url.host)) continue
-                val bytes = touchBundleClient.newCall(Request.Builder().url(url).get().build()).readResponse { response ->
-                    check(response.isSuccessful) { "TOUCH_BUNDLE: download unavailable" }
-                    val body=response.body ?: error("TOUCH_BUNDLE: empty download")
-                    val maximum=8L*1024*1024
-                    check(body.contentLength()<=maximum && !body.source().request(maximum+1)) { "TOUCH_BUNDLE: too large" }
-                    body.bytes()
+    internal suspend fun officialTouchBundle(game: GameTitle, locale: String, cache: File): OfficialTouchLoad =
+        withContext(Dispatchers.IO) {
+            val allocation = active.get()
+            if (allocation==null || remotePlay) return@withContext OfficialTouchLoad.Failed(Stage.METADATA)
+            val candidates = game.touchBundleIds.filter(::validTouchBundleId)
+            val tried = mutableSetOf<String>()
+            var mostSpecific = OfficialTouchLoad.Failed(Stage.NO_BUNDLE)
+            suspend fun attempt(ids: List<String>): OfficialTouchLoad.Ready? {
+                for (id in ids) {
+                    requireActive(allocation)
+                    if (!tried.add(id)) continue
+                    val result = fetchTouchBundle(id, allocation.attempt.profile.baseUri, locale, cache)
+                    if (result is OfficialTouchLoad.Ready) return result
+                    val failure = result as OfficialTouchLoad.Failed
+                    if (failure.stage.ordinal >= mostSpecific.stage.ordinal) mostSpecific = failure
                 }
-                return@withContext OfficialTouchBundle.parse(bytes,locale)
-            } catch(error: CancellationException) {
-                throw error
-            } catch(_: Exception) {
-                // A title may advertise more than one bundle version.
+                return null
             }
+            attempt(candidates)?.let { return@withContext it }
+            val titleId = game.xboxTitleId?.takeIf { it.matches(Regex("[0-9]{1,10}")) }
+                ?: return@withContext mostSpecific
+            val payload = JSONObject().put("titleIds",JSONArray().put(titleId)).put("titleIdType","xboxTitleId")
+            val configs = try {
+                val result = JSONTokener(request("/v2/titles/inputconfigs","TOUCH_CONFIG","POST",payload,
+                    client=touchBundleClient,base=allocation.attempt.profile.baseUri)).nextValue()
+                when (result) {
+                    is JSONArray -> result
+                    is JSONObject -> result.optJSONArray("results") ?: result.optJSONArray("titleInputConfigurations")
+                    else -> null
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                return@withContext if (tried.isEmpty()) touchLoadFailure(Stage.METADATA,error) else mostSpecific
+            }
+            val config = configs?.takeIf { it.length()==1 }?.optJSONObject(0)
+                ?: return@withContext mostSpecific
+            attempt(touchBundleIds(config.optJSONObject("details") ?: config)) ?: mostSpecific
         }
-        null
+
+    private suspend fun fetchTouchBundle(id: String, base: String, locale: String, cache: File): OfficialTouchLoad {
+        val url = try {
+            val route = "/v1/sessions/tabs/$id/download"
+            val baseUrl = CloudProtocol.sessionUrl(base,route)
+            val reference = request(route,"TOUCH_BUNDLE",client=touchBundleClient,
+                query=mapOf("noRedirect" to "true"),base=base,returnRedirect=true).trim()
+            val path = if (reference.startsWith('"')) (JSONTokener(reference).nextValue() as? String).orEmpty()
+                else reference
+            baseUrl.resolve(path)?.takeIf { path.isNotBlank() && officialBundleLocation(it) }
+                ?: return OfficialTouchLoad.Failed(Stage.REFERENCE)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            return touchLoadFailure(Stage.REFERENCE,error)
+        }
+        var temporary: File? = null
+        return try {
+            temporary = File.createTempFile("xbox-touch-", ".takx",cache)
+            downloadTouchBundle(url,temporary)
+            val bundle = try {
+                OfficialTouchBundle.parse(temporary,locale)
+            } catch (error: Exception) {
+                if (error is CancellationException) throw error
+                return OfficialTouchLoad.Failed(Stage.FORMAT)
+            }
+            OfficialTouchLoad.Ready(bundle)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            touchLoadFailure(Stage.DISTRIBUTION,error)
+        } finally {
+            temporary?.delete()
+        }
     }
 
-    private fun officialBundleHost(host: String): Boolean =
-        listOf("xbox.com","xboxlive.com","xboxservices.com","blob.core.windows.net","azureedge.net",
-            "microsoft.com","msedge.net").any { host==it || host.endsWith(".$it") }
+    private suspend fun downloadTouchBundle(url: okhttp3.HttpUrl, file: File) {
+        val maximum = 32L*1024*1024
+        var target = url
+        repeat(4) {
+            val next = touchBundleClient.newCall(Request.Builder().url(target).build()).readResponse { response ->
+                if (response.code in 300..399) return@readResponse response.header("Location")
+                    ?: throw IOException("TOUCH_BUNDLE: redirect")
+                if (!response.isSuccessful) throw CloudHttpException("TOUCH_BUNDLE_CDN",response.code,null,null)
+                val body = response.body ?: throw IOException("TOUCH_BUNDLE: empty")
+                require(body.contentLength()<=maximum)
+                body.byteStream().use { input -> file.outputStream().use { output ->
+                    val buffer = ByteArray(32*1024)
+                    var bytes = 0L
+                    while (true) {
+                        val count=input.read(buffer)
+                        if (count<0) break
+                        bytes+=count
+                        require(bytes<=maximum)
+                        output.write(buffer,0,count)
+                    }
+                } }
+                null
+            } ?: return
+            target = target.resolve(next)?.takeIf(::officialBundleLocation) ?: throw IOException("TOUCH_BUNDLE: redirect")
+        }
+        throw IOException("TOUCH_BUNDLE: redirect loop")
+    }
+
+    private fun touchLoadFailure(stage: Stage,error: Exception) =
+        OfficialTouchLoad.Failed(stage,(error as? CloudHttpException)?.status?.takeIf { it in 400..599 })
+
+    private fun officialBundleLocation(url: okhttp3.HttpUrl): Boolean =
+        url.isHttps && url.port==443 && url.username.isEmpty() && url.password.isEmpty() && url.fragment==null &&
+            listOf("xbox.com","xboxlive.com","xboxservices.com","blob.core.windows.net","storage.azure.net",
+                "azureedge.net","azurefd.net","microsoft.com","msedge.net","msecnd.net")
+                .any { url.host==it || url.host.endsWith(".$it") }
+
+    private fun validTouchBundleId(id: String): Boolean = id.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,159}"))
 
     private fun touchBundleIds(details: JSONObject?): List<String> {
         val tabs=details?.optJSONArray("supportedTabs") ?: return emptyList()
-        return (0 until minOf(12,tabs.length())).mapNotNull { tabs.optJSONObject(it)?.optString("id") }
-            .filter { it.matches(Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,159}")) }
-            .distinct().take(4)
+        fun version(tab: JSONObject): Long {
+            val parts = tab.optString("tabVersion").split('.',limit=5)
+            return (0..3).fold(0L) { value,index ->
+                value*10_000 + (parts.getOrNull(index)?.toIntOrNull()?.coerceIn(0,9999) ?: 0)
+            }
+        }
+        return (0 until minOf(24,tabs.length())).mapNotNull(tabs::optJSONObject).sortedByDescending(::version)
+            .map { it.optString("id") }.filter(::validTouchBundleId).distinct().take(4)
     }
 
     /** A public gallery product must resolve through the authenticated service before launching. */

@@ -80,7 +80,7 @@ class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000
             else -> null
         }?.takeIf { it.length<=8192 }
         fun validName(value: Any?): String? = (value as? String)?.trim()?.takeIf {
-            it.length in 1..128 && it.none(Char::isISOControl)
+            it.length <= 128 && it.none(Char::isISOControl)
         }
         return when {
             route.equals("hide",true) -> OfficialTouchNotice.Hide

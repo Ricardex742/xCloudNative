@@ -1359,4 +1359,5 @@
     <string name="ui_c6bd348ff9537470" formatted="false">"Usa i comandi touch ufficiali di Xbox"</string>
     <string name="ui_a52f6fe663d36ac6" formatted="false">"Il layout ufficiale di Xbox non è disponibile per questa sessione."</string>
     <string name="ui_fe524f1820bb0a0f" formatted="false">"Resta al massimo 1 minuto. Salva i tuoi progressi nel gioco."</string>
+    <string name="ui_a2e1f978ce089e42" formatted="false">"Caricamento dei comandi touch ufficiali di Xbox…"</string>
 </resources>
