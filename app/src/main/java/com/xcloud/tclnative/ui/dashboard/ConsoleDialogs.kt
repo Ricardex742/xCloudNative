@@ -250,7 +250,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             addView(detailsBackdrop, FrameLayout.LayoutParams(-1, -1))
             addView(View(context).apply {
                 background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(0xbb101723.toInt(), 0xbb141a2a.toInt(), 0xf50e1520.toInt()))
+                    intArrayOf(0x86101723.toInt(), 0x94141a2a.toInt(), 0xe80e1520.toInt()))
             }, FrameLayout.LayoutParams(-1, -1))
             addView(panel, FrameLayout.LayoutParams(-1, -1))
         })

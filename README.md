@@ -28,7 +28,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - Favoritos separados por conta e salvos no aparelho.
 - **Game Pass**, **Transmita seu jogo**, **Adições recentes** e **Todos os jogos**.
 - Catálogos oficiais com nomes, capas e identificação das edições.
-- Segure uma capa ou pressione **A** sobre ela para abrir os detalhes. A tela mostra editora, descrição, classificação indicativa brasileira e capturas quando disponíveis na loja, com ações para jogar na nuvem e criar um atalho para o título. Um toque curto na capa inicia o jogo diretamente.
+- Segure uma capa ou pressione **A** sobre ela para abrir os detalhes. A tela usa arte desfocada do jogo ao fundo e mostra editora, descrição, classificação indicativa brasileira e capturas quando disponíveis na loja. As ações permitem jogar na nuvem ou criar um atalho. Um toque curto na capa inicia o jogo diretamente.
 - Ao iniciar uma partida na nuvem, um aviso de cinco segundos mostra quantos minutos restam até o fim da sessão quando o Xbox informa seu prazo.
 - Selos de Game Pass e Xbox Series X|S conforme a inclusão e otimização informadas pelo catálogo.
 - Pesquisa por nome, tolerando diferenças de acentos, pontuação e marcas.

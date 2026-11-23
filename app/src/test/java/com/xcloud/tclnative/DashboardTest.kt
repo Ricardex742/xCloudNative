@@ -234,7 +234,7 @@ class DashboardTest {
             return url
         }
         val poster = fixture("poster", "forza.jpg", 384, 576)
-        val hero = fixture("hero", "forza-hero.jpg", 800, 450)
+        val hero = fixture("hero", "forza-hero.jpg", 256, 160)
         val previews = List(4) { i -> fixture("preview-$i", "forza-hero.jpg", 640, 360) }
         val body = "Explore as estradas, descubra paisagens e participe de corridas. ".repeat(50)
         val view = GameDashboardView(activity, GameLibrary(activity, "selection"), { played = it }, {}, {}, {},
@@ -269,6 +269,15 @@ class DashboardTest {
         assertTrue(gallery.height > 0)
         val thumbnail = (gallery.getChildAt(0) as ViewGroup).getChildAt(0)
         assertTrue(thumbnail.width > 0 && thumbnail.height > 0)
+        val backdrop = details.detailsBackdrop!!
+        val backdropDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3)
+        while (backdrop.drawable == null && System.nanoTime() < backdropDeadline) {
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(10)
+        }
+        val blurred = (backdrop.drawable as android.graphics.drawable.BitmapDrawable).bitmap
+        assertEquals(144, blurred.width)
+        assertTrue(blurred.height <= 96)
         val bitmap = android.graphics.Bitmap.createBitmap(root.width, root.height, android.graphics.Bitmap.Config.ARGB_8888)
         root.draw(android.graphics.Canvas(bitmap))
         File("build/reports/dashboard/game-details-wide.png").apply { parentFile!!.mkdirs() }.outputStream().use {

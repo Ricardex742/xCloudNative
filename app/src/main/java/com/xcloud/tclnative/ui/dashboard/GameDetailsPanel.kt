@@ -2,6 +2,7 @@ package com.xcloud.tclnative.ui.dashboard
 
 import android.content.Context
 import android.graphics.Typeface
+import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
 import android.view.KeyEvent
 import android.view.View
@@ -12,12 +13,15 @@ import com.xcloud.tclnative.catalog.CatalogCard
 import com.xcloud.tclnative.catalog.StoreGameDetails
 import com.xcloud.tclnative.i18n.UiText
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 internal class GameDetailsPanel(
     context: Context,
     card: CatalogCard,
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     loadDetails: (suspend (String) -> StoreGameDetails?)?,
     onPlay: () -> Unit,
     onShortcut: (() -> Unit)?
@@ -26,6 +30,10 @@ internal class GameDetailsPanel(
     private val artwork = PosterLoader(context, scope, maxConcurrent = 2)
     private val wide = dialog.wideDetails
     private val hero = card.product?.heroUrl ?: card.game?.heroUrl
+    private val coverArt = card.posterUrl ?: card.tileUrl ?: hero
+    private val backgroundSource = ImageView(context)
+    private var backgroundUrl: String? = null
+    private var backgroundJob: Job? = null
     private val gallery = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
         tag = "game-details-gallery"
@@ -39,16 +47,15 @@ internal class GameDetailsPanel(
     }
 
     init {
-        dialog.detailsBackdrop?.let { artwork.load(it, hero, 800, 450) }
+        loadBackdrop(hero ?: coverArt)
         val columns = LinearLayout(context).apply {
             orientation = if (wide) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             isBaselineAligned = false
         }
         dialog.body.addView(columns, LinearLayout.LayoutParams(-1, if (wide) -1 else -2))
 
-        val poster = card.posterUrl ?: card.tileUrl ?: hero
-        if (poster != null) {
-            val cover = image(poster, 384, 576, ImageView.ScaleType.FIT_START).apply { tag = "game-details-cover" }
+        if (coverArt != null) {
+            val cover = image(coverArt, 384, 576, ImageView.ScaleType.FIT_START).apply { tag = "game-details-cover" }
             columns.addView(cover, column(1.05f, compactHeight = dialog.px(210), compactWidth = dialog.px(140)))
         }
 
@@ -97,6 +104,8 @@ internal class GameDetailsPanel(
         } else null
         dialog.addCleanup {
             job?.cancel()
+            backgroundJob?.cancel()
+            artwork.cancel(backgroundSource)
             artwork.close()
         }
     }
@@ -133,7 +142,29 @@ internal class GameDetailsPanel(
         } }
         description.text = details?.description ?: unavailableDescription
         val screenshots = details?.screenshots.orEmpty()
-        if (screenshots.isNotEmpty()) renderGallery(screenshots)
+        if (screenshots.isNotEmpty()) {
+            renderGallery(screenshots)
+            if (hero == null) loadBackdrop(screenshots.first())
+        }
+    }
+
+    private fun loadBackdrop(url: String?) {
+        val target = dialog.detailsBackdrop ?: return
+        if (url == null || url == backgroundUrl) return
+        backgroundUrl = url
+        backgroundJob?.cancel()
+        artwork.load(backgroundSource, url, 256, 160, notifyPlaceholder = false) { ready ->
+            val source = (backgroundSource.drawable as? BitmapDrawable)?.bitmap
+            backgroundSource.setImageDrawable(null)
+            if (!ready || source == null) {
+                if (url != coverArt) loadBackdrop(coverArt)
+                return@load
+            }
+            backgroundJob = scope.launch {
+                val blurred = withContext(Dispatchers.Default) { ArtworkBackdropBlur.apply(source) }
+                target.setImageBitmap(blurred)
+            }
+        }
     }
 
     private fun renderGallery(urls: List<String>) {
