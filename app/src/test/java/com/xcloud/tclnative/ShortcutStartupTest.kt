@@ -209,6 +209,8 @@ class ShortcutStartupTest {
                 assertEquals("The older bulk request must start before the second game",0L,bulkStarted.count)
                 val card=all(dashboard).single { it.isClickable && it.contentDescription=="Other" }
                 assertTrue(card.performClick())
+                val details = currentGameDetails()
+                assertTrue(details.panel.findViewWithTag<View>("game-details-play").performClick())
                 stopNativeTransportBeforeItStarts(activity)
                 assertEquals(View.VISIBLE,queue.visibility)
                 fun hasPoster()=all(queue).filterIsInstance<FixedArtworkView>().any { (it.drawable as? BitmapDrawable)?.bitmap===otherImage }
