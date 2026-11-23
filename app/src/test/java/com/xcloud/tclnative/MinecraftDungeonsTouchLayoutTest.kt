@@ -16,7 +16,8 @@ class MinecraftDungeonsTouchLayoutTest {
         val appearance = OfficialTouchAppearance(style, style, enabled = true)
         val attack = HudElement("right-inner-0", "A", .8f, .64f, .07f,
             binding = HudBinding.A, officialAppearance = appearance)
-        val artifact = attack.copy(id = "lower-rightCenter-0", action = HudAction(HudBinding.X))
+        val artifact = attack.copy(id = "lower-rightCenter-0", x = .60f, y = .90f,
+            binding = HudBinding.X, action = HudAction(HudBinding.X))
         val supplied = listOf(attack, artifact)
         val layout = MinecraftDungeonsTouchLayout
         val playable = layout.place(supplied, 1280, 606)
