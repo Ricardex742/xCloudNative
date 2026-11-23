@@ -670,6 +670,7 @@ open class MainActivity : Activity() {
                 return@launch // No catalog/grid or background galleries while the shortcut enters its game.
             }
             val catalog = createCatalogService(catalogCache,catalogWork::await)
+            val progress = com.xcloud.tclnative.catalog.XboxGameProgressService()
             val view = GameDashboardView(this@MainActivity, library,
                 onPlay = { game -> chooseLaunchMode(signaling, game) },
                 onSearch = { showCatalogSearch() },
@@ -680,7 +681,21 @@ open class MainActivity : Activity() {
                 onOwnershipNeeded = { requestOwnership() },onGameShortcut={ showGameShortcut(it) },
                 onFriends={ showFriends { dashboard?.restoreFocus() } },
                 onThemeSettings={ page -> showSettings(session,page) { dashboard?.restoreFocus() } },
-                onRemotePlay={ showRemotePlay() }, onLoadGameDetails=catalog::gameDetails)
+                onRemotePlay={ showRemotePlay() }, onLoadGameDetails=catalog::gameDetails,
+                onLoadGameProgress={ title ->
+                    check(currentSession === session)
+                    val xuid=session.xuid ?: authenticator.loadXboxProfile().getOrThrow().xuid
+                    if (xuid == null) null else {
+                        val authorization=authenticator.loadXboxSocialAuthorization().getOrThrow()
+                        check(currentSession === session)
+                        progress.load(authorization, xuid, title, UiText.locale.toLanguageTag())
+                    }
+                },
+                onGameOptions={ game ->
+                    SessionOptionsPanel(this@MainActivity,sessionOptionsStore(session),
+                        session.regions,game.titleId,game.name) {}.show()
+                },
+                onStoreProduct={ id -> openAccountPage("https://www.xbox.com/pt-BR/games/store/game/$id") })
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)

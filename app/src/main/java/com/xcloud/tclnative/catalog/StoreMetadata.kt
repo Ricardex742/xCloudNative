@@ -11,8 +11,38 @@ data class StoreGameDetails(
     val publisher: String?,
     val description: String?,
     val rating: String?,
-    val screenshots: List<String>
+    val screenshots: List<String>,
+    val releaseYear: Int? = null,
+    val contentNotices: List<StoreContentNotice> = emptyList(),
+    val interactiveNotices: List<StoreContentNotice> = emptyList()
 )
+
+enum class StoreContentNotice {
+    VIOLENCE, EXTREME_VIOLENCE, SEXUAL_CONTENT, DRUGS, LEGAL_DRUGS, USER_INTERACTION, IN_GAME_PURCHASES;
+
+    val label get() = when (this) {
+        VIOLENCE -> UiText.text("Violência")
+        EXTREME_VIOLENCE -> UiText.text("Violência extrema")
+        SEXUAL_CONTENT -> UiText.text("Conteúdo sexual")
+        DRUGS -> UiText.text("Drogas")
+        LEGAL_DRUGS -> UiText.text("Drogas lícitas")
+        USER_INTERACTION -> UiText.text("Usuários interagem")
+        IN_GAME_PURCHASES -> UiText.text("Compras no jogo")
+    }
+
+    companion object {
+        internal fun fromCode(value: String) = when (value) {
+            "DJCTQ:Vio" -> VIOLENCE
+            "DJCTQ:ExtVio" -> EXTREME_VIOLENCE
+            "DJCTQ:SexCon" -> SEXUAL_CONTENT
+            "DJCTQ:Dru" -> DRUGS
+            "DJCTQ:LegDru" -> LEGAL_DRUGS
+            "DJCTQ:UseInt" -> USER_INTERACTION
+            "DJCTQ:InGamPur" -> IN_GAME_PURCHASES
+            else -> null
+        }
+    }
+}
 
 /** Handles Store v7 arrays and the older Game Pass object map without changing cloud launch IDs. */
 object StoreMetadata {
@@ -32,13 +62,17 @@ object StoreMetadata {
             }
         val ratings = brazil?.optJSONArray("ContentRatings")
         val rating = (0 until (ratings?.length() ?: 0)).asSequence().mapNotNull { ratings?.optJSONObject(it) }
-            .filter { it.optString("RatingSystem").equals("DJCTQ", true) }
-            .firstNotNullOfOrNull { it.text("RatingId") }
+            .firstOrNull { it.optString("RatingSystem").equals("DJCTQ", true) && it.text("RatingId") != null }
+        fun notices(field: String): List<StoreContentNotice> {
+            val values = rating?.optJSONArray(field) ?: return emptyList()
+            return (0 until minOf(values.length(), 30)).mapNotNull { StoreContentNotice.fromCode(values.optString(it)) }.distinct()
+        }
+        val year = brazil?.text("OriginalReleaseDate")?.substringBefore('-')?.toIntOrNull()?.takeIf { it in 1970..2200 }
         return StoreGameDetails(
             local?.text("PublisherName") ?: data.text("PublisherName") ?: data.optJSONObject("Properties")?.text("PublisherName"),
             local?.let { it.text("ProductDescription") ?: it.text("ShortDescription") }?.take(12_000),
-            rating?.let { it.substringAfterLast(':').take(80) },
-            screenshots
+            rating?.text("RatingId")?.substringAfterLast(':')?.takeIf { it in setOf("L", "10", "12", "14", "16", "18") },
+            screenshots, year, notices("RatingDescriptors"), notices("InteractiveElements")
         )
     }
 

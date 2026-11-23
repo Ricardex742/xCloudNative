@@ -19,13 +19,17 @@ class CatalogTest {
                "Images":[{"ImagePurpose":"Poster","Uri":"//example.com/poster.png"},
                          {"ImagePurpose":"Screenshot","Uri":"//example.com/level.jpg"},
                          {"ImagePurpose":"Screenshot","Uri":"//example.com/level.jpg"}]}],
-             "MarketProperties":[{"Markets":["BR"],"ContentRatings":[
+             "MarketProperties":[{"Markets":["BR"],"OriginalReleaseDate":"2026-08-21T00:00:00Z","ContentRatings":[
                 {"RatingSystem":"ESRB","RatingId":"ESRB:E"},
-                {"RatingSystem":"DJCTQ","RatingId":"DJCTQ:10"}]}]}
+                {"RatingSystem":"DJCTQ","RatingId":"DJCTQ:10",
+                 "RatingDescriptors":["DJCTQ:Vio","UNKNOWN"],"InteractiveElements":["DJCTQ:UseInt","DJCTQ:InGamPur"]}]}]}
         """.trimIndent()))
         assertEquals("Estúdio", details.publisher)
         assertEquals("Aventura.", details.description)
         assertEquals("10", details.rating)
+        assertEquals(2026, details.releaseYear)
+        assertEquals(listOf(StoreContentNotice.VIOLENCE), details.contentNotices)
+        assertEquals(listOf(StoreContentNotice.USER_INTERACTION, StoreContentNotice.IN_GAME_PURCHASES), details.interactiveNotices)
         assertEquals(listOf("https://example.com/level.jpg"), details.screenshots)
     }
 

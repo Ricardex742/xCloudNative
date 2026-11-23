@@ -1375,4 +1375,25 @@
     <string name="ui_f94cbdab8f3a9694">"Ночной"</string>
     <string name="ui_e37b8e0d5b62b71c">"Оставшееся время сеанса: {0} ч"</string>
     <string name="ui_bdce1060812213d6">"Оставшееся время сеанса: {0} ч {1} мин"</string>
+    <string name="ui_5eb5aff51b27df3d">"Добавить в избранное"</string>
+    <string name="ui_92ad2a5618c5b695">"Покупки в игре"</string>
+    <string name="ui_e5fbebacc1aa9e34">"Достижение"</string>
+    <string name="ui_7b215bae8ae734cd">"Недавние достижения"</string>
+    <string name="ui_6906a9a14af6734c">"Достижения: {0} из {1}"</string>
+    <string name="ui_1b03d4e1c7f66702">"Загрузка достижений…"</string>
+    <string name="ui_7977b6c3a4583719">"Материалы сексуального характера"</string>
+    <string name="ui_bb3c49977b397d46">"Доступно в облаке"</string>
+    <string name="ui_4392aa38fbc27e83">"Наркотики"</string>
+    <string name="ui_02d166c7913e5658">"Разрешённые психоактивные вещества"</string>
+    <string name="ui_4ce26e02e0fa42f0">"Gamerscore"</string>
+    <string name="ui_0e8045fc80cc15b1">"Бесплатно в облаке"</string>
+    <string name="ui_1b2c5d76947a11f9">"В вашей библиотеке"</string>
+    <string name="ui_1e15c181a598c235">"В каталоге Game Pass"</string>
+    <string name="ui_608e2b782a94aebd">"Прогресс для этой игры недоступен."</string>
+    <string name="ui_9033705b99bcc5eb">"Убрать из избранного"</string>
+    <string name="ui_0bd098d6b9ded748">"Ваш прогресс"</string>
+    <string name="ui_3a4aee24cbb1a2de">"Взаимодействие пользователей"</string>
+    <string name="ui_866fdcebe2b40408">"Открыть в магазине"</string>
+    <string name="ui_95bd1530bb531913">"Насилие"</string>
+    <string name="ui_a50d881504c65330">"Крайнее насилие"</string>
 </resources>

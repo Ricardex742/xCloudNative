@@ -52,6 +52,9 @@ import com.xcloud.tclnative.catalog.CatalogChanges
 import com.xcloud.tclnative.catalog.CatalogGenre
 import com.xcloud.tclnative.catalog.Ownership
 import com.xcloud.tclnative.catalog.OwnershipFilter
+import com.xcloud.tclnative.catalog.StoreGameDetails
+import com.xcloud.tclnative.catalog.XboxGameProgress
+import com.xcloud.tclnative.catalog.normalizeXboxTitleId
 import com.xcloud.tclnative.catalog.ownershipProductKey
 import com.xcloud.tclnative.signaling.GameTitle
 import kotlinx.coroutines.CoroutineScope
@@ -82,7 +85,10 @@ class GameDashboardView(
     private val onFriends: (() -> Unit)?=null,
     private val onThemeSettings: (SettingsPage) -> Unit={ onOptions() },
     onRemotePlay: (() -> Unit)? = null,
-    private val onLoadGameDetails: (suspend (String) -> com.xcloud.tclnative.catalog.StoreGameDetails?)? = null
+    private val onLoadGameDetails: (suspend (String) -> StoreGameDetails?)? = null,
+    private val onLoadGameProgress: (suspend (String) -> XboxGameProgress?)? = null,
+    private val onGameOptions: ((GameTitle) -> Unit)? = null,
+    private val onStoreProduct: ((String) -> Unit)? = null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -1102,26 +1108,26 @@ class GameDashboardView(
             if(selectedCard?.product!=null) android.widget.Toast.makeText(context,UiText.text("Selecione o jogo para verificar sua disponibilidade antes de favoritar."),android.widget.Toast.LENGTH_LONG).show()
             return
         }
-        scope.launch {
-            favoriteWrites.withLock {
-                val added = try {
-                    withContext(Dispatchers.IO) { library.toggleFavorite(game.titleId) }
-                } catch (error: java.io.IOException) {
-                    if (!closed && !artworkPaused) {
-                        android.widget.Toast.makeText(context, error.message, android.widget.Toast.LENGTH_LONG).show()
-                    }
-                    return@withLock
-                }
-                if (closed) return@withLock
-                onFavoritesChanged()
-                if (artworkPaused) return@withLock
-                announceForAccessibility(if (added) UiText.text("{0} adicionado aos favoritos", UiText.nested(game.name))
-                    else UiText.text("{0} removido dos favoritos", UiText.nested(game.name)))
-                if (activeTab == LibraryTab.FAVORITES) { refresh(); focusFirstCover() }
-                else adapter.items.indices.filter { adapter.items[it].game?.titleId == game.titleId }
-                    .forEach { adapter.notifyItemChanged(it, "favorite") }
+        scope.launch { changeFavorite(game) }
+    }
+    private suspend fun changeFavorite(game: GameTitle): Boolean? = favoriteWrites.withLock {
+        val added = try {
+            withContext(Dispatchers.IO) { library.toggleFavorite(game.titleId) }
+        } catch (error: java.io.IOException) {
+            if (!closed && !artworkPaused) {
+                android.widget.Toast.makeText(context, error.message, android.widget.Toast.LENGTH_LONG).show()
             }
+            return@withLock null
         }
+        if (closed) return@withLock added
+        onFavoritesChanged()
+        if (artworkPaused) return@withLock added
+        announceForAccessibility(if (added) UiText.text("{0} adicionado aos favoritos", UiText.nested(game.name))
+            else UiText.text("{0} removido dos favoritos", UiText.nested(game.name)))
+        if (activeTab == LibraryTab.FAVORITES) { refresh(); focusFirstCover() }
+        else adapter.items.indices.filter { adapter.items[it].game?.titleId == game.titleId }
+            .forEach { adapter.notifyItemChanged(it, "favorite") }
+        added
     }
     private fun playCard(card: CatalogCard) {
         val game=card.playableGame()
@@ -1137,8 +1143,21 @@ class GameDashboardView(
         if (closed || gameDetails?.isShowing == true) return
         val game = card.playableGame()
         val shortcut = onGameShortcut
-        val dialog = GameDetailsPanel(context, card, scope, onLoadGameDetails, { playCard(card) },
-            if (game != null && shortcut != null) ({ shortcut(game) }) else null).dialog
+        val options = onGameOptions
+        val store = onStoreProduct
+        val product = (card.product?.productId ?: game?.productId)?.takeIf { it.matches(Regex("[A-Za-z0-9]{12}")) }
+        val title = normalizeXboxTitleId(game?.xboxTitleId)
+        val loader = onLoadGameProgress
+        val favorite = game != null && library.isFavorite(game.titleId)
+        val dialog = GameDetailsPanel(context, card, scope, onLoadGameDetails,
+            onPlay = { playCard(card) },
+            onShortcut = if (game != null && shortcut != null) ({ shortcut(game) }) else null,
+            onSettings = if (game != null && options != null) ({ options(game) }) else null,
+            onStore = if (product != null && store != null) ({ store(product) }) else null,
+            onFavorite = if (game != null) ({ changeFavorite(game) }) else null,
+            initialFavorite = favorite,
+            loadProgress = if (title != null && loader != null) ({ loader(title) }) else null
+        ).dialog
         gameDetails = dialog
         dialog.setOnDismissListener {
             if (gameDetails === dialog) {

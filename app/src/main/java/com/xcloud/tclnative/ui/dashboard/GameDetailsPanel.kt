@@ -9,8 +9,10 @@ import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.TextView
 import com.xcloud.tclnative.catalog.CatalogCard
 import com.xcloud.tclnative.catalog.StoreGameDetails
+import com.xcloud.tclnative.catalog.XboxGameProgress
 import com.xcloud.tclnative.i18n.UiText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +26,12 @@ internal class GameDetailsPanel(
     private val scope: CoroutineScope,
     loadDetails: (suspend (String) -> StoreGameDetails?)?,
     onPlay: () -> Unit,
-    onShortcut: (() -> Unit)?
+    onShortcut: (() -> Unit)?,
+    onSettings: (() -> Unit)? = null,
+    onStore: (() -> Unit)? = null,
+    onFavorite: (suspend () -> Boolean?)? = null,
+    initialFavorite: Boolean = false,
+    loadProgress: (suspend () -> XboxGameProgress?)? = null
 ) {
     val dialog = ConsoleDialog(context, card.name, ConsolePanelPurpose.GAME_DETAILS)
     private val artwork = PosterLoader(context, scope, maxConcurrent = 2)
@@ -45,6 +52,13 @@ internal class GameDetailsPanel(
         typeface = Typeface.DEFAULT
         setLineSpacing(0f, 1.15f)
     }
+    private val infoTitle = dialog.text(UiText.text("Descrição"), if (wide) 24 else 19, true)
+    private var chosePanel = false
+    private var progressVisible = false
+    private var progressButton: TextView? = null
+    private val progress = loadProgress?.let { loader -> GameProgressPanel(dialog, scope, artwork, loader) {
+        if (!chosePanel) showProgress(true)
+    } }
 
     init {
         loadBackdrop(hero ?: coverArt)
@@ -65,12 +79,20 @@ internal class GameDetailsPanel(
             val inset = dialog.px(if (wide) 16 else 14)
             setPadding(inset, inset, inset, inset)
         }
-        information.addView(dialog.text(UiText.text("Descrição"), if (wide) 24 else 19, true),
+        information.addView(infoTitle,
             LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dialog.px(12) })
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(description, -1, -2)
+            progress?.body?.let {
+                it.visibility = View.GONE
+                addView(it, -1, -2)
+            }
+        }
         val readable = if (wide) ScrollView(context).apply {
             overScrollMode = View.OVER_SCROLL_NEVER
             isFocusable = false
-            addView(description, -1, -2)
+            addView(content, -1, -2)
             dialog.shortcut = { event ->
                 val key = event.keyCode
                 val direction = if (key == KeyEvent.KEYCODE_DPAD_UP) -1 else 1
@@ -82,23 +104,68 @@ internal class GameDetailsPanel(
                     true
                 } else false
             }
-        } else description
+        } else content
         information.addView(readable, LinearLayout.LayoutParams(-1, if (wide) 0 else -2, if (wide) 1f else 0f))
+        progress?.refreshButton?.let {
+            it.visibility = View.GONE
+            information.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dialog.px(8) })
+        }
         columns.addView(information, column(1.45f))
         columns.addView(gallery, column(2.5f, gapAfter = false))
         renderGallery(listOfNotNull(hero))
 
         val playable = card.game != null || card.product?.cloudSupported != false
         if (playable) dialog.addAction(UiText.text("Jogar na nuvem"), onPlay).apply { tag = "game-details-play" }
-        if (onShortcut != null) {
-            dialog.addPersistentAction(UiText.text("Atalho na tela inicial"), onShortcut).apply { tag = "game-details-shortcut" }
+        onSettings?.let { dialog.addDetailsIcon(UiText.text("Opções das partidas"), ConsoleGlyph.SETTINGS, it).tag = "game-details-settings" }
+        onStore?.let { dialog.addDetailsIcon(UiText.text("Ver na loja"), ConsoleGlyph.PURCHASED, it).tag = "game-details-store" }
+        onFavorite?.let { action ->
+            val favorite = dialog.addDetailsIcon(UiText.text("Favoritos"), ConsoleGlyph.FAVORITE) {}
+            favorite.tag = "game-details-favorite"
+            fun display(active: Boolean) {
+                favorite.isSelected = active
+                favorite.contentDescription = if (active) UiText.text("Remover dos favoritos") else UiText.text("Adicionar aos favoritos")
+                if (android.os.Build.VERSION.SDK_INT >= 26) favorite.tooltipText = favorite.contentDescription
+            }
+            display(initialFavorite)
+            favorite.setOnClickListener {
+                favorite.isEnabled = false
+                scope.launch {
+                    try {
+                        action()?.let(::display)
+                    } finally {
+                        favorite.isEnabled = true
+                    }
+                }
+            }
         }
-        if (!playable && onShortcut == null) dialog.addAction(UiText.text("Voltar")) {}
+        if (onShortcut != null) {
+            dialog.addDetailsIcon(UiText.text("Atalho na tela inicial"), ConsoleGlyph.SHORTCUT, onShortcut)
+                .apply { tag = "game-details-shortcut" }
+        }
+        if (progress != null) {
+            progressButton = dialog.addDetailsIcon(UiText.text("Seu progresso"), ConsoleGlyph.TROPHY) {
+                chosePanel = true
+                showProgress(!progressVisible)
+            }.apply { tag = "game-details-progress" }
+        }
+        if (!playable) dialog.addAction(UiText.text("Voltar")) {}
+
+        val availability = when {
+            card.game?.freeToPlay == true -> UiText.text("Grátis na nuvem")
+            !playable -> UiText.text("Indisponível no Xbox Cloud Gaming")
+            card.gamePass -> UiText.text("No catálogo do Game Pass")
+            card.purchased -> UiText.text("Na sua biblioteca")
+            card.game != null || card.product?.cloudSupported == true -> UiText.text("Disponível na nuvem")
+            else -> null
+        }
+        availability?.let { status -> dialog.detailsAvailability?.apply {
+            text = status
+            visibility = View.VISIBLE
+        } }
 
         val product = card.product?.productId ?: card.game?.productId
         val canLoad = product != null && loadDetails != null
         description.text = if (canLoad) UiText.text("Carregando detalhes do jogo…") else unavailableDescription
-        if (!playable) information.addView(dialog.text(UiText.text("Indisponível no Xbox Cloud Gaming"), 17, true), 1)
         val job = if (product != null && loadDetails != null) scope.launch {
             render(loadDetails(product))
         } else null
@@ -108,6 +175,7 @@ internal class GameDetailsPanel(
             artwork.cancel(backgroundSource)
             artwork.close()
         }
+        progress?.refresh()
     }
 
     private val unavailableDescription get() = UiText.text("Detalhes da loja indisponíveis.")
@@ -132,19 +200,40 @@ internal class GameDetailsPanel(
         }
 
     private fun render(details: StoreGameDetails?) {
-        details?.publisher?.let { publisher -> dialog.detailsPublisher?.apply {
+        val publisher = listOfNotNull(details?.publisher, details?.releaseYear?.toString()).joinToString(" · ")
+        if (publisher.isNotEmpty()) dialog.detailsPublisher?.apply {
             text = publisher
             visibility = View.VISIBLE
-        } }
+        }
         details?.rating?.let { rating -> dialog.detailsRating?.apply {
             text = UiText.text("Classificação indicativa: {0}", UiText.nested(rating))
             visibility = View.VISIBLE
         } }
+        val notices = (details?.contentNotices.orEmpty() + details?.interactiveNotices.orEmpty()).distinct()
+        if (notices.isNotEmpty()) dialog.detailsRatingNotes?.apply {
+            text = notices.joinToString(" · ") { it.label }
+            visibility = View.VISIBLE
+        }
         description.text = details?.description ?: unavailableDescription
         val screenshots = details?.screenshots.orEmpty()
         if (screenshots.isNotEmpty()) {
             renderGallery(screenshots)
             if (hero == null) loadBackdrop(screenshots.first())
+        }
+    }
+
+    private fun showProgress(show: Boolean) {
+        val panel = progress ?: return
+        progressVisible = show
+        infoTitle.text = if (show) UiText.text("Seu progresso") else UiText.text("Descrição")
+        description.visibility = if (show) View.GONE else View.VISIBLE
+        panel.body.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show && panel.refreshButton.hasFocus()) progressButton?.requestFocus()
+        panel.refreshButton.visibility = if (show) View.VISIBLE else View.GONE
+        progressButton?.apply {
+            isSelected = show
+            contentDescription = if (show) UiText.text("Descrição") else UiText.text("Seu progresso")
+            if (android.os.Build.VERSION.SDK_INT >= 26) tooltipText = contentDescription
         }
     }
 

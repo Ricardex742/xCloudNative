@@ -15,6 +15,10 @@ import android.text.style.ForegroundColorSpan
 import androidx.recyclerview.widget.RecyclerView
 import com.xcloud.tclnative.catalog.GameLibrary
 import com.xcloud.tclnative.catalog.LibraryTab
+import com.xcloud.tclnative.catalog.StoreContentNotice
+import com.xcloud.tclnative.catalog.StoreGameDetails
+import com.xcloud.tclnative.catalog.XboxAchievement
+import com.xcloud.tclnative.catalog.XboxGameProgress
 import com.xcloud.tclnative.catalog.XboxProfile
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.ui.dashboard.GameDashboardView
@@ -222,6 +226,9 @@ class DashboardTest {
         val activity = controller.get()
         var played: GameTitle? = null
         var shortcut: GameTitle? = null
+        var options: GameTitle? = null
+        var openedStore: String? = null
+        var progressLoads = 0
         val images = com.xcloud.tclnative.ui.dashboard.ArtworkBackend.get(activity)
         fun fixture(name: String, file: String, width: Int, height: Int): String {
             val url = "https://example.test/$name"
@@ -240,12 +247,17 @@ class DashboardTest {
         val view = GameDashboardView(activity, GameLibrary(activity, "selection"), { played = it }, {}, {}, {},
             onGameShortcut = { shortcut = it }, onLoadGameDetails = {
                 assertEquals("TESTGAME0260", it)
-                com.xcloud.tclnative.catalog.StoreGameDetails("Editora", body, "10", previews)
-            })
+                StoreGameDetails("Editora", body, "10", previews, 2026,
+                    listOf(StoreContentNotice.VIOLENCE), listOf(StoreContentNotice.IN_GAME_PURCHASES))
+            }, onLoadGameProgress = {
+                assertEquals("42", it)
+                progressLoads++
+                XboxGameProgress(430, 800, 6, 15, listOf(XboxAchievement("Primeira corrida", 20, null)))
+            }, onGameOptions = { options = it }, onStoreProduct = { openedStore = it })
         activity.setContentView(view)
         view.setGames(games + (12..260).map {
             GameTitle("cloud-$it", "Jogo $it", "TESTGAME%04d".format(it), posterUrl = poster.takeIf { _ -> it == 260 },
-                heroUrl = hero.takeIf { _ -> it == 260 })
+                heroUrl = hero.takeIf { _ -> it == 260 }, xboxTitleId = "42".takeIf { _ -> it == 260 })
         })
         layout(activity.window.decorView, 1280, 600)
         view.setSearch("Jogo 260"); layout(view, 1280, 600)
@@ -256,8 +268,10 @@ class DashboardTest {
         val details = currentGameDetails()
         val root = details.window!!.decorView
         layout(root, 1280, 600)
-        assertEquals("Editora", details.detailsPublisher?.text.toString())
+        assertEquals("Editora · 2026", details.detailsPublisher?.text.toString())
+        assertTrue(details.detailsRatingNotes!!.text.contains("Compras no jogo"))
         val description = details.body.findViewWithTag<TextView>("game-details-description")
+        val progress = details.body.findViewWithTag<View>("game-progress")
         val cover = details.body.findViewWithTag<View>("game-details-cover")
         val gallery = details.body.findViewWithTag<android.widget.LinearLayout>("game-details-gallery")
         assertTrue(details.wideDetails)
@@ -265,7 +279,11 @@ class DashboardTest {
         assertEquals(2, gallery.childCount)
         assertEquals(2, (gallery.getChildAt(0) as ViewGroup).childCount)
         assertEquals(2, (gallery.getChildAt(1) as ViewGroup).childCount)
-        assertTrue(description.height > (description.parent as View).height)
+        assertEquals(View.VISIBLE, progress.visibility)
+        assertEquals(View.GONE, description.visibility)
+        assertEquals("430 / 800   ·   53%", details.body.findViewWithTag<TextView>("game-progress-score").text.toString())
+        details.body.findViewWithTag<View>("game-progress-refresh").performClick()
+        assertEquals(2, progressLoads)
         assertTrue(gallery.height > 0)
         val thumbnail = (gallery.getChildAt(0) as ViewGroup).getChildAt(0)
         assertTrue(thumbnail.width > 0 && thumbnail.height > 0)
@@ -284,6 +302,15 @@ class DashboardTest {
             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
         bitmap.recycle()
+        details.panel.findViewWithTag<View>("game-details-progress").performClick()
+        layout(root, 1280, 600)
+        assertEquals(View.GONE, progress.visibility)
+        assertTrue(description.height > ((description.parent as View).parent as View).height)
+        details.panel.findViewWithTag<View>("game-details-settings").performClick()
+        details.panel.findViewWithTag<View>("game-details-store").performClick()
+        assertEquals("cloud-260", options?.titleId)
+        assertEquals("TESTGAME0260", openedStore)
+        assertEquals("Atalho na tela inicial", details.panel.findViewWithTag<View>("game-details-shortcut").contentDescription.toString())
         details.panel.findViewWithTag<View>("game-details-shortcut").performClick()
         assertEquals("cloud-260", shortcut?.titleId)
         assertTrue(details.isShowing)

@@ -1375,4 +1375,25 @@
     <string name="ui_f94cbdab8f3a9694">"Night"</string>
     <string name="ui_e37b8e0d5b62b71c">"Session time left: {0} h"</string>
     <string name="ui_bdce1060812213d6">"Session time left: {0} h {1} min"</string>
+    <string name="ui_5eb5aff51b27df3d">"Add to favorites"</string>
+    <string name="ui_92ad2a5618c5b695">"In-game purchases"</string>
+    <string name="ui_e5fbebacc1aa9e34">"Achievement"</string>
+    <string name="ui_7b215bae8ae734cd">"Recent achievements"</string>
+    <string name="ui_6906a9a14af6734c">"Achievements: {0} of {1}"</string>
+    <string name="ui_1b03d4e1c7f66702">"Loading achievements…"</string>
+    <string name="ui_7977b6c3a4583719">"Sexual content"</string>
+    <string name="ui_bb3c49977b397d46">"Available in the cloud"</string>
+    <string name="ui_4392aa38fbc27e83">"Drugs"</string>
+    <string name="ui_02d166c7913e5658">"Legal drugs"</string>
+    <string name="ui_4ce26e02e0fa42f0">"Gamerscore"</string>
+    <string name="ui_0e8045fc80cc15b1">"Free in the cloud"</string>
+    <string name="ui_1b2c5d76947a11f9">"In your library"</string>
+    <string name="ui_1e15c181a598c235">"In the Game Pass catalog"</string>
+    <string name="ui_608e2b782a94aebd">"Progress is unavailable for this game."</string>
+    <string name="ui_9033705b99bcc5eb">"Remove from favorites"</string>
+    <string name="ui_0bd098d6b9ded748">"Your progress"</string>
+    <string name="ui_3a4aee24cbb1a2de">"Users interact"</string>
+    <string name="ui_866fdcebe2b40408">"View in store"</string>
+    <string name="ui_95bd1530bb531913">"Violence"</string>
+    <string name="ui_a50d881504c65330">"Extreme violence"</string>
 </resources>

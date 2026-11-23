@@ -1375,4 +1375,25 @@
     <string name="ui_f94cbdab8f3a9694">"夜間"</string>
     <string name="ui_e37b8e0d5b62b71c">"工作階段剩餘時間：{0} 小時"</string>
     <string name="ui_bdce1060812213d6">"工作階段剩餘時間：{0} 小時 {1} 分鐘"</string>
+    <string name="ui_5eb5aff51b27df3d">"加入最愛"</string>
+    <string name="ui_92ad2a5618c5b695">"遊戲內購買"</string>
+    <string name="ui_e5fbebacc1aa9e34">"成就"</string>
+    <string name="ui_7b215bae8ae734cd">"近期成就"</string>
+    <string name="ui_6906a9a14af6734c">"成就：{0}/{1}"</string>
+    <string name="ui_1b03d4e1c7f66702">"正在載入成就…"</string>
+    <string name="ui_7977b6c3a4583719">"性內容"</string>
+    <string name="ui_bb3c49977b397d46">"可在雲端遊玩"</string>
+    <string name="ui_4392aa38fbc27e83">"毒品"</string>
+    <string name="ui_02d166c7913e5658">"合法藥物"</string>
+    <string name="ui_4ce26e02e0fa42f0">"玩家分數"</string>
+    <string name="ui_0e8045fc80cc15b1">"可在雲端免費遊玩"</string>
+    <string name="ui_1b2c5d76947a11f9">"在你的遊戲庫中"</string>
+    <string name="ui_1e15c181a598c235">"已收錄於 Game Pass 遊戲目錄"</string>
+    <string name="ui_608e2b782a94aebd">"無法取得此遊戲的進度。"</string>
+    <string name="ui_9033705b99bcc5eb">"從最愛移除"</string>
+    <string name="ui_0bd098d6b9ded748">"你的進度"</string>
+    <string name="ui_3a4aee24cbb1a2de">"使用者互動"</string>
+    <string name="ui_866fdcebe2b40408">"在商店中查看"</string>
+    <string name="ui_95bd1530bb531913">"暴力"</string>
+    <string name="ui_a50d881504c65330">"極端暴力"</string>
 </resources>

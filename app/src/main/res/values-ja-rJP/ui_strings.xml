@@ -1375,4 +1375,25 @@
     <string name="ui_f94cbdab8f3a9694">"ナイト"</string>
     <string name="ui_e37b8e0d5b62b71c">"セッションの残り時間: {0}時間"</string>
     <string name="ui_bdce1060812213d6">"セッションの残り時間: {0}時間{1}分"</string>
+    <string name="ui_5eb5aff51b27df3d">"お気に入りに追加"</string>
+    <string name="ui_92ad2a5618c5b695">"ゲーム内購入"</string>
+    <string name="ui_e5fbebacc1aa9e34">"実績"</string>
+    <string name="ui_7b215bae8ae734cd">"最近の実績"</string>
+    <string name="ui_6906a9a14af6734c">"実績: {0} / {1}"</string>
+    <string name="ui_1b03d4e1c7f66702">"実績を読み込んでいます…"</string>
+    <string name="ui_7977b6c3a4583719">"性的なコンテンツ"</string>
+    <string name="ui_bb3c49977b397d46">"クラウドで利用可能"</string>
+    <string name="ui_4392aa38fbc27e83">"薬物"</string>
+    <string name="ui_02d166c7913e5658">"合法薬物"</string>
+    <string name="ui_4ce26e02e0fa42f0">"ゲーマースコア"</string>
+    <string name="ui_0e8045fc80cc15b1">"クラウドで無料"</string>
+    <string name="ui_1b2c5d76947a11f9">"ライブラリに追加済み"</string>
+    <string name="ui_1e15c181a598c235">"Game Pass カタログに収録"</string>
+    <string name="ui_608e2b782a94aebd">"このゲームの進行状況は表示できません。"</string>
+    <string name="ui_9033705b99bcc5eb">"お気に入りから削除"</string>
+    <string name="ui_0bd098d6b9ded748">"進行状況"</string>
+    <string name="ui_3a4aee24cbb1a2de">"ユーザー間の交流"</string>
+    <string name="ui_866fdcebe2b40408">"ストアで見る"</string>
+    <string name="ui_95bd1530bb531913">"暴力"</string>
+    <string name="ui_a50d881504c65330">"激しい暴力"</string>
 </resources>

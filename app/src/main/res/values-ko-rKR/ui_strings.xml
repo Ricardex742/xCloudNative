@@ -1375,4 +1375,25 @@
     <string name="ui_f94cbdab8f3a9694">"야간"</string>
     <string name="ui_e37b8e0d5b62b71c">"남은 세션 시간: {0}시간"</string>
     <string name="ui_bdce1060812213d6">"남은 세션 시간: {0}시간 {1}분"</string>
+    <string name="ui_5eb5aff51b27df3d">"즐겨찾기에 추가"</string>
+    <string name="ui_92ad2a5618c5b695">"게임 내 구매"</string>
+    <string name="ui_e5fbebacc1aa9e34">"도전 과제"</string>
+    <string name="ui_7b215bae8ae734cd">"최근 도전 과제"</string>
+    <string name="ui_6906a9a14af6734c">"도전 과제: {0}/{1}"</string>
+    <string name="ui_1b03d4e1c7f66702">"도전 과제 로드 중…"</string>
+    <string name="ui_7977b6c3a4583719">"성적 콘텐츠"</string>
+    <string name="ui_bb3c49977b397d46">"클라우드에서 이용 가능"</string>
+    <string name="ui_4392aa38fbc27e83">"약물"</string>
+    <string name="ui_02d166c7913e5658">"합법 약물"</string>
+    <string name="ui_4ce26e02e0fa42f0">"게이머 점수"</string>
+    <string name="ui_0e8045fc80cc15b1">"클라우드에서 무료"</string>
+    <string name="ui_1b2c5d76947a11f9">"내 라이브러리에 있음"</string>
+    <string name="ui_1e15c181a598c235">"Game Pass 카탈로그에 포함"</string>
+    <string name="ui_608e2b782a94aebd">"이 게임의 진행 상황을 표시할 수 없습니다."</string>
+    <string name="ui_9033705b99bcc5eb">"즐겨찾기에서 제거"</string>
+    <string name="ui_0bd098d6b9ded748">"내 진행 상황"</string>
+    <string name="ui_3a4aee24cbb1a2de">"사용자 간 상호 작용"</string>
+    <string name="ui_866fdcebe2b40408">"스토어에서 보기"</string>
+    <string name="ui_95bd1530bb531913">"폭력"</string>
+    <string name="ui_a50d881504c65330">"극심한 폭력"</string>
 </resources>

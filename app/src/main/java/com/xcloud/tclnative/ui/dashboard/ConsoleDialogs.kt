@@ -22,6 +22,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -120,6 +121,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         maxLines = 2
         ellipsize = android.text.TextUtils.TruncateAt.END
     } else null
+    internal val detailsAvailability: TextView? = if (gameDetails) text("", if (wideDetails) 18 else 14, color = 0xffd8dfe6.toInt()).apply {
+        visibility = View.GONE
+        maxLines = 2
+    } else null
     internal val detailsRating: TextView? = if (gameDetails) text("", if (wideDetails) 18 else 14, true).apply {
         visibility = View.GONE
         maxWidth = px(224)
@@ -130,6 +135,11 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             setStroke(px(1).coerceAtLeast(1), 0xff586e81.toInt())
         }
         setPadding(px(12),px(8),px(12),px(8))
+    } else null
+    internal val detailsRatingNotes: TextView? = if (gameDetails) text("", if (wideDetails) 16 else 13, color = 0xffe0e8ec.toInt()).apply {
+        visibility = View.GONE
+        maxWidth = px(266)
+        maxLines = 3
     } else null
     private var initialFocus: View? = null
     private var explicitFocus=false
@@ -162,6 +172,11 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         activity?.let(::setOwnerActivity)
         val headingContent=LinearLayout(context).apply { orientation=LinearLayout.VERTICAL }
+        val ratingContent = if (gameDetails) LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            detailsRating?.let { addView(it, LinearLayout.LayoutParams(-2, -2)) }
+            detailsRatingNotes?.let { addView(it, LinearLayout.LayoutParams(-2, -2).apply { topMargin = px(5) }) }
+        } else null
         if (gameDetails) {
             headingContent.addView(text(heading,if(wideDetails) 39 else 27,true).apply {
                 maxLines=2
@@ -169,7 +184,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 androidx.core.view.ViewCompat.setAccessibilityHeading(this, true)
             },LinearLayout.LayoutParams(-1,-2))
             detailsPublisher?.let { headingContent.addView(it,LinearLayout.LayoutParams(-1,-2).apply { topMargin=px(4) }) }
-            if (!wideDetails) detailsRating?.let {
+            detailsAvailability?.let { headingContent.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(7) }) }
+            if (!wideDetails) ratingContent?.let {
                 headingContent.addView(it,LinearLayout.LayoutParams(-2,-2).apply { topMargin=px(8) })
             }
         } else if (remotePlayPage) {
@@ -213,7 +229,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             gravity=if(sessionSidebar || compactNetwork) Gravity.CENTER_VERTICAL else Gravity.TOP
         }
         header.addView(headingContent,LinearLayout.LayoutParams(0,-2,1f))
-        if (wideDetails) detailsRating?.let {
+        if (wideDetails) ratingContent?.let {
             header.addView(it,LinearLayout.LayoutParams(-2,-2).apply { gravity=Gravity.CENTER_VERTICAL; marginStart=px(20) })
         }
         val close=keyButton("×") { closePanels() }.apply {
@@ -234,7 +250,13 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         if(compactNetwork) focusFirst(close)
         panel.addView(header,LinearLayout.LayoutParams(-1,-2).apply { if(remotePlayPage || gameDetails) bottomMargin=px(16) })
         panel.addView(if (wideDetails) body else scroll, LinearLayout.LayoutParams(-1, if (gameDetails) 0 else -2, 1f))
-        panel.addView(actions, LinearLayout.LayoutParams(-1, -2).apply {
+        val footer = if (gameDetails) HorizontalScrollView(context).apply {
+            overScrollMode = View.OVER_SCROLL_NEVER
+            isHorizontalScrollBarEnabled = false
+            isFocusable = false
+            addView(actions, -2, -2)
+        } else actions
+        panel.addView(footer, LinearLayout.LayoutParams(-1, -2).apply {
             topMargin = px(when {
                 compactNetwork || remotePlayPage -> 0
                 gameDetails -> 14
@@ -335,8 +357,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }
     fun addAction(label: String, action: () -> Unit): TextView = actionButton(label,true,action)
     fun addPersistentAction(label: String, action: () -> Unit): TextView = actionButton(label,false,action)
-    private fun actionButton(label: String,dismissOnClick: Boolean,action: () -> Unit): TextView {
-        val button = DashboardTheme.button(context, UiText.uppercase(label), scale) { if(dismissOnClick) dismiss(); action() }
+    internal fun addDetailsIcon(label: String, glyph: ConsoleGlyph, action: () -> Unit): TextView =
+        actionButton(label, false, action, glyph)
+    private fun actionButton(label: String,dismissOnClick: Boolean,action: () -> Unit, glyph: ConsoleGlyph? = null): TextView {
+        val button = DashboardTheme.button(context, if (glyph == null) UiText.uppercase(label) else "", scale) { if(dismissOnClick) dismiss(); action() }
         if(skin.enabled) button.apply { background=if(skin.scene.playStation) ConsoleControlPlate(skin.scene,ConsoleControl.TAB) else skin.row();setTextColor(skin.textColors());typeface=skin.font(true) }
         val ps4Guide=purpose==ConsolePanelPurpose.GUIDE && skin.scene==ConsoleScene.PS4
         if(ps4Guide) button.setTextSize(TypedValue.COMPLEX_UNIT_PX,21*scale)
@@ -357,13 +381,25 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 }
                 val primary = actions.childCount == 0 && dismissOnClick
                 addState(intArrayOf(android.R.attr.state_focused), state(if (primary) 0xff276552.toInt() else 0xff344460.toInt(), true))
+                addState(intArrayOf(android.R.attr.state_selected), state(0xff284f4b.toInt(), false))
                 addState(intArrayOf(), state(if (primary) 0xff1c4b3e.toInt() else 0xff253047.toInt(), false))
             }
-            button.background = plate
+            button.background = if (glyph == null) plate else {
+                val iconSize = px(25).coerceAtLeast(18)
+                button.contentDescription = label
+                if (android.os.Build.VERSION.SDK_INT >= 26) button.tooltipText = label
+                val icon = ConsoleIconDrawable(glyph, iconSize, android.content.res.ColorStateList.valueOf(Color.WHITE))
+                android.graphics.drawable.LayerDrawable(arrayOf(plate, icon)).apply {
+                    setLayerSize(1, iconSize, iconSize)
+                    setLayerGravity(1, Gravity.CENTER)
+                }
+            }
             button.onFocusChangeListener = null
         }
         val fixedWidth = when {
+            glyph != null -> maxOf(touchSize(), px(54))
             wideDetails -> px(224)
+            gameDetails -> px(154)
             !gameDetails && fullScreen && label==UiText.text("Voltar") -> px(170)
             else -> 0
         }

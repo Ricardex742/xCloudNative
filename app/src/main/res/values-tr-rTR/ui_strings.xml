@@ -1375,4 +1375,25 @@
     <string name="ui_f94cbdab8f3a9694">"Gece"</string>
     <string name="ui_e37b8e0d5b62b71c">"Kalan oturum süresi: {0} sa"</string>
     <string name="ui_bdce1060812213d6">"Kalan oturum süresi: {0} sa {1} dk"</string>
+    <string name="ui_5eb5aff51b27df3d">"Favorilere ekle"</string>
+    <string name="ui_92ad2a5618c5b695">"Oyun içi satın alımlar"</string>
+    <string name="ui_e5fbebacc1aa9e34">"Başarım"</string>
+    <string name="ui_7b215bae8ae734cd">"Son başarımlar"</string>
+    <string name="ui_6906a9a14af6734c">"Başarımlar: {0}/{1}"</string>
+    <string name="ui_1b03d4e1c7f66702">"Başarımlar yükleniyor…"</string>
+    <string name="ui_7977b6c3a4583719">"Cinsel içerik"</string>
+    <string name="ui_bb3c49977b397d46">"Bulutta oynanabilir"</string>
+    <string name="ui_4392aa38fbc27e83">"Uyuşturucu"</string>
+    <string name="ui_02d166c7913e5658">"Yasal uyuşturucular"</string>
+    <string name="ui_4ce26e02e0fa42f0">"Oyuncu puanı"</string>
+    <string name="ui_0e8045fc80cc15b1">"Bulutta ücretsiz"</string>
+    <string name="ui_1b2c5d76947a11f9">"Kitaplığında"</string>
+    <string name="ui_1e15c181a598c235">"Game Pass kataloğunda"</string>
+    <string name="ui_608e2b782a94aebd">"Bu oyun için ilerleme bilgisi kullanılamıyor."</string>
+    <string name="ui_9033705b99bcc5eb">"Favorilerden kaldır"</string>
+    <string name="ui_0bd098d6b9ded748">"İlerlemen"</string>
+    <string name="ui_3a4aee24cbb1a2de">"Kullanıcı etkileşimi"</string>
+    <string name="ui_866fdcebe2b40408">"Mağazada görüntüle"</string>
+    <string name="ui_95bd1530bb531913">"Şiddet"</string>
+    <string name="ui_a50d881504c65330">"Aşırı şiddet"</string>
 </resources>
