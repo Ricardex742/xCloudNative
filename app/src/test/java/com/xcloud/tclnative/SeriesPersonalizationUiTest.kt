@@ -129,6 +129,18 @@ class SeriesPersonalizationUiTest {
                 view.selectTab(LibraryTab.ALL);layout(view,size.first,size.second)
                 store.save(store.read().copy(libraryGrid=false));shadowOf(Looper.getMainLooper()).idle();layout(view,size.first,size.second)
                 assertEquals(RecyclerView.HORIZONTAL,manager.orientation)
+                view.setGamePassProducts(games.mapNotNull { it.productId }.toSet())
+                val gallery = OfficialGallery(OfficialGalleryKind.PURCHASED, games.map { GalleryProduct(requireNotNull(it.productId), it.name) })
+                view.setOfficialGallery(gallery.kind, gallery)
+                for (tab in listOf(LibraryTab.GAME_PASS, LibraryTab.PURCHASED)) {
+                    view.selectTab(tab);layout(view,size.first,size.second)
+                    view.restoreFocus();layout(view,size.first,size.second)
+                    assertEquals(RecyclerView.VERTICAL,manager.orientation)
+                    assertEquals(6,manager.spanCount)
+                    press(KeyEvent.KEYCODE_DPAD_DOWN)
+                    assertEquals("GRID-6", view.selectedGame?.titleId)
+                    capture(view,"library-${tab.name.lowercase()}-${size.first}")
+                }
             } finally { view.close();c.pause().stop().destroy() }
         }
     }

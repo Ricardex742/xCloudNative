@@ -5,11 +5,12 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Looper
-import android.view.MotionEvent
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
 import com.xcloud.tclnative.catalog.CatalogGenre
 import com.xcloud.tclnative.catalog.GalleryProduct
 import com.xcloud.tclnative.catalog.GameLibrary
@@ -37,7 +38,7 @@ import org.robolectric.shadows.ShadowDialog
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class CatalogUiWorkTest {
-    @Test fun genreAndAlphabetRailWorkIndependentlyOnEachBrowseTab() {
+    @Test fun toolbarFiltersAndLetterPickerWorkIndependentlyOnEachBrowseTab() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()
         UiText.apply(activity, AppLanguage.PORTUGUESE)
@@ -72,22 +73,25 @@ class CatalogUiWorkTest {
         try {
             view.setGames(items)
             selectTab(LibraryTab.ALL)
-            val rail = views(view).filterIsInstance<CatalogAlphabetRail>().single()
-            assertTrue(rail.isShown && rail.height > 48)
+            val alphabet = views(view).filterIsInstance<TextView>().single { it.text.toString() == "A–Z" }
+            val grid = views(view).filterIsInstance<RecyclerView>().single()
+            assertTrue(alphabet.isShown && (alphabet.parent as View).bottom <= grid.top)
             chooseGenre("Tiro")
             assertEquals("Águia", view.selectedGame?.name)
-            for ((action, y) in listOf(MotionEvent.ACTION_DOWN to 1f, MotionEvent.ACTION_MOVE to rail.height - 1f,
-                MotionEvent.ACTION_UP to rail.height - 1f)) {
-                val event = MotionEvent.obtain(0, 0, action, rail.width / 2f, y, 0)
-                try { assertTrue(rail.dispatchTouchEvent(event)) } finally { event.recycle() }
-            }
+            assertTrue(alphabet.requestFocus())
+            assertTrue(view.handleKey(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BUTTON_A)))
+            val picker = ShadowDialog.getLatestDialog() as ConsoleDialog
+            val letters = views(picker.body).filterIsInstance<TextView>().associateBy { it.text.toString() }
+            assertFalse(letters.getValue("B").isEnabled)
+            assertTrue(letters.getValue("Z").performClick())
             shadowOf(Looper.getMainLooper()).idle()
+            layout()
             assertEquals("Zebra", view.selectedGame?.name)
             selectTab(LibraryTab.FAVORITES)
-            assertFalse(rail.isShown)
+            assertFalse(alphabet.isShown)
             view.setGamePassProducts(setOf("AAAAAAAAAAAA", "BBBBBBBBBBBB"))
             selectTab(LibraryTab.GAME_PASS)
-            assertTrue(rail.isShown && rail.isEnabled)
+            assertTrue(alphabet.isShown && alphabet.isEnabled)
             chooseGenre("Simulação")
             assertEquals("Barco", view.selectedGame?.name)
             view.setOfficialGallery(OfficialGalleryKind.PURCHASED,
@@ -95,13 +99,14 @@ class CatalogUiWorkTest {
                     GalleryProduct("AAAAAAAAAAAA", englishName = "Zebra"),
                     GalleryProduct("BBBBBBBBBBBB", englishName = "Boat"))))
             selectTab(LibraryTab.PURCHASED)
-            assertTrue(rail.isShown && rail.isEnabled)
+            assertTrue(alphabet.isShown && alphabet.isEnabled)
             chooseGenre("Tiro")
             assertEquals("Águia", view.selectedGame?.name)
-            assertTrue(rail.performClick())
-            val letters = ShadowDialog.getLatestDialog() as ConsoleDialog
-            assertTrue(views(letters.body).filterIsInstance<TextView>().any { it.isClickable && it.text.toString() == "Z" })
-            letters.dismiss()
+            assertTrue(alphabet.performClick())
+            val purchasedPicker = ShadowDialog.getLatestDialog() as ConsoleDialog
+            assertTrue(views(purchasedPicker.body).filterIsInstance<TextView>().single { it.text.toString() == "Z" }.isEnabled)
+            assertFalse(views(purchasedPicker.body).filterIsInstance<TextView>().single { it.text.toString() == "A" }.isEnabled)
+            purchasedPicker.dismiss()
             selectTab(LibraryTab.GAME_PASS)
             assertEquals("Barco", view.selectedGame?.name)
         } finally {

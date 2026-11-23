@@ -5,6 +5,7 @@ import com.xcloud.tclnative.ui.ImmersiveWindow
 import com.xcloud.tclnative.ui.dispatchPhoneTouch
 
 import android.content.Context
+import android.content.res.ColorStateList
 import com.xcloud.tclnative.settings.ConsoleScene
 import com.xcloud.tclnative.settings.DevicePerformancePolicy
 import com.xcloud.tclnative.settings.SeriesPersonalizationStore
@@ -15,6 +16,7 @@ import android.graphics.Rect
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.TextUtils
@@ -33,6 +35,7 @@ import android.widget.TextClock
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.core.view.doOnNextLayout
+import androidx.core.graphics.ColorUtils
 import com.xcloud.tclnative.catalog.GameLibrary
 import com.xcloud.tclnative.catalog.GamePassCatalog
 import com.xcloud.tclnative.catalog.LibraryTab
@@ -95,7 +98,11 @@ class GameDashboardView(
             seriesRefreshPending=true;post { seriesRefreshPending=false;if(!closed) refreshSeriesPreferences() }
         }
     }
-    private val seriesGrid get()=designScene==ConsoleScene.XBOX_SERIES && activeTab==LibraryTab.ALL && seriesPreferences.libraryGrid
+    private val seriesGrid get() = designScene == ConsoleScene.XBOX_SERIES && when (activeTab) {
+        LibraryTab.GAME_PASS, LibraryTab.PURCHASED -> true
+        LibraryTab.ALL -> seriesPreferences.libraryGrid
+        else -> false
+    }
     private data class PlayStationHome(val tab: LibraryTab, val card: CatalogCard?, val opener: View)
     private var playStationHome: PlayStationHome? = null
     private val playStationGrid get()=designScene==ConsoleScene.PS5 && playStationHome!=null
@@ -161,6 +168,7 @@ class GameDashboardView(
     private var selectedCard: CatalogCard? = null
     val selectedGame: GameTitle? get() = selectedCard?.playableGame()
     private var scale = 1f
+    private var carouselScale = 1f
     private var coverHeight = 1
     private var coverArtSize = ArtworkSize(192,320)
     private var headerArtJob: Job? = null
@@ -328,30 +336,30 @@ class GameDashboardView(
             false
         }
     }
-    private val catalogNote = label(18f, false).apply { gravity = Gravity.END; setTextColor(DashboardTheme.muted) }
+    private val catalogNote = label(18f, false).apply {
+        gravity = Gravity.END or Gravity.CENTER_VERTICAL
+        maxLines = 1
+        ellipsize = TextUtils.TruncateAt.END
+        setTextColor(DashboardTheme.muted)
+    }
     private val adapter = CoversAdapter()
     private val genreButton = DashboardTheme.button(context, UiText.text("Gêneros"), action = ::showGenres).apply {
         id = generateViewId()
         textSize = 12f
         setPadding(3, 0, 3, 0)
     }
-    private val alphabetRail = CatalogAlphabetRail(context, ::showAlphabet) { letter ->
-        alphabetPositions[letter]?.let { position ->
-            catalogFocus.cancel()
-            val manager = grid.layoutManager as GridLayoutManager
-            manager.scrollToPositionWithOffset(position, 0)
-            updateSelected(adapter.items.getOrNull(position))
-        }
-    }.apply { id = generateViewId() }
-    private val browseTools = LinearLayout(context).apply {
+    private val alphabetButton = DashboardTheme.button(context, "A–Z", action = ::showAlphabet).apply {
+        id = generateViewId()
+        isEnabled = false
+    }
+    private val browseTools = FrameLayout(context).apply {
         visibility = GONE
-        orientation = LinearLayout.VERTICAL
-        background = DashboardTheme.panel()
-        val height = (48 * resources.displayMetrics.density).roundToInt()
-        addView(genreButton, LinearLayout.LayoutParams(-1, height))
-        addView(alphabetRail, LinearLayout.LayoutParams(-1, 0, 1f))
-        genreButton.nextFocusDownId = alphabetRail.id
-        alphabetRail.nextFocusUpId = genreButton.id
+        addView(alphabetButton)
+        addView(genreButton)
+        alphabetButton.nextFocusRightId = genreButton.id
+        genreButton.nextFocusLeftId = alphabetButton.id
+        alphabetButton.nextFocusDownId = grid.id
+        genreButton.nextFocusDownId = grid.id
     }
 
     init {
@@ -726,7 +734,7 @@ class GameDashboardView(
     private fun bindAlphabet(value: Map<Char, Int>) {
         if (alphabetPositions == value) return
         alphabetPositions = value
-        alphabetRail.bind(value)
+        alphabetButton.isEnabled = value.isNotEmpty()
     }
     private fun showGenres() {
         val tab = activeTab
@@ -754,13 +762,45 @@ class GameDashboardView(
     }
     private fun updateGenreButton() {
         val selected = genre
+        genreButton.isSelected = selected != null
         genreButton.text = selected?.label ?: UiText.text("Gêneros")
         genreButton.contentDescription = selected?.let { "${UiText.text("Gêneros")} • ${it.label}" }
     }
     private fun showAlphabet() {
-        ConsoleDialogs.menu(context, "A–Z", alphabetPositions.keys.map { letter ->
-            ConsoleAction(letter.toString()) { alphabetPositions[letter]?.let(::focusCoverAt) }
-        }, onBack = { alphabetRail.requestFocus() })
+        if (alphabetPositions.isEmpty()) return
+        val tab = activeTab
+        val dialog = ConsoleDialog(context, "A–Z")
+        val columns = if (resources.configuration.screenWidthDp >= 500) 7 else 4
+        val cells = (listOf('#') + ('A'..'Z')).chunked(columns)
+        var firstEnabled: View? = null
+        for (letters in cells) {
+            val row = LinearLayout(dialog.context)
+            for (letter in letters) {
+                val button = dialog.keyButton(letter.toString()) {
+                    if (activeTab != tab) return@keyButton
+                    val position = alphabetPositions[letter] ?: return@keyButton
+                    dialog.dismiss()
+                    focusCoverAt(position)
+                }.apply {
+                    isEnabled = letter in alphabetPositions
+                    isFocusable = isEnabled
+                    alpha = if (isEnabled) 1f else .35f
+                    setPadding(0, 0, 0, 0)
+                }
+                if (button.isEnabled && firstEnabled == null) firstEnabled = button
+                row.addView(button, LinearLayout.LayoutParams(0, dialog.touchSize(), 1f).apply {
+                    marginEnd = dialog.px(5)
+                })
+            }
+            repeat(columns - letters.size) {
+                row.addView(View(dialog.context), LinearLayout.LayoutParams(0, 1, 1f).apply { marginEnd = dialog.px(5) })
+            }
+            dialog.body.addView(row, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dialog.px(5) })
+        }
+        firstEnabled?.let(dialog::focusFirst)
+        dialog.addAction(UiText.text("Voltar")) { alphabetButton.requestFocus() }
+        dialog.setOnDismissListener { if (!grid.hasFocus() && catalogFocus.targetKey == null) alphabetButton.requestFocus() }
+        dialog.show()
     }
     private fun updateTabs() {
         sectionTitle.text=activeTab.label
@@ -1092,7 +1132,8 @@ class GameDashboardView(
         if(handleGridKey(event)) return true
         if(handleCarouselKey(event)) return true
         val key = event.keyCode
-        if (key == KeyEvent.KEYCODE_DPAD_DOWN && categoryFocus().isFocused && categoryFocus().nextFocusDownId == grid.id &&
+        val aboveGrid = browseTools.hasFocus() || (categoryFocus().isFocused && categoryFocus().nextFocusDownId == grid.id)
+        if (key == KeyEvent.KEYCODE_DPAD_DOWN && aboveGrid &&
             (adapter.itemCount > 0 || isCatalogUpdating)) {
             if (event.action == KeyEvent.ACTION_DOWN) focusFirstCover()
             return true
@@ -1131,7 +1172,7 @@ class GameDashboardView(
         val geometry = (w.toLong() shl 32) or h.toLong()
         if (!closed && geometry != lastGeometry && w > 0 && h > 0) {
             lastGeometry = geometry; scale = w / 1280f; layoutGeometry(w, h)
-            layoutBrowseTools(w)
+            layoutBrowseTools()
             if (resumeSession != null) {
                 val buttonWidth = minOf(200*scale, w*.48f)
                 val buttonHeight = 43*scale
@@ -1147,7 +1188,8 @@ class GameDashboardView(
         }
     }
     private fun textSize(view: TextView, value: Float) = view.setTextSize(TypedValue.COMPLEX_UNIT_PX, value * scale)
-    private fun layoutBrowseTools(width: Int) {
+    private fun layoutBrowseTools() {
+        carouselScale = scale
         val visible = activeTab.hasBrowseTools && grid.visibility == VISIBLE && homeCoverLimit() == null &&
             (designScene != ConsoleScene.PS5 || playStationGrid)
         browseTools.visibility = if (visible) VISIBLE else GONE
@@ -1156,19 +1198,75 @@ class GameDashboardView(
             tabs[LibraryTab.ALL.ordinal].nextFocusRightId = if (visible && activeTab == LibraryTab.ALL) genreButton.id else View.NO_ID
         if (!visible) return
         val layout = grid.layoutParams as LayoutParams
-        val density = resources.displayMetrics.density
-        val dockWidth = (60 * density).roundToInt()
-        val gridRight = layout.leftMargin + layout.width
-        val gap = (8 * density).roundToInt()
-        val left = minOf(gridRight + gap, width - dockWidth - gap)
-        layout.width = (left - layout.leftMargin - gap).coerceAtLeast(1)
+        val width = layout.width.toFloat()
+        val left = layout.leftMargin.toFloat()
+        val top = layout.topMargin.toFloat()
+        val toolbarHeight = minOf(46f * scale, layout.height * .35f)
+        val gap = 10f * scale
+        val reserved = (toolbarHeight + gap).roundToInt()
+        val originalHeight = layout.height
+        val alphaWidth = minOf(148 * scale, width * .29f)
+        val genreWidth = minOf(192 * scale, width * .37f)
+        val countLeft = alphaWidth + gap
+        val countWidth = width - genreWidth - countLeft - 2 * gap
+        place(browseTools, left, top, width, toolbarHeight)
+        place(alphabetButton, 0f, 0f, alphaWidth, toolbarHeight)
+        place(genreButton, width - genreWidth, 0f, genreWidth, toolbarHeight)
+        styleBrowseButton(alphabetButton, ConsoleGlyph.CHEVRON_DOWN, trailing = true)
+        styleBrowseButton(genreButton, ConsoleGlyph.FILTER, trailing = false)
+        catalogNote.visibility = if (countWidth >= 72 * scale) VISIBLE else GONE
+        place(catalogNote, left + countLeft, top, countWidth, toolbarHeight)
+        textSize(catalogNote, 17f)
+        catalogNote.setTextColor(if(designScene==ConsoleScene.XBOX_360_NXE) 0xff263024.toInt() else Color.WHITE)
+
+        layout.topMargin += reserved
+        layout.height = (originalHeight - reserved).coerceAtLeast(1)
         grid.layoutParams = layout
-        place(browseTools, left.toFloat(), layout.topMargin.toFloat(), dockWidth.toFloat(), layout.height.toFloat())
+        emptyState.layoutParams = (emptyState.layoutParams as LayoutParams).apply {
+            topMargin += reserved
+            height = (height - reserved).coerceAtLeast(1)
+        }
+        if (cardHorizontal) {
+            carouselScale = scale * layout.height.toFloat() / originalHeight.coerceAtLeast(1)
+            coverHeight = layout.height
+        }
         val category = if (consoleBack.visibility == VISIBLE) consoleBack else categoryFocus()
-        if (consoleBack.visibility == VISIBLE) consoleBack.nextFocusRightId = genreButton.id
-        genreButton.nextFocusLeftId = category.id
+        if (consoleBack.visibility == VISIBLE) consoleBack.nextFocusRightId = alphabetButton.id
+        alphabetButton.nextFocusLeftId = category.id
+        alphabetButton.nextFocusUpId = category.id
         genreButton.nextFocusUpId = searchButton.id
-        alphabetRail.nextFocusLeftId = category.id
+    }
+    private fun styleBrowseButton(button: TextView, icon: ConsoleGlyph, trailing: Boolean) {
+        val accent = DashboardTheme.accent
+        val surface = DashboardTheme.surface
+        val radius = (5 * scale).coerceAtLeast(2f)
+        val focused = rounded(ColorUtils.blendARGB(surface, accent, .22f), radius).apply {
+            setStroke((2.5f * scale).roundToInt().coerceAtLeast(1), accent)
+        }
+        button.background = StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused), focused)
+            addState(intArrayOf(android.R.attr.state_pressed), focused.constantState?.newDrawable() ?: focused)
+            addState(intArrayOf(android.R.attr.state_selected), rounded(surface, radius, accent))
+            addState(intArrayOf(), rounded(surface, radius, DashboardTheme.border))
+        }
+        val colors = ColorStateList(
+            arrayOf(intArrayOf(-android.R.attr.state_enabled), intArrayOf()),
+            intArrayOf(DashboardTheme.muted, Color.WHITE)
+        )
+        button.typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        button.setTextColor(colors)
+        button.setSingleLine()
+        button.ellipsize = TextUtils.TruncateAt.END
+        button.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+        textSize(button, 20f)
+        val padding = (12 * scale).roundToInt()
+        button.setPaddingRelative(padding, 0, padding, 0)
+        button.compoundDrawablePadding = (8 * scale).roundToInt()
+        val glyph = ConsoleIconDrawable(icon, (18 * scale).roundToInt().coerceAtLeast(1), colors)
+        button.setCompoundDrawablesRelativeWithIntrinsicBounds(if (trailing) null else glyph, null, if (trailing) glyph else null, null)
+    }
+    private fun installDashboardHitTargets(controls: List<View>) {
+        ConsoleHitTargets.install(this, controls + listOf(alphabetButton, genreButton))
     }
     private fun layoutGeometry(w: Int, h: Int) {
         if (designScene != ConsoleScene.NONE) {
@@ -1331,8 +1429,7 @@ class GameDashboardView(
         playStationBrowseTab.visibility=if(next.playStation) VISIBLE else GONE
         if(!next.playStation) playStationMobile=false
         if (!next.playStation || designScene != next) {
-            val selectorButton = serviceSelector?.button
-            if (selectorButton != null) ConsoleHitTargets.install(this, listOf(selectorButton)) else touchDelegate = null
+            installDashboardHitTargets(listOfNotNull(serviceSelector?.button))
         }
         profilePanel.nextFocusRightId = View.NO_ID
         searchButton.nextFocusLeftId = View.NO_ID
@@ -1684,7 +1781,7 @@ class GameDashboardView(
             launchButton.visibility=GONE;playStationFavorite.visibility=GONE
             controls.forEach { it.nextFocusDownId=if(ps5) playStationLibrary.id else searchButton.id }
         }
-        ConsoleHitTargets.install(this,controls+listOf(searchButton,settingsButton,profilePanel,playStationFriends,playStationFavorite,launchButton,playStationLibrary,playStationAllGames)+listOfNotNull(serviceSelector?.button))
+        installDashboardHitTargets(controls+listOf(searchButton,settingsButton,profilePanel,playStationFriends,playStationFavorite,launchButton,playStationLibrary,playStationAllGames)+listOfNotNull(serviceSelector?.button))
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
     }
 
@@ -1710,7 +1807,7 @@ class GameDashboardView(
         coverHeight=cell+(28*s).roundToInt()
         val side=cell-(16*s).roundToInt()
         coverArtSize=ArtworkSize.forDisplay(side,side)
-        ConsoleHitTargets.install(this,tabs+listOf(searchButton,settingsButton,profilePanel,consoleBack)+listOfNotNull(serviceSelector?.button))
+        installDashboardHitTargets(tabs+listOf(searchButton,settingsButton,profilePanel,consoleBack)+listOfNotNull(serviceSelector?.button))
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"skin")
     }
 
@@ -2078,7 +2175,7 @@ class GameDashboardView(
         override fun onBindViewHolder(holder: CoverHolder, position: Int) {
             val game = items[position]
             val card = holder.card
-            val width=if(cardHorizontal) (carouselWidth(game.key==selectedCard?.key)*scale).roundToInt() else LayoutParams.MATCH_PARENT
+            val width=if(cardHorizontal) (carouselWidth(game.key==selectedCard?.key)*carouselScale).roundToInt() else LayoutParams.MATCH_PARENT
             if(card.layoutParams?.height!=coverHeight || card.layoutParams?.width!=width) card.layoutParams = RecyclerView.LayoutParams(width,coverHeight)
             card.bind(game)
             card.nextFocusUpId = if(cardHorizontal || position<cardColumns) {
@@ -2259,14 +2356,14 @@ class GameDashboardView(
         }
         fun refreshSeriesSelection() {
             if(!cardHorizontal || boundCard==null) return
-            val desired=(carouselWidth(boundCard?.key==selectedCard?.key)*scale).roundToInt()
+            val desired=(carouselWidth(boundCard?.key==selectedCard?.key)*carouselScale).roundToInt()
             if(designScene==ConsoleScene.XBOX_SERIES && layoutParams?.width==desired) return
             (layoutParams as? RecyclerView.LayoutParams)?.let { if(it.width!=desired) { it.width=desired;layoutParams=it } }
             if(designScene.playStation) layoutPlayStationCard() else if(designScene==ConsoleScene.XBOX_360_NXE) layoutNxeCard() else layoutSeriesCard()
             invalidate()
         }
         private fun layoutNxeCard() {
-            val s=scale;val selected=boundCard?.key==selectedCard?.key
+            val s=carouselScale;val selected=boundCard?.key==selectedCard?.key
             val side=((if(selected) 272f else 190f)*s).roundToInt()
             val top=((if(selected) 19f else 91f)*s).roundToInt()
             cover.layoutParams=LayoutParams(-1,side).apply { setMargins((8*s).roundToInt(),top,(8*s).roundToInt(),0) }
@@ -2283,7 +2380,7 @@ class GameDashboardView(
             favorite.layoutParams=LayoutParams((25*s).roundToInt(),(25*s).roundToInt(),Gravity.TOP or Gravity.END).apply { topMargin=(6*s).roundToInt();marginEnd=(6*s).roundToInt() }
         }
         private fun layoutPlayStationCard() {
-            val s=scale;val selected=boundCard?.key==selectedCard?.key
+            val s=if(cardHorizontal) carouselScale else scale;val selected=boundCard?.key==selectedCard?.key
             val margin=8f
             val side=if(playStationGrid) coverHeight-(28*s).roundToInt()-2*(margin*s).roundToInt()
                 else ((carouselWidth(selected)-2*margin)*s).roundToInt()
@@ -2316,7 +2413,7 @@ class GameDashboardView(
                 favorite.layoutParams=LayoutParams((25*s).roundToInt(),(25*s).roundToInt(),Gravity.TOP or Gravity.END).apply { topMargin=(10*s).roundToInt();marginEnd=(11*s).roundToInt() }
                 return
             }
-            val s=scale;val selected=boundCard?.key==selectedCard?.key
+            val s=carouselScale;val selected=boundCard?.key==selectedCard?.key
             val margin=(6*s).roundToInt()
             val side=((if(selected) 232f else 168f)*s).roundToInt()-2*margin
             cover.layoutParams=LayoutParams(-1,side,Gravity.BOTTOM).apply { setMargins(margin,0,margin,(5*s).roundToInt()) }

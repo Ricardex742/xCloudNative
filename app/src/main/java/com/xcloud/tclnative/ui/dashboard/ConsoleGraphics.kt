@@ -6,7 +6,7 @@ import android.graphics.drawable.Drawable
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID,CHEVRON_LEFT,MORE,EXIT }
+internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID,CHEVRON_LEFT,CHEVRON_DOWN,FILTER,MORE,EXIT }
 
 internal class ConsoleIconDrawable(private val glyph: ConsoleGlyph,private val size: Int,private val colors: android.content.res.ColorStateList): Drawable() {
     private val icons=ConsoleIcons()
@@ -60,6 +60,14 @@ internal class ConsoleIcons {
         when(icon) {
             ConsoleGlyph.CHEVRON_LEFT -> {
                 path.moveTo(15f,5f);path.lineTo(8f,12f);path.lineTo(15f,19f);c.drawPath(path,p)
+            }
+            ConsoleGlyph.CHEVRON_DOWN -> {
+                path.moveTo(5f,9f);path.lineTo(12f,16f);path.lineTo(19f,9f);c.drawPath(path,p)
+            }
+            ConsoleGlyph.FILTER -> {
+                c.drawLine(3f,6f,21f,6f,p)
+                c.drawLine(6f,12f,18f,12f,p)
+                c.drawLine(9f,18f,15f,18f,p)
             }
             ConsoleGlyph.MORE -> {
                 p.style=Paint.Style.FILL
