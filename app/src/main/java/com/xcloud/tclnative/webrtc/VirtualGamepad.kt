@@ -10,7 +10,7 @@ data class TouchControl(val label: String,val x: Float,val y: Float,val radius: 
                         val shape: HudShape=HudShape.CIRCLE,val dragLook: Boolean=false,val page: HudPreset?=null,
                         val action: HudAction?=binding?.let { HudAction(it) },
                         val gestures: Map<HudSwipe,HudGesture> = emptyMap(),val stickAxis: HudStickAxis = HudStickAxis.BOTH,
-                        val image: android.graphics.Bitmap? = null)
+                        val officialAppearance: OfficialTouchAppearance? = null)
 
 /** No game-state inference: context pages are switched explicitly, gestures combine simultaneous inputs. */
 class VirtualGamepad(private val width: Int,private val height: Int,
@@ -29,7 +29,8 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         private set
     private fun layout(preset: HudPreset)=(official ?: GameHud.elements(preset,settings)).map { element ->
         val custom=if(official==null) settings.placements[element.id] else null
-        val r=(height*element.radius*settings.scale.coerceIn(75,150)/100f*(custom?.scale ?: 1f))
+        val scale = if (official == null) settings.scale.coerceIn(75,150) / 100f else 1f
+        val r=(height*element.radius*scale*(custom?.scale ?: 1f))
             .coerceAtLeast(1f).coerceAtMost(if(element.id=="football-mode") minOf(width/3.6f,height*.45f) else minOf(width,height)*.45f)
         val paddingX=if(element.id=="football-mode") r*1.8f else r
         val binding=custom?.binding ?: element.binding
@@ -41,7 +42,8 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         }
         TouchControl(element.label,((custom?.x ?: element.x)*width).coerceIn(paddingX,width-paddingX),
             ((custom?.y ?: element.y)*height).coerceIn(r,height-r),r,element.kind,action?.buttons ?: 0,
-            element.id,binding,element.icon,element.shape,element.dragLook,element.page,action,gestures,element.stickAxis,element.image)
+            element.id,binding,element.icon,element.shape,element.dragLook,element.page,action,gestures,element.stickAxis,
+            element.officialAppearance)
     }
     private fun inside(c: TouchControl,x: Float,y: Float,slack: Float=1f): Boolean {
         val dx=abs(x-c.x); val dy=abs(y-c.y); val r=c.radius*slack
@@ -57,7 +59,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         // A large overlapping button must not steal a tap on another button's center.
         for(index in controls.indices.reversed()) {
             val c=controls[index]
-            if(c.kind==TouchKind.CAMERA || !inside(c,x,y)) continue
+            if(c.kind==TouchKind.CAMERA || c.officialAppearance?.enabled==false || !inside(c,x,y)) continue
             val squared=(x-c.x)*(x-c.x)+(y-c.y)*(y-c.y)
             if(squared<distance) { closest=c;distance=squared }
         }

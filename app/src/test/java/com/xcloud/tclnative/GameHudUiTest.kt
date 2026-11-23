@@ -48,9 +48,18 @@ class GameHudUiTest {
         }
         val files=mapOf(
             "takxmanifest.json" to """{"assets":"assets","layouts":"layouts","defaultLayout":"Default","contextFile":"context.json"}""".toByteArray(),
-            "context.json" to """{"state":{"show":false}}""".toByteArray(),
+            "context.json" to """{"state":{"show":false,"opacity":0.5}}""".toByteArray(),
             "layouts/neutral/Default.json" to """{"content":{"right":{"inner":[{"type":"button","action":"gamepadB"}]}}}""".toByteArray(),
-            "layouts/pt/pt-BR/Default.json" to """{"content":{"right":{"inner":[{"type":"button","action":["gamepadA","rightTrigger"],"visible":{"${'$'}ref":"../../context.json#/state/show"},"styles":{"default":{"faceImage":{"type":"asset","value":"Action"}}}}]}}}""".toByteArray(),
+            "layouts/pt/pt-BR/Default.json" to """
+                {"definitions":{"face":{"type":"asset","value":"Action"}},"content":{"right":{"inner":[
+                  {"type":"button","action":["gamepadA","rightTrigger"],
+                   "visible":{"${'$'}ref":"../../context.json#/state/show"},
+                   "styles":{
+                     "default":{"faceImage":{"${'$'}ref":"#/definitions/face"}},
+                     "idle":{"opacity":{"${'$'}ref":"../../context.json#/state/opacity"}},
+                     "activated":{"background":{"type":"color","value":"#0f08"}}}}
+                ]}}}
+            """.trimIndent().toByteArray(),
             "layouts/pt/pt-BR/optional.json" to "[not a layout]".toByteArray(),
             "assets/neutral/@1.0x/Action.png" to art.toByteArray()
         )
@@ -78,7 +87,11 @@ class GameHudUiTest {
         } finally { archive.delete() }
         xbox.load(OfficialTouchLoad.Ready(bundle))
         val controls=xbox.controls()!!
-        assertNotNull(controls.single().image)
+        val appearance = controls.single().officialAppearance!!
+        assertNotNull(appearance.idle.face?.image)
+        assertSame(appearance.idle.face?.image, appearance.active.face?.image)
+        assertEquals(.5f, appearance.idle.opacity, 0f)
+        assertEquals(0x8800ff00.toInt(), appearance.active.background?.color)
         xbox.receive(OfficialTouchNotice.Show("layout-missing-from-package"))
         assertEquals(controls,xbox.controls())
         xbox.receive(OfficialTouchNotice.Show(""))
@@ -89,20 +102,34 @@ class GameHudUiTest {
         val direct=mutableListOf<NativePointer>()
         val view=GameTouchView(controller.get(),{state=it},{direct.addAll(it)},{_,_ -> .25f to .5f},{})
         controller.get().setContentView(view)
-        view.configure(TouchMode.VIRTUAL,GameTitle("test","Test game"))
+        val hud = HudSettings(scale=150, opacity=20, placements=mapOf(
+            controls.single().id to HudPlacement(.15f, .20f, binding=HudBinding.Y)
+        ))
+        view.configure(TouchMode.VIRTUAL,GameTitle("test","Test game"),hud)
         view.installOfficialControls(controls)
         layout(view)
         val button=VirtualGamepad(1280,720,official=controls).controls.single()
         val render=Bitmap.createBitmap(1280,720,Bitmap.Config.ARGB_8888)
         view.draw(Canvas(render))
-        val center=render.getPixel(button.x.toInt(),(button.y-.13f*button.radius).toInt())
+        val center=render.getPixel(button.x.toInt(),button.y.toInt())
         assertTrue(Color.red(center)>Color.green(center)+80)
+        assertTrue(Color.alpha(center) in 126..129)
+        val edgeX = (button.x + button.radius * .9f).toInt()
+        assertEquals(0, Color.alpha(render.getPixel(edgeX, button.y.toInt())))
         render.recycle()
         val now=SystemClock.uptimeMillis()
         event(view,MotionEvent.ACTION_DOWN,now,Triple(0,button.x,button.y))
         assertEquals(HudBinding.A.button,state.buttons)
         assertEquals(1f,state.rightTrigger,0f)
         assertTrue(direct.isEmpty())
+        val active = Bitmap.createBitmap(1280,720,Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(active))
+        assertTrue(Color.green(active.getPixel(edgeX,button.y.toInt())) > 200)
+        active.recycle()
+        view.beginEditing()
+        assertFalse(view.isEditing)
+        view.applyHud(hud.copy(scale=75, opacity=100))
+        assertEquals(HudBinding.A.button,state.buttons)
         xbox.receive(OfficialTouchNotice.Hide)
         view.installOfficialControls(xbox.controls())
         assertEquals(GamepadState(),state)

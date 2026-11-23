@@ -2,6 +2,7 @@ package com.xcloud.tclnative.touch
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import com.xcloud.tclnative.webrtc.TouchKind
 import org.json.JSONArray
 import org.json.JSONObject
@@ -21,20 +22,22 @@ internal class OfficialTouchBundle private constructor(
     private val iconsFromBundle: Map<String, Bitmap>
 ) {
     fun controls(name: String?, state: JSONObject): List<HudElement>? {
-        val content = layouts[name?.lowercase(Locale.ROOT) ?: defaultLayout]?.optJSONObject("content") ?: return null
+        val layout = layouts[name?.lowercase(Locale.ROOT) ?: defaultLayout] ?: return null
+        val content = layout.optJSONObject("content") ?: return null
         val result = mutableListOf<HudElement>()
         var unsupported = content.has("layers")
-        fun resolve(value: Any?, depth: Int = 0): Any? {
+        fun resolve(value: Any?, depth: Int = 0, inContext: Boolean = false): Any? {
             val ref = (value as? JSONObject)?.optString("\$ref")?.takeIf { it.isNotBlank() } ?: return value
             if (depth >= 8 || '#' !in ref || ref.startsWith("http", ignoreCase = true)) return null
             val path = pointer(ref.substringAfter('#')) ?: return null
+            val useContext = inContext || ref.substringBefore('#').isNotEmpty() || path.first() == "state"
             val start = when(path.first()) {
                 "state" -> state
-                "definitions" -> context.optJSONObject("definitions")
+                "definitions" -> (if (useContext) context else layout).optJSONObject("definitions")
                 else -> return null
             }
             val selected = path.drop(1).fold(start as Any?) { node, key -> select(node, key) }
-            return resolve(selected, depth + 1)
+            return resolve(selected, depth + 1, useContext)
         }
         fun actions(value: Any?, depth: Int = 0): Set<HudBinding> {
             if (depth >= 5) return emptySet()
@@ -46,7 +49,7 @@ internal class OfficialTouchBundle private constructor(
         }
         fun add(value: Any?, id: String, x: Float, y: Float, radius: Float) {
             val item = resolve(value) as? JSONObject ?: return
-            if (resolve(item.opt("visible")) == false || resolve(item.opt("enabled")) == false) return
+            if (resolve(item.opt("visible")) == false) return
             val type = item.optString("type")
             val keys = actions(item.opt("action"))
             val mapping = resolve(item.opt("axis")) as? JSONObject
@@ -62,25 +65,31 @@ internal class OfficialTouchBundle private constructor(
                 "blank" -> return
                 else -> null
             } ?: run { unsupported = true; return }
-            val style = item.optJSONObject("styles")?.optJSONObject("default")
-            val face = resolve(style?.opt("faceImage") ?: style?.optJSONObject("knob")?.opt("faceImage")) as? JSONObject
-            val icon = if (face?.optString("type") == "icon") icons[face.optString("value").lowercase(Locale.ROOT)] else null
-            val image = if (face?.optString("type") == "asset") {
-                val key = resolve(face.opt("value")) as? String
-                key?.lowercase(Locale.ROOT)?.removeSuffix(".png")?.let(iconsFromBundle::get)
-            } else null
+            val styles = resolve(item.opt("styles")) as? JSONObject
+            val enabled = resolve(item.opt("enabled")) != false
+            val defaultStyle = resolve(styles?.opt("default")) as? JSONObject
+            fun style(vararg states: String): OfficialTouchStyle {
+                val layers = states.mapNotNull { resolve(styles?.opt(it)) as? JSONObject } + listOfNotNull(defaultStyle)
+                return readStyle(layers, type == "joystick") { resolve(it) }
+            }
             val action = keys.takeIf { it.isNotEmpty() }?.let(::HudAction)
             val label = action?.label ?: when (kind) {
                 TouchKind.LEFT_STICK -> "L"
                 TouchKind.RIGHT_STICK -> "R"
                 else -> "+"
             }
-            result += HudElement(id,label,x,y,radius,kind,keys.singleOrNull(),icon ?: HudIcon.TEXT,action=action,
+            result += HudElement(id,label,x,y,radius,kind,keys.singleOrNull(),action=action,
                 stickAxis=when {
                     axis.endsWith('x') -> HudStickAxis.HORIZONTAL
                     axis.endsWith('y') -> HudStickAxis.VERTICAL
                     else -> HudStickAxis.BOTH
-                },image=image)
+                },
+                officialAppearance=OfficialTouchAppearance(
+                    if (enabled) style("idle") else style("disabled"),
+                    if (type == "joystick") style("moving", "activated") else style("activated"),
+                    enabled,
+                    touchpad = type == "touchpad"
+                ))
         }
         listOf("left" to .205f, "right" to .795f).forEach { (side, x) ->
             val wheel = resolve(content.opt(side)) as? JSONObject ?: return@forEach
@@ -105,7 +114,7 @@ internal class OfficialTouchBundle private constructor(
             }
         }
         for ((side,sign) in listOf("left" to 1, "right" to -1)) {
-            val upper = content.optJSONObject("upper")?.optJSONArray(side) ?: continue
+            val upper = (resolve(content.opt("upper")) as? JSONObject)?.optJSONArray(side) ?: continue
             val x = if(side == "left") .15f else .89f
             for (index in 0 until minOf(4,upper.length())) {
                 add(upper.opt(index),"upper-$side-$index",x + sign * index * .063f,.14f,.043f)
@@ -115,6 +124,61 @@ internal class OfficialTouchBundle private constructor(
     }
 
     fun newState(): JSONObject = JSONObject(context.optJSONObject("state")?.toString() ?: "{}")
+
+    private fun readStyle(
+        layers: List<JSONObject>,
+        joystick: Boolean,
+        resolve: (Any?) -> Any?
+    ): OfficialTouchStyle {
+        fun field(objects: List<JSONObject>, key: String): Any? =
+            objects.firstNotNullOfOrNull { resolve(it.opt(key)).takeUnless { value -> value == JSONObject.NULL } }
+        fun opacity(value: Any?) = (value as? Number)?.toFloat()?.takeIf { it in 0f..1f } ?: 1f
+        fun color(value: Any?): Int? {
+            val hex = (value as? String)?.takeIf { it.startsWith('#') }?.drop(1) ?: return null
+            if (hex.length !in setOf(3, 4, 6, 8) || hex.any { it.digitToIntOrNull(16) == null }) return null
+            val rgba = if (hex.length <= 4) hex.map { "$it$it" }.joinToString("") else hex
+            return Color.parseColor("#" + if (rgba.length == 8) rgba.takeLast(2) + rgba.take(6) else rgba)
+        }
+        fun image(value: Any?) = (value as? String)?.lowercase(Locale.ROOT)?.removeSuffix(".png")?.let(iconsFromBundle::get)
+        fun background(raw: Any?): OfficialTouchBackground? {
+            val value = raw as? JSONObject ?: return null
+            val alpha = opacity(resolve(value.opt("opacity")))
+            val content = resolve(value.opt("value"))
+            return when (value.optString("type")) {
+                "color" -> color(content)?.let { OfficialTouchBackground(color=it, opacity=alpha) }
+                "asset" -> image(content)?.let { OfficialTouchBackground(image=it, opacity=alpha) }
+                else -> null
+            }
+        }
+        fun face(raw: Any?): OfficialTouchFace? {
+            val value = raw as? JSONObject ?: return null
+            val content = resolve(value.opt("value"))
+            return when (value.optString("type")) {
+                "asset" -> image(content)?.let { OfficialTouchFace(image=it) }
+                "icon" -> (content as? String)?.lowercase(Locale.ROOT)?.let(icons::get)?.let { OfficialTouchFace(icon=it) }
+                else -> null
+            }
+        }
+        fun stroke(raw: Any?): OfficialTouchStroke? {
+            val value = raw as? JSONObject ?: return null
+            if (value.optString("type") != "solid") return null
+            return OfficialTouchStroke(color(resolve(value.opt("color"))) ?: Color.WHITE, opacity(resolve(value.opt("opacity"))))
+        }
+        val knobs = layers.mapNotNull { resolve(it.opt("knob")) as? JSONObject }
+        val outlines = layers.mapNotNull { resolve(it.opt("outline")) as? JSONObject }
+        return OfficialTouchStyle(
+            opacity = opacity(field(layers, "opacity")),
+            background = background(field(layers, "background")),
+            face = face(field(if (joystick) knobs else layers, "faceImage")),
+            fill = color(field(layers, "fill")),
+            stroke = stroke(field(layers, "stroke")),
+            knobOpacity = opacity(field(knobs, "opacity")),
+            knobBackground = background(field(knobs, "background")),
+            knobStroke = stroke(field(knobs, "stroke")),
+            outlineOpacity = opacity(field(outlines, "opacity")),
+            outlineStroke = stroke(field(outlines, "stroke"))
+        )
+    }
 
     companion object {
         private val bindings = mapOf(

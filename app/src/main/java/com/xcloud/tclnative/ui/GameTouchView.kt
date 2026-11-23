@@ -28,7 +28,9 @@ class GameTouchView(context: Context,
 ) : FrameLayout(context), com.xcloud.tclnative.i18n.LocaleAwareView {
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface=DashboardTheme.font(context,true); textAlign=Paint.Align.CENTER }
     private val skin=HudSkin()
+    private val officialSkin=OfficialTouchSkin()
     private var automatic=HudPreset.GAMEPAD
+    private var useAssassinsCreedPlacement=false
     var configuration=HudSettings()
         private set
     private var model=VirtualGamepad(1,1)
@@ -54,7 +56,13 @@ class GameTouchView(context: Context,
         var samples=0L;var totalAge=0.0;var maxAge=0L;var hudUpdates=0L;var staleHudContacts=0L
     }
     /** Reset after the previous report was frozen, not when opening a menu or hiding the view. */
-    fun beginSession() { releaseInputs();officialControls=null;nativeEvents=NativeEvents();lastHudPress=UiText.text("nenhum") }
+    fun beginSession() {
+        releaseInputs()
+        officialControls=null
+        useAssassinsCreedPlacement=false
+        nativeEvents=NativeEvents()
+        lastHudPress=UiText.text("nenhum")
+    }
     private var lastHudPress=UiText.text("nenhum")
     fun nativeDiagnostics(): String {
         val s=nativeEvents
@@ -140,7 +148,10 @@ class GameTouchView(context: Context,
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
         releaseInputs(); isEditing=false;menuButton.visibility=VISIBLE
         autoHidden=false
-        if(game!=null) automatic=GameHud.automatic(game.titleId,game.name)
+        if(game!=null) {
+            automatic=GameHud.automatic(game.titleId,game.name)
+            useAssassinsCreedPlacement=AssassinsCreedTouchLayout.appliesTo(game)
+        }
         if(settings!=null) configuration=settings
         this.mode=mode
         rebuild(configuration.preset ?: automatic)
@@ -151,27 +162,35 @@ class GameTouchView(context: Context,
     }
     fun applyHud(settings: HudSettings) {
         val oldPage=preset
-        releaseInputs(); configuration=settings
+        configuration=settings
+        if (usingOfficialControls) return
+        releaseInputs()
         val resolved=settings.preset ?: automatic
         rebuild(if(resolved.family==oldPage.family) oldPage else resolved); invalidate()
         revealControls()
     }
     fun showPage(page: HudPreset) { releaseInputs(); model.setPage(page);scheduleAutoHide(); invalidate() }
     private fun rebuild(page: HudPreset=preset) {
+        val controls = officialControls?.let {
+            if (useAssassinsCreedPlacement) AssassinsCreedTouchLayout.place(it, width, height) else it
+        }
         model=VirtualGamepad(width.coerceAtLeast(1),height.coerceAtLeast(1),
-            if (usingOfficialControls) HudPreset.GAMEPAD else page,configuration,officialControls)
+            if (controls == null) page else HudPreset.GAMEPAD,
+            if (controls == null) configuration else HudSettings(),
+            controls)
     }
     internal fun installOfficialControls(controls: List<HudElement>?) {
         if (officialControls==controls || isEditing && controls!=null) return
         releaseInputs()
         officialControls=controls
+        autoHidden=false
         rebuild(configuration.preset ?: automatic)
         scheduleAutoHide()
         invalidate()
     }
     override fun refreshLanguage() { menuButton.contentDescription=UiText.text("Atalhos da partida");releaseInputs();rebuild();scheduleAutoHide();invalidate() }
     fun beginEditing() {
-        if(mode!=TouchMode.VIRTUAL) return
+        if(mode!=TouchMode.VIRTUAL || usingOfficialControls) return
         releaseInputs();autoHidden=false; beforeEdit=configuration; beforeEditPreset=preset; selected=null; isEditing=true;menuButton.visibility=GONE; invalidate()
     }
     fun cancelEditing() {
@@ -215,7 +234,7 @@ class GameTouchView(context: Context,
         super.onWindowFocusChanged(hasWindowFocus);overlayFocused=hasWindowFocus
         if(hasWindowFocus) scheduleAutoHide() else removeCallbacks(autoHideTask)
     }
-    private fun canAutoHide()=controlsVisible && !isEditing && !wakingGesture &&
+    private fun canAutoHide()=controlsVisible && !usingOfficialControls && !isEditing && !wakingGesture &&
         overlayFocused && visibility==VISIBLE && virtualPointers.isEmpty() && menuPointer==null
     private fun scheduleAutoHide() {
         removeCallbacks(autoHideTask)
@@ -442,8 +461,11 @@ class GameTouchView(context: Context,
     }
 
     private fun drawControl(canvas: Canvas,control: TouchControl,state: GamepadState) {
-        skin.draw(canvas,control,preset,state,model.held(control),isEditing && selected==control.id,
-            configuration.opacity,isEditing,model.gestureLabel(control))
+        val appearance = control.officialAppearance
+        val held = model.held(control)
+        if (appearance != null) officialSkin.draw(canvas, control, appearance, state, held)
+        else skin.draw(canvas,control,preset,state,held,isEditing && selected==control.id,
+            if (usingOfficialControls) 62 else configuration.opacity,isEditing,model.gestureLabel(control))
     }
     private fun drawEditor(canvas: Canvas) {
         fun button(label: String,left: Float,right: Float,top: Float,bottom: Float,accent: Boolean=false) {

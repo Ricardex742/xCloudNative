@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 130
-        versionName = "0.41.17-touch-layout-retry"
+        versionCode = 131
+        versionName = "0.41.18-touch-appearance"
     }
 
     signingConfigs {

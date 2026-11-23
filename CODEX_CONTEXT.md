@@ -443,3 +443,8 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - Em `0.41.17-touch-layout-retry`, escolher o layout pelo HUD usa o pacote já carregado ou aciona uma nova tentativa na sessão atual. A seleção manual pode mostrar o layout inicial mesmo após uma notificação anterior de ocultação. Novas notificações do Xbox continuam atualizando a camada de toque.
 - O carregamento consulta a configuração atual do título quando os IDs do catálogo falham, prioriza as versões mais recentes e aceita redirecionamentos HTTPS de distribuição sem encaminhar a credencial. O leitor processa os arquivos do idioma selecionado, aceita pastas de idioma aninhadas e mantém limites por arquivo.
 - `TOUCH_LAYOUT/` no diagnóstico ao vivo e pós-partida informa a etapa de falha e, quando disponível, o status HTTP. Os testes simulam o retry, o download e a seleção manual no HUD nativo. A entrega de pacotes em partidas reais ainda precisa ser confirmada.
+
+### Aparência dos controles oficiais no player nativo
+
+- `OfficialTouchBundle` interpreta imagens, cores, opacidade e estilos de repouso e interação dos controles compatíveis. `OfficialTouchSkin` aplica essas propriedades no Canvas. A escala, a opacidade, a ocultação automática e a edição do HUD local não afetam a camada do pacote. A troca e a ocultação solicitadas pelo Xbox continuam vinculadas à sessão.
+- `AssassinsCreedTouchLayout` concentra o posicionamento para Origins e Odyssey. Usa a ação ou tipo dos controles já oferecidos pelo pacote e conserva os comandos, ícones e estados do jogo. As medidas são um ajuste do player nativo para paisagem. A comparação em aparelho continua pendente.
