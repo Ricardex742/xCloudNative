@@ -12,6 +12,7 @@ import com.xcloud.tclnative.webrtc.TouchKind
 import com.xcloud.tclnative.webrtc.VirtualGamepad
 import org.junit.Assert.*
 import org.junit.Test
+import kotlin.math.hypot
 
 class AssassinsCreedTouchLayoutTest {
     @Test fun onlySupportedTitlesUseThePlacement() {
@@ -86,5 +87,11 @@ class AssassinsCreedTouchLayoutTest {
         assertEquals("package-lb", layout.place(packageControls + packageLb, 1280, 606)
             .single { it.action?.keys == setOf(HudBinding.LB) }.id)
         assertTrue(layout.place(emptyList(), 1280, 606).isEmpty())
+
+        val compact = VirtualGamepad(960, 720, official = layout.place(packageControls, 960, 720))
+        val compactMove = compact.controls.single { it.id == main.id }
+        val compactBlock = compact.controls.single { it.action?.keys == setOf(HudBinding.LB) }
+        assertTrue(hypot(compactMove.x - compactBlock.x, compactMove.y - compactBlock.y) >
+            compactMove.radius + compactBlock.radius)
     }
 }

@@ -16,6 +16,7 @@ internal enum class AssassinsCreedTouchLayout {
         val movement = primaryStick(controls, TouchKind.LEFT_STICK, "left")
         val camera = primaryStick(controls, TouchKind.RIGHT_STICK, "right")
         val actions = if (this == ORIGINS) originsActions else sharedActions
+        val radiusScale = if (this == ORIGINS) (width / (height * 1.6f)).coerceAtMost(1f) else 1f
         val placements = controls.map { control ->
             if (control.officialAppearance == null) null
             else when {
@@ -34,14 +35,14 @@ internal enum class AssassinsCreedTouchLayout {
             val placement = placements[index]
             // Multiple controls can share one action. Keep those in their package slots.
             if (placement == null || placements.count { it == placement } != 1) control
-            else control.copy(x=placement.x, y=placement.y, radius=placement.radius)
+            else control.copy(x=placement.x, y=placement.y, radius=placement.radius * radiusScale)
         }
         val combat = movement != null && controls.any { HudBinding.RB in it.action?.keys.orEmpty() }
         if (this != ORIGINS || !combat) return adjusted
         // Keep individual block and heavy attack available even if the game supplies only a combo.
         return adjusted + listOfNotNull(
-            missingButton(adjusted, HudBinding.LB),
-            missingButton(adjusted, HudBinding.RT)
+            missingButton(adjusted, HudBinding.LB, radiusScale),
+            missingButton(adjusted, HudBinding.RT, radiusScale)
         )
     }
 
@@ -51,11 +52,12 @@ internal enum class AssassinsCreedTouchLayout {
                 it.action?.keys !in standaloneTriggers
         }.maxWithOrNull(compareBy({ it.id.startsWith("$side-inner-") }, { it.radius }))
 
-    private fun missingButton(controls: List<HudElement>, binding: HudBinding): HudElement? {
+    private fun missingButton(controls: List<HudElement>, binding: HudBinding, radiusScale: Float): HudElement? {
         val keys = setOf(binding)
         if (controls.any { it.action?.keys == keys }) return null
         val placement = originsActions.getValue(keys)
-        return HudElement("origins-fallback-${binding.name}", binding.label, placement.x, placement.y, placement.radius,
+        return HudElement("origins-fallback-${binding.name}", binding.label,
+            placement.x, placement.y, placement.radius * radiusScale,
             binding = binding, officialAppearance = fallbackAppearance)
     }
 
