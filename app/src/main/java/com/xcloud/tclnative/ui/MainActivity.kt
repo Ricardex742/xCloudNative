@@ -1582,6 +1582,7 @@ open class MainActivity : Activity() {
             editOfficial = if (touchView.canEditOfficialHud) touchView::beginOfficialEditing else null).show()
     }
     private fun chooseLaunchMode(signaling: XCloudSignalingClient,game: GameTitle) {
+        if (currentSignaling !== signaling) return
         val saved = activeGame
         if (!sessionSaved || saved == null) {
             launchCloudGame(signaling, game)
@@ -1885,7 +1886,7 @@ open class MainActivity : Activity() {
 
     private fun launchCloudGame(signaling: XCloudSignalingClient, game: GameTitle,
                                 touchChoice: TouchMode? = null, fromShortcut: Boolean = false) {
-        if (accountSwitchJob?.isActive == true || currentSignaling !== signaling) return
+        if (accountSwitchJob?.isActive == true) return
         dashboard?.closeServiceMenu()
         remotePlayPanel?.let { panel -> remotePlayPanel = null; panel.dialog.dismiss() }
         remotePlayReturn = null
