@@ -11,7 +11,12 @@ internal class ConsoleQueueChrome(private val scene: ConsoleScene): Drawable() {
     private var shade: Shader?=null
     private var panel: Shader?=null
     override fun onBoundsChange(b: Rect) {
-        shade=LinearGradient(0f,0f,b.width().toFloat(),b.height().toFloat(),intArrayOf(0xf5090d11.toInt(),0xc5080c10.toInt(),0x8704080d.toInt()),floatArrayOf(0f,.5f,1f),Shader.TileMode.CLAMP)
+        val shades = if (scene == ConsoleScene.XBOX_SERIES) intArrayOf(
+            DashboardTheme.seriesColor(0xf5090d11.toInt(), UiColor.QUEUE_SHADE_TOP),
+            DashboardTheme.seriesColor(0xc5080c10.toInt(), UiColor.QUEUE_SHADE_MID),
+            DashboardTheme.seriesColor(0x8704080d.toInt(), UiColor.QUEUE_SHADE_END))
+            else intArrayOf(0xf5090d11.toInt(),0xc5080c10.toInt(),0x8704080d.toInt())
+        shade=LinearGradient(0f,0f,b.width().toFloat(),b.height().toFloat(),shades,floatArrayOf(0f,.5f,1f),Shader.TileMode.CLAMP)
         panel=LinearGradient(0f,0f,0f,b.height().toFloat(),intArrayOf(0xffedf2d8.toInt(),0xffb0c576.toInt()),null,Shader.TileMode.CLAMP)
     }
     override fun draw(c: Canvas) {
@@ -53,7 +58,7 @@ internal class ConsoleQueueStep(private val scene: ConsoleScene,private val inde
             c.drawRect(r.left,r.bottom-if(active) 3f else 1f,r.right,r.bottom,p)
         } else if(scene==ConsoleScene.XBOX_SERIES) {
             val radius=r.height()*.28f;val x=r.left+radius+4f;val y=r.centerY()
-            p.color=if(active || complete) 0xff7bdb3b.toInt() else 0xff5b656b.toInt();p.style=Paint.Style.STROKE;p.strokeWidth=2f
+            p.color=if(active || complete) DashboardTheme.seriesColor(0xff7bdb3b.toInt()) else 0xff5b656b.toInt();p.style=Paint.Style.STROKE;p.strokeWidth=2f
             c.drawCircle(x,y,radius,p)
             if(complete) { check.reset();check.moveTo(x-radius*.5f,y);check.lineTo(x-radius*.1f,y+radius*.4f);check.lineTo(x+radius*.5f,y-radius*.4f);c.drawPath(check,p) }
             else { p.style=Paint.Style.FILL;p.textAlign=Paint.Align.CENTER;p.typeface=Typeface.DEFAULT_BOLD;p.textSize=radius*1.1f;c.drawText("${index+1}",x,y+radius*.38f,p) }

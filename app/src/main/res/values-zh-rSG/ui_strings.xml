@@ -1407,4 +1407,6 @@
     <string name="ui_0fff1ccde9ea237a">"未解锁"</string>
     <string name="ui_416b5d8461c1f876">"{0} 的玩家已解锁"</string>
     <string name="ui_b5530fcb2654bb2b">"启动时比较系统 DNS 和五家提供商，从两次服务器解析测试均成功的服务中选择最快的一家。"</string>
+    <string name="ui_5effa1718a78b66c">"内存与上次应用退出"</string>
+    <string name="ui_a3a97b606731a63c">"正在检查内存…"</string>
 </resources>

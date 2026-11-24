@@ -945,7 +945,8 @@ open class MainActivity : Activity() {
             currentDiagnostics=if(activeGame==null) null else ({ showLiveDiagnostics { showSettings(session,SettingsPage.DIAGNOSTICS,onBack) } }),
             microphone=if(!sessionSaved && transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ::toggleMicrophone else null,
             statisticsChanged=::refreshStatisticsSettings,
-            microphoneLabel={ webrtcClient?.microphoneLabel() ?: UiText.text("Ativar microfone") })
+            microphoneLabel={ webrtcClient?.microphoneLabel() ?: UiText.text("Ativar microfone") },
+            videoMemoryInformation={ surfaceRenderer.memoryDiagnostics().takeIf { activeGame != null } })
     }
     private fun showControllerProfiles(back: () -> Unit) {
         com.xcloud.tclnative.ui.dashboard.ControllerProfilePanel(this,controllerProfiles,
@@ -1208,6 +1209,7 @@ open class MainActivity : Activity() {
         surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
     }
     protected open fun prepareSessionRenderer(settings: PlaybackSettings): org.webrtc.EglBase {
+        com.xcloud.tclnative.ui.dashboard.ArtworkBackend.get(this).trimForPlayback()
         surfaceRenderer.compatibility=settings.videoMode==VideoMode.COMPATIBILITY
         surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
         surfaceRenderer.setImageTreatment(settings.imageTreatment)
@@ -2042,7 +2044,7 @@ open class MainActivity : Activity() {
                 tracker.mediaDetails = {
                     listOf(rtc.audioDiagnostics(), rtc.codecDiagnostics(), rtc.latencyDiagnostics(), rtc.iceDiagnostics(),
                         signaling.profileDiagnostics(), playbackDisplay.diagnostics(window.decorView.display),
-                        videoDiagnostics(), recoveryState.diagnostics()).joinToString("\n")
+                        videoDiagnostics(), surfaceRenderer.memoryDiagnostics(), recoveryState.diagnostics()).joinToString("\n")
                 }
                 surfaceRenderer.displayDimensions()?.let(rtc::updateDisplayDimensions)
                 if(touchMode!=TouchMode.NATIVE) (0..3).filter { controllers.sourceFor(it)!=null }.forEach { publishGamepad(it) }
@@ -2274,8 +2276,10 @@ open class MainActivity : Activity() {
                 if (generation == playbackGeneration && !sessionSaved && (!firstFrame.isCompleted || !settingsStore.read().sessionReport)) {
                     val noCloudHours = error is CloudHttpException && error.stage=="PLAY" &&
                         error.serviceCode.equals("CloudHoursExhausted", ignoreCase=true)
+                    val catalogPlaytime = if(noCloudHours) dashboard?.cloudPlaytimeDiagnostics() else null
                     val details = (if(noCloudHours) UiText.text("O Xbox informou que as horas de jogo na nuvem acabaram.")+"\n\n" else "")+
                         (error.message ?: UiText.text("Falha na sessão"))+
+                        (catalogPlaytime?.let { "\nCATALOG_PLAYTIME/$it" } ?: "")+
                         if(!firstFrame.isCompleted) "\nUpscaling=${settings.fsr}; output=${settings.fsrOutput}\n${signaling.startupDiagnostics()}\n${controllerPath.diagnostics()}" else ""
                     hudTextView.text = details
                     hudTextView.setTextColor(Color.RED)
@@ -2298,7 +2302,8 @@ open class MainActivity : Activity() {
                         val snapshot = timeline.snapshot()
                         startupReportStore.save(gameName,"xCLOUD $version\nSTARTUP/NO_VIDEO; input=${touchMode.name}; failure=${startupFailure ?: "NONE"}\n"+
                             "$startupInput\nREQUESTED_PROFILE/${settings.resolution.name}; os=${settings.resolution.osName}; codec=${settings.videoCodec.name}; mode=${settings.videoMode.name}\n"+
-                            snapshot.text()+"\n"+signaling.startupDiagnostics()+"\n"+(rtc?.inputDiagnostics() ?: ""),snapshot)
+                            snapshot.text()+"\n"+signaling.startupDiagnostics()+"\n"+surfaceRenderer.memoryDiagnostics()+"\n"+
+                            (rtc?.inputDiagnostics() ?: ""),snapshot)
                     }
                     tracker.finish(android.os.SystemClock.elapsedRealtime(),if(failed) SessionEnd.FAILURE else SessionEnd.USER,rtc?.currentInputMetrics())
                     microphoneJob?.cancelAndJoin();microphoneJob=null;pendingMicrophoneGeneration=null

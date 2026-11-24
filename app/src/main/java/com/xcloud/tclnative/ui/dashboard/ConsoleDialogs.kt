@@ -50,6 +50,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val compactNetwork=purpose==ConsolePanelPurpose.NETWORK_STATS
     private val remotePlayPage=purpose==ConsolePanelPurpose.REMOTE_PLAY
     private val gameDetails=purpose==ConsolePanelPurpose.GAME_DETAILS
+    internal val gameDetailsStyle by lazy { GameDetailsStyle(DashboardTheme.palette) }
     private val playingBehindPanel get() = (activity as? MainActivity)?.hasPlaybackBehindPanels() == true
     private val edgeToEdge get() = fullScreen || compactNetwork || playingBehindPanel
     private val fullScreen=remotePlayPage || gameDetails || skin.scene.playStation && !sessionSidebar && !compactNetwork && purpose !in listOf(ConsolePanelPurpose.GUIDE,ConsolePanelPurpose.CONTROL_CENTER) && !(purpose==ConsolePanelPurpose.PROFILE && skin.scene==ConsoleScene.PS5)
@@ -116,12 +117,12 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         scaleType = ImageView.ScaleType.CENTER_CROP
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
     } else null
-    internal val detailsPublisher: TextView? = if (gameDetails) text("", if (wideDetails) 21 else 15, color = 0xffc7dbd7.toInt()).apply {
+    internal val detailsPublisher: TextView? = if (gameDetails) text("", if (wideDetails) 21 else 15, color = gameDetailsStyle.muted).apply {
         visibility = View.GONE
         maxLines = 2
         ellipsize = android.text.TextUtils.TruncateAt.END
     } else null
-    internal val detailsAvailability: TextView? = if (gameDetails) text("", if (wideDetails) 18 else 14, color = 0xffd8dfe6.toInt()).apply {
+    internal val detailsAvailability: TextView? = if (gameDetails) text("", if (wideDetails) 18 else 14, color = gameDetailsStyle.muted).apply {
         visibility = View.GONE
         maxLines = 2
     } else null
@@ -130,13 +131,13 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         maxWidth = px(224)
         maxLines = 2
         background = GradientDrawable().apply {
-            setColor(0xff263443.toInt())
-            cornerRadius = px(5).toFloat()
-            setStroke(px(1).coerceAtLeast(1), 0xff586e81.toInt())
+            setColor(gameDetailsStyle.rating)
+            cornerRadius = px(gameDetailsStyle.radius).toFloat()
+            setStroke(px(1).coerceAtLeast(1), gameDetailsStyle.border)
         }
         setPadding(px(12),px(8),px(12),px(8))
     } else null
-    internal val detailsRatingNotes: TextView? = if (gameDetails) text("", if (wideDetails) 16 else 13, color = 0xffe0e8ec.toInt()).apply {
+    internal val detailsRatingNotes: TextView? = if (gameDetails) text("", if (wideDetails) 16 else 13, color = gameDetailsStyle.muted).apply {
         visibility = View.GONE
         maxWidth = px(266)
         maxLines = 3
@@ -236,9 +237,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             tag="close-settings"
             if(gameDetails) {
                 setTextColor(Color.WHITE)
-                background = FocusPlate(px(12).toFloat()).also { plate ->
-                    setOnFocusChangeListener { _, focused -> plate.highlighted = focused }
-                }
+                background = detailsActionPlate()
+                onFocusChangeListener = null
             } else if(skin.scene.playStation) background=ConsoleControlPlate(skin.scene,ConsoleControl.TAB)
             contentDescription=if (remotePlayPage || gameDetails) UiText.text("Fechar") else UiText.text("Fechar ajustes e voltar")
             if(compactNetwork) textSize=24f
@@ -267,12 +267,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         if(!compactNetwork) ImmersiveWindow.protectContent(panel,avoidKeyboard=fullScreen)
         if (detailsBackdrop == null) setContentView(panel)
         else setContentView(FrameLayout(context).apply {
-            background = GradientDrawable(GradientDrawable.Orientation.TL_BR,
-                intArrayOf(DashboardTheme.color(UiColor.BACKGROUND_END), 0xff111827.toInt(), 0xff141622.toInt()))
+            background = GradientDrawable(GradientDrawable.Orientation.TL_BR, gameDetailsStyle.backdrop)
             addView(detailsBackdrop, FrameLayout.LayoutParams(-1, -1))
             addView(View(context).apply {
-                background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(0x86101723.toInt(), 0x94141a2a.toInt(), 0xe80e1520.toInt()))
+                background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, gameDetailsStyle.shade)
             }, FrameLayout.LayoutParams(-1, -1))
             addView(panel, FrameLayout.LayoutParams(-1, -1))
         })
@@ -359,6 +357,18 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     fun addPersistentAction(label: String, action: () -> Unit): TextView = actionButton(label,false,action)
     internal fun addDetailsIcon(label: String, glyph: ConsoleGlyph, action: () -> Unit): TextView =
         actionButton(label, false, action, glyph)
+    internal fun detailsActionPlate(primary: Boolean = false): android.graphics.drawable.StateListDrawable =
+        android.graphics.drawable.StateListDrawable().apply {
+            val style = gameDetailsStyle
+            fun plate(focused: Boolean, selected: Boolean = false) = GradientDrawable().apply {
+                setColor(style.action(primary, focused, selected))
+                cornerRadius = px(style.radius).toFloat()
+                setStroke(px(if (focused) 2 else 1).coerceAtLeast(1), if (focused) Color.WHITE else style.border)
+            }
+            addState(intArrayOf(android.R.attr.state_focused), plate(true))
+            addState(intArrayOf(android.R.attr.state_selected), plate(false, true))
+            addState(intArrayOf(), plate(false))
+        }
     private fun actionButton(label: String,dismissOnClick: Boolean,action: () -> Unit, glyph: ConsoleGlyph? = null): TextView {
         val button = DashboardTheme.button(context, if (glyph == null) UiText.uppercase(label) else "", scale) { if(dismissOnClick) dismiss(); action() }
         if(skin.enabled) button.apply { background=if(skin.scene.playStation) ConsoleControlPlate(skin.scene,ConsoleControl.TAB) else skin.row();setTextColor(skin.textColors());typeface=skin.font(true) }
@@ -372,18 +382,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             button.setTextColor(Color.WHITE)
             button.setTextSize(TypedValue.COMPLEX_UNIT_PX, (if (wideDetails) 20 else 14) * scale)
             button.setPadding(px(12), px(8), px(12), px(8))
-            val plate = android.graphics.drawable.StateListDrawable().apply {
-                fun state(color: Int, focused: Boolean) = GradientDrawable().apply {
-                    setColor(color)
-                    cornerRadius = px(5).toFloat()
-                    setStroke(px(if (focused) 2 else 1).coerceAtLeast(1),
-                        if (focused) Color.WHITE else 0xff64768c.toInt())
-                }
-                val primary = actions.childCount == 0 && dismissOnClick
-                addState(intArrayOf(android.R.attr.state_focused), state(if (primary) 0xff276552.toInt() else 0xff344460.toInt(), true))
-                addState(intArrayOf(android.R.attr.state_selected), state(0xff284f4b.toInt(), false))
-                addState(intArrayOf(), state(if (primary) 0xff1c4b3e.toInt() else 0xff253047.toInt(), false))
-            }
+            val plate = detailsActionPlate(actions.childCount == 0 && dismissOnClick)
             button.background = if (glyph == null) plate else {
                 val iconSize = px(25).coerceAtLeast(18)
                 button.contentDescription = label

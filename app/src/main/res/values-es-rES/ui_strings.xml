@@ -1407,4 +1407,6 @@
     <string name="ui_0fff1ccde9ea237a">"Bloqueado"</string>
     <string name="ui_416b5d8461c1f876">"El {0} lo desbloqueó"</string>
     <string name="ui_b5530fcb2654bb2b">"Compara el DNS del sistema y cinco proveedores al iniciar. Usa el más rápido que responda a las dos consultas del servidor."</string>
+    <string name="ui_5effa1718a78b66c">"Memoria y última salida de la app"</string>
+    <string name="ui_a3a97b606731a63c">"Consultando memoria…"</string>
 </resources>

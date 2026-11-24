@@ -1407,4 +1407,6 @@
     <string name="ui_0fff1ccde9ea237a">"Locked"</string>
     <string name="ui_416b5d8461c1f876">"{0} unlocked it"</string>
     <string name="ui_b5530fcb2654bb2b">"Compares system DNS and five providers at launch. Uses the fastest resolver that answers both server lookups."</string>
+    <string name="ui_5effa1718a78b66c">"Memory and last app exit"</string>
+    <string name="ui_a3a97b606731a63c">"Checking memory…"</string>
 </resources>

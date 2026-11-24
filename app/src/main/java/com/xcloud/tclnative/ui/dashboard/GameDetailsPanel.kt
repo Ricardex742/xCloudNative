@@ -84,7 +84,7 @@ internal class GameDetailsPanel(
 
         val information = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            background = tile(0xe21a2334.toInt())
+            background = tile(dialog.gameDetailsStyle.panel)
             val inset = dialog.px(if (wide) 16 else 14)
             setPadding(inset, inset, inset, inset)
         }
@@ -244,7 +244,7 @@ internal class GameDetailsPanel(
 
     private fun tile(color: Int) = GradientDrawable().apply {
         setColor(color)
-        cornerRadius = dialog.px(5).toFloat()
+        cornerRadius = dialog.px(dialog.gameDetailsStyle.radius).toFloat()
     }
 
     private fun image(url: String, width: Int, height: Int, mode: ImageView.ScaleType) =
@@ -322,7 +322,7 @@ internal class GameDetailsPanel(
             val row = LinearLayout(dialog.context)
             for ((index, url) in urlsInRow.withIndex()) {
                 val preview = image(url, 640, 360, ImageView.ScaleType.CENTER_CROP).apply {
-                    background = tile(0xff273044.toInt())
+                    background = tile(dialog.gameDetailsStyle.rating)
                     clipToOutline = true
                 }
                 galleryImages += preview

@@ -110,6 +110,7 @@ internal class ArtworkBackend(context: Context,
     override fun onLowMemory() { cache.evictAll() }
     fun trimForPlayback() {
         if (policy.constrainedMemory) cache.evictAll()
+        else cache.trimToSize(policy.memoryCacheBytes / 4)
     }
     override fun onTrimMemory(level: Int) {
         // Evict references only: a displayed/shared bitmap must never be recycled here.

@@ -29,6 +29,8 @@ internal object DashboardTheme {
     var palette=UiPalette(UiTheme.GREEN)
         private set
     fun color(role: UiColor)=palette[role]
+    fun seriesColor(default: Int, role: UiColor = UiColor.ACCENT) =
+        if (palette.theme.scene == ConsoleScene.XBOX_SERIES && palette.theme != UiTheme.XBOX_SERIES) color(role) else default
     val accent get()=color(UiColor.ACCENT)
     val yellow = Color.rgb(255, 211, 64)
     val muted get()=color(UiColor.MUTED)
@@ -47,6 +49,11 @@ internal object DashboardTheme {
         UiTheme.XBOX_360_METRO -> R.style.PaletteXboxMetro
         UiTheme.XBOX_ONE -> R.style.PaletteXboxOne
         UiTheme.XBOX_SERIES -> R.style.PaletteXboxSeries
+        UiTheme.SERIES_BLUE -> R.style.PaletteBlue
+        UiTheme.SERIES_RED -> R.style.PaletteRed
+        UiTheme.SERIES_PURPLE -> R.style.PalettePurple
+        UiTheme.SERIES_ORANGE -> R.style.PaletteOrange
+        UiTheme.SERIES_SILVER -> R.style.PaletteSilver
         UiTheme.XBOX_ORIGINAL -> R.style.PaletteXboxOriginal
         UiTheme.PS4,UiTheme.PS4_NIGHT -> R.style.PalettePs4
         UiTheme.PS5,UiTheme.PS5_NIGHT -> R.style.PalettePs5

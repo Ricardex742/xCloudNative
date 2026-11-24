@@ -33,11 +33,11 @@ class SessionToolsUiTest {
         try {
             notice.show(null)
             assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("Tempo da sessão não informado") })
-            notice.measure(View.MeasureSpec.makeMeasureSpec(155, View.MeasureSpec.AT_MOST),
+            notice.measure(View.MeasureSpec.makeMeasureSpec(165, View.MeasureSpec.AT_MOST),
                 View.MeasureSpec.makeMeasureSpec(280, View.MeasureSpec.AT_MOST))
             notice.layout(0, 0, notice.measuredWidth, notice.measuredHeight)
             val heading = notice.getChildAt(0) as TextView
-            assertTrue(heading.lineCount > 1)
+            assertEquals(1, heading.lineCount)
             assertEquals("Sua sessão foi iniciada", heading.text.toString())
             assertEquals(heading.length(), heading.layout.getLineEnd(heading.lineCount - 1))
             assertEquals(0, heading.layout.getEllipsisCount(heading.lineCount - 1))
@@ -50,6 +50,32 @@ class SessionToolsUiTest {
             assertEquals(View.VISIBLE, notice.visibility)
             shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1))
             assertEquals(View.GONE, notice.visibility)
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun sessionNoticeFitsTheCompleteTitleInLandscapeWithLargerSystemText() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            val activity = controller.get()
+            val config = android.content.res.Configuration(activity.resources.configuration).apply { fontScale = 1.6f }
+            val notice = com.xcloud.tclnative.ui.SessionStartNotice(activity.createConfigurationContext(config))
+            val parent = FrameLayout(activity)
+            parent.addView(notice, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+                leftMargin = 84
+                rightMargin = 20
+                bottomMargin = 18
+            })
+            activity.setContentView(parent)
+            notice.show(12_000)
+            layout(parent, 1452, 689)
+            val heading = notice.getChildAt(0) as TextView
+            assertEquals(1, heading.lineCount)
+            assertEquals(heading.length(), heading.layout.getLineEnd(0))
+            assertEquals(0, heading.layout.getEllipsisCount(0))
+            assertTrue(heading.height >= heading.layout.height)
+            assertTrue(notice.left >= 84 && notice.right <= parent.width - 20)
         } finally {
             controller.pause().stop().destroy()
         }

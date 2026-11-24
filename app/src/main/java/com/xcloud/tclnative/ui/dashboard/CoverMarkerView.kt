@@ -51,7 +51,7 @@ internal class CoverMarkerView(context: Context, private val purchase: Boolean =
             ConsoleScene.XBOX_360 -> 0xff536e1b.toInt()
             ConsoleScene.XBOX_360_NXE -> 0xfff2ce61.toInt()
             ConsoleScene.XBOX_360_METRO,ConsoleScene.XBOX_ONE -> Color.WHITE
-            ConsoleScene.XBOX_SERIES -> 0xff9bf00b.toInt()
+            ConsoleScene.XBOX_SERIES -> DashboardTheme.seriesColor(0xff9bf00b.toInt())
             ConsoleScene.XBOX_ORIGINAL -> 0xffb4ed43.toInt()
             else -> DashboardTheme.yellow
         }

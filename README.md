@@ -58,6 +58,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 ## Aparência e temas
 
 - O tema **xCLOUD** usa **Verde** por padrão. Em **Cores**, oferece **Azul Cibernético**, **Vermelho Vulcânico**, **Dourado Prestígio**, **Laranja Industrial**, **Roxo Galáxia** e **Prata Platina**.
+- **Xbox Series X|S › Cores** oferece azul, vermelho, roxo, laranja e prata, além da cor padrão. O cartão de detalhes acompanha a paleta e o estilo do dashboard selecionado.
 - Dashboards nativos opcionais, com composição e navegação próprias:
   - **Xbox 360 — Blades de 2005:** lâminas metálicas curvas, abas com títulos destacados, painel claro, pesquisa acima do perfil e lista de jogos.
   - **Xbox 360 — NXE de 2008:** navegação vertical, cartões em perspectiva, horizonte e piso reflexivo.
@@ -71,6 +72,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - Logos das gerações Xbox, selos Game Pass/Series vetoriais e marcadores de favoritos com acabamento correspondente ao tema, mantendo a identificação informada pelo catálogo.
 - Pesquisa e configurações com painéis, fontes, campos e foco próprios para cada dashboard; One, Series e Metro organizam as categorias de configuração em blocos.
 - **Fundo dinâmico** opcional nos temas de console: Automático, Ativado ou Desativado. Automático respeita economia de energia, animações do sistema, pouca memória e interfaces acima de 1440p. Ativado mantém um movimento leve e reduz a frequência em aparelhos modestos ou em economia de energia. O movimento pausa durante partidas e enquanto o catálogo não está visível. No Series e PS5, a própria arte panorâmica do jogo se move quando disponível.
+- **Ajuda e diagnóstico › Memória e última saída do app** mostra o uso de memória atual e o último encerramento do processo registrado pelo Android 11 ou superior.
 - **Personalização do Series X|S** em Aparência e temas: galeria com seis fundos vetoriais próprios, artes panorâmicas disponíveis no catálogo, categorias, prévia e favoritos de fundos independentes dos jogos favoritos.
 - **Oficiais Xbox:** artes da galeria pública do Xbox, nas versões disponibilizadas para console, com pesquisa, páginas e carregamento somente das miniaturas visíveis. A coleção participa dos favoritos e da troca automática.
 - **Recriações animadas:** efeitos próprios de partículas, luz, névoa, ondas, fogo e deformação localizada sobre as artes reais. Escolha **Animar esta arte** para testar um efeito na prévia antes de aplicar. A galeria também reúne interpretações procedurais de fundos Xbox, com núcleos orgânicos, nebulosas e outros motivos. As recriações ficam identificadas; os arquivos de animação originais do console não estão incluídos.

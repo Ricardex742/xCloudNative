@@ -6,6 +6,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FsrOutputPolicyTest {
+    @Test fun largeTabletWindowLimitsTheBufferWhileTvUsesItsConfiguredOutput() {
+        assertTrue(SurfaceMemoryBudget.applyLimit(2880, 1800, false))
+        assertTrue(SurfaceMemoryBudget.applyLimit(2560, 1600, false))
+        assertFalse(SurfaceMemoryBudget.applyLimit(2880, 1800, true))
+        assertFalse(SurfaceMemoryBudget.applyLimit(2560, 1440, false))
+        assertEquals(VideoViewport(1728, 1080), SurfaceMemoryBudget.cap(VideoViewport(2880, 1800)))
+        assertEquals(VideoViewport(1728, 1080), SurfaceMemoryBudget.cap(VideoViewport(2560, 1600)))
+        assertEquals(VideoViewport(1080, 1728), SurfaceMemoryBudget.cap(VideoViewport(1800, 2880)))
+        assertEquals(VideoViewport(1280, 720), SurfaceMemoryBudget.cap(VideoViewport(1280, 720)))
+    }
     private fun tv(mode: FsrOutput,w: Int=1920,h: Int=1080,viewport: VideoViewport=VideoViewport(w,h),pw: Int=3840,ph: Int=2160,full: Boolean=true)=
         FsrOutputPolicy.target(mode,w,h,viewport,pw,ph,true,full)
     @Test fun tcl1080UiCanRequest1440Or4kWithoutChangingTheLayoutOrSourceVideo() {

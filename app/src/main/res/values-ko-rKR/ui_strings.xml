@@ -1407,4 +1407,6 @@
     <string name="ui_0fff1ccde9ea237a">"잠김"</string>
     <string name="ui_416b5d8461c1f876">"{0} 달성"</string>
     <string name="ui_b5530fcb2654bb2b">"시작할 때 시스템 DNS와 제공업체 5곳을 비교합니다. 두 서버 조회에 모두 응답한 서비스 중 가장 빠른 것을 선택합니다."</string>
+    <string name="ui_5effa1718a78b66c">"메모리 및 마지막 앱 종료"</string>
+    <string name="ui_a3a97b606731a63c">"메모리 확인 중…"</string>
 </resources>

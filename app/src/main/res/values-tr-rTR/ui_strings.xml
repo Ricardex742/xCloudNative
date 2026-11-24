@@ -1407,4 +1407,6 @@
     <string name="ui_0fff1ccde9ea237a">"Kilitli"</string>
     <string name="ui_416b5d8461c1f876">"{0} kilidi açtı"</string>
     <string name="ui_b5530fcb2654bb2b">"Başlangıçta sistem DNS ve beş sağlayıcı karşılaştırılır. Her iki sunucu sorgusuna da yanıt veren en hızlı seçenek kullanılır."</string>
+    <string name="ui_5effa1718a78b66c">"Bellek ve son uygulama çıkışı"</string>
+    <string name="ui_a3a97b606731a63c">"Bellek kontrol ediliyor…"</string>
 </resources>

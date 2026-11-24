@@ -30,6 +30,7 @@ internal class GameProgressPanel(
     private val onAvailable: () -> Unit
 ) {
     private val context = dialog.context
+    private val style = dialog.gameDetailsStyle
     val body = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; tag = "game-progress" }
     private val status = dialog.text("", 17)
     private val summary = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
@@ -48,6 +49,9 @@ internal class GameProgressPanel(
     val refreshButton: TextView = dialog.keyButton(UiText.text("Atualizar"), ::refresh).apply {
         tag = "game-progress-refresh"
         minimumHeight = dialog.touchSize()
+        setTextColor(android.graphics.Color.WHITE)
+        background = dialog.detailsActionPlate()
+        onFocusChangeListener = null
     }
 
     init {
@@ -136,8 +140,8 @@ internal class GameProgressPanel(
         private val gamerscore = dialog.text("", 16)
         private val bar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
-            progressTintList = ColorStateList.valueOf(0xff79dfb6.toInt())
-            progressBackgroundTintList = ColorStateList.valueOf(0xff4a5669.toInt())
+            progressTintList = ColorStateList.valueOf(style.accent)
+            progressBackgroundTintList = ColorStateList.valueOf(style.border)
         }
         private val details = dialog.text("", 16).apply { tag = "game-progress-description" }
 
@@ -151,13 +155,13 @@ internal class GameProgressPanel(
             panel.setPadding(horizontal, vertical, horizontal, vertical)
             panel.background = StateListDrawable().apply {
                 fun plate(fill: Int, focus: Boolean) = GradientDrawable().apply {
-                    cornerRadius = dialog.px(4).toFloat()
+                    cornerRadius = dialog.px(style.radius).toFloat()
                     setColor(fill)
-                    if (focus) setStroke(dialog.px(2).coerceAtLeast(1), 0xff79dfb6.toInt())
+                    if (focus) setStroke(dialog.px(2).coerceAtLeast(1), style.accent)
                 }
-                addState(intArrayOf(android.R.attr.state_focused), plate(0xff28423f.toInt(), true))
-                addState(intArrayOf(android.R.attr.state_selected), plate(0xff25384a.toInt(), false))
-                addState(intArrayOf(), plate(0xff182333.toInt(), false))
+                addState(intArrayOf(android.R.attr.state_focused), plate(style.focused, true))
+                addState(intArrayOf(android.R.attr.state_selected), plate(style.selected, false))
+                addState(intArrayOf(), plate(style.bodyRow, false))
             }
             panel.addView(LinearLayout(context).apply {
                 gravity = Gravity.CENTER_VERTICAL

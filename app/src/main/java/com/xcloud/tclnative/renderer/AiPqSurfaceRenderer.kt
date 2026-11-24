@@ -130,6 +130,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private var fsrOutput=FsrOutput.AUTO
     private var fsrFailure: String?=null
     private var requestedBuffer: VideoViewport?=null
+    private var largeMobileSurface=false
     private var bufferVerification: Runnable?=null
     private val fsrEnabled get()=fsrRequested && treatmentBudget.scaling && !compatibility && fsrFailure==null
     var compatibility = false
@@ -338,15 +339,17 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         val activity=context as? android.app.Activity
         val fullScreen=activity?.let { !it.isInMultiWindowMode && !it.isInPictureInPictureMode } ?: true
         val viewport=VideoScalingPolicy.viewport(width,height,videoWidth,videoHeight,aspect)
+        largeMobileSurface = SurfaceMemoryBudget.applyLimit(width, height, tv)
         val target=if(fsrEnabled) FsrOutputPolicy.target(treatmentBudget.output,width,height,viewport,
             mode?.physicalWidth ?: 0,mode?.physicalHeight ?: 0,tv,fullScreen)?.let { selected ->
             val scale=(treatmentBudget.maxOutputHeight.toDouble()/minOf(selected.width,selected.height)).coerceAtMost(1.0)
-            VideoViewport((selected.width*scale).toInt().coerceAtLeast(1),(selected.height*scale).toInt().coerceAtLeast(1))
+            val limited = VideoViewport((selected.width*scale).toInt().coerceAtLeast(1),(selected.height*scale).toInt().coerceAtLeast(1))
+            if (largeMobileSurface) SurfaceMemoryBudget.cap(limited) else limited
         } else null
         if(target!=requestedBuffer) { cancelBufferVerification();fsrPerformance.reset() }
         requestedBuffer=target
         view.setOutputBuffer(target)
-        view.setEnableHardwareScaler(nativeUpscaling && !fsrEnabled)
+        view.setEnableHardwareScaler((nativeUpscaling || largeMobileSurface) && !fsrEnabled)
         verifyOutputBuffer()
     }
     private fun cancelBufferVerification() { bufferVerification?.let(::removeCallbacks);bufferVerification=null }
@@ -512,6 +515,11 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             "Comparison=$imageComparison | temporal history suspended for interpolation=$interpolationSession\n",
             frameInterpolation?.diagnostics() ?: "Frame generation: off (applies on next session)")
     }
+    fun memoryDiagnostics(): String =
+        "VIDEO_MEMORY/LARGE_MOBILE_SURFACE=$largeMobileSurface; " +
+            "HARDWARE_SCALER=${(nativeUpscaling || largeMobileSurface) && !fsrEnabled}; " +
+            "BUFFER_REQUEST=${requestedBuffer?.let { "${it.width}x${it.height}" } ?: "AUTO"}"
+
     /** Android exposes surface/display geometry, but no public API reports TCL AiPQ activation. */
     fun diagnostics(): String {
         val surface = renderer?.holder?.surfaceFrame

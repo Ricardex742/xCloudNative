@@ -55,7 +55,10 @@ private class ConsolePanelChrome(private val scene: ConsoleScene): Drawable() {
             ConsoleScene.XBOX_360_NXE -> intArrayOf(0xff36553a.toInt(),0xff243b27.toInt(),0xff6c7c61.toInt())
             ConsoleScene.XBOX_360_METRO -> intArrayOf(0xffe2e6dd.toInt(),0xffd3d9ce.toInt(),0xffc4cdbd.toInt())
             ConsoleScene.XBOX_ONE -> intArrayOf(0xff101010.toInt(),0xff161616.toInt(),0xff101010.toInt())
-            ConsoleScene.XBOX_SERIES -> intArrayOf(0xfa18252c.toInt(),0xfa10191f.toInt(),0xfa0a1116.toInt())
+            ConsoleScene.XBOX_SERIES -> intArrayOf(
+                DashboardTheme.seriesColor(0xfa18252c.toInt(), UiColor.SURFACE),
+                DashboardTheme.seriesColor(0xfa10191f.toInt(), UiColor.PANEL_TOP),
+                DashboardTheme.seriesColor(0xfa0a1116.toInt(), UiColor.PANEL_BOTTOM))
             else -> intArrayOf(0xff132707.toInt(),0xff071701.toInt(),0xff102600.toInt())
         }
         fill=LinearGradient(0f,0f,b.width().toFloat(),b.height().toFloat(),colors,null,Shader.TileMode.CLAMP)
@@ -114,7 +117,8 @@ private class ConsolePanelRow(private val scene: ConsoleScene,private val tile: 
             ConsoleScene.XBOX_360_NXE -> if(focused) 0xff288616.toInt() else 0x6822311b
             ConsoleScene.XBOX_360_METRO -> if(tile || focused) 0xff168d07.toInt() else 0xffe9ede2.toInt()
             ConsoleScene.XBOX_ONE -> if(tile) 0xff107c10.toInt() else 0xff232323.toInt()
-            ConsoleScene.XBOX_SERIES -> if(focused) 0xff2b414a.toInt() else 0xff1d2d35.toInt()
+            ConsoleScene.XBOX_SERIES -> if(focused) DashboardTheme.seriesColor(0xff2b414a.toInt(), UiColor.SEARCH_ACTIVE)
+                else DashboardTheme.seriesColor(0xff1d2d35.toInt(), UiColor.SURFACE)
             else -> if(focused) 0xff91c92a.toInt() else 0xff183307.toInt()
         }
         val radius=when(scene) { ConsoleScene.XBOX_360,ConsoleScene.XBOX_ORIGINAL -> r.height()*.27f;ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_360_METRO,ConsoleScene.PS4,ConsoleScene.PS5 -> 0f;ConsoleScene.XBOX_360_NXE -> 4f;else -> 8f }

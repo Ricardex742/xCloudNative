@@ -30,19 +30,25 @@ enum class UiTheme(private val sourceLabel: String,val accent: Int,val hue: Floa
     PS4("PlayStation 4",0xffdcefff.toInt(),216f,.8f,ConsoleScene.PS4),
     PS5("PlayStation 5",0xffeeeeee.toInt(),220f,.12f,ConsoleScene.PS5),
     PS4_NIGHT("PlayStation 4 — Noturno",0xffd5e8ff.toInt(),216f,.45f,ConsoleScene.PS4),
-    PS5_NIGHT("PlayStation 5 — Noturno",0xffe3e8f0.toInt(),220f,.12f,ConsoleScene.PS5);
+    PS5_NIGHT("PlayStation 5 — Noturno",0xffe3e8f0.toInt(),220f,.12f,ConsoleScene.PS5),
+    SERIES_BLUE("Azul Cibernético",0xff62b9ff.toInt(),208f,.95f,ConsoleScene.XBOX_SERIES),
+    SERIES_RED("Vermelho Vulcânico",0xffff7883.toInt(),355f,.85f,ConsoleScene.XBOX_SERIES),
+    SERIES_PURPLE("Roxo Galáxia",0xffc4a2ff.toInt(),266f,.82f,ConsoleScene.XBOX_SERIES),
+    SERIES_ORANGE("Laranja Industrial",0xffffb26e.toInt(),29f,.85f,ConsoleScene.XBOX_SERIES),
+    SERIES_SILVER("Prata Platina",0xffd1dce4.toInt(),207f,.16f,ConsoleScene.XBOX_SERIES);
     val label: String get()=UiText.text(sourceLabel)
     val night: Boolean get()=this==PS4_NIGHT || this==PS5_NIGHT
     val layout: UiTheme get()=when(scene) {
         ConsoleScene.NONE -> GREEN
         ConsoleScene.PS4 -> PS4
         ConsoleScene.PS5 -> PS5
+        ConsoleScene.XBOX_SERIES -> XBOX_SERIES
         else -> this
     }
     val layoutLabel: String get()=if(scene==ConsoleScene.NONE) "xCLOUD" else layout.label
     val colorLabel: String get()=when {
         night -> UiText.text("Noturno")
-        scene.playStation -> UiText.text("Padrão")
+        scene.playStation || this==XBOX_SERIES -> UiText.text("Padrão")
         else -> label
     }
     val colors: List<UiTheme> get()=entries.filter { it.layout==layout }

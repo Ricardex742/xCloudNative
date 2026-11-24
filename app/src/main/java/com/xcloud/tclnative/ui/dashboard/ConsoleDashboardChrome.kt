@@ -95,10 +95,11 @@ internal class ConsoleControlPlate(private val scene: ConsoleScene,private val c
                     val size=minOf(rect.width()-4f,rect.height()*.62f);val cx=rect.centerX();val cy=rect.top+size/2f
                     paint.color=if(focused) 0xb0000000.toInt() else 0x65000000
                     canvas.drawCircle(cx,cy,size/2f,paint)
-                    if(focused || selected) { paint.style=Paint.Style.STROKE;paint.color=if(focused) Color.WHITE else 0xff72d63a.toInt();paint.strokeWidth=2f;canvas.drawCircle(cx,cy,size/2f-1f,paint);paint.style=Paint.Style.FILL }
+                    if(focused || selected) { paint.style=Paint.Style.STROKE;paint.color=if(focused) Color.WHITE else DashboardTheme.seriesColor(0xff72d63a.toInt());paint.strokeWidth=2f;canvas.drawCircle(cx,cy,size/2f-1f,paint);paint.style=Paint.Style.FILL }
                     icon?.let { icons.draw(canvas,it,cx-size*.28f,cy-size*.28f,size*.56f) }
                 } else {
-                    paint.color=if(control==ConsoleControl.ACTION) 0xff107c10.toInt() else 0xff171b1f.toInt()
+                    paint.color=if(control==ConsoleControl.ACTION) DashboardTheme.seriesColor(0xff107c10.toInt(), UiColor.QUEUE_ACTIVE)
+                        else DashboardTheme.seriesColor(0xff171b1f.toInt(), UiColor.PANEL_BOTTOM)
                     canvas.drawRoundRect(rect,6f,6f,paint)
                     if(focused && control!=ConsoleControl.CARD) { paint.style=Paint.Style.STROKE;paint.color=Color.WHITE;paint.strokeWidth=3f;canvas.drawRoundRect(rect,6f,6f,paint) }
                 }

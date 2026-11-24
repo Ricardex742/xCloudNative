@@ -6,11 +6,18 @@ import android.content.Context
 import android.view.Surface
 import android.view.ViewTreeObserver
 import android.widget.LinearLayout
+import android.content.ClipData
+import android.content.ClipboardManager
+import com.xcloud.tclnative.diagnostics.AppMemoryDiagnostics
 import com.xcloud.tclnative.settings.*
 import com.xcloud.tclnative.webrtc.GamepadState
 import com.xcloud.tclnative.webrtc.GyroController
 import com.xcloud.tclnative.webrtc.StreamResolution
 import java.util.Locale
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class SettingsPage { ROOT, VIDEO, IMAGE, APPEARANCE, NETWORK, CONTROLS, PHYSICAL, MOUSE, GYRO, RUMBLE, AUDIO, DIAGNOSTICS, ACCOUNT, TREATMENT, RECONSTRUCTION, UPSCALING, IMAGE_ADVANCED }
 
@@ -39,7 +46,8 @@ class PlaybackSettingsPanel(
     private val statisticsChanged: () -> Unit={},
     private val microphoneLabel: () -> String={ UiText.text("Ativar microfone") },
     private val liveVideoMode: VideoMode?=null,
-    private val liveGyro: Boolean=false
+    private val liveGyro: Boolean=false,
+    private val videoMemoryInformation: () -> String? = { null }
 ) {
     private var videoSection=0
     private var currentPage=SettingsPage.ROOT
@@ -333,6 +341,7 @@ class PlaybackSettingsPanel(
         return category(SettingsPage.DIAGNOSTICS,UiText.text("Ajuda e diagnóstico"),listOfNotNull(
             recovery?.let { ConsoleAction(UiText.text("Recuperar / recarregar transmissão"),it) },
             currentDiagnostics?.let { ConsoleAction(UiText.text("Diagnóstico da partida"),it) },
+            ConsoleAction(UiText.text("Memória e última saída do app")) { showMemoryDiagnostics() },
             ConsoleAction(UiText.text("Estatísticas durante a partida")) {
                 StatisticsSettingsPanel(context,StatisticsSettingsStore(context),statisticsChanged,back={ showDiagnostics() }).show()
             },
@@ -344,6 +353,28 @@ class PlaybackSettingsPanel(
             },
             ConsoleAction(UiText.text("Último diagnóstico"),lastReport)
         ))
+    }
+    private fun showMemoryDiagnostics() {
+        val title = UiText.text("Memória e última saída do app")
+        val technical = videoMemoryInformation()
+        val dialog = ConsoleDialog(context, title)
+        val report = dialog.text(UiText.text("Consultando memória…"), 19)
+        dialog.body.addView(report)
+        val copy = dialog.addPersistentAction(UiText.text("Copiar detalhes")) {
+            context.getSystemService(ClipboardManager::class.java)
+                ?.setPrimaryClip(ClipData.newPlainText(title, report.text))
+        }.apply { isEnabled = false }
+        dialog.addAction(UiText.text("Voltar")) { showDiagnostics() }
+        dialog.setOnCancelListener { showDiagnostics() }
+        dialog.show()
+        val job = CoroutineScope(Dispatchers.Main.immediate).launch {
+            val data = withContext(Dispatchers.IO) {
+                runCatching { AppMemoryDiagnostics.collect(context) }.getOrDefault("MEMORY/UNAVAILABLE")
+            }
+            report.text = listOfNotNull(data, technical).joinToString("\n")
+            copy.isEnabled = true
+        }
+        dialog.addCleanup { job.cancel() }
     }
     fun showAccount(): ConsoleDialog = category(SettingsPage.ACCOUNT,UiText.text("Conta e amigos"),listOfNotNull(
         friends?.let { ConsoleAction(UiText.text("Amigos"),it) },
