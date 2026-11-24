@@ -1396,4 +1396,16 @@
     <string name="ui_866fdcebe2b40408">"Открыть в магазине"</string>
     <string name="ui_95bd1530bb531913">"Насилие"</string>
     <string name="ui_a50d881504c65330">"Крайнее насилие"</string>
+    <string name="ui_f0fedfb387df6c68">"Друзья сейчас играют"</string>
+    <string name="ui_ee67a1eea8f24961">"Все достижения"</string>
+    <string name="ui_78d8e0647288842f">"Описание недоступно."</string>
+    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
+    <string name="ui_9d95e08eefc03547">"Получено"</string>
+    <string name="ui_0fff1ccde9ea237a">"Заблокировано"</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Достижения"</string>
+    <string name="ui_21bf344b14c314e0">"Системный DNS"</string>
+    <string name="ui_9a395c56379175a5">"Лучший DNS для сеанса"</string>
+    <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
+    <string name="ui_0827c3dbf7f78b3e">"DNS сеанса"</string>
+    <string name="ui_a69ee15ff9d8993d">"При запуске сравнивает системный DNS, Cloudflare и Google. Выбирает самый быстрый сервер, ответивший на две проверки. DNS определяет адрес сервера. Пинг зависит от сетевого маршрута."</string>
 </resources>

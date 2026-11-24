@@ -1396,4 +1396,16 @@
     <string name="ui_866fdcebe2b40408">"Visualizza nello Store"</string>
     <string name="ui_95bd1530bb531913">"Violenza"</string>
     <string name="ui_a50d881504c65330">"Violenza estrema"</string>
+    <string name="ui_f0fedfb387df6c68">"Amici che giocano ora"</string>
+    <string name="ui_ee67a1eea8f24961">"Vedi tutti gli obiettivi"</string>
+    <string name="ui_78d8e0647288842f">"Descrizione non disponibile."</string>
+    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
+    <string name="ui_9d95e08eefc03547">"Sbloccato"</string>
+    <string name="ui_0fff1ccde9ea237a">"Bloccato"</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Obiettivi"</string>
+    <string name="ui_21bf344b14c314e0">"DNS di sistema"</string>
+    <string name="ui_9a395c56379175a5">"Miglior DNS per la sessione"</string>
+    <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
+    <string name="ui_0827c3dbf7f78b3e">"DNS della sessione"</string>
+    <string name="ui_a69ee15ff9d8993d">"All’avvio confronta DNS di sistema, Cloudflare e Google. Usa il più veloce a rispondere a entrambi i test. Il DNS risolve l’indirizzo del server. Il ping dipende dal percorso di rete."</string>
 </resources>

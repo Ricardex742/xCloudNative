@@ -1396,4 +1396,16 @@
     <string name="ui_866fdcebe2b40408">"View in store"</string>
     <string name="ui_95bd1530bb531913">"Violence"</string>
     <string name="ui_a50d881504c65330">"Extreme violence"</string>
+    <string name="ui_f0fedfb387df6c68">"Friends playing now"</string>
+    <string name="ui_ee67a1eea8f24961">"View all achievements"</string>
+    <string name="ui_78d8e0647288842f">"Description unavailable."</string>
+    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
+    <string name="ui_9d95e08eefc03547">"Unlocked"</string>
+    <string name="ui_0fff1ccde9ea237a">"Locked"</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Achievements"</string>
+    <string name="ui_21bf344b14c314e0">"System DNS"</string>
+    <string name="ui_9a395c56379175a5">"Best DNS for the session"</string>
+    <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
+    <string name="ui_0827c3dbf7f78b3e">"Session DNS"</string>
+    <string name="ui_a69ee15ff9d8993d">"Compares system DNS, Cloudflare, and Google at launch. Uses the fastest one to answer both checks. DNS resolves the server address. Stream ping depends on the network route."</string>
 </resources>

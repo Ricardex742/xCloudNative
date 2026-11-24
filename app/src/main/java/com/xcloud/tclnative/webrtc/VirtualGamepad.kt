@@ -18,7 +18,7 @@ data class TouchControl(val label: String,val x: Float,val y: Float,val radius: 
 /** No game-state inference: context pages are switched explicitly, gestures combine simultaneous inputs. */
 class VirtualGamepad(private val width: Int,private val height: Int,
                      preset: HudPreset=HudPreset.GAMEPAD,private val settings: HudSettings=HudSettings(),
-                     private val official: List<HudElement>?=null) {
+                     private var official: List<HudElement>?=null, private val officialPressMs: Long = 0) {
     private data class Contact(var control: TouchControl,var x: Float,var y: Float,var time: Long,
                                val startX: Float=x,val startY: Float=y,
                                var lookX: Float=0f,var lookY: Float=0f,var lookAt: Long=Long.MIN_VALUE,
@@ -120,6 +120,7 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         val control=contact.control
         val chosen=action(contact)
         val settle=when {
+            official != null && control.kind == TouchKind.BUTTON && !control.toggle -> officialPressMs
             control.gestures.isNotEmpty() -> GESTURE_SETTLE_MS
             preset.football && control.id in FOOTBALL_TAP_IDS && chosen!=null && chosen.buttons!=0 -> FOOTBALL_TAP_MS
             else -> 0L
@@ -129,6 +130,25 @@ class VirtualGamepad(private val width: Int,private val height: Int,
         val until=contact.actionAt+settle
         if(chosen!=null && settle>0 && until>receivedAt) releases.add(Release(control.id,chosen,until))
         control.page?.takeIf { inside(control,contact.x,contact.y,1.3f) }?.let(::setPage)
+    }
+    /** State changes can replace artwork while a finger is held on the same command. */
+    fun updateOfficialControls(elements: List<HudElement>) {
+        official = elements
+        val previous = controls.associateBy { it.id }
+        controls = layout(preset)
+        val next = controls.associateBy { it.id }
+        fun compatible(id: String): TouchControl? {
+            val old = previous[id] ?: return null
+            return next[id]?.takeIf { it.officialAppearance?.enabled != false && it.action == old.action &&
+                it.kind == old.kind && it.toggle == old.toggle &&
+                it.x == old.x && it.y == old.y && it.radius == old.radius }
+        }
+        contacts.values.removeAll { contact ->
+            val replacement = compatible(contact.control.id)
+            if (replacement == null) true else { contact.control = replacement; false }
+        }
+        releases.removeAll { compatible(it.id) == null }
+        toggled.removeAll { compatible(it) == null }
     }
     /** Movement survives page changes; removed actions and pending gesture releases are cleared. */
     fun setPage(next: HudPreset) {

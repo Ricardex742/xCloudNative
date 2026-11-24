@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 136
-        versionName = "0.41.23-game-card"
+        versionCode = 137
+        versionName = "0.41.24-session-controls"
     }
 
     signingConfigs {
@@ -89,6 +89,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     // Keep the pinned M137 runtime used by the native renderer and input pipeline.
     implementation("io.github.webrtc-sdk:android:137.7151.05")

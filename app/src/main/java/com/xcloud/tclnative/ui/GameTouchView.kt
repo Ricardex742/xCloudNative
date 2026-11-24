@@ -35,6 +35,7 @@ class GameTouchView(context: Context,
         private set
     private var model=VirtualGamepad(1,1)
     private var officialLayout: OfficialTouchLayout? = null
+    private var officialPressMs = 0L
     private var officialPositions: Map<String, HudPlacement> = emptyMap()
     private data class OfficialEdit(val layout: OfficialTouchLayout, var positions: Map<String, HudPlacement>)
     private var officialEdit: OfficialEdit? = null
@@ -68,6 +69,7 @@ class GameTouchView(context: Context,
         officialEdit=null
         officialPositions=emptyMap()
         adjustOfficialLayout=null
+        officialPressMs=0
         isEditing=false
         nativeEvents=NativeEvents()
         lastHudPress=UiText.text("nenhum")
@@ -163,6 +165,7 @@ class GameTouchView(context: Context,
         autoHidden=false
         if(game!=null) {
             automatic=GameHud.automatic(game.titleId,game.name)
+            officialPressMs = if (MinecraftDungeonsTouchLayout.appliesTo(game)) 64L else 0L
             adjustOfficialLayout = AssassinsCreedTouchLayout.forGame(game)?.let { it::place }
                 ?: when {
                     MinecraftDungeonsTouchLayout.appliesTo(game) -> MinecraftDungeonsTouchLayout::place
@@ -188,8 +191,7 @@ class GameTouchView(context: Context,
         revealControls()
     }
     fun showPage(page: HudPreset) { releaseInputs(); model.setPage(page);scheduleAutoHide(); invalidate() }
-    private fun rebuild(page: HudPreset=preset) {
-        val controls = displayedOfficialLayout?.controls?.let { supplied ->
+    private fun officialControls() = displayedOfficialLayout?.controls?.let { supplied ->
             val adjusted = adjustOfficialLayout?.invoke(supplied, width, height) ?: supplied
             val positions = officialEdit?.positions ?: officialPositions
             if (positions.isEmpty()) adjusted else adjusted.map { element ->
@@ -197,16 +199,24 @@ class GameTouchView(context: Context,
                 if (edit == null) element
                 else element.copy(x = edit.x, y = edit.y, radius = element.radius * edit.scale)
             }
-        }
+    }
+    private fun rebuild(page: HudPreset=preset) {
+        val controls = officialControls()
         model=VirtualGamepad(width.coerceAtLeast(1),height.coerceAtLeast(1),
             if (controls == null) page else HudPreset.GAMEPAD,
             if (controls == null) configuration else HudSettings(),
-            controls)
+            controls, officialPressMs)
     }
     internal fun installOfficialControls(layout: OfficialTouchLayout?) {
         if (officialLayout == layout || isEditing && officialEdit == null && layout != null) return
-        // Release under the previous routing mode before a disappearance disables gamepad publishing.
-        if (officialEdit == null) releaseInputs()
+        val patch = layout != null && layout.id != null && officialLayout?.id == layout.id
+        // A layout switch retires the gamepad contacts. Native contacts that began in the
+        // videogame remain attached to the video until the user lifts their fingers.
+        if (officialEdit == null && !patch) {
+            removeCallbacks(lookReset)
+            model.clear()
+            onGamepad(GamepadState())
+        }
         if (officialLayout?.id != layout?.id) {
             officialPositions = layout?.id?.let(onReadOfficialHud) ?: emptyMap()
         }
@@ -214,7 +224,11 @@ class GameTouchView(context: Context,
         // Keep the editor on the layout it opened while the Xbox sends new layouts or visibility.
         if (officialEdit != null) return
         autoHidden=false
-        rebuild(configuration.preset ?: automatic)
+        val controls = officialControls()
+        if (patch && controls != null) {
+            model.updateOfficialControls(controls)
+            if (!gameplayTouchSuspended) publish()
+        } else rebuild(configuration.preset ?: automatic)
         scheduleAutoHide()
         invalidate()
     }

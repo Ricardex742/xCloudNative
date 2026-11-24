@@ -25,7 +25,16 @@ enum class GyroMode(private val sourceLabel: String) { OFF("Desativado"), LT("En
     val label: String get()=UiText.text(sourceLabel)
 }
 
-data class SessionOptions(val maxBitrateKbps: Int=0,val locale: String="pt-BR",val region: String="") {
+enum class SessionDnsPreference {
+    SYSTEM, ADAPTIVE;
+    val label get() = when (this) {
+        SYSTEM -> UiText.text("DNS do sistema")
+        ADAPTIVE -> UiText.text("Melhor DNS para a sessão")
+    }
+}
+
+data class SessionOptions(val maxBitrateKbps: Int=0,val locale: String="pt-BR",val region: String="",
+                          val dns: SessionDnsPreference = SessionDnsPreference.SYSTEM) {
     fun normalized()=copy(maxBitrateKbps=if(maxBitrateKbps==0) 0 else maxBitrateKbps.coerceIn(1000,50000),
         locale=locale.takeIf { it in LOCALES } ?: "pt-BR",region=region.take(100))
     companion object {
@@ -35,7 +44,7 @@ data class SessionOptions(val maxBitrateKbps: Int=0,val locale: String="pt-BR",v
     }
 }
 
-enum class SessionOptionField(val key: String) { BITRATE("bitrate"), REGION("region"), LOCALE("locale") }
+enum class SessionOptionField(val key: String) { BITRATE("bitrate"), REGION("region"), LOCALE("locale"), DNS("dns") }
 
 /** Account-scoped, field-level overrides. Existing full snapshots remain explicit overrides. */
 class SessionOptionsStore(private val context: Context, account: String, legacyAccount: String? = null) {
@@ -87,6 +96,7 @@ class SessionOptionsStore(private val context: Context, account: String, legacyA
             SessionOptionField.BITRATE -> current.copy(maxBitrateKbps=value as Int).normalized().maxBitrateKbps
             SessionOptionField.REGION -> current.copy(region=value as String).normalized().region
             SessionOptionField.LOCALE -> current.copy(locale=value as String).normalized().locale
+            SessionOptionField.DNS -> (value as SessionDnsPreference).name
         }
         val key=if(game==null) "default" else "game:$game"
         prefs.edit().putString(key,raw(game).put(field.key,normalized).toString()).apply()
@@ -101,11 +111,12 @@ class SessionOptionsStore(private val context: Context, account: String, legacyA
     fun save(game: String?,options: SessionOptions) = synchronized(writes) {
         val value=options.normalized()
         prefs.edit().putString(if(game==null) "default" else "game:$game",JSONObject().put("bitrate",value.maxBitrateKbps)
-            .put("locale",value.locale).put("region",value.region).toString()).apply()
+            .put("locale",value.locale).put("region",value.region).put("dns",value.dns.name).toString()).apply()
     }
     fun reset(game: String) = synchronized(writes) { prefs.edit().remove("game:$game").apply() }
     private fun decode(raw: String?,defaults: SessionOptions): SessionOptions = runCatching {
         if(raw==null) defaults else JSONObject(raw).let { SessionOptions(it.optInt("bitrate",defaults.maxBitrateKbps),
-            it.optString("locale",defaults.locale),it.optString("region",defaults.region)).normalized() }
+            it.optString("locale",defaults.locale),it.optString("region",defaults.region),
+            SessionDnsPreference.entries.firstOrNull { dns -> dns.name == it.optString("dns") } ?: defaults.dns).normalized() }
     }.getOrDefault(defaults)
 }

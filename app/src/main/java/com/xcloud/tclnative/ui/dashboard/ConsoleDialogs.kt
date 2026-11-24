@@ -131,7 +131,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         maxLines = 2
         background = GradientDrawable().apply {
             setColor(0xff263443.toInt())
-            cornerRadius = px(10).toFloat()
+            cornerRadius = px(5).toFloat()
             setStroke(px(1).coerceAtLeast(1), 0xff586e81.toInt())
         }
         setPadding(px(12),px(8),px(12),px(8))
@@ -375,7 +375,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             val plate = android.graphics.drawable.StateListDrawable().apply {
                 fun state(color: Int, focused: Boolean) = GradientDrawable().apply {
                     setColor(color)
-                    cornerRadius = px(12).toFloat()
+                    cornerRadius = px(5).toFloat()
                     setStroke(px(if (focused) 2 else 1).coerceAtLeast(1),
                         if (focused) Color.WHITE else 0xff64768c.toInt())
                 }

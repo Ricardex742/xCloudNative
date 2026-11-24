@@ -1396,4 +1396,16 @@
     <string name="ui_866fdcebe2b40408">"Mağazada görüntüle"</string>
     <string name="ui_95bd1530bb531913">"Şiddet"</string>
     <string name="ui_a50d881504c65330">"Aşırı şiddet"</string>
+    <string name="ui_f0fedfb387df6c68">"Şu anda oynayan arkadaşlar"</string>
+    <string name="ui_ee67a1eea8f24961">"Tüm başarıları gör"</string>
+    <string name="ui_78d8e0647288842f">"Açıklama kullanılamıyor."</string>
+    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
+    <string name="ui_9d95e08eefc03547">"Açıldı"</string>
+    <string name="ui_0fff1ccde9ea237a">"Kilitli"</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Başarılar"</string>
+    <string name="ui_21bf344b14c314e0">"Sistem DNS"</string>
+    <string name="ui_9a395c56379175a5">"Oturum için en iyi DNS"</string>
+    <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
+    <string name="ui_0827c3dbf7f78b3e">"Oturum DNS"</string>
+    <string name="ui_a69ee15ff9d8993d">"Başlangıçta sistem DNS, Cloudflare ve Google karşılaştırılır. Her iki teste de yanıt veren en hızlı seçenek kullanılır. DNS sunucu adresini çözümler. Yayın gecikmesi ağ rotasına bağlıdır."</string>
 </resources>

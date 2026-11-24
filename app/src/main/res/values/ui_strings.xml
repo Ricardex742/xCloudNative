@@ -1396,4 +1396,16 @@
     <string name="ui_866fdcebe2b40408">"Ver na loja"</string>
     <string name="ui_95bd1530bb531913">"Violência"</string>
     <string name="ui_a50d881504c65330">"Violência extrema"</string>
+    <string name="ui_f0fedfb387df6c68">"Amigos jogando agora"</string>
+    <string name="ui_ee67a1eea8f24961">"Ver todas as conquistas"</string>
+    <string name="ui_78d8e0647288842f">"Descrição indisponível."</string>
+    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
+    <string name="ui_9d95e08eefc03547">"Desbloqueada"</string>
+    <string name="ui_0fff1ccde9ea237a">"Bloqueada"</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Conquistas"</string>
+    <string name="ui_21bf344b14c314e0">"DNS do sistema"</string>
+    <string name="ui_9a395c56379175a5">"Melhor DNS para a sessão"</string>
+    <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
+    <string name="ui_0827c3dbf7f78b3e">"DNS da sessão"</string>
+    <string name="ui_a69ee15ff9d8993d">"Compara o DNS do sistema, Cloudflare e Google ao iniciar. Usa o mais rápido entre os que responderem aos dois testes. O DNS resolve o endereço do servidor. O ping da transmissão depende da rota de rede."</string>
 </resources>

@@ -8,12 +8,14 @@ import com.xcloud.tclnative.auth.StreamingAuthorization
 import com.xcloud.tclnative.auth.XCloudSession
 import com.xcloud.tclnative.diagnostics.PlaybackStage
 import com.xcloud.tclnative.settings.SessionOptions
+import com.xcloud.tclnative.settings.SessionDnsPreference
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import com.xcloud.tclnative.net.readResponse
 import com.xcloud.tclnative.net.checkedBody
 import com.xcloud.tclnative.net.CloudHttpException
 import com.xcloud.tclnative.net.CloudRequestException
+import com.xcloud.tclnative.net.CloudSessionDns
 import com.xcloud.tclnative.touch.OfficialTouchBundle
 import com.xcloud.tclnative.touch.OfficialTouchLoad
 import com.xcloud.tclnative.touch.OfficialTouchLoad.Stage
@@ -77,9 +79,10 @@ class XCloudSignalingClient(
         val baseUri: String, val region: String, val locale: String, val resolution: StreamResolution
     )
 
-    private inner class Attempt(val profile: SessionProfile) {
+    private inner class Attempt(val profile: SessionProfile, val dns: CloudSessionDns? = null) {
         val startupTrace = SessionStartupTrace(clockMs)
         val keepAlive = SessionKeepAlive(pause, clockMs)
+        fun client(base: OkHttpClient) = dns?.let { base.newBuilder().dns(it).build() } ?: base
     }
 
     private class Allocation(val attempt: Attempt, val path: String) {
@@ -109,6 +112,7 @@ class XCloudSignalingClient(
 
     fun resetStartupDiagnostics() = lastAttempt.startupTrace.reset()
     fun startupDiagnostics() = lastAttempt.startupTrace.diagnostics()
+    fun dnsDiagnostics() = "DNS/${lastAttempt.dns?.activeResolver ?: "SYSTEM"}"
     internal fun sessionTimeLimitSeconds(): Long? = active.get()?.timeLimitSeconds
     fun profileDiagnostics(): String {
         val profile = lastAttempt.profile
@@ -210,7 +214,7 @@ class XCloudSignalingClient(
             val payload = JSONObject().put("titleIds",JSONArray().put(titleId)).put("titleIdType","xboxTitleId")
             val configs = try {
                 val result = JSONTokener(request("/v2/titles/inputconfigs","TOUCH_CONFIG","POST",payload,
-                    client=touchBundleClient,base=allocation.attempt.profile.baseUri)).nextValue()
+                    client=allocation.attempt.client(touchBundleClient),base=allocation.attempt.profile.baseUri)).nextValue()
                 when (result) {
                     is JSONArray -> result
                     is JSONObject -> result.optJSONArray("results") ?: result.optJSONArray("titleInputConfigurations")
@@ -360,7 +364,8 @@ class XCloudSignalingClient(
     ): String {
         requireActive(allocation)
         val profile = allocation.attempt.profile
-        val response = request(path, stage, method, body, client, base = profile.baseUri, resolution = profile.resolution, bearer = bearer)
+        val response = request(path, stage, method, body, allocation.attempt.client(client),
+            base = profile.baseUri, resolution = profile.resolution, bearer = bearer)
         requireActive(allocation)
         return response
     }
@@ -501,7 +506,11 @@ class XCloudSignalingClient(
         val region = selected?.name ?: if (options.region.isBlank()) UiText.text("Automático")
             else UiText.text("Automático — região salva não oferecida à conta")
         val profile = SessionProfile(selected?.baseUri ?: session.baseUri, region, options.normalized().locale, resolution)
-        val attempt = Attempt(profile)
+        val dns = if (!remotePlay && options.dns == SessionDnsPreference.ADAPTIVE) {
+            val host = CloudProtocol.sessionUrl(profile.baseUri, sessionRoot).host
+            CloudSessionDns(host, requestClient.dns)
+        } else null
+        val attempt = Attempt(profile, dns)
         var owned: Allocation? = null
         var connected = false
         try {
@@ -519,7 +528,7 @@ class XCloudSignalingClient(
                 onStage(PlaybackStage.PLAY_REQUEST)
                 suspend fun allocate(): Allocation {
                     val response = JSONObject(request("$sessionRoot/play", "PLAY", "POST", play,
-                        client = if (remotePlay) remoteStartClient else requestClient,
+                        client = if (remotePlay) remoteStartClient else attempt.client(requestClient),
                         base = profile.baseUri, resolution = profile.resolution))
                     val path = CloudProtocol.sessionUrl(profile.baseUri, response.getString("sessionPath")).encodedPath.trimEnd('/')
                     val allocatedPath = if (remotePlay && path.startsWith("/sessions/home/")) "/v5$path" else path
@@ -709,7 +718,8 @@ class XCloudSignalingClient(
         withContext(NonCancellable) {
             withTimeoutOrNull(5000) {
                 try {
-                    request(allocation.path, "STOP", "DELETE", base = profile.baseUri, resolution = profile.resolution)
+                    request(allocation.path, "STOP", "DELETE", client = allocation.attempt.client(requestClient),
+                        base = profile.baseUri, resolution = profile.resolution)
                 } catch (_: IOException) { /* Server TTL is the fallback. */ }
             }
         }

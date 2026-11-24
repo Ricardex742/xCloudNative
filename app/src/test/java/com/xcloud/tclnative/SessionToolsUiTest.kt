@@ -33,6 +33,13 @@ class SessionToolsUiTest {
         try {
             notice.show(null)
             assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("Tempo da sessão não informado") })
+            layout(notice, 155, 280)
+            val heading = notice.getChildAt(0) as TextView
+            assertTrue(heading.lineCount > 1)
+            assertEquals("Sua sessão foi iniciada", heading.text.toString())
+            assertEquals(heading.length(), heading.layout.getLineEnd(heading.lineCount - 1))
+            assertEquals(0, heading.layout.getEllipsisCount(heading.lineCount - 1))
+            assertTrue(heading.bottom < notice.height)
             for ((seconds, expected) in listOf(1800L to "30 min", 7200L to "2 h", 12000L to "3 h 20 min")) {
                 notice.update(seconds)
                 assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString() == "Tempo restante na sessão: $expected" })

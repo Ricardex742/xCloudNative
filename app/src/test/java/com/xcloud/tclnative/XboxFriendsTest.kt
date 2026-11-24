@@ -17,7 +17,7 @@ class XboxFriendsTest {
         val friends=XboxFriends.parse(JSONObject("""{"people":[
             {"xuid":"1","gamertag":"Offline","presenceState":"Offline","presenceDetails":[{"IsPrimary":true,"IsGame":true,"TitleId":"123"}]},
             {"xuid":"2","gamertag":"Hidden"},
-            {"xuid":"3","gamertag":"Playing","presenceState":"Online","presenceDetails":[
+            {"xuid":"3","gamertag":"Playing","presenceState":"Online","displayPicRaw":"https://example.test/avatar.png","presenceDetails":[
                 {"IsPrimary":false,"IsGame":true,"TitleId":"456"},
                 {"IsPrimary":true,"IsGame":true,"State":"Active","TitleId":"0x7b","PresenceText":"Test game","RichPresenceText":"In a match"}]},
             {"xuid":"4","gamertag":"Away","presenceState":"Away"},
@@ -26,6 +26,7 @@ class XboxFriendsTest {
         ]}"""))
         assertEquals(listOf("Playing","Away","Offline","Hidden"),friends.map { it.gamertag })
         assertEquals("In a match",friends[0].activity)
+        assertEquals("https://example.test/avatar.png",friends[0].avatarUrl)
         val wrong=GameTitle("wrong","Test game",xboxTitleId="456")
         val right=GameTitle("right","Different localized name",xboxTitleId="123")
         assertEquals(right,friends[0].cloudGame(listOf(wrong,right)))

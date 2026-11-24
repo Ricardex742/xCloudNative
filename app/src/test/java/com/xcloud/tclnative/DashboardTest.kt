@@ -12,12 +12,15 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
+import androidx.core.view.allViews
 import androidx.recyclerview.widget.RecyclerView
 import com.xcloud.tclnative.catalog.GameLibrary
+import com.xcloud.tclnative.catalog.FriendPresence
 import com.xcloud.tclnative.catalog.LibraryTab
 import com.xcloud.tclnative.catalog.StoreContentNotice
 import com.xcloud.tclnative.catalog.StoreGameDetails
 import com.xcloud.tclnative.catalog.XboxAchievement
+import com.xcloud.tclnative.catalog.XboxFriend
 import com.xcloud.tclnative.catalog.XboxGameProgress
 import com.xcloud.tclnative.catalog.XboxProfile
 import com.xcloud.tclnative.signaling.GameTitle
@@ -242,6 +245,7 @@ class DashboardTest {
         }
         val poster = fixture("poster", "forza.jpg", 384, 576)
         val hero = fixture("hero", "forza-hero.jpg", 256, 160)
+        val friendAvatar = fixture("avatar", "forza.jpg", 128, 128)
         val previews = List(4) { i -> fixture("preview-$i", "forza-hero.jpg", 640, 360) }
         val body = "Explore as estradas, descubra paisagens e participe de corridas. ".repeat(50)
         val view = GameDashboardView(activity, GameLibrary(activity, "selection"), { played = it }, {}, {}, {},
@@ -252,8 +256,13 @@ class DashboardTest {
             }, onLoadGameProgress = {
                 assertEquals("42", it)
                 progressLoads++
-                XboxGameProgress(430, 800, 6, 15, listOf(XboxAchievement("Primeira corrida", 20, null)))
-            }, onGameOptions = { options = it }, onStoreProduct = { openedStore = it })
+                XboxGameProgress(430, 800, 6, 15, listOf(XboxAchievement("Primeira corrida", 20, null, "Vença uma corrida.")))
+            }, onGameOptions = { options = it }, onStoreProduct = { openedStore = it },
+            onLoadFriends = {
+                listOf(XboxFriend("7", "Corredor", FriendPresence.ONLINE, null, "42", friendAvatar),
+                    XboxFriend("8", "Em outro jogo", FriendPresence.ONLINE, null, "43"),
+                    XboxFriend("9", "Fora de linha", FriendPresence.OFFLINE, null, "42"))
+            })
         activity.setContentView(view)
         view.setGames(games + (12..260).map {
             GameTitle("cloud-$it", "Jogo $it", "TESTGAME%04d".format(it), posterUrl = poster.takeIf { _ -> it == 260 },
@@ -282,6 +291,8 @@ class DashboardTest {
         assertEquals(View.VISIBLE, progress.visibility)
         assertEquals(View.GONE, description.visibility)
         assertEquals("430 / 800   ·   53%", details.body.findViewWithTag<TextView>("game-progress-score").text.toString())
+        assertTrue(details.body.allViews.filterIsInstance<TextView>().any { it.text.toString() == "Corredor" })
+        assertFalse(details.body.allViews.filterIsInstance<TextView>().any { it.text.toString() == "Em outro jogo" })
         details.body.findViewWithTag<View>("game-progress-refresh").performClick()
         assertEquals(2, progressLoads)
         assertTrue(gallery.height > 0)
@@ -296,12 +307,17 @@ class DashboardTest {
         val blurred = (backdrop.drawable as android.graphics.drawable.BitmapDrawable).bitmap
         assertEquals(144, blurred.width)
         assertTrue(blurred.height <= 96)
+        layout(root, 1280, 600)
         val bitmap = android.graphics.Bitmap.createBitmap(root.width, root.height, android.graphics.Bitmap.Config.ARGB_8888)
         root.draw(android.graphics.Canvas(bitmap))
         File("build/reports/dashboard/game-details-wide.png").apply { parentFile!!.mkdirs() }.outputStream().use {
             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
         bitmap.recycle()
+        details.body.findViewWithTag<View>("game-progress-all").performClick()
+        val achievements = org.robolectric.shadows.ShadowDialog.getLatestDialog() as com.xcloud.tclnative.ui.dashboard.ConsoleDialog
+        assertTrue(achievements.body.allViews.filterIsInstance<TextView>().any { it.text.contains("Vença uma corrida.") })
+        achievements.dismiss()
         details.panel.findViewWithTag<View>("game-details-progress").performClick()
         layout(root, 1280, 600)
         assertEquals(View.GONE, progress.visibility)
@@ -314,7 +330,7 @@ class DashboardTest {
         details.panel.findViewWithTag<View>("game-details-shortcut").performClick()
         assertEquals("cloud-260", shortcut?.titleId)
         assertTrue(details.isShowing)
-        confirmGameDetailsPlay()
+        details.panel.findViewWithTag<View>("game-details-play").performClick()
         assertEquals("cloud-260", played?.titleId)
         view.close(); controller.pause().stop().destroy()
     }

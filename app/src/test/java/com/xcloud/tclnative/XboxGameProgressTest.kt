@@ -19,9 +19,12 @@ class XboxGameProgressTest {
             """.trimIndent()))
             server.enqueue(MockResponse().setBody("""
                 {"achievements":[
-                    {"id":"b","name":"Mais recente","progressState":"Achieved","progression":{"timeUnlocked":"2025-02-01T12:00:00Z"},
+                    {"id":"b","name":"Mais recente","description":"Vença a corrida.","progressState":"Achieved","progression":{"timeUnlocked":"2025-02-01T12:00:00Z"},
                      "mediaAssets":[{"type":"Icon","url":"https://example.test/recent.png"}],"rewards":[{"type":"Gamerscore","value":"10"}]},
-                    {"id":"c","name":"Bloqueada","progressState":"InProgress","rewards":[{"type":"Gamerscore","value":"30"}]}
+                    {"id":"c","name":"Bloqueada","progressState":"InProgress","lockedDescription":"Termine três corridas.",
+                     "rewards":[{"type":"Gamerscore","value":"30"}]},
+                    {"id":"secret","name":"Spoiler","isSecret":true,"description":"Spoiler","lockedDescription":"Spoiler",
+                     "progressState":"NotStarted"}
                 ],"pagingInfo":{"continuationToken":null}}
             """.trimIndent()))
             val service = XboxGameProgressService(endpoint = server.url("/").toString().trimEnd('/'))
@@ -29,9 +32,12 @@ class XboxGameProgressTest {
             assertEquals(30, result.gamerscore)
             assertEquals(60, result.totalGamerscore)
             assertEquals(2, result.achievements)
-            assertEquals(3, result.totalAchievements)
+            assertEquals(4, result.totalAchievements)
             assertEquals(listOf("Mais recente", "Primeira"), result.recent.map { it.name })
             assertEquals("https://example.test/recent.png", result.recent.first().iconUrl)
+            assertEquals("Vença a corrida.", result.recent.first().description)
+            assertEquals("Termine três corridas.", result.all.first { it.name == "Bloqueada" }.description)
+            assertTrue(result.all.any { !it.unlocked && it.name.isEmpty() && it.description == null })
             val first = server.takeRequest()
             assertEquals("2", first.getHeader("x-xbl-contract-version"))
             assertEquals("42", first.requestUrl!!.queryParameter("titleId"))

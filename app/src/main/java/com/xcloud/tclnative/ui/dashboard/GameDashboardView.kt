@@ -55,6 +55,8 @@ import com.xcloud.tclnative.catalog.OwnershipFilter
 import com.xcloud.tclnative.catalog.StoreGameDetails
 import com.xcloud.tclnative.catalog.XboxGameProgress
 import com.xcloud.tclnative.catalog.normalizeXboxTitleId
+import com.xcloud.tclnative.catalog.XboxFriend
+import com.xcloud.tclnative.catalog.FriendPresence
 import com.xcloud.tclnative.catalog.ownershipProductKey
 import com.xcloud.tclnative.signaling.GameTitle
 import kotlinx.coroutines.CoroutineScope
@@ -88,7 +90,8 @@ class GameDashboardView(
     private val onLoadGameDetails: (suspend (String) -> StoreGameDetails?)? = null,
     private val onLoadGameProgress: (suspend (String) -> XboxGameProgress?)? = null,
     private val onGameOptions: ((GameTitle) -> Unit)? = null,
-    private val onStoreProduct: ((String) -> Unit)? = null
+    private val onStoreProduct: ((String) -> Unit)? = null,
+    private val onLoadFriends: (suspend () -> List<XboxFriend>)? = null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -1148,6 +1151,7 @@ class GameDashboardView(
         val product = (card.product?.productId ?: game?.productId)?.takeIf { it.matches(Regex("[A-Za-z0-9]{12}")) }
         val title = normalizeXboxTitleId(game?.xboxTitleId)
         val loader = onLoadGameProgress
+        val friends = onLoadFriends
         val favorite = game != null && library.isFavorite(game.titleId)
         val dialog = GameDetailsPanel(context, card, scope, onLoadGameDetails,
             onPlay = { playCard(card) },
@@ -1156,7 +1160,10 @@ class GameDashboardView(
             onStore = if (product != null && store != null) ({ store(product) }) else null,
             onFavorite = if (game != null) ({ changeFavorite(game) }) else null,
             initialFavorite = favorite,
-            loadProgress = if (title != null && loader != null) ({ loader(title) }) else null
+            loadProgress = if (title != null && loader != null) ({ loader(title) }) else null,
+            loadFriends = if (title != null && friends != null) ({
+                friends().filter { it.presence == FriendPresence.ONLINE && it.xboxTitleId == title }
+            }) else null
         ).dialog
         gameDetails = dialog
         dialog.setOnDismissListener {

@@ -11,6 +11,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -40,7 +42,6 @@ import com.xcloud.tclnative.catalog.withMetadataFallback
 import java.io.File
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.signaling.SessionTimeLimit
-import com.xcloud.tclnative.touch.MinecraftDungeonsTouchLayout
 import com.xcloud.tclnative.touch.OfficialTouchLoad
 import com.xcloud.tclnative.touch.OfficialTouchSession
 import com.xcloud.tclnative.net.CloudHttpException
@@ -355,6 +356,9 @@ open class MainActivity : Activity() {
                 }
                 if (::sessionStartNotice.isInitialized) {
                     val params = sessionStartNotice.layoutParams as FrameLayout.LayoutParams
+                    val inset = (16 * resources.displayMetrics.density).toInt()
+                    params.leftMargin = inset + cutout.left
+                    params.rightMargin = inset + cutout.right
                     params.bottomMargin = (18 * resources.displayMetrics.density).toInt() + cutout.bottom
                     sessionStartNotice.layoutParams = params
                 }
@@ -421,6 +425,8 @@ open class MainActivity : Activity() {
         sessionStartNotice = SessionStartNotice(this)
         rootLayout.addView(sessionStartNotice, FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
             bottomMargin = (18 * density).toInt() + displayCutout.bottom
+            leftMargin = (16 * density).toInt() + displayCutout.left
+            rightMargin = (16 * density).toInt() + displayCutout.right
         })
         rootLayout.addView(networkIndicator)
         transitionPanel=SessionTransitionView(this)
@@ -695,7 +701,8 @@ open class MainActivity : Activity() {
                     SessionOptionsPanel(this@MainActivity,sessionOptionsStore(session),
                         session.regions,game.titleId,game.name) {}.show()
                 },
-                onStoreProduct={ id -> openAccountPage("https://www.xbox.com/pt-BR/games/store/game/$id") })
+                onStoreProduct={ id -> openAccountPage("https://www.xbox.com/pt-BR/games/store/game/$id") },
+                onLoadFriends={ loadXboxFriends(session) })
             dashboard = view
             controlPanel.removeAllViews()
             controlPanel.setPadding(0, 0, 0, 0)
@@ -1412,9 +1419,7 @@ open class MainActivity : Activity() {
             touchView.installOfficialControls(null)
             return false
         }
-        val dungeonsOverlay = layout.id != null && layout.controls.isNotEmpty() && currentTouchMode == TouchMode.NATIVE &&
-            activeGame?.let(MinecraftDungeonsTouchLayout::appliesTo) == true
-        if ((currentTouchMode == TouchMode.OFF || dungeonsOverlay) && !enableGameHud(keepOfficial = true)) return false
+        if (currentTouchMode == TouchMode.OFF && !enableGameHud(keepOfficial = true)) return false
         touchView.installOfficialControls(layout)
         return true
     }
@@ -1641,16 +1646,21 @@ open class MainActivity : Activity() {
         if (resolution.width <= 1280) com.xcloud.tclnative.webrtc.StreamResolution.HD_720
         else com.xcloud.tclnative.webrtc.StreamResolution.HD_1080
 
+    private suspend fun loadXboxFriends(account: XCloudSession): List<com.xcloud.tclnative.catalog.XboxFriend> {
+        check(currentSession === account)
+        val authorization = authenticator.loadXboxSocialAuthorization().getOrThrow()
+        check(currentSession === account)
+        val snapshot = com.xcloud.tclnative.catalog.XboxFriendsService().load(authorization, UiText.locale.toLanguageTag())
+        check(currentSession === account)
+        return snapshot
+    }
+
     private fun showFriends(onBack: () -> Unit) {
         val account=currentSession ?: return
         friendsPanel?.close()
         val valid={ currentSession===account && activityVisible && !isFinishing && !isDestroyed }
         friendsPanel=com.xcloud.tclnative.ui.dashboard.FriendsPanel(this,mainScope,
-            load={
-                val authorization=authenticator.loadXboxSocialAuthorization().getOrThrow()
-                check(currentSession===account) { "SOCIAL_ACCOUNT_CHANGED" }
-                com.xcloud.tclnative.catalog.XboxFriendsService().load(authorization,UiText.locale.toLanguageTag())
-            },games={ currentGames },valid=valid,play={ game ->
+            load={ loadXboxFriends(account) },games={ currentGames },valid=valid,play={ game ->
                 fun launch() { if(valid()) currentSignaling?.let { chooseLaunchMode(it,game) } }
                 if(activeGame!=null && !sessionSaved) ConsoleDialogs.message(this,UiText.text("Abrir jogo na nuvem"),
                     UiText.text("A partida atual será encerrada para abrir {0} na sua própria sessão.",UiText.nested(game.name)),listOf(
@@ -1822,7 +1832,12 @@ open class MainActivity : Activity() {
         ) else playbackProfile
         sessionSettings=settings
         val storedOptions = currentSession?.let { sessionOptionsStore(it).read(if (remote) null else titleId) } ?: SessionOptions()
-        val sessionOptions = if (remote) SessionOptions(locale = storedOptions.locale) else storedOptions
+        val sessionOptions = when {
+            remote -> SessionOptions(locale = storedOptions.locale)
+            storedOptions.dns == SessionDnsPreference.ADAPTIVE && mustUseSystemDns() ->
+                storedOptions.copy(dns = SessionDnsPreference.SYSTEM)
+            else -> storedOptions
+        }
         sessionDesktopMode=if(settings.desktopInput==DesktopInputMode.NATIVE && !DesktopKeys.nativeSupported(game.supportedInputTypes)) {
             Toast.makeText(this,UiText.text("Este jogo não anunciou mouse e teclado nativos. Use emulação ou controle."),Toast.LENGTH_LONG).show()
             DesktopInputMode.OFF
@@ -1849,8 +1864,6 @@ open class MainActivity : Activity() {
             remote -> if (choice != TouchMode.OFF && inputDevice.touchDevice) TouchMode.VIRTUAL else TouchMode.OFF
             sessionDesktopMode!=DesktopInputMode.OFF -> TouchMode.OFF
             preferHybrid -> TouchMode.NATIVE
-            choice == TouchMode.AUTO && inputDevice.touchDevice && game.offersOfficialTouch() &&
-                MinecraftDungeonsTouchLayout.appliesTo(game) -> TouchMode.VIRTUAL
             else -> DeviceInputPolicy.resolve(inputDevice,choice,game)
         }
         val official = if (!remote && inputDevice.touchDevice && sessionDesktopMode==DesktopInputMode.OFF &&
@@ -2020,7 +2033,7 @@ open class MainActivity : Activity() {
                             TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}"
                             else -> ""
                         } + "\n${joystickDispatch.diagnostics()}\n${rumble.diagnostics()}\n${gyro.diagnostics()}\n" +
-                        signaling.keepAliveDiagnostics() +
+                        signaling.keepAliveDiagnostics() + "\n" + signaling.dnsDiagnostics() +
                         "\nMKB/${sessionDesktopMode.name}; capture=$desktopCaptured; " +
                         "androidCapture=${Build.VERSION.SDK_INT >= 26 && window.decorView.hasPointerCapture()}"
                 }
@@ -2324,6 +2337,14 @@ open class MainActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun mustUseSystemDns(): Boolean {
+        val manager = getSystemService(ConnectivityManager::class.java) ?: return true
+        val network = manager.activeNetwork ?: return true
+        return manager.defaultProxy != null ||
+            manager.getNetworkCapabilities(network)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) == true ||
+            (Build.VERSION.SDK_INT >= 28 && manager.getLinkProperties(network)?.isPrivateDnsActive == true)
     }
 
     private fun beginLoading(game: GameTitle, remote: Boolean = false) {

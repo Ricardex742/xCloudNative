@@ -4,25 +4,30 @@ import android.content.Context
 import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import com.xcloud.tclnative.catalog.CatalogCard
 import com.xcloud.tclnative.catalog.StoreGameDetails
 import com.xcloud.tclnative.catalog.XboxGameProgress
+import com.xcloud.tclnative.catalog.XboxFriend
 import com.xcloud.tclnative.i18n.UiText
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
 
 internal class GameDetailsPanel(
-    context: Context,
-    card: CatalogCard,
+    private val context: Context,
+    private val card: CatalogCard,
     private val scope: CoroutineScope,
     loadDetails: (suspend (String) -> StoreGameDetails?)?,
     onPlay: () -> Unit,
@@ -31,7 +36,8 @@ internal class GameDetailsPanel(
     onStore: (() -> Unit)? = null,
     onFavorite: (suspend () -> Boolean?)? = null,
     initialFavorite: Boolean = false,
-    loadProgress: (suspend () -> XboxGameProgress?)? = null
+    loadProgress: (suspend () -> XboxGameProgress?)? = null,
+    loadFriends: (suspend () -> List<XboxFriend>)? = null
 ) {
     val dialog = ConsoleDialog(context, card.name, ConsolePanelPurpose.GAME_DETAILS)
     private val artwork = PosterLoader(context, scope, maxConcurrent = 2)
@@ -53,6 +59,7 @@ internal class GameDetailsPanel(
         setLineSpacing(0f, 1.15f)
     }
     private val infoTitle = dialog.text(UiText.text("Descrição"), if (wide) 24 else 19, true)
+    private val friends = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
     private var chosePanel = false
     private var progressVisible = false
     private var progressButton: TextView? = null
@@ -79,10 +86,10 @@ internal class GameDetailsPanel(
             val inset = dialog.px(if (wide) 16 else 14)
             setPadding(inset, inset, inset, inset)
         }
-        information.addView(infoTitle,
-            LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dialog.px(12) })
         val content = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
+            addView(friends, -1, -2)
+            addView(infoTitle, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dialog.px(12) })
             addView(description, -1, -2)
             progress?.body?.let {
                 it.visibility = View.GONE
@@ -169,13 +176,58 @@ internal class GameDetailsPanel(
         val job = if (product != null && loadDetails != null) scope.launch {
             render(loadDetails(product))
         } else null
+        val friendsJob = loadFriends?.let { loader ->
+            scope.launch {
+                try {
+                    withTimeoutOrNull(12_000) { loader() }?.takeIf { it.isNotEmpty() }?.let(::renderFriends)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) { /* Presence is optional for the game card. */ }
+            }
+        }
         dialog.addCleanup {
             job?.cancel()
+            friendsJob?.cancel()
             backgroundJob?.cancel()
             artwork.cancel(backgroundSource)
             artwork.close()
         }
         progress?.refresh()
+    }
+
+    private fun renderFriends(playing: List<XboxFriend>) {
+        friends.visibility = View.VISIBLE
+        friends.addView(dialog.text(UiText.text("Amigos jogando agora"), 17, true))
+        for (friend in playing.take(3)) {
+            val size = dialog.px(55)
+            val row = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
+            val avatar = FrameLayout(context).apply {
+                background = GradientDrawable().apply {
+                    shape = GradientDrawable.OVAL
+                    setColor(DashboardTheme.accent)
+                }
+                clipToOutline = true
+            }
+            avatar.addView(dialog.text(friend.gamertag.take(1), 21, true).apply { gravity = Gravity.CENTER },
+                FrameLayout.LayoutParams(-1, -1))
+            val image = FixedArtworkView(context).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
+            avatar.addView(image, FrameLayout.LayoutParams(-1, -1))
+            artwork.load(image, friend.avatarUrl, 128, 128)
+            row.addView(avatar, LinearLayout.LayoutParams(size, size).apply { marginEnd = dialog.px(9) })
+            val labels = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(dialog.text(friend.gamertag, 17, true))
+                addView(dialog.text(card.name, 15))
+            }
+            row.addView(labels, LinearLayout.LayoutParams(0, -2, 1f))
+            friends.addView(row, LinearLayout.LayoutParams(-1, -2).apply {
+                topMargin = dialog.px(7)
+                bottomMargin = dialog.px(10)
+            })
+        }
     }
 
     private val unavailableDescription get() = UiText.text("Detalhes da loja indisponíveis.")
@@ -189,7 +241,7 @@ internal class GameDetailsPanel(
 
     private fun tile(color: Int) = GradientDrawable().apply {
         setColor(color)
-        cornerRadius = dialog.px(12).toFloat()
+        cornerRadius = dialog.px(5).toFloat()
     }
 
     private fun image(url: String, width: Int, height: Int, mode: ImageView.ScaleType) =

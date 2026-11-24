@@ -15,7 +15,13 @@ internal class SessionStartNotice(context: Context) : LinearLayout(context) {
     private val time = LocalizedTextView(context).apply {
         setTextColor(0xffc3d3cf.toInt())
         textSize = 13f
-        maxWidth = (320 * density).roundToInt()
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        val maxWidth = (368 * density).roundToInt()
+        val available = if (MeasureSpec.getMode(widthMeasureSpec) == MeasureSpec.UNSPECIFIED) maxWidth
+            else minOf(MeasureSpec.getSize(widthMeasureSpec), maxWidth)
+        super.onMeasure(MeasureSpec.makeMeasureSpec(available, MeasureSpec.AT_MOST), heightMeasureSpec)
     }
     private val dismiss = Runnable { visibility = View.GONE }
 

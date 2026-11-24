@@ -8,6 +8,12 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import com.xcloud.tclnative.settings.TouchMode
+import com.xcloud.tclnative.signaling.GameTitle
+import com.xcloud.tclnative.touch.HudBinding
+import com.xcloud.tclnative.touch.HudElement
+import com.xcloud.tclnative.touch.OfficialTouchAppearance
+import com.xcloud.tclnative.touch.OfficialTouchLayout
+import com.xcloud.tclnative.touch.OfficialTouchStyle
 import com.xcloud.tclnative.ui.GameTouchView
 import com.xcloud.tclnative.webrtc.*
 import org.junit.Assert.*
@@ -86,6 +92,35 @@ class TouchUiTest {
         pointer(view,MotionEvent.ACTION_CANCEL,800f,500f)
         assertEquals(listOf(1,2,1,2),events.map { it.type })
         controller.pause().stop().destroy()
+    }
+    @Test fun dungeonsShortTapSurvivesArtworkPatchesAndVideoTouchSurvivesLayoutSwitches() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            var state = GamepadState()
+            val events = mutableListOf<NativePointer>()
+            val view = GameTouchView(activity.get(), { state = it }, { events.addAll(it) }, { x, y -> x / 1280 to y / 720 }, {})
+            activity.get().setContentView(view)
+            view.configure(TouchMode.NATIVE, GameTitle("dungeons", "Minecraft Dungeons"))
+            layout(view)
+            val style = OfficialTouchStyle()
+            val appearance = OfficialTouchAppearance(style, style, enabled = true)
+            val attack = HudElement("sword", "A", .8f, .5f, .07f, binding = HudBinding.A, officialAppearance = appearance)
+            view.installOfficialControls(OfficialTouchLayout("adventure", listOf(attack)))
+            pointer(view, MotionEvent.ACTION_DOWN, 1024f, 360f)
+            view.installOfficialControls(OfficialTouchLayout("adventure",
+                listOf(attack.copy(officialAppearance = appearance.copy(idle = style.copy(opacity = .6f))))))
+            assertEquals(HudBinding.A.button, state.buttons)
+            pointer(view, MotionEvent.ACTION_UP, 1024f, 360f)
+            assertEquals(HudBinding.A.button, state.buttons)
+            shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(70))
+            assertEquals(0, state.buttons)
+            assertTrue(events.isEmpty())
+
+            pointer(view, MotionEvent.ACTION_DOWN, 640f, 360f)
+            view.installOfficialControls(OfficialTouchLayout("map", emptyList()))
+            pointer(view, MotionEvent.ACTION_UP, 640f, 360f)
+            assertEquals(listOf(1, 2), events.map { it.type })
+        } finally { activity.pause().stop().destroy() }
     }
     @Test fun phoneWithoutPressureSensorStillSendsAnActiveNativeFinger() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()

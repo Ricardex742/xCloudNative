@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 enum class FriendPresence { ONLINE, AWAY, OFFLINE, UNKNOWN }
 
 data class XboxFriend(val xuid: String,val gamertag: String,val presence: FriendPresence,
-                      val activity: String?,val xboxTitleId: String?) {
+                      val activity: String?,val xboxTitleId: String?,val avatarUrl: String? = null) {
     /** Identity matching only: a similar display name does not establish a game license or title. */
     fun cloudGame(games: List<GameTitle>): GameTitle? = xboxTitleId?.let { id ->
         games.firstOrNull { normalizeXboxTitleId(it.xboxTitleId)==id }
@@ -52,7 +52,8 @@ object XboxFriends {
             fun text(value: String?)=value?.trim()?.takeIf { it.isNotEmpty() && it!="null" }?.take(300)
             val activity=primary?.let { text(it.optString("RichPresenceText")) ?: text(it.optString("PresenceText")) }
                 ?: text(person.optString("presenceText"))
-            XboxFriend(xuid,tag,state,activity,primary?.let { normalizeXboxTitleId(it.optString("TitleId")) })
+            val avatar = CatalogService.imageUrl(text(person.optString("displayPicRaw")))
+            XboxFriend(xuid,tag,state,activity,primary?.let { normalizeXboxTitleId(it.optString("TitleId")) },avatar)
         }.distinctBy { it.xuid }.sortedWith(compareBy<XboxFriend> { it.presence.ordinal }.thenBy { it.gamertag.lowercase(Locale.ROOT) })
     }
 }

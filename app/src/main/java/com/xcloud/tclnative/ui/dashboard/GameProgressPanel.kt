@@ -8,6 +8,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import com.xcloud.tclnative.catalog.XboxAchievement
 import com.xcloud.tclnative.catalog.XboxGameProgress
 import com.xcloud.tclnative.i18n.UiText
 import kotlinx.coroutines.CancellationException
@@ -38,6 +39,10 @@ internal class GameProgressPanel(
     private val recentTitle = dialog.text(UiText.text("Conquistas recentes"), 17, true)
     private val recent = LinearLayout(context).apply { weightSum = 4f }
     private val images = mutableListOf<ImageView>()
+    private var achievements = emptyList<XboxAchievement>()
+    private val allButton = dialog.keyButton(UiText.text("Ver todas as conquistas")) { showAll() }.apply {
+        tag = "game-progress-all"
+    }
     private var request: Job? = null
     val refreshButton: TextView = dialog.keyButton(UiText.text("Atualizar"), ::refresh).apply {
         tag = "game-progress-refresh"
@@ -54,6 +59,7 @@ internal class GameProgressPanel(
         summary.addView(count, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dialog.px(12) })
         summary.addView(recentTitle, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dialog.px(14) })
         summary.addView(recent, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dialog.px(8) })
+        summary.addView(allButton, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dialog.px(8) })
         dialog.addCleanup { request?.cancel() }
     }
 
@@ -86,6 +92,8 @@ internal class GameProgressPanel(
     }
 
     private fun render(result: XboxGameProgress) {
+        achievements = result.all
+        allButton.visibility = if (achievements.isEmpty()) View.GONE else View.VISIBLE
         status.visibility = View.GONE
         summary.visibility = View.VISIBLE
         bar.visibility = if (result.totalGamerscore > 0) View.VISIBLE else View.GONE
@@ -101,10 +109,15 @@ internal class GameProgressPanel(
         for ((index, entry) in result.recent.withIndex()) {
             val label = entry.name.ifBlank { UiText.text("Conquista") }
             val badge = FrameLayout(context).apply {
-                background = DashboardTheme.panel(dialog.px(7).toFloat())
+                background = DashboardTheme.panel(dialog.px(4).toFloat())
                 contentDescription = label
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
                 if (android.os.Build.VERSION.SDK_INT >= 26) tooltipText = label
+                isFocusable = true
+                setOnClickListener { ConsoleDialogs.message(context, label, description(entry)) }
+                setOnFocusChangeListener { view, focused ->
+                    view.alpha = if (focused) .78f else 1f
+                }
             }
             badge.addView(dialog.text("+${entry.gamerscore} G", 16, true).apply {
                 gravity = Gravity.CENTER
@@ -123,5 +136,30 @@ internal class GameProgressPanel(
                 if (index > 0) marginStart = dialog.px(6)
             })
         }
+    }
+
+    private fun description(entry: XboxAchievement): String =
+        (entry.description ?: UiText.text("Descrição indisponível.")) + "\n\n" + points(entry)
+
+    private fun points(entry: XboxAchievement): String = UiText.text("{0} G · {1}", UiText.nested(entry.gamerscore),
+        UiText.nested(if (entry.unlocked) UiText.text("Desbloqueada") else UiText.text("Bloqueada")))
+
+    private fun showAll() {
+        val list = achievements
+        val panel = ConsoleDialog(context, UiText.text("Conquistas"))
+        fun render(page: Int) {
+            panel.body.removeAllViews()
+            list.drop(page * 24).take(24).forEach { entry ->
+                val name = entry.name.ifBlank { UiText.text("Conquista") }
+                panel.addSection(name)
+                panel.body.addView(panel.text(description(entry), 18))
+            }
+            if (page > 0) panel.body.addView(panel.keyButton(UiText.text("Página anterior")) { render(page - 1) })
+            if ((page + 1) * 24 < list.size)
+                panel.body.addView(panel.keyButton(UiText.text("Próxima página")) { render(page + 1) })
+        }
+        render(0)
+        panel.addAction(UiText.text("Fechar")) {}
+        panel.show()
     }
 }
