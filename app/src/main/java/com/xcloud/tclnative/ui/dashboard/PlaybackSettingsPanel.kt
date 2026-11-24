@@ -28,7 +28,7 @@ class PlaybackSettingsPanel(
     private val changed: (PlaybackSettings) -> Unit,
     private val subscription: () -> Unit,
     private val refresh: () -> Unit,
-    private val logout: () -> Unit,
+    private val switchAccount: () -> Unit,
     private val testRumble: () -> Unit = {},
     private val homeShortcuts: () -> Unit = {},
     private val lastReport: () -> Unit = {},
@@ -47,7 +47,8 @@ class PlaybackSettingsPanel(
     private val microphoneLabel: () -> String={ UiText.text("Ativar microfone") },
     private val liveVideoMode: VideoMode?=null,
     private val liveGyro: Boolean=false,
-    private val videoMemoryInformation: () -> String? = { null }
+    private val videoMemoryInformation: () -> String? = { null },
+    private val buyHours: (() -> Unit)? = null
 ) {
     private var videoSection=0
     private var currentPage=SettingsPage.ROOT
@@ -377,9 +378,11 @@ class PlaybackSettingsPanel(
         dialog.addCleanup { job.cancel() }
     }
     fun showAccount(): ConsoleDialog = category(SettingsPage.ACCOUNT,UiText.text("Conta e amigos"),listOfNotNull(
+        if(allowAccountChanges) ConsoleAction(UiText.text("Trocar conta"),switchAccount) else null,
         friends?.let { ConsoleAction(UiText.text("Amigos"),it) },
         gameShortcut?.let { ConsoleAction(UiText.text("Atalho do jogo selecionado"),it) },
         ConsoleAction(UiText.text("Atalhos dos favoritos"),homeShortcuts),ConsoleAction(UiText.text("Gerenciar assinatura Microsoft"),subscription),
+        buyHours?.let { ConsoleAction(UiText.text("Comprar horas de jogo"), it) },
         ConsoleAction(UiText.text("Atualizar tempo restante")) { refreshPlaytime();showAccount() },
         ConsoleAction(UiText.text("Detalhes do tempo restante")) {
             ConsoleDialogs.message(context,UiText.text("Detalhes do tempo restante"),playtimeInformation(),
@@ -391,8 +394,7 @@ class PlaybackSettingsPanel(
                 ?: UiText.text("Catálogos oficiais com disponibilidade sujeita à conta, à região e às condições do serviço."),
                 listOf(ConsoleAction(UiText.text("Voltar")) { showAccount() }),onCancel={ showAccount() })
         },
-        if(allowAccountChanges) ConsoleAction(UiText.text("Atualizar catálogo"),refresh) else null,
-        if(allowAccountChanges) ConsoleAction(UiText.text("Trocar conta"),logout) else null
+        if(allowAccountChanges) ConsoleAction(UiText.text("Atualizar catálogo"),refresh) else null
     ))
     private fun save(base: PlaybackSettings, settings: PlaybackSettings, after: () -> Unit = { open(currentPage) }) {
         changed(store.update(base,settings))

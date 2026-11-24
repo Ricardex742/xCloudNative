@@ -8,7 +8,9 @@ import android.widget.*
 import com.xcloud.tclnative.i18n.*
 import com.xcloud.tclnative.settings.*
 import com.xcloud.tclnative.ui.dashboard.*
+import com.xcloud.tclnative.ui.streamingHoursPurchaseUrl
 import com.xcloud.tclnative.webrtc.*
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -18,12 +20,54 @@ import org.robolectric.annotation.*
 import org.robolectric.shadows.ShadowDialog
 import org.robolectric.shadows.ShadowToast
 import java.io.File
+import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[28],qualifiers="w1280dp-h720dp-land-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class SessionToolsUiTest {
+    @Test fun cloudHoursPurchasesOpenTheOfficialXboxCheckoutInTheSelectedMarket() {
+        val free = streamingHoursPurchaseUrl(Locale("pt", "BR"), "FREE").toHttpUrl()
+        assertEquals("https", free.scheme)
+        assertEquals("www.xbox.com", free.host)
+        assertEquals("/pt-BR/external/streaming-hours", free.encodedPath)
+        assertEquals("edgewater_xgpnosub", free.queryParameter("partnerid"))
+        val ultimate = streamingHoursPurchaseUrl(Locale.US, "ULTIMATE").toHttpUrl()
+        assertEquals("edgewater_xgpusub", ultimate.queryParameter("partnerid"))
+        assertEquals(setOf("partnerid", "campaignId", "clientType", "v", "t"), ultimate.queryParameterNames)
+    }
+
+    @Test fun bothGameMenusShowADeadlineThatArrivesWhileTheyAreOpen() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        activity.setContentView(FrameLayout(activity))
+        var remaining: Long? = null
+        val dialog = GameMenuPanel.show(activity, emptyList(), {}, remainingSeconds = { remaining })
+        val toolbar = GameShortcutBar(activity, emptyList(), GameShortcutBar.Position(), Rect(), {}, {}, remainingSeconds = { remaining })
+        try {
+            val main = shadowOf(Looper.getMainLooper())
+            val sessionTime = all(dialog.body).filterIsInstance<SessionTimeLabel>().single()
+            main.idle()
+            assertEquals("Tempo da sessão não informado", sessionTime.text.toString())
+            remaining = 3665
+            main.idleFor(java.time.Duration.ofSeconds(1))
+            assertEquals("Tempo restante na sessão: 1:01:05", sessionTime.text.toString())
+            dialog.dismiss()
+            toolbar.show()
+            main.idle()
+            val shortcutTime = all(toolbar.window!!.decorView).filterIsInstance<SessionTimeLabel>().single()
+            assertEquals("Tempo restante na sessão: 1:01:05", shortcutTime.text.toString())
+            remaining = 65
+            main.idleFor(java.time.Duration.ofSeconds(1))
+            assertEquals("Tempo restante na sessão: 1:05", shortcutTime.text.toString())
+        } finally {
+            toolbar.dismiss()
+            dialog.dismiss()
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun sessionStartNoticeDisplaysConfirmedTimeAndDisappearsAfterFiveSeconds() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val activity = controller.get()

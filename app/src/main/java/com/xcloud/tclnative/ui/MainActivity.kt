@@ -170,6 +170,8 @@ open class MainActivity : Activity() {
     private var loadOfficialTouch: (() -> Unit)? = null
     private lateinit var sessionTimeView: TextView
     private lateinit var sessionStartNotice: SessionStartNotice
+    private var activeSessionTime: SessionTimeLimit? = null
+    private var accountSwitchJob: Job? = null
     private val dismissSessionTimeNotice = Runnable { sessionTimeView.visibility = View.GONE }
     private lateinit var guideTouchControls: GuideTouchControls
     private var currentTouchMode=TouchMode.OFF
@@ -470,6 +472,7 @@ open class MainActivity : Activity() {
     }
 
     private fun launchPendingShortcut(): Boolean {
+        if (accountSwitchJob?.isActive == true) return false
         val signaling = currentSignaling ?: return false // Login/catalog loading retain the pending game.
         if (pendingLaunch.titleId == null) return false
         val game = pendingLaunch.consume(currentGames)
@@ -514,7 +517,7 @@ open class MainActivity : Activity() {
 
     internal fun hasPlaybackBehindPanels() = sessionSettings != null && activeGame != null && !sessionSaved
 
-    private fun renderLoginMenu() {
+    private fun renderLoginMenu(backFromQr: (() -> Unit)? = null) {
         if (sessionSaved) {
             playback.cancel()
             activeGame = null
@@ -546,9 +549,10 @@ open class MainActivity : Activity() {
             FrameLayout.LayoutParams.MATCH_PARENT)
         val view = ConsoleLoginView(this,
             signIn = { startDeviceCodeLoginFlow(openInBrowser = false) },
-            back = { if (loginView?.isQr == true) renderLoginMenu() else showExitDialog() },
+            back = { if (loginView?.isQr == true) backFromQr?.invoke() ?: renderLoginMenu() else showExitDialog() },
             openApproval = ::openAccountPage,
-            browserSignIn = { startDeviceCodeLoginFlow(openInBrowser = true) })
+            browserSignIn = { startDeviceCodeLoginFlow(openInBrowser = true) },
+            savedAccounts = if (authenticator.savedAccounts().isNotEmpty()) ({ showAccountSwitcher {} }) else null)
         loginView = view
         controlPanel.addView(view, LinearLayout.LayoutParams(-1,-1))
         controlPanel.visibility = View.VISIBLE
@@ -613,6 +617,55 @@ open class MainActivity : Activity() {
             }.onFailure { error ->
                 if (loginView === view) view.showError(UiText.text("Não foi possível gerar o QR Code. {0}",UiText.nested(error.message.orEmpty())))
             }
+        }
+    }
+
+    private fun showAccountSwitcher(back: () -> Unit) {
+        if (activeGame != null) return
+        val accounts = authenticator.savedAccounts()
+        val current = accounts.firstOrNull { it.active }
+        val actions = accounts.mapIndexed { index, account ->
+            val name = account.name ?: UiText.text("Conta {0}", UiText.nested(index + 1))
+            ConsoleAction(if (account.active) "✓ $name" else name) {
+                if (account.active && currentSession != null && dashboard != null) back()
+                else switchToSavedAccount(account.id)
+            }
+        } + listOfNotNull(
+            ConsoleAction(UiText.text("Adicionar conta")) {
+                val backFromQr = current?.let { account -> { switchToSavedAccount(account.id) } }
+                renderLoginMenu(backFromQr)
+                startDeviceCodeLoginFlow(openInBrowser = InputDeviceProfile.read(this).touchDevice)
+            },
+            current?.let {
+                ConsoleAction(UiText.text("Sair desta conta")) {
+                    ConsoleDialogs.message(this, UiText.text("Sair desta conta"),
+                        UiText.text("Remover o login desta conta do aparelho?"), listOf(
+                            ConsoleAction(UiText.text("Cancelar")) { showAccountSwitcher(back) },
+                            ConsoleAction(UiText.text("Sair")) {
+                                authenticator.clearSession()
+                                renderLoginMenu()
+                                syncHomeShortcuts()
+                            }), onCancel = { showAccountSwitcher(back) })
+                }
+            }
+        )
+        ConsoleDialogs.menu(this, UiText.text("Trocar conta"), actions, back)
+    }
+
+    private fun switchToSavedAccount(id: String) {
+        if (activeGame != null || accountSwitchJob?.isActive == true) return
+        qrPollingJob?.cancel()
+        renderSessionRestore()
+        accountSwitchJob = mainScope.launch {
+            if (!authenticator.activateAccount(id)) {
+                renderLoginMenu()
+                return@launch
+            }
+            // The old dashboard owns all catalog, profile, history and library jobs for its account.
+            renderLoginMenu()
+            syncHomeShortcuts()
+            renderSessionRestore()
+            connectToXboxCloud()
         }
     }
 
@@ -767,6 +820,7 @@ open class MainActivity : Activity() {
                             }
                             view.refresh(); syncHomeShortcuts()
                         }
+                        authenticator.rememberAccountName(session, profile)
                         view.setProfile(profile)
                     }
                 }
@@ -929,7 +983,7 @@ open class MainActivity : Activity() {
             changed = ::applyPlaybackSettings,
             subscription = { openAccountPage("https://account.microsoft.com/services") },
             refresh = { renderGameDashboard(session) },
-            logout = { authenticator.clearSession(); renderLoginMenu(); syncHomeShortcuts() },
+            switchAccount = { showAccountSwitcher(::back) },
             testRumble = { showRumbleDiagnostics(::back) },
             homeShortcuts = { showHomeShortcuts(::back) },lastReport={ showLatestReport(::back) },
             sessionOptions={ showSessionOptionsMenu(session,::back) },controllerProfiles={ showControllerProfiles(::back) },
@@ -946,7 +1000,8 @@ open class MainActivity : Activity() {
             microphone=if(!sessionSaved && transmissionRecovery?.phase==TransmissionRecoveryState.Phase.ACTIVE) ::toggleMicrophone else null,
             statisticsChanged=::refreshStatisticsSettings,
             microphoneLabel={ webrtcClient?.microphoneLabel() ?: UiText.text("Ativar microfone") },
-            videoMemoryInformation={ surfaceRenderer.memoryDiagnostics().takeIf { activeGame != null } })
+            videoMemoryInformation={ surfaceRenderer.memoryDiagnostics().takeIf { activeGame != null } },
+            buyHours = if (activeGame == null) ({ showHoursPurchase(::back) }) else null)
     }
     private fun showControllerProfiles(back: () -> Unit) {
         com.xcloud.tclnative.ui.dashboard.ControllerProfilePanel(this,controllerProfiles,
@@ -1314,8 +1369,11 @@ open class MainActivity : Activity() {
             }))
         touchView.setMenuCovered(position!=null)
         val remote = remotePlayReturn != null
-        val dialog = if(position==null) GameMenuPanel.show(this,shortcuts,::cancelPlayback,remote) else {
-            GameShortcutBar(this,shortcuts,position,displayCutout,::cancelPlayback,back,shortcutSettings.slots(),remote) {
+        val remaining = activeSessionTime?.takeUnless { remote }?.let { time ->
+            { time.remainingSeconds(android.os.SystemClock.elapsedRealtime()) }
+        }
+        val dialog = if(position==null) GameMenuPanel.show(this,shortcuts,::cancelPlayback,remote,remaining) else {
+            GameShortcutBar(this,shortcuts,position,displayCutout,::cancelPlayback,back,shortcutSettings.slots(),remote,remaining) {
                 GameShortcutEditor(this,shortcutSettings,back).also { shortcutEditor=it }.show()
             }.also {
                 toolbar=it
@@ -1680,6 +1738,34 @@ open class MainActivity : Activity() {
         }
     }
 
+    private fun showHoursPurchase(back: () -> Unit) {
+        val url = streamingHoursPurchaseUrl(UiText.locale, dashboard?.profileSnapshot()?.subscription)
+        val title = UiText.text("Comprar horas de jogo")
+        val dialog = com.xcloud.tclnative.ui.dashboard.ConsoleDialog(this, title)
+        dialog.body.addView(dialog.text(UiText.text("Entre na página oficial com a mesma conta Xbox usada no app."), 20))
+        if (InputDeviceProfile.read(this).television) {
+            val qr = android.widget.ImageView(this).apply {
+                setImageBitmap(authenticator.generateQrCodeBitmap(url))
+                contentDescription = title
+                scaleType = android.widget.ImageView.ScaleType.FIT_CENTER
+                setBackgroundColor(Color.WHITE)
+                val padding = dialog.px(12)
+                setPadding(padding, padding, padding, padding)
+            }
+            dialog.body.addView(qr, LinearLayout.LayoutParams(dialog.px(220), dialog.px(220)).apply {
+                gravity = Gravity.CENTER_HORIZONTAL
+                topMargin = dialog.px(16)
+            })
+        }
+        dialog.addAction(UiText.text("Abrir página de compra")) {
+            playtimeCheckedAt = null
+            openAccountPage(url)
+        }
+        dialog.addAction(UiText.text("Voltar"), back)
+        dialog.setOnCancelListener { back() }
+        dialog.show()
+    }
+
     private fun restoreDashboard(reopenRemote: Boolean = true) {
         hideSessionTimeNotice()
         joystickDispatch.request(false)
@@ -1799,6 +1885,7 @@ open class MainActivity : Activity() {
 
     private fun launchCloudGame(signaling: XCloudSignalingClient, game: GameTitle,
                                 touchChoice: TouchMode? = null, fromShortcut: Boolean = false) {
+        if (accountSwitchJob?.isActive == true || currentSignaling !== signaling) return
         dashboard?.closeServiceMenu()
         remotePlayPanel?.let { panel -> remotePlayPanel = null; panel.dialog.dismiss() }
         remotePlayReturn = null
@@ -1939,6 +2026,7 @@ open class MainActivity : Activity() {
                 }
                 timeline.mark(0, PlaybackStage.RENDERER_READY)
                 val sessionTime = SessionTimeLimit()
+                if (!remote) activeSessionTime = sessionTime
                 var sessionStartedAtMs = 0L
                 surfaceRenderer.onFirstFrameSubmitted = { submittedAt ->
                     if (generation == playbackGeneration && recoveryState.current(0) && !firstFrame.isCompleted) {
@@ -2295,6 +2383,7 @@ open class MainActivity : Activity() {
                     recoveryState.close()
                     transmissionReloadJob?.cancelAndJoin();transmissionReloadJob=null
                     if(generation==playbackGeneration) {
+                        activeSessionTime = null
                         recoverImage=null;reloadTransmission=null;transmissionReady=false;transmissionRecovery=null
                         pendingResumeResolution=null
                     }

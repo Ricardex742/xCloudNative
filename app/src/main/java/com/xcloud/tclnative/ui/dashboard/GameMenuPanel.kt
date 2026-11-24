@@ -2,6 +2,8 @@ package com.xcloud.tclnative.ui.dashboard
 
 import android.app.Activity
 import android.content.Context
+import android.util.TypedValue
+import android.widget.LinearLayout
 import com.xcloud.tclnative.i18n.UiText
 import com.xcloud.tclnative.settings.ConsoleScene
 import com.xcloud.tclnative.settings.InputDeviceProfile
@@ -58,7 +60,7 @@ object GameMenuPanel {
         )
 
     internal fun show(context: Context, shortcuts: List<GameMenuShortcut>, disconnect: () -> Unit,
-                      remotePlay: Boolean = false): ConsoleDialog {
+                      remotePlay: Boolean = false, remainingSeconds: (() -> Long?)? = null): ConsoleDialog {
         val device=InputDeviceProfile.read(context)
         val window=(context as? Activity)?.window?.decorView
         val width=window?.width?.takeIf { it>0 } ?: context.resources.displayMetrics.widthPixels
@@ -73,6 +75,13 @@ object GameMenuPanel {
             else -> ConsolePanelPurpose.GENERAL
         }
         return ConsoleDialog(context,UiText.text("Atalhos da partida"),purpose).apply {
+            remainingSeconds?.let { clock ->
+                body.addView(SessionTimeLabel(context, clock).apply {
+                    setTextSize(TypedValue.COMPLEX_UNIT_PX, px(19).toFloat())
+                    setTextColor(DashboardTheme.muted)
+                    setPadding(px(6), px(4), px(6), px(10))
+                }, LinearLayout.LayoutParams(-1, -2))
+            }
             if(purpose==ConsolePanelPurpose.GAME_SESSION) {
                 shortcuts.forEach { (_,icon,action) ->
                     val row=addMenuItem(action.label,action.action)

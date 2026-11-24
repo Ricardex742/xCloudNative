@@ -1409,4 +1409,13 @@
     <string name="ui_b5530fcb2654bb2b">"启动时比较系统 DNS 和五家提供商，从两次服务器解析测试均成功的服务中选择最快的一家。"</string>
     <string name="ui_5effa1718a78b66c">"内存与上次应用退出"</string>
     <string name="ui_a3a97b606731a63c">"正在检查内存…"</string>
+    <string name="ui_fc53b2e4bdedd25a" formatted="false">"已保存的账户"</string>
+    <string name="ui_ca9f8cb4e5b45f71" formatted="false">"账户 {0}"</string>
+    <string name="ui_11cf7643fb7e5f57" formatted="false">"添加账户"</string>
+    <string name="ui_bff9a330986f6763" formatted="false">"退出此账户"</string>
+    <string name="ui_1872d8f9193013b7" formatted="false">"要从此设备移除此账户的登录信息吗？"</string>
+    <string name="ui_c36951be19edfb17" formatted="false">"购买游戏时长"</string>
+    <string name="ui_fdd5e47d11e5c68a" formatted="false">"请使用与应用中相同的 Xbox 账户登录官方页面。"</string>
+    <string name="ui_9663ecd7a2c0bdd6" formatted="false">"打开购买页面"</string>
+    <string name="ui_ad67e39384589ca1" formatted="false">"本次会话剩余时间：{0}"</string>
 </resources>

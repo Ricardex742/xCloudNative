@@ -145,6 +145,14 @@ class XalAuthenticator(
         credentials.clear()
         profileGrant = null
     }
+    internal fun savedAccounts() = credentials.accounts()
+    internal suspend fun activateAccount(id: String): Boolean = credentials.activateAccount(id).also {
+        if (it) profileGrant = null
+    }
+    internal fun rememberAccountName(session: XCloudSession, profile: XboxProfile) {
+        if (session.xuid != null && profile.xuid != null && session.xuid != profile.xuid) return
+        credentials.bindAccount(session.credentialGeneration, session.userHash, profile.xuid ?: session.xuid, profile.gamertag)
+    }
     fun supportsConsoleTransfer(): Boolean = credentials.snapshot().token?.let {
         it.clientId == XCLOUD_CLIENT_ID && !it.refreshToken.isNullOrBlank()
     } == true
@@ -192,8 +200,10 @@ class XalAuthenticator(
                     .add("device_code", info.deviceCode).build()))
                 val refresh = data.optString("refresh_token").takeIf { it.isNotBlank() }
                     ?: throw AuthenticationRequiredException("AUTH_TOKEN: login sem renovação. Solicite outro QR Code.")
-                return@result checkNotNull(saveCredentials(data.getString("access_token"), refresh,
-                    data.getLong("expires_in"), XCLOUD_CLIENT_ID, generation).token).ticket
+                val token = OAuthToken(normalizeRpsTicket(data.getString("access_token")), refresh,
+                    clockMs() + data.getLong("expires_in") * 1000, XCLOUD_CLIENT_ID)
+                credentials.addAccount(generation, token)
+                return@result token.ticket
             } catch (error: CloudHttpException) {
                 when {
                     error.serviceCode == "authorization_pending" -> null
@@ -274,7 +284,10 @@ class XalAuthenticator(
         val region = (0 until regions.length()).map { regions.getJSONObject(it) }.firstOrNull { it.optBoolean("isDefault") }
             ?: throw java.io.IOException("AUTH_GSSV: o serviço não informou uma região padrão")
         credentials.requireCurrent(generation)
-        if (forDashboard) profileGrant = ProfileGrant(user.getString("Token"), hash, generation)
+        if (forDashboard) {
+            credentials.bindAccount(generation, hash, xuid)
+            profileGrant = ProfileGrant(user.getString("Token"), hash, generation)
+        }
         return XCloudSession(cloud.getString("gsToken"), region.getString("baseUri").trimEnd('/'), hash,
             clockMs() + cloud.optLong("durationInSeconds", 3600) * 1000, xuid = xuid, regionBypass = bypass, credentialGeneration = generation,
             regions=(0 until regions.length()).mapNotNull { index ->

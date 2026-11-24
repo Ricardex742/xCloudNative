@@ -1409,4 +1409,13 @@
     <string name="ui_b5530fcb2654bb2b">"시작할 때 시스템 DNS와 제공업체 5곳을 비교합니다. 두 서버 조회에 모두 응답한 서비스 중 가장 빠른 것을 선택합니다."</string>
     <string name="ui_5effa1718a78b66c">"메모리 및 마지막 앱 종료"</string>
     <string name="ui_a3a97b606731a63c">"메모리 확인 중…"</string>
+    <string name="ui_fc53b2e4bdedd25a" formatted="false">"저장된 계정"</string>
+    <string name="ui_ca9f8cb4e5b45f71" formatted="false">"계정 {0}"</string>
+    <string name="ui_11cf7643fb7e5f57" formatted="false">"계정 추가"</string>
+    <string name="ui_bff9a330986f6763" formatted="false">"이 계정에서 로그아웃"</string>
+    <string name="ui_1872d8f9193013b7" formatted="false">"이 기기에서 이 계정의 로그인 정보를 삭제하시겠습니까?"</string>
+    <string name="ui_c36951be19edfb17" formatted="false">"게임 시간 구매"</string>
+    <string name="ui_fdd5e47d11e5c68a" formatted="false">"앱에서 사용하는 것과 동일한 Xbox 계정으로 공식 페이지에 로그인하세요."</string>
+    <string name="ui_9663ecd7a2c0bdd6" formatted="false">"구매 페이지 열기"</string>
+    <string name="ui_ad67e39384589ca1" formatted="false">"세션 남은 시간: {0}"</string>
 </resources>

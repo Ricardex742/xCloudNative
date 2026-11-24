@@ -33,6 +33,7 @@ internal class GameShortcutBar(
     onBackFromAction: () -> Unit,
     slots: List<GameShortcutId?> = GameShortcutSettings.DEFAULT_SLOTS,
     remotePlay: Boolean = false,
+    remainingSeconds: (() -> Long?)? = null,
     editShortcuts: (() -> Unit)? = null
 ) : Dialog(activity, R.style.ConsoleDialog) {
     data class Position(val more: Boolean = false, val actionLabel: String? = null, val shortcutId: GameShortcutId? = null)
@@ -84,6 +85,14 @@ internal class GameShortcutBar(
         }
         panel.apply {
             addView(bar, LinearLayout.LayoutParams(-2, px(60)))
+            remainingSeconds?.let { clock ->
+                addView(SessionTimeLabel(activity, clock).apply {
+                    setTextColor(Color.WHITE)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+                    setPadding(px(12), px(6), px(12), px(6))
+                    background = DashboardTheme.panel(px(8).toFloat())
+                }, LinearLayout.LayoutParams(-1, -2).apply { topMargin = px(4) })
+            }
             addView(morePanel, LinearLayout.LayoutParams(-1, -2).apply { topMargin = px(6) })
         }
         addRow(ConsoleGlyph.EXIT, ConsoleAction(GameMenuPanel.exitLabel(remotePlay)) {

@@ -39,6 +39,34 @@ internal class AccountCredentials(private val store: OAuthTokenStore) {
         state.generation += 1
     }
 
+    fun accounts(): List<SavedXboxAccount> = synchronized(state) { (store as? PreferencesTokenStore)?.accounts().orEmpty() }
+
+    suspend fun addAccount(generation: Long, token: OAuthToken) = rotate(generation) { current ->
+        synchronized(state) {
+            requireCurrent(current.generation)
+            val saved = store as? PreferencesTokenStore
+            if (saved != null) saved.addAndActivate(token) else store.write(token)
+            state.rotation = Mutex()
+            state.generation += 1
+        }
+    }
+
+    suspend fun activateAccount(id: String): Boolean = rotate(null) { current ->
+        synchronized(state) {
+            requireCurrent(current.generation)
+            if ((store as? PreferencesTokenStore)?.activate(id) != true) false else {
+                state.rotation = Mutex()
+                state.generation++
+                true
+            }
+        }
+    }
+
+    fun bindAccount(generation: Long?, hash: String, xuid: String?, gamertag: String? = null) = synchronized(state) {
+        requireCurrent(generation)
+        (store as? PreferencesTokenStore)?.bindIdentity(hash, xuid, gamertag)
+    }
+
     suspend fun <T> rotate(generation: Long?, action: suspend (Snapshot) -> T): T {
         val (expected, rotation) = synchronized(state) {
             requireCurrent(generation)

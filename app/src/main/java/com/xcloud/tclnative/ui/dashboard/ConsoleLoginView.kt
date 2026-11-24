@@ -31,7 +31,8 @@ import kotlin.math.roundToInt
 /** Login and device-code screens share the catalog's native typography, green palette and focus. */
 class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private val back: () -> Unit,
                        private val openApproval: (String) -> Unit,private val browserSignIn: (() -> Unit)?=null,
-                       private val preferBrowser: Boolean=com.xcloud.tclnative.settings.InputDeviceProfile.read(context).touchDevice) : FrameLayout(context) {
+                       private val preferBrowser: Boolean=com.xcloud.tclnative.settings.InputDeviceProfile.read(context).touchDevice,
+                       private val savedAccounts: (() -> Unit)? = null) : FrameLayout(context) {
     private val scope = CoroutineScope(SupervisorJob()+Dispatchers.Main.immediate)
     private var ticker: Job? = null
     var isQr = false
@@ -78,6 +79,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
         if(!connecting) { if(preferBrowser) signIn() else browserSignIn?.invoke() }
     }
     private val secondary = DashboardTheme.button(context,UiText.text("VOLTAR")) { back() }
+    private val accountPicker = DashboardTheme.button(context, UiText.text("Contas salvas")) { savedAccounts?.invoke() }
     private val language = DashboardTheme.button(context,UiText.text("Idioma / Language")) { LanguageMenu.show(context) {} }
     private val bypass = DashboardTheme.button(context, UiText.text("Bypass de região: {0}", UiText.nested(RegionBypassStore(context).read().label))) {
         if (!connecting) RegionBypassPanel.show(context) {
@@ -88,7 +90,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
     init {
         background=DashboardBackground()
         ImmersiveWindow.protectContent(this)
-        listOf(brand,eyebrow,headline,description,card,footer,language,bypass).forEach(::addView)
+        listOf(brand,eyebrow,headline,description,card,footer,language,bypass,accountPicker).forEach(::addView)
         listOf(cardTitle,qr,code,instructions,status,validity,spinner,primary,secondary,alternate).forEach(card::addView)
         headline.text=SpannableString(UiText.text("SEUS JOGOS.\nNA SUA TELA.")).apply {
             setSpan(ForegroundColorSpan(DashboardTheme.accent),toString().indexOf('\n')+1,length,Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -124,6 +126,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
         primary.text=if(preferBrowser && browserSignIn!=null) UiText.text("ENTRAR COM MICROSOFT") else UiText.text("ENTRAR COM QR CODE"); primary.isEnabled=true
         alternate.text=if(preferBrowser) UiText.text("ENTRAR COM QR CODE") else UiText.text("ENTRAR COM MICROSOFT")
         alternate.visibility=if(browserSignIn!=null) VISIBLE else GONE;alternate.isEnabled=true
+        accountPicker.visibility = if (savedAccounts != null) VISIBLE else GONE
         listOf(qr,code,secondary,validity,spinner).forEach { it.visibility=GONE }
         geometry=0; requestLayout(); post { primary.requestFocus() }
     }
@@ -132,6 +135,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
         browserApproval=openInBrowser
         bypass.isEnabled=true
         alternate.visibility=GONE
+        accountPicker.visibility=GONE
         headline.visibility=GONE; description.visibility=GONE
         cardTitle.text=UiText.text("CONECTE SUA CONTA")
         instructions.text=UiText.text("Escaneie o QR Code com seu celular ou acesse a página de login da Microsoft.")
@@ -209,6 +213,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
             root(brand,80,24,80,80); root(eyebrow,180,49,1020,42); root(footer,80,660,1120,30)
             root(language,930,43,270,54)
             root(bypass,610,43,300,54)
+            root(accountPicker,930,640,270,54)
             if (isQr) {
                 root(card,80,130,1120,480)
                 item(cardTitle,40,28,1040,48); item(qr,48,111,264,264)
@@ -231,7 +236,7 @@ class ConsoleLoginView(context: Context, private val signIn: () -> Unit, private
             }
             if(android.os.Build.VERSION.SDK_INT>=26) headline.setAutoSizeTextTypeUniformWithConfiguration(
                 (38*s).roundToInt().coerceAtLeast(1),(65*s).roundToInt().coerceAtLeast(2),1,TypedValue.COMPLEX_UNIT_PX)
-            if(android.os.Build.VERSION.SDK_INT>=26) listOf(primary,secondary,alternate,language,bypass).forEach { button ->
+            if(android.os.Build.VERSION.SDK_INT>=26) listOf(primary,secondary,alternate,language,bypass,accountPicker).forEach { button ->
                 button.setAutoSizeTextTypeUniformWithConfiguration((14*s).roundToInt().coerceAtLeast(1),
                     (23*s).roundToInt().coerceAtLeast(2),1,TypedValue.COMPLEX_UNIT_PX)
             }

@@ -1409,4 +1409,13 @@
     <string name="ui_b5530fcb2654bb2b">"起動時にシステム DNS と 5 つのプロバイダーを比較します。サーバーの名前解決テストに 2 回とも応答したうち最速のものを選びます。"</string>
     <string name="ui_5effa1718a78b66c">"メモリと前回のアプリ終了"</string>
     <string name="ui_a3a97b606731a63c">"メモリを確認中…"</string>
+    <string name="ui_fc53b2e4bdedd25a" formatted="false">"保存済みアカウント"</string>
+    <string name="ui_ca9f8cb4e5b45f71" formatted="false">"アカウント {0}"</string>
+    <string name="ui_11cf7643fb7e5f57" formatted="false">"アカウントを追加"</string>
+    <string name="ui_bff9a330986f6763" formatted="false">"このアカウントからサインアウト"</string>
+    <string name="ui_1872d8f9193013b7" formatted="false">"このアカウントのサインイン情報を端末から削除しますか？"</string>
+    <string name="ui_c36951be19edfb17" formatted="false">"プレイ時間を購入"</string>
+    <string name="ui_fdd5e47d11e5c68a" formatted="false">"アプリで使用中の Xbox アカウントで公式ページにサインインしてください。"</string>
+    <string name="ui_9663ecd7a2c0bdd6" formatted="false">"購入ページを開く"</string>
+    <string name="ui_ad67e39384589ca1" formatted="false">"セッションの残り時間：{0}"</string>
 </resources>

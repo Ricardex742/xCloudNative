@@ -1409,4 +1409,13 @@
     <string name="ui_b5530fcb2654bb2b">"Compara o DNS do sistema e cinco provedores ao iniciar. Escolhe o mais rápido a responder aos dois testes de resolução do servidor."</string>
     <string name="ui_5effa1718a78b66c">"Memória e última saída do app"</string>
     <string name="ui_a3a97b606731a63c">"Consultando memória…"</string>
+    <string name="ui_fc53b2e4bdedd25a" formatted="false">"Contas salvas"</string>
+    <string name="ui_ca9f8cb4e5b45f71" formatted="false">"Conta {0}"</string>
+    <string name="ui_11cf7643fb7e5f57" formatted="false">"Adicionar conta"</string>
+    <string name="ui_bff9a330986f6763" formatted="false">"Sair desta conta"</string>
+    <string name="ui_1872d8f9193013b7" formatted="false">"Remover o login desta conta do aparelho?"</string>
+    <string name="ui_c36951be19edfb17" formatted="false">"Comprar horas de jogo"</string>
+    <string name="ui_fdd5e47d11e5c68a" formatted="false">"Entre na página oficial com a mesma conta Xbox usada no app."</string>
+    <string name="ui_9663ecd7a2c0bdd6" formatted="false">"Abrir página de compra"</string>
+    <string name="ui_ad67e39384589ca1" formatted="false">"Tempo restante na sessão: {0}"</string>
 </resources>
