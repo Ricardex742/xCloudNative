@@ -57,6 +57,12 @@ class SessionOptionsTest {
         store.inherit("game",SessionOptionField.BITRATE)
         assertFalse(store.hasOverride("game"))
         assertEquals(store.read(),store.read("game"))
+        store.set(null, SessionOptionField.DNS, SessionDnsPreference.ADAPTIVE)
+        assertEquals(SessionDnsPreference.ADAPTIVE, store.read("game").dns)
+        store.set("game", SessionOptionField.DNS, SessionDnsPreference.SYSTEM)
+        assertEquals(SessionDnsPreference.SYSTEM, store.read("game").dns)
+        store.inherit("game", SessionOptionField.DNS)
+        assertEquals(SessionDnsPreference.ADAPTIVE, store.read("game").dns)
     }
     @Test fun simplifiedChinesePersistsIndependentlyOfUiAndOtherSessionEdits() {
         val context=RuntimeEnvironment.getApplication()

@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Typeface
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.GradientDrawable
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.View
@@ -113,7 +114,7 @@ internal class GameDetailsPanel(
             }
         } else content
         information.addView(readable, LinearLayout.LayoutParams(-1, if (wide) 0 else -2, if (wide) 1f else 0f))
-        progress?.refreshButton?.let {
+        progress?.actions?.let {
             it.visibility = View.GONE
             information.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dialog.px(8) })
         }
@@ -215,7 +216,13 @@ internal class GameDetailsPanel(
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             }
             avatar.addView(image, FrameLayout.LayoutParams(-1, -1))
-            artwork.load(image, friend.avatarUrl, 128, 128)
+            artwork.load(image, friend.avatarUrl, 128, 128) { ready ->
+                if (ready) (image.drawable as? BitmapDrawable)?.let { drawable ->
+                    image.setImageDrawable(RoundedBitmapDrawableFactory.create(context.resources, drawable.bitmap).apply {
+                        isCircular = true
+                    })
+                }
+            }
             row.addView(avatar, LinearLayout.LayoutParams(size, size).apply { marginEnd = dialog.px(9) })
             val labels = LinearLayout(context).apply {
                 orientation = LinearLayout.VERTICAL
@@ -280,8 +287,8 @@ internal class GameDetailsPanel(
         infoTitle.text = if (show) UiText.text("Seu progresso") else UiText.text("Descrição")
         description.visibility = if (show) View.GONE else View.VISIBLE
         panel.body.visibility = if (show) View.VISIBLE else View.GONE
-        if (!show && panel.refreshButton.hasFocus()) progressButton?.requestFocus()
-        panel.refreshButton.visibility = if (show) View.VISIBLE else View.GONE
+        if (!show && panel.actions.hasFocus()) progressButton?.requestFocus()
+        panel.actions.visibility = if (show) View.VISIBLE else View.GONE
         progressButton?.apply {
             isSelected = show
             contentDescription = if (show) UiText.text("Descrição") else UiText.text("Seu progresso")

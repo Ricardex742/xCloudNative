@@ -149,8 +149,9 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         private val focusHistory=java.util.WeakHashMap<Context,MutableMap<String,String>>()
         private val visiblePanels=mutableListOf<java.lang.ref.WeakReference<ConsoleDialog>>()
     }
+    internal var closeOnlyThisPanel = false
     private fun closePanels() {
-        if (remotePlayPage || gameDetails) { dismiss(); return }
+        if (remotePlayPage || gameDetails || closeOnlyThisPanel) { dismiss(); return }
         // Some previews keep their parent open. X closes the entire owned panel group;
         // dismiss never invokes the back/cancel callback or a destructive action.
         visiblePanels.mapNotNull { it.get() }.filter {

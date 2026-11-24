@@ -42,11 +42,18 @@ internal class GameProgressPanel(
     private var achievements = emptyList<XboxAchievement>()
     private val allButton = dialog.keyButton(UiText.text("Ver todas as conquistas")) { showAll() }.apply {
         tag = "game-progress-all"
+        visibility = View.GONE
+        minimumHeight = dialog.touchSize()
+        setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, dialog.px(17).toFloat())
     }
     private var request: Job? = null
     val refreshButton: TextView = dialog.keyButton(UiText.text("Atualizar"), ::refresh).apply {
         tag = "game-progress-refresh"
         minimumHeight = dialog.touchSize()
+    }
+    val actions = LinearLayout(context).apply {
+        addView(allButton, LinearLayout.LayoutParams(0, -1, 1f).apply { marginEnd = dialog.px(5) })
+        addView(refreshButton, LinearLayout.LayoutParams(0, -1, 1f))
     }
 
     init {
@@ -59,7 +66,6 @@ internal class GameProgressPanel(
         summary.addView(count, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dialog.px(12) })
         summary.addView(recentTitle, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dialog.px(14) })
         summary.addView(recent, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dialog.px(8) })
-        summary.addView(allButton, LinearLayout.LayoutParams(-1,-2).apply { topMargin = dialog.px(8) })
         dialog.addCleanup { request?.cancel() }
     }
 
@@ -114,7 +120,7 @@ internal class GameProgressPanel(
                 importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
                 if (android.os.Build.VERSION.SDK_INT >= 26) tooltipText = label
                 isFocusable = true
-                setOnClickListener { ConsoleDialogs.message(context, label, description(entry)) }
+                setOnClickListener { ConsoleDialogs.message(context, label, description(entry)).closeOnlyThisPanel = true }
                 setOnFocusChangeListener { view, focused ->
                     view.alpha = if (focused) .78f else 1f
                 }
@@ -146,7 +152,7 @@ internal class GameProgressPanel(
 
     private fun showAll() {
         val list = achievements
-        val panel = ConsoleDialog(context, UiText.text("Conquistas"))
+        val panel = ConsoleDialog(context, UiText.text("Conquistas")).apply { closeOnlyThisPanel = true }
         fun render(page: Int) {
             panel.body.removeAllViews()
             list.drop(page * 24).take(24).forEach { entry ->

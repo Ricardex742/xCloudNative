@@ -33,7 +33,9 @@ class SessionToolsUiTest {
         try {
             notice.show(null)
             assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("Tempo da sessão não informado") })
-            layout(notice, 155, 280)
+            notice.measure(View.MeasureSpec.makeMeasureSpec(155, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(280, View.MeasureSpec.AT_MOST))
+            notice.layout(0, 0, notice.measuredWidth, notice.measuredHeight)
             val heading = notice.getChildAt(0) as TextView
             assertTrue(heading.lineCount > 1)
             assertEquals("Sua sessão foi iniciada", heading.text.toString())

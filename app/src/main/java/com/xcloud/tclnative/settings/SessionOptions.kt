@@ -110,8 +110,10 @@ class SessionOptionsStore(private val context: Context, account: String, legacyA
     private fun raw(game: String?): JSONObject = parse(prefs.getString(if(game==null) "default" else "game:$game",null))
     fun save(game: String?,options: SessionOptions) = synchronized(writes) {
         val value=options.normalized()
-        prefs.edit().putString(if(game==null) "default" else "game:$game",JSONObject().put("bitrate",value.maxBitrateKbps)
-            .put("locale",value.locale).put("region",value.region).put("dns",value.dns.name).toString()).apply()
+        val snapshot = raw(game).put("bitrate", value.maxBitrateKbps).put("locale", value.locale).put("region", value.region)
+        // Legacy snapshots did not override DNS. Selecting System explicitly goes through set().
+        if (value.dns != SessionDnsPreference.SYSTEM) snapshot.put(SessionOptionField.DNS.key, value.dns.name)
+        prefs.edit().putString(if(game==null) "default" else "game:$game", snapshot.toString()).apply()
     }
     fun reset(game: String) = synchronized(writes) { prefs.edit().remove("game:$game").apply() }
     private fun decode(raw: String?,defaults: SessionOptions): SessionOptions = runCatching {
