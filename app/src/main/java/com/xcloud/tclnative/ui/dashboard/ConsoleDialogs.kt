@@ -376,8 +376,9 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             val plate = android.graphics.drawable.StateListDrawable().apply {
                 fun state(color: Int, focused: Boolean) = GradientDrawable().apply {
                     setColor(color)
-                    cornerRadius = px(3).toFloat()
-                    if (focused) setStroke(px(1).coerceAtLeast(1), 0xffc1d9d1.toInt())
+                    cornerRadius = px(5).toFloat()
+                    setStroke(px(if (focused) 2 else 1).coerceAtLeast(1),
+                        if (focused) Color.WHITE else 0xff64768c.toInt())
                 }
                 val primary = actions.childCount == 0 && dismissOnClick
                 addState(intArrayOf(android.R.attr.state_focused), state(if (primary) 0xff276552.toInt() else 0xff344460.toInt(), true))
