@@ -70,15 +70,18 @@ class RealtimeInputPump(
     private val buffers = Array(4) { GamepadInputBuffer() }
     private val active = initialGamepads.toMutableSet()
     private val revisions = LongArray(4)
+    private var officialTouchSlots = 0
     private val retireAfterNeutral = mutableMapOf<Int,Long>()
     private val lock = Any()
     @Volatile private var touchDimensions = initialTouchDimensions
     @Volatile private var thread: Thread? = null
     @Volatile var metrics = InputMetrics()
         private set
-    fun update(state: GamepadState, index: Int = 0) {
+    fun update(state: GamepadState, index: Int = 0, officialTouch: Boolean = false) {
         require(index in 0..3)
         synchronized(lock) {
+            val bit = 1 shl index
+            officialTouchSlots = if (officialTouch) officialTouchSlots or bit else officialTouchSlots and bit.inv()
             revisions[index]++;retireAfterNeutral.remove(index)
             active.add(index); if (buffers[index].update(state)) thread?.let(LockSupport::unpark)
         }
@@ -158,7 +161,7 @@ class RealtimeInputPump(
                     } else {
                         backpressured=false
                         var retiringMask = 0
-                        synchronized(lock) {
+                        val touchSlots = synchronized(lock) {
                             for (index in buffers.indices) {
                                 if (index in active) states[index] = buffers[index].next() else states.remove(index)
                                 val revision = retireAfterNeutral[index] ?: continue
@@ -166,6 +169,7 @@ class RealtimeInputPump(
                                 retirementRevisions[index] = revision
                                 retiringMask = retiringMask or (1 shl index)
                             }
+                            officialTouchSlots
                         }
                         // Coordinates have no meaning until ServerMetadata establishes their scale.
                         val pointers=if(dimensions == null) emptyList() else touch.next()
@@ -179,7 +183,8 @@ class RealtimeInputPump(
                         val idle=idleReports && !hasInput && !initial && now-lastReportAt>=IDLE_REPORT_NS
                         val packet=if(initial) GamepadPacket.neutralTouchSlot(sequence++,(now-started)/1_000_000.0)
                             else if(hasInput || idle) GamepadPacket.encode(states, sequence++,
-                            (now - started) / 1_000_000.0,pointers,dimensions?.width ?: 1,dimensions?.height ?: 1,desktopFrames.first,desktopFrames.second) else null
+                            (now - started) / 1_000_000.0,pointers,dimensions?.width ?: 1,dimensions?.height ?: 1,
+                            desktopFrames.first,desktopFrames.second,touchSlots) else null
                         if (packet!=null && !send(packet)) {
                             if (running.get()) onFailure()
                             break

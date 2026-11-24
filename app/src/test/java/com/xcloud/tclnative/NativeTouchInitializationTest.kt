@@ -37,6 +37,26 @@ class NativeTouchInitializationTest {
             assertNull(packets.poll(100,TimeUnit.MILLISECONDS))
         } finally { pump.close() }
     }
+    @Test fun officialLayoutSendsVirtualButtonAndStickMasksWithLittleEndianOrder() {
+        val packets = LinkedBlockingQueue<ByteArray>()
+        val pump = RealtimeInputPump({ 0 }, { packets.offer(it); true }, { fail("send") }, initialGamepads = emptySet())
+        try {
+            pump.update(GamepadState(buttons = 16 or 8192, leftX = .5f, rightTrigger = 1f), officialTouch = true)
+            pump.releaseAfterNeutral(preserveButtonEdges = true)
+            pump.start()
+            fun report() = ByteBuffer.wrap(take(packets)).order(ByteOrder.LITTLE_ENDIAN)
+            val down = report()
+            assertEquals(16 or 8192, down.getShort(16).toInt())
+            assertEquals(0, down.getInt(30))
+            // The queued edge retains A, RB and RT even when the latest stick position is neutral.
+            assertEquals(0x21200, down.getInt(34))
+            val up = report()
+            assertEquals(0, up.getInt(34))
+            val stick = ByteBuffer.wrap(GamepadPacket.encode(mapOf(0 to GamepadState(leftX = .5f)),
+                1, 0.0, officialTouchSlots = 1)).order(ByteOrder.LITTLE_ENDIAN)
+            assertEquals(0xc0000, stick.getInt(34))
+        } finally { pump.close() }
+    }
     @Test fun queuedRealGestureUsesItsOwnReportAndDoesNotGetAnExtraNeutralGamepad() {
         val packets=LinkedBlockingQueue<ByteArray>()
         val pump=RealtimeInputPump({0},{packets.offer(it);true},{fail("send")},initialGamepads=emptySet(),

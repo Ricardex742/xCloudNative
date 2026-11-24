@@ -8,7 +8,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class XboxGameProgressTest {
-    @Test fun combinesAllPagesForTheSelectedTitleAndOrdersRecentUnlocks() = runBlocking {
+    @Test fun combinesAllPagesAndKeepsLockedProgressAndDescriptions() = runBlocking {
         MockWebServer().use { server ->
             server.enqueue(MockResponse().setBody("""
                 {"achievements":[
@@ -22,6 +22,7 @@ class XboxGameProgressTest {
                     {"id":"b","name":"Mais recente","description":"Vença a corrida.","progressState":"Achieved","progression":{"timeUnlocked":"2025-02-01T12:00:00Z"},
                      "mediaAssets":[{"type":"Icon","url":"https://example.test/recent.png"}],"rewards":[{"type":"Gamerscore","value":"10"}]},
                     {"id":"c","name":"Bloqueada","progressState":"InProgress","lockedDescription":"Termine três corridas.",
+                     "progression":{"requirements":[{"current":"1","target":"3"}]},"rarity":{"currentPercentage":64.37},
                      "rewards":[{"type":"Gamerscore","value":"30"}]},
                     {"id":"secret","name":"Spoiler","isSecret":true,"description":"Spoiler","lockedDescription":"Spoiler",
                      "progressState":"NotStarted"}
@@ -33,10 +34,13 @@ class XboxGameProgressTest {
             assertEquals(60, result.totalGamerscore)
             assertEquals(2, result.achievements)
             assertEquals(4, result.totalAchievements)
-            assertEquals(listOf("Mais recente", "Primeira"), result.recent.map { it.name })
-            assertEquals("https://example.test/recent.png", result.recent.first().iconUrl)
-            assertEquals("Vença a corrida.", result.recent.first().description)
-            assertFalse(result.recent.any { it.name == "Spoiler" || it.name == "Bloqueada" })
+            assertEquals(listOf("Primeira", "Mais recente", "Bloqueada", ""), result.entries.map { it.name })
+            assertEquals("Vença a corrida.", result.entries[1].description)
+            assertEquals(100, result.entries[1].progress)
+            assertEquals("Termine três corridas.", result.entries[2].description)
+            assertEquals(33, result.entries[2].progress)
+            assertEquals(64.37, result.entries[2].unlockRate!!, .0001)
+            assertNull(result.entries.last().description)
             val first = server.takeRequest()
             assertEquals("2", first.getHeader("x-xbl-contract-version"))
             assertEquals("42", first.requestUrl!!.queryParameter("titleId"))
@@ -58,8 +62,8 @@ class XboxGameProgressTest {
             val result = service.load("XBL3.0 x=test;fixture", "123", "0x2a", "pt-BR")!!
             assertEquals(30, result.gamerscore)
             assertEquals(100, result.totalGamerscore)
-            assertEquals("Primeira", result.recent.single().name)
-            assertNull(result.recent.single().iconUrl)
+            assertEquals("Primeira", result.entries.single { it.unlocked }.name)
+            assertNull(result.entries.single { !it.unlocked }.progress)
             server.takeRequest()
             val legacy = server.takeRequest()
             assertEquals("1", legacy.getHeader("x-xbl-contract-version"))

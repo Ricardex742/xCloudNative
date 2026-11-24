@@ -101,7 +101,7 @@ class SessionOptionsPanel(private val context: Context,private val store: Sessio
         val current = store.read(selectedGame).dns
         val values = SessionDnsPreference.entries
         return choices(UiText.text("DNS da sessão"),
-            UiText.text("Compara o DNS do sistema, Cloudflare e Google ao iniciar. Usa o mais rápido entre os que responderem aos dois testes. O DNS resolve o endereço do servidor. O ping da transmissão depende da rota de rede."),
+            UiText.text("Compara o DNS do sistema e cinco provedores ao iniciar. Escolhe o mais rápido a responder aos dois testes de resolução do servidor."),
             values.map { it.label to (it == current) }, SessionOptionField.DNS) {
             store.set(selectedGame, SessionOptionField.DNS, values[it])
         }

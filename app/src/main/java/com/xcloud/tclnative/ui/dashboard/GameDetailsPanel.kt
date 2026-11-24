@@ -60,11 +60,12 @@ internal class GameDetailsPanel(
         setLineSpacing(0f, 1.15f)
     }
     private val infoTitle = dialog.text(UiText.text("Descrição"), if (wide) 24 else 19, true)
+    private val readable: View
     private val friends = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
     private var chosePanel = false
     private var progressVisible = false
     private var progressButton: TextView? = null
-    private val progress = loadProgress?.let { loader -> GameProgressPanel(dialog, scope, artwork, loader) {
+    private val progress = loadProgress?.let { loader -> GameProgressPanel(dialog, scope, loader) {
         if (!chosePanel) showProgress(true)
     } }
 
@@ -87,38 +88,31 @@ internal class GameDetailsPanel(
             val inset = dialog.px(if (wide) 16 else 14)
             setPadding(inset, inset, inset, inset)
         }
-        val content = LinearLayout(context).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(friends, -1, -2)
-            addView(infoTitle, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dialog.px(12) })
-            addView(description, -1, -2)
-            progress?.body?.let {
-                it.visibility = View.GONE
-                addView(it, -1, -2)
-            }
-        }
-        val readable = if (wide) ScrollView(context).apply {
+        information.addView(friends, -1, -2)
+        information.addView(infoTitle, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dialog.px(12) })
+        readable = if (wide) ScrollView(context).apply {
             overScrollMode = View.OVER_SCROLL_NEVER
             isFocusable = false
-            addView(content, -1, -2)
+            addView(description, -1, -2)
             dialog.shortcut = { event ->
                 val key = event.keyCode
                 val direction = if (key == KeyEvent.KEYCODE_DPAD_UP) -1 else 1
                 val focus = dialog.window?.currentFocus?.tag
                 if ((key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN) &&
-                    focus != "close-settings" && focus != "game-progress-description-scroll" && canScrollVertically(direction)) {
+                    !progressVisible && focus != "close-settings" && canScrollVertically(direction)) {
                     if (event.action == KeyEvent.ACTION_DOWN) {
                         smoothScrollBy(0, direction * maxOf(height / 2, dialog.touchSize()))
                     }
                     true
                 } else false
             }
-        } else content
+        } else description
         information.addView(readable, LinearLayout.LayoutParams(-1, if (wide) 0 else -2, if (wide) 1f else 0f))
-        progress?.actions?.let {
-            it.visibility = View.GONE
-            val container = if (dialog.compactGameDetailsHeight) content else information
-            container.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dialog.px(8) })
+        progress?.let { panel ->
+            panel.body.visibility = View.GONE
+            panel.refreshButton.visibility = View.GONE
+            information.addView(panel.body, LinearLayout.LayoutParams(-1, if (wide) 0 else -2, if (wide) 1f else 0f))
+            information.addView(panel.refreshButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dialog.px(8) })
         }
         columns.addView(information, column(1.45f))
         columns.addView(gallery, column(2.5f, gapAfter = false))
@@ -286,11 +280,12 @@ internal class GameDetailsPanel(
     private fun showProgress(show: Boolean) {
         val panel = progress ?: return
         progressVisible = show
-        infoTitle.text = if (show) UiText.text("Seu progresso") else UiText.text("Descrição")
+        infoTitle.text = if (show) UiText.text("Conquistas") else UiText.text("Descrição")
         description.visibility = if (show) View.GONE else View.VISIBLE
+        readable.visibility = description.visibility
+        if (!show && (panel.body.hasFocus() || panel.refreshButton.hasFocus())) progressButton?.requestFocus()
         panel.body.visibility = if (show) View.VISIBLE else View.GONE
-        if (!show && panel.actions.hasFocus()) progressButton?.requestFocus()
-        panel.actions.visibility = if (show) View.VISIBLE else View.GONE
+        panel.refreshButton.visibility = if (show) View.VISIBLE else View.GONE
         progressButton?.apply {
             isSelected = show
             contentDescription = if (show) UiText.text("Descrição") else UiText.text("Seu progresso")

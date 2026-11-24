@@ -257,8 +257,10 @@ class DashboardTest {
                 assertEquals("42", it)
                 progressLoads++
                 XboxGameProgress(430, 800, 6, 15, listOf(
-                    XboxAchievement("Primeira corrida", 20, null, "Vença uma corrida."),
-                    XboxAchievement("Colecionador", 15, null, "Compre três carros.")
+                    XboxAchievement("Primeira corrida", 20, "Vença uma corrida.", true, 100),
+                    XboxAchievement("Colecionador", 15, "Compre três carros.", false, 33, 64.37),
+                    XboxAchievement("Explorador", 50, "Descubra uma estrada.", false, 0),
+                    XboxAchievement("Piloto de teste", 10, "Complete o tutorial.", false, 10)
                 ))
             }, onGameOptions = { options = it }, onStoreProduct = { openedStore = it },
             onLoadFriends = {
@@ -298,11 +300,17 @@ class DashboardTest {
         assertFalse(details.body.allViews.filterIsInstance<TextView>().any { it.text.toString() == "Em outro jogo" })
         details.body.findViewWithTag<View>("game-progress-refresh").performClick()
         assertEquals(2, progressLoads)
-        val achievementDescription = details.body.findViewWithTag<TextView>("game-progress-description")
-        assertEquals("Vença uma corrida.", achievementDescription.text.toString())
-        assertTrue(details.body.findViewWithTag<View>("game-progress-badge-1").performClick())
-        assertEquals("Compre três carros.", achievementDescription.text.toString())
-        assertNull(details.body.findViewWithTag<View>("game-progress-all"))
+        layout(root, 1280, 600)
+        val list = details.body.findViewWithTag<RecyclerView>("game-progress-list")
+        assertEquals(4, list.adapter?.itemCount)
+        assertTrue(list.findViewWithTag<View>("game-progress-row-1").performClick())
+        layout(root, 1280, 600)
+        val achievementDescription = list.findViewWithTag<View>("game-progress-row-1")
+            .findViewWithTag<TextView>("game-progress-description")
+        assertTrue(achievementDescription.text.contains("Compre três carros."))
+        assertTrue(achievementDescription.text.contains("33%"))
+        assertEquals(View.VISIBLE, achievementDescription.visibility)
+        assertFalse(list.allViews.any { it is android.widget.ImageView })
         assertTrue(gallery.height > 0)
         val thumbnail = (gallery.getChildAt(0) as ViewGroup).getChildAt(0)
         assertTrue(thumbnail.width > 0 && thumbnail.height > 0)
@@ -325,7 +333,7 @@ class DashboardTest {
         details.panel.findViewWithTag<View>("game-details-progress").performClick()
         layout(root, 1280, 600)
         assertEquals(View.GONE, progress.visibility)
-        assertTrue(description.height > ((description.parent as View).parent as View).height)
+        assertTrue(description.height > (description.parent as View).height)
         details.panel.findViewWithTag<View>("game-details-settings").performClick()
         details.panel.findViewWithTag<View>("game-details-store").performClick()
         assertEquals("cloud-260", options?.titleId)

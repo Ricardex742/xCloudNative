@@ -1402,5 +1402,9 @@
     <string name="ui_9a395c56379175a5">"工作階段的最佳 DNS"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
     <string name="ui_0827c3dbf7f78b3e">"工作階段 DNS"</string>
-    <string name="ui_a69ee15ff9d8993d">"啟動時比較系統 DNS、Cloudflare 和 Google。使用兩次測試皆成功且回應最快的服務。DNS 用於解析伺服器位址。串流的延遲取決於網路路由。"</string>
+    <string name="ui_3c1f8ada45d0b8e4">"成就"</string>
+    <string name="ui_9d95e08eefc03547">"已解鎖"</string>
+    <string name="ui_0fff1ccde9ea237a">"未解鎖"</string>
+    <string name="ui_416b5d8461c1f876">"{0} 的玩家已解鎖"</string>
+    <string name="ui_b5530fcb2654bb2b">"啟動時比較系統 DNS 與五家供應商，從兩次伺服器解析測試均成功的服務中選擇最快的一家。"</string>
 </resources>

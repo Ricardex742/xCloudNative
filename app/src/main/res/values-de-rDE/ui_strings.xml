@@ -1402,5 +1402,9 @@
     <string name="ui_9a395c56379175a5">"Bester DNS für die Sitzung"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
     <string name="ui_0827c3dbf7f78b3e">"DNS für die Sitzung"</string>
-    <string name="ui_a69ee15ff9d8993d">"Vergleicht beim Start System-DNS, Cloudflare und Google. Verwendet den schnellsten Anbieter, der beide Tests besteht. DNS löst die Serveradresse auf. Der Ping hängt von der Netzwerkroute ab."</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Erfolge"</string>
+    <string name="ui_9d95e08eefc03547">"Freigeschaltet"</string>
+    <string name="ui_0fff1ccde9ea237a">"Gesperrt"</string>
+    <string name="ui_416b5d8461c1f876">"{0} haben ihn freigeschaltet"</string>
+    <string name="ui_b5530fcb2654bb2b">"Vergleicht beim Start System-DNS und fünf Anbieter. Verwendet den schnellsten, der beide DNS-Abfragen beantwortet."</string>
 </resources>

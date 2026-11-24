@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 137
-        versionName = "0.41.24-session-controls"
+        versionCode = 138
+        versionName = "0.41.25-achievements-touch"
     }
 
     signingConfigs {

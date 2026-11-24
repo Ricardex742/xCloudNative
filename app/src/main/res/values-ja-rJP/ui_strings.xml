@@ -1402,5 +1402,9 @@
     <string name="ui_9a395c56379175a5">"セッションに最適な DNS"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
     <string name="ui_0827c3dbf7f78b3e">"セッションの DNS"</string>
-    <string name="ui_a69ee15ff9d8993d">"起動時にシステム DNS、Cloudflare、Google を比較します。2 回のテストに応答したうち最速のものを使います。DNS はサーバーアドレスを解決します。配信の Ping はネットワーク経路に依存します。"</string>
+    <string name="ui_3c1f8ada45d0b8e4">"実績"</string>
+    <string name="ui_9d95e08eefc03547">"解除済み"</string>
+    <string name="ui_0fff1ccde9ea237a">"未解除"</string>
+    <string name="ui_416b5d8461c1f876">"解除したプレイヤーは {0}"</string>
+    <string name="ui_b5530fcb2654bb2b">"起動時にシステム DNS と 5 つのプロバイダーを比較します。サーバーの名前解決テストに 2 回とも応答したうち最速のものを選びます。"</string>
 </resources>

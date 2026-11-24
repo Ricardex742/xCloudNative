@@ -15,10 +15,7 @@ import java.util.concurrent.TimeUnit
 internal class CloudSessionDns(
     private val host: String,
     private val system: Dns,
-    private val candidates: List<Candidate> = listOf(
-        Candidate("Cloudflare", encrypted("https://cloudflare-dns.com/dns-query", "1.1.1.1", "1.0.0.1")),
-        Candidate("Google", encrypted("https://dns.google/dns-query", "8.8.8.8", "8.8.4.4"))
-    )
+    private val candidates: List<Candidate> = publicResolvers
 ) : Dns {
     internal data class Candidate(val name: String, val resolver: Dns)
     private data class Sample(val candidate: Candidate, val addresses: List<InetAddress>, val worstMs: Double)
@@ -75,9 +72,16 @@ internal class CloudSessionDns(
     }
 
     private companion object {
-        val workers = Executors.newFixedThreadPool(3) { task -> Thread(task, "xCloud-DNS").apply { isDaemon = true } }
         val https = OkHttpClient.Builder().callTimeout(600, TimeUnit.MILLISECONDS)
             .followRedirects(false).followSslRedirects(false).build()
+        val publicResolvers by lazy { listOf(
+            Candidate("Cloudflare", encrypted("https://cloudflare-dns.com/dns-query", "1.1.1.1", "2606:4700:4700::1111")),
+            Candidate("Google", encrypted("https://dns.google/dns-query", "8.8.8.8", "2001:4860:4860::8888")),
+            Candidate("Quad9", encrypted("https://dns.quad9.net/dns-query", "9.9.9.9", "2620:fe::fe")),
+            Candidate("AdGuard", encrypted("https://unfiltered.adguard-dns.com/dns-query", "94.140.14.140", "2a10:50c0::1:ff")),
+            Candidate("OpenDNS", encrypted("https://doh.opendns.com/dns-query", "146.112.41.2"))
+        ) }
+        val workers = Executors.newFixedThreadPool(6) { task -> Thread(task, "xCloud-DNS").apply { isDaemon = true } }
 
         fun encrypted(endpoint: String, vararg bootstrap: String): Dns = DnsOverHttps.Builder()
             .client(https).url(endpoint.toHttpUrl())

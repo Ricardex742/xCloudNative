@@ -1402,5 +1402,9 @@
     <string name="ui_9a395c56379175a5">"Oturum için en iyi DNS"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
     <string name="ui_0827c3dbf7f78b3e">"Oturum DNS"</string>
-    <string name="ui_a69ee15ff9d8993d">"Başlangıçta sistem DNS, Cloudflare ve Google karşılaştırılır. Her iki teste de yanıt veren en hızlı seçenek kullanılır. DNS sunucu adresini çözümler. Yayın gecikmesi ağ rotasına bağlıdır."</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Başarılar"</string>
+    <string name="ui_9d95e08eefc03547">"Açıldı"</string>
+    <string name="ui_0fff1ccde9ea237a">"Kilitli"</string>
+    <string name="ui_416b5d8461c1f876">"{0} kilidi açtı"</string>
+    <string name="ui_b5530fcb2654bb2b">"Başlangıçta sistem DNS ve beş sağlayıcı karşılaştırılır. Her iki sunucu sorgusuna da yanıt veren en hızlı seçenek kullanılır."</string>
 </resources>

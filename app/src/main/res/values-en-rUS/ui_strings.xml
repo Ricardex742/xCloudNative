@@ -1402,5 +1402,9 @@
     <string name="ui_9a395c56379175a5">"Best DNS for the session"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
     <string name="ui_0827c3dbf7f78b3e">"Session DNS"</string>
-    <string name="ui_a69ee15ff9d8993d">"Compares system DNS, Cloudflare, and Google at launch. Uses the fastest one to answer both checks. DNS resolves the server address. Stream ping depends on the network route."</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Achievements"</string>
+    <string name="ui_9d95e08eefc03547">"Unlocked"</string>
+    <string name="ui_0fff1ccde9ea237a">"Locked"</string>
+    <string name="ui_416b5d8461c1f876">"{0} unlocked it"</string>
+    <string name="ui_b5530fcb2654bb2b">"Compares system DNS and five providers at launch. Uses the fastest resolver that answers both server lookups."</string>
 </resources>

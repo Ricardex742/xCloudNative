@@ -1402,5 +1402,9 @@
     <string name="ui_9a395c56379175a5">"Melhor DNS para a sessão"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
     <string name="ui_0827c3dbf7f78b3e">"DNS da sessão"</string>
-    <string name="ui_a69ee15ff9d8993d">"Compara o DNS do sistema, Cloudflare e Google ao iniciar. Usa o mais rápido entre os que responderem aos dois testes. O DNS resolve o endereço do servidor. O ping da transmissão depende da rota de rede."</string>
+    <string name="ui_3c1f8ada45d0b8e4">"Conquistas"</string>
+    <string name="ui_9d95e08eefc03547">"Desbloqueada"</string>
+    <string name="ui_0fff1ccde9ea237a">"Bloqueada"</string>
+    <string name="ui_416b5d8461c1f876">"{0} desbloquearam"</string>
+    <string name="ui_b5530fcb2654bb2b">"Compara o DNS do sistema e cinco provedores ao iniciar. Escolhe o mais rápido a responder aos dois testes de resolução do servidor."</string>
 </resources>

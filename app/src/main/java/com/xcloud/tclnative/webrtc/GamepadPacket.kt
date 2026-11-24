@@ -22,7 +22,8 @@ object GamepadPacket {
     fun encode(state: GamepadState, sequence: Int, timestampMs: Double): ByteArray = encode(mapOf(0 to state),sequence,timestampMs)
     fun encode(states: Map<Int,GamepadState>, sequence: Int, timestampMs: Double,
                pointers: List<NativePointer> = emptyList(), width: Int = 1920, height: Int = 1080,
-               keys: List<NativeKey> = emptyList(), mice: List<NativeMouse> = emptyList()): ByteArray {
+               keys: List<NativeKey> = emptyList(), mice: List<NativeMouse> = emptyList(),
+               officialTouchSlots: Int = 0): ByteArray {
         require(states.size<=4 && states.keys.all { it in 0..3 } && pointers.size<=10)
         require(keys.size<=32 && mice.size<=16 && keys.all { it.code in 1..255 })
         val type=(if(states.isEmpty()) 0 else 2) or (if(pointers.isEmpty()) 0 else 4) or
@@ -37,10 +38,14 @@ object GamepadPacket {
                     .putShort(axis(state.leftX)).putShort(axis(-state.leftY))
                     .putShort(axis(state.rightX)).putShort(axis(-state.rightY))
                     .putShort(trigger(state.leftTrigger)).putShort(trigger(state.rightTrigger))
-                    .putInt(1)
-                // VirtualPhysicality is the sole big-endian uint32 in this report.
-                out.order(ByteOrder.BIG_ENDIAN).putInt(1)
-                out.order(ByteOrder.LITTLE_ENDIAN)
+                if (officialTouchSlots and (1 shl index) != 0) {
+                    // Touch layouts set the active control bits in the virtual mask.
+                    // The SDK serializes both physicality fields as little-endian uint32.
+                    out.putInt(0).putInt(virtualPhysicality(state))
+                } else {
+                    // Keep the compatibility fields used by the existing controller paths.
+                    out.putInt(1).order(ByteOrder.BIG_ENDIAN).putInt(1).order(ByteOrder.LITTLE_ENDIAN)
+                }
             }
         }
         if(pointers.isNotEmpty()) {
@@ -64,6 +69,17 @@ object GamepadPacket {
             keys.forEach { out.put(2).put((if(it.pressed) 1 else 0).toByte()).put(it.code.toByte()) }
         }
         return out.array()
+    }
+    private fun virtualPhysicality(state: GamepadState): Int {
+        val buttons = state.buttons
+        var mask = (buttons and 0x0f00) ushr 8
+        mask = mask or ((buttons and 0x000c) shl 2) or ((buttons and 0xc000) ushr 8) or
+            ((buttons and 0x3000) ushr 4) or ((buttons and 0x0002) shl 9) or ((buttons and 0x00f0) shl 8)
+        if (trigger(state.leftTrigger) != 0.toShort()) mask = mask or 0x10000
+        if (trigger(state.rightTrigger) != 0.toShort()) mask = mask or 0x20000
+        if (axis(state.leftX) != 0.toShort() || axis(state.leftY) != 0.toShort()) mask = mask or 0xc0000
+        if (axis(state.rightX) != 0.toShort() || axis(state.rightY) != 0.toShort()) mask = mask or 0x300000
+        return mask
     }
     private fun header(size: Int, type: Int, sequence: Int, time: Double) = ByteBuffer.allocate(size)
         .order(ByteOrder.LITTLE_ENDIAN).putShort(type.toShort()).putInt(sequence).putDouble(time)

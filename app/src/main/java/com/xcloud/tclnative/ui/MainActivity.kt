@@ -44,6 +44,7 @@ import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.signaling.SessionTimeLimit
 import com.xcloud.tclnative.touch.OfficialTouchLoad
 import com.xcloud.tclnative.touch.OfficialTouchSession
+import com.xcloud.tclnative.touch.MinecraftDungeonsTouchLayout
 import com.xcloud.tclnative.net.CloudHttpException
 import com.xcloud.tclnative.ui.dashboard.GameLoadingView
 import com.xcloud.tclnative.ui.dashboard.GameMenuPanel
@@ -1867,7 +1868,8 @@ open class MainActivity : Activity() {
             else -> DeviceInputPolicy.resolve(inputDevice,choice,game)
         }
         val official = if (!remote && inputDevice.touchDevice && sessionDesktopMode==DesktopInputMode.OFF &&
-            game.offersOfficialTouch()) OfficialTouchSession(choice==TouchMode.AUTO && !preferHybrid) else null
+            game.offersOfficialTouch()) OfficialTouchSession(choice==TouchMode.AUTO && !preferHybrid,
+                preserveManualLayoutOnHide = touchMode == TouchMode.NATIVE && MinecraftDungeonsTouchLayout.appliesTo(game)) else null
         currentTouchMode=TouchMode.OFF
         touchView.configure(TouchMode.OFF)
         statistics.beginSession();transmissionReady=false;latestMetrics=null;latestInput=InputMetrics()
@@ -2028,8 +2030,8 @@ open class MainActivity : Activity() {
                             UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())) +
                         "\n${controllerPath.diagnostics()}\n${controllerPath.buttonDiagnostics()}\n${signaling.startupDiagnostics()}\n" +
                         "USB direto: ${usbDirect.snapshot().status.label} • ${usbDirect.snapshot().valid}/${usbDirect.snapshot().packets} • OUT ${usbDirect.snapshot().writes}\n" +
-                        inputDevice.diagnostics() + (official?.diagnostics()?.let { "\n$it" } ?: "") + when (touchMode) {
-                            TouchMode.NATIVE -> "\n${touchView.nativeDiagnostics()}"
+                        inputDevice.diagnostics() + (official?.let { "\n${it.diagnostics()}\n${it.noticeDiagnostics()}" } ?: "") + when (touchMode) {
+                            TouchMode.NATIVE -> "\n${touchView.hudDiagnostics()}"
                             TouchMode.VIRTUAL -> "\n${touchView.hudDiagnostics()}"
                             else -> ""
                         } + "\n${joystickDispatch.diagnostics()}\n${rumble.diagnostics()}\n${gyro.diagnostics()}\n" +
@@ -2529,7 +2531,9 @@ open class MainActivity : Activity() {
     private fun publishGamepad(slot: Int, temporary: Boolean = false, preserveButtonEdges: Boolean = false) {
         val auxiliary=slot==0 && currentTouchMode==TouchMode.NATIVE && controllers.sourceFor(0)==null &&
             (temporary || sessionSettings?.gyroNativeTouch==true)
-        webrtcClient?.updateGamepad(combinedInput(slot), slot, auxiliary, preserveButtonEdges)
+        val officialTouch = slot == 0 && currentTouchMode == TouchMode.NATIVE &&
+            controllers.sourceFor(0) == null && touchView.usingOfficialControls
+        webrtcClient?.updateGamepad(combinedInput(slot), slot, auxiliary, preserveButtonEdges, officialTouch)
     }
     private fun setDesktopCapture(enabled: Boolean) {
         val active=enabled && sessionDesktopMode!=DesktopInputMode.OFF && webrtcClient!=null

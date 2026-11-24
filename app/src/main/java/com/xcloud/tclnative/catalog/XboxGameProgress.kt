@@ -13,13 +13,18 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 data class XboxAchievement(
-    val name: String, val gamerscore: Int, val iconUrl: String?, val description: String? = null
+    val name: String,
+    val gamerscore: Int,
+    val description: String?,
+    val unlocked: Boolean,
+    val progress: Int? = null,
+    val unlockRate: Double? = null
 )
 
 data class XboxGameProgress(
     val gamerscore: Int, val totalGamerscore: Int,
     val achievements: Int, val totalAchievements: Int,
-    val recent: List<XboxAchievement>
+    val entries: List<XboxAchievement>
 )
 
 /** Read-only, per-account and per-title. Progress is derived only from a complete results list. */
@@ -45,11 +50,13 @@ internal class XboxGameProgressService(
             XboxGameProgress(
                 unlocked.sumOf { it.achievement.gamerscore }, entries.sumOf { it.achievement.gamerscore },
                 unlocked.size, entries.size,
-                unlocked.sortedByDescending { it.unlockedAt }.take(4).map { it.achievement }
+                entries.map { it.achievement }
             )
         }
 
-    private data class Entry(val key: String, val achievement: XboxAchievement, val unlocked: Boolean, val unlockedAt: String)
+    private data class Entry(val key: String, val achievement: XboxAchievement) {
+        val unlocked get() = achievement.unlocked
+    }
 
     private suspend fun achievements(
         authorization: String, xuid: String, titleId: String, language: String, legacy: Boolean
@@ -61,7 +68,6 @@ internal class XboxGameProgressService(
         var cursor: String? = null
         repeat(12) {
             val url = base.newBuilder().addQueryParameter("titleId", titleId).addQueryParameter("maxItems", "100").apply {
-                if (!legacy) addQueryParameter("orderBy", "UnlockTime")
                 cursor?.let { addQueryParameter("continuationToken", it) }
             }.build()
             val request = Request.Builder().url(url).header("Authorization", authorization)
@@ -106,19 +112,27 @@ internal class XboxGameProgressService(
                 .firstOrNull { it.optString("type").equals("Gamerscore", true) }
                 ?.let { reward -> reward.optString("value").toIntOrNull()?.takeIf { it in 0..10_000 }
                     ?: throw IOException("ACHIEVEMENTS_INVALID_SCORE") } ?: 0
-        val media = item.optJSONArray("mediaAssets")
-        val icon = (0 until (media?.length() ?: 0)).asSequence().mapNotNull { media?.optJSONObject(it) }
-            .firstOrNull { it.optString("type").equals("Icon", true) }?.optString("url")
-        val image = CatalogService.imageUrl(icon?.let {
-            // Old responses advertise this Microsoft image endpoint with an HTTP scheme.
-            if (it.startsWith("http://images-eds.xboxlive.com/")) "https://" + it.substringAfter("http://") else it
-        })
         fun text(key: String, maxLength: Int) = (item.opt(key) as? String)?.trim()?.take(maxLength)?.takeIf(String::isNotEmpty)
-        val name = if (unlocked) text("name", 150).orEmpty() else ""
-        val description = if (unlocked) text("description", 2000) else null
-        val date = (if (legacy) text("timeUnlocked", 50)
-            else item.optJSONObject("progression")?.opt("timeUnlocked") as? String).orEmpty()
+        val secret = !unlocked && item.optBoolean("isSecret")
+        val name = if (secret) "" else text("name", 150).orEmpty()
+        val description = when {
+            secret -> null
+            unlocked -> text("description", 2000)
+            legacy -> text("unachievedDescription", 2000) ?: text("description", 2000)
+            else -> text("lockedDescription", 2000) ?: text("description", 2000)
+        }
+        val requirement = item.optJSONObject("progression")?.optJSONArray("requirements")
+            ?.takeIf { it.length() == 1 }?.optJSONObject(0)
+        val current = requirement?.optDouble("current")?.takeIf { it.isFinite() && it >= 0 }
+        val target = requirement?.optDouble("target")?.takeIf { it.isFinite() && it > 0 }
+        val progress = when {
+            unlocked -> 100
+            current != null && target != null -> (current / target * 100).toInt().coerceIn(0, 100)
+            !legacy && item.optString("progressState").equals("NotStarted", true) -> 0
+            else -> null
+        }
+        val unlockRate = item.optJSONObject("rarity")?.optDouble("currentPercentage")?.takeIf { it in 0.0..100.0 }
         return Entry(item.optString("serviceConfigId").take(80) + ":" + id,
-            XboxAchievement(name, score, image, description), unlocked, date)
+            XboxAchievement(name, score, description, unlocked, progress, unlockRate))
     }
 }

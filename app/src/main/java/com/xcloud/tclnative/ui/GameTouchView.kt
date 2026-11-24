@@ -75,6 +75,10 @@ class GameTouchView(context: Context,
         lastHudPress=UiText.text("nenhum")
     }
     private var lastHudPress=UiText.text("nenhum")
+    private fun recordHudPress(control: TouchControl) {
+        lastHudPress = UiText.text("{0} [{1}] → {2}", UiText.nested(control.label), UiText.nested(control.id),
+            UiText.nested(control.action?.label ?: control.kind.name))
+    }
     fun nativeDiagnostics(): String {
         val s=nativeEvents
         val age=if(s.samples==0L) "n/d" else java.lang.String.format(java.util.Locale.US,"%.2f/%d ms",s.totalAge/s.samples,s.maxAge)
@@ -398,11 +402,14 @@ class GameTouchView(context: Context,
                 when (action) {
                     MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                         if (autoHidden && action==MotionEvent.ACTION_DOWN) revealControls()
-                        else if (controlsVisible && model.down(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)!=null) {
-                            virtualPointers.add(id)
-                            removeCallbacks(autoHideTask)
-                            publish()
-                            return true
+                        else if (controlsVisible) {
+                            model.down(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)?.let {
+                                recordHudPress(it)
+                                virtualPointers.add(id)
+                                removeCallbacks(autoHideTask)
+                                publish()
+                                return true
+                            }
                         }
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (virtualPointers.remove(id)) {
@@ -451,9 +458,7 @@ class GameTouchView(context: Context,
         } else {
             when(action) {
                 MotionEvent.ACTION_DOWN,MotionEvent.ACTION_POINTER_DOWN -> {
-                    model.down(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)?.let {
-                        lastHudPress=UiText.text("{0} [{1}] → {2}",UiText.nested(it.label),UiText.nested(it.id),UiText.nested(it.action?.label ?: it.kind.name))
-                    }
+                    model.down(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)?.let(::recordHudPress)
                 }
                 MotionEvent.ACTION_UP,MotionEvent.ACTION_POINTER_UP -> {
                     model.move(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)

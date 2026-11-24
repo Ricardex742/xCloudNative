@@ -19,7 +19,7 @@ internal sealed interface OfficialTouchLoad {
 internal data class OfficialTouchLayout(val id: String?, val controls: List<HudElement>)
 
 /** Layout and state belong to the Xbox session and survive a replacement WebRTC transport. */
-internal class OfficialTouchSession(private var enabled: Boolean) {
+internal class OfficialTouchSession(private var enabled: Boolean, private val preserveManualLayoutOnHide: Boolean = false) {
     private var bundle: OfficialTouchBundle? = null
     private var state = JSONObject()
     private var layoutName: String? = null
@@ -28,6 +28,9 @@ internal class OfficialTouchSession(private var enabled: Boolean) {
     private val initialPatches = ArrayDeque<String>()
     private var loading = false
     private var failure: OfficialTouchLoad.Failed? = null
+    private var shows = 0
+    private var hides = 0
+    private var patches = 0
     val waitingForManualLoad get() = manual && bundle == null
     val loaded get() = bundle != null
 
@@ -62,19 +65,25 @@ internal class OfficialTouchSession(private var enabled: Boolean) {
     fun receive(notice: OfficialTouchNotice) {
         when (notice) {
             OfficialTouchNotice.Hide -> {
+                hides++
                 hidden = true
-                if (loaded) manual = false
+                if (loaded && !preserveManualLayoutOnHide) manual = false
             }
             OfficialTouchNotice.ShowDefault -> {
+                shows++
                 hidden = false
                 layoutName = null
             }
             is OfficialTouchNotice.Show -> {
+                shows++
                 hidden = false
                 layoutName = notice.name
                 notice.patch?.let(::patch)
             }
-            is OfficialTouchNotice.Patch -> patch(notice.json)
+            is OfficialTouchNotice.Patch -> {
+                patches++
+                patch(notice.json)
+            }
         }
     }
 
@@ -84,7 +93,7 @@ internal class OfficialTouchSession(private var enabled: Boolean) {
         if (!enabled) return null
         val current = bundle ?: return null
         if (hidden && !manual) return OfficialTouchLayout(null, emptyList())
-        val name = if (hidden) null else layoutName
+        val name = if (hidden && !preserveManualLayoutOnHide) null else layoutName
         if (name=="") return OfficialTouchLayout(null, GameHud.elements(HudPreset.GAMEPAD))
         fun selectedLayout(id: String?) = current.controls(id, state)?.let {
             OfficialTouchLayout(current.layoutId(id), it)
@@ -107,6 +116,8 @@ internal class OfficialTouchSession(private var enabled: Boolean) {
         }
         return "TOUCH_LAYOUT/$status"
     }
+
+    fun noticeDiagnostics() = "TOUCH_LAYOUT_EVENTS/SHOW=$shows HIDE=$hides PATCH=$patches MANUAL=$manual"
 
     private fun patch(json: String) {
         if (bundle != null) applyPatch(json)

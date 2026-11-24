@@ -62,6 +62,7 @@ class XCloudWebRtcClient(
     fun nativeTouchMetadataReady()=inputDimensions!=null
     fun canUseNativeTouch()=nativeTouch && inputReady && !closed.get()
     private val pumpLock = Any()
+    private var officialTouchSlots = 0
     @Volatile private var inputRegistrationFailed = false
     private val inputReady get() = channelsReady.isCompleted && !channelsReady.isCancelled && !inputRegistrationFailed
     private val pendingTouch = NativeTouchBuffer()
@@ -456,7 +457,7 @@ class XCloudWebRtcClient(
                 initializeTouchSlot=nativeTouch && negotiatedInputVersion==8
             )
                 inputPump = pump
-                gamepads.forEach { (index,state) -> pump.update(state,index) }
+                gamepads.forEach { (index,state) -> pump.update(state,index,officialTouchSlots and (1 shl index) != 0) }
             }
             scope.launch {
                 // A fresh RTC instance owns this task; close() cancels it before another session starts.
@@ -542,7 +543,7 @@ class XCloudWebRtcClient(
         return accepted
     }
     fun updateGamepad(state: GamepadState, index: Int = 0, auxiliary: Boolean = false,
-                      preserveButtonEdges: Boolean = false) {
+                      preserveButtonEdges: Boolean = false, officialTouch: Boolean = false) {
         require(index in 0..3)
         synchronized(pumpLock) {
             if(closed.get() || inputRegistrationFailed) return
@@ -555,7 +556,9 @@ class XCloudWebRtcClient(
             if ((touchEnabled || nativeKeyboardMouse) && added && state == GamepadState()) return
             if (added && index != 0 && inputReady && !gamepadConnections.add(index) { sendGamepadChanged(index, true) }) return
             gamepads[index]=state
-            inputPump?.update(state,index)
+            val bit = 1 shl index
+            officialTouchSlots = if (officialTouch) officialTouchSlots or bit else officialTouchSlots and bit.inv()
+            inputPump?.update(state,index,officialTouch)
         }
     }
     fun removeGamepad(index: Int) {

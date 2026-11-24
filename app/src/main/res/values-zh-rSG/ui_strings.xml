@@ -1402,5 +1402,9 @@
     <string name="ui_9a395c56379175a5">"会话的最佳 DNS"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>
     <string name="ui_0827c3dbf7f78b3e">"会话 DNS"</string>
-    <string name="ui_a69ee15ff9d8993d">"启动时比较系统 DNS、Cloudflare 和 Google。选择两次测试都成功且响应最快的服务。DNS 用于解析服务器地址。串流延迟取决于网络路由。"</string>
+    <string name="ui_3c1f8ada45d0b8e4">"成就"</string>
+    <string name="ui_9d95e08eefc03547">"已解锁"</string>
+    <string name="ui_0fff1ccde9ea237a">"未解锁"</string>
+    <string name="ui_416b5d8461c1f876">"{0} 的玩家已解锁"</string>
+    <string name="ui_b5530fcb2654bb2b">"启动时比较系统 DNS 和五家提供商，从两次服务器解析测试均成功的服务中选择最快的一家。"</string>
 </resources>

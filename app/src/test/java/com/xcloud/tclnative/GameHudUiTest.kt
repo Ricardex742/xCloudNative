@@ -142,6 +142,16 @@ class GameHudUiTest {
         assertFalse(adventure.any { it.binding == HudBinding.A })
         assertFalse(adventure.single { it.binding == HudBinding.Y }.officialAppearance!!.enabled)
         xbox.load(OfficialTouchLoad.Ready(bundle))
+        val hybrid = OfficialTouchSession(true, preserveManualLayoutOnHide = true)
+        hybrid.load(OfficialTouchLoad.Ready(bundle))
+        hybrid.receive(OfficialTouchNotice.Show("adventure"))
+        hybrid.receive(OfficialTouchNotice.Hide)
+        assertTrue(hybrid.controls()!!.isEmpty())
+        hybrid.selectManually()
+        assertEquals("adventure", hybrid.layout()?.id)
+        hybrid.receive(OfficialTouchNotice.Hide)
+        assertTrue(hybrid.controls()!!.isNotEmpty())
+        assertTrue(hybrid.noticeDiagnostics().contains("HIDE=2"))
         val controls=xbox.controls()!!
         val appearance = controls.single().officialAppearance!!
         assertNotNull(appearance.idle.face?.image)
