@@ -270,17 +270,38 @@ class DashboardNavigationRegressionTest {
         } finally { v.close();c.pause().stop().destroy() }
     }
     @Test fun favoriteMarkerHasDistinctScalableArtworkForEveryConsoleIdentity() {
-        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();val view=CoverMarkerView(a);val signatures=mutableSetOf<Int>()
+        val c = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = c.get()
+        val view = CoverMarkerView(activity)
+        val layoutSignatures = mutableSetOf<Int>()
+        val measure = View.MeasureSpec.makeMeasureSpec(96, View.MeasureSpec.EXACTLY)
         try {
-            for(theme in UiTheme.entries.filter { it.scene!=ConsoleScene.NONE }) {
-                DashboardTheme.apply(a,theme);view.refresh()
-                view.measure(View.MeasureSpec.makeMeasureSpec(96,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(96,View.MeasureSpec.EXACTLY));view.layout(0,0,96,96)
-                val b=Bitmap.createBitmap(96,96,Bitmap.Config.ARGB_8888);view.draw(Canvas(b))
-                val colors=IntArray(96*96);b.getPixels(colors,0,96,0,0,96,96);signatures+=colors.contentHashCode()
-                assertTrue(Color.alpha(b.getPixel(48,48))>240)
-                b.recycle();capture(view,"favorite-${theme.name.lowercase()}")
-                assertFalse(view.isFocusable);assertFalse(view.isClickable)
-            };assertEquals(ConsoleScene.entries.count { it!=ConsoleScene.NONE },signatures.size)
-        } finally { c.pause().stop().destroy() }
+            for (theme in UiTheme.entries.filter { it.scene != ConsoleScene.NONE }) {
+                DashboardTheme.apply(activity, theme)
+                view.refresh()
+                view.measure(measure, measure)
+                view.layout(0, 0, 96, 96)
+                val bitmap = Bitmap.createBitmap(96, 96, Bitmap.Config.ARGB_8888)
+                view.draw(Canvas(bitmap))
+                if (theme == theme.layout) {
+                    val colors = IntArray(96 * 96)
+                    bitmap.getPixels(colors, 0, 96, 0, 0, 96, 96)
+                    layoutSignatures += colors.contentHashCode()
+                }
+                val center = bitmap.getPixel(48, 48)
+                assertTrue(Color.alpha(center) > 240)
+                if (theme.scene == ConsoleScene.XBOX_SERIES) {
+                    val expected = if (theme == theme.layout) 0xff9bf00b.toInt() else theme.accent
+                    assertEquals(theme.name, expected, center)
+                }
+                bitmap.recycle()
+                capture(view, "favorite-${theme.name.lowercase()}")
+                assertFalse(view.isFocusable)
+                assertFalse(view.isClickable)
+            }
+            assertEquals(ConsoleScene.entries.count { it != ConsoleScene.NONE }, layoutSignatures.size)
+        } finally {
+            c.pause().stop().destroy()
+        }
     }
 }
