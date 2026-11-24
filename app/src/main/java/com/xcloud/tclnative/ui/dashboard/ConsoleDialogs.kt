@@ -68,6 +68,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         else -> (if(skin.enabled) consoleReferenceScale(screenWidth, screenHeight) else screenWidth/1280f)
             .coerceAtLeast(if(skin.scene.playStation) .5f else maxOf(.5f,context.resources.displayMetrics.density*.65f))
     }
+    internal val compactGameDetailsHeight get() = wideDetails && screenHeight < px(465)
     val panel: LinearLayout = object : LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
         override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -149,9 +150,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         private val focusHistory=java.util.WeakHashMap<Context,MutableMap<String,String>>()
         private val visiblePanels=mutableListOf<java.lang.ref.WeakReference<ConsoleDialog>>()
     }
-    internal var closeOnlyThisPanel = false
     private fun closePanels() {
-        if (remotePlayPage || gameDetails || closeOnlyThisPanel) { dismiss(); return }
+        if (remotePlayPage || gameDetails) { dismiss(); return }
         // Some previews keep their parent open. X closes the entire owned panel group;
         // dismiss never invokes the back/cancel callback or a destructive action.
         visiblePanels.mapNotNull { it.get() }.filter {

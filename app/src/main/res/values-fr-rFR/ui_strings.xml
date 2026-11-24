@@ -1397,12 +1397,7 @@
     <string name="ui_95bd1530bb531913">"Violence"</string>
     <string name="ui_a50d881504c65330">"Violence extrême"</string>
     <string name="ui_f0fedfb387df6c68">"Amis en train de jouer"</string>
-    <string name="ui_ee67a1eea8f24961">"Voir tous les succès"</string>
     <string name="ui_78d8e0647288842f">"Description indisponible."</string>
-    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
-    <string name="ui_9d95e08eefc03547">"Débloqué"</string>
-    <string name="ui_0fff1ccde9ea237a">"Verrouillé"</string>
-    <string name="ui_3c1f8ada45d0b8e4">"Succès"</string>
     <string name="ui_21bf344b14c314e0">"DNS du système"</string>
     <string name="ui_9a395c56379175a5">"Meilleur DNS pour la session"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>

@@ -29,7 +29,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - **Game Pass**, **Transmita seu jogo**, **Adições recentes** e **Todos os jogos**.
 - Catálogos oficiais com nomes, capas e identificação das edições.
 - Segure uma capa ou pressione **A** sobre ela para abrir os detalhes. A tela usa arte desfocada do jogo ao fundo e reúne editora, ano, descrição, classificação brasileira, avisos de conteúdo e capturas quando disponíveis. O rodapé reúne jogo na nuvem, opções da partida, loja, favoritos e o ícone de seta para criar um atalho. Um toque curto na capa inicia o jogo diretamente.
-- **Seu progresso** mostra Gamerscore e conquistas. Toque em uma conquista recente para ler sua descrição ou abra a lista completa com a pontuação e o estado de cada conquista.
+- **Seu progresso** mostra Gamerscore e conquistas. A descrição aparece abaixo dos emblemas recentes. Selecione outro emblema para ler a descrição correspondente no mesmo painel.
 - **Amigos jogando agora** mostra na ficha do jogo o gamertag e a foto de perfil dos amigos que o Xbox informa estarem online naquele título.
 - **Melhor DNS para a sessão** compara o resolvedor do sistema, Cloudflare e Google ao conectar à nuvem. A opção fica em **Opções das partidas** e vale para a resolução do servidor de sinalização.
 - Ao iniciar uma partida na nuvem, um aviso de cinco segundos mostra quantos minutos restam até o fim da sessão quando o Xbox informa seu prazo.

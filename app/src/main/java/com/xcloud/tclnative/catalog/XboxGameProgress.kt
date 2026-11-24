@@ -13,13 +13,13 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 data class XboxAchievement(
-    val name: String, val gamerscore: Int, val iconUrl: String?, val description: String? = null, val unlocked: Boolean = true
+    val name: String, val gamerscore: Int, val iconUrl: String?, val description: String? = null
 )
 
 data class XboxGameProgress(
     val gamerscore: Int, val totalGamerscore: Int,
     val achievements: Int, val totalAchievements: Int,
-    val recent: List<XboxAchievement>, val all: List<XboxAchievement> = recent
+    val recent: List<XboxAchievement>
 )
 
 /** Read-only, per-account and per-title. Progress is derived only from a complete results list. */
@@ -45,9 +45,7 @@ internal class XboxGameProgressService(
             XboxGameProgress(
                 unlocked.sumOf { it.achievement.gamerscore }, entries.sumOf { it.achievement.gamerscore },
                 unlocked.size, entries.size,
-                unlocked.sortedByDescending { it.unlockedAt }.take(4).map { it.achievement },
-                entries.sortedWith(compareByDescending<Entry> { it.unlocked }.thenByDescending { it.unlockedAt })
-                    .map { it.achievement }
+                unlocked.sortedByDescending { it.unlockedAt }.take(4).map { it.achievement }
             )
         }
 
@@ -116,17 +114,11 @@ internal class XboxGameProgressService(
             if (it.startsWith("http://images-eds.xboxlive.com/")) "https://" + it.substringAfter("http://") else it
         })
         fun text(key: String, maxLength: Int) = (item.opt(key) as? String)?.trim()?.take(maxLength)?.takeIf(String::isNotEmpty)
-        val field = when {
-            unlocked -> "description"
-            legacy -> "unachievedDescription"
-            else -> "lockedDescription"
-        }
-        val secret = !unlocked && (item.optBoolean("isSecret") || item.optBoolean("secret"))
-        val name = if (secret) "" else text("name", 150).orEmpty()
-        val description = if (secret) null else text(field, 2000) ?: text("description", 2000)
+        val name = if (unlocked) text("name", 150).orEmpty() else ""
+        val description = if (unlocked) text("description", 2000) else null
         val date = (if (legacy) text("timeUnlocked", 50)
             else item.optJSONObject("progression")?.opt("timeUnlocked") as? String).orEmpty()
         return Entry(item.optString("serviceConfigId").take(80) + ":" + id,
-            XboxAchievement(name, score, image.takeUnless { secret }, description, unlocked), unlocked, date)
+            XboxAchievement(name, score, image, description), unlocked, date)
     }
 }

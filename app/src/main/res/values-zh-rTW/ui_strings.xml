@@ -1397,12 +1397,7 @@
     <string name="ui_95bd1530bb531913">"暴力"</string>
     <string name="ui_a50d881504c65330">"極端暴力"</string>
     <string name="ui_f0fedfb387df6c68">"正在遊玩的好友"</string>
-    <string name="ui_ee67a1eea8f24961">"查看所有成就"</string>
     <string name="ui_78d8e0647288842f">"沒有可用的描述。"</string>
-    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
-    <string name="ui_9d95e08eefc03547">"已解鎖"</string>
-    <string name="ui_0fff1ccde9ea237a">"未解鎖"</string>
-    <string name="ui_3c1f8ada45d0b8e4">"成就"</string>
     <string name="ui_21bf344b14c314e0">"系統 DNS"</string>
     <string name="ui_9a395c56379175a5">"工作階段的最佳 DNS"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>

@@ -104,8 +104,9 @@ internal class GameDetailsPanel(
             dialog.shortcut = { event ->
                 val key = event.keyCode
                 val direction = if (key == KeyEvent.KEYCODE_DPAD_UP) -1 else 1
+                val focus = dialog.window?.currentFocus?.tag
                 if ((key == KeyEvent.KEYCODE_DPAD_UP || key == KeyEvent.KEYCODE_DPAD_DOWN) &&
-                    dialog.window?.currentFocus?.tag != "close-settings" && canScrollVertically(direction)) {
+                    focus != "close-settings" && focus != "game-progress-description-scroll" && canScrollVertically(direction)) {
                     if (event.action == KeyEvent.ACTION_DOWN) {
                         smoothScrollBy(0, direction * maxOf(height / 2, dialog.touchSize()))
                     }
@@ -116,7 +117,8 @@ internal class GameDetailsPanel(
         information.addView(readable, LinearLayout.LayoutParams(-1, if (wide) 0 else -2, if (wide) 1f else 0f))
         progress?.actions?.let {
             it.visibility = View.GONE
-            information.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dialog.px(8) })
+            val container = if (dialog.compactGameDetailsHeight) content else information
+            container.addView(it, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dialog.px(8) })
         }
         columns.addView(information, column(1.45f))
         columns.addView(gallery, column(2.5f, gapAfter = false))

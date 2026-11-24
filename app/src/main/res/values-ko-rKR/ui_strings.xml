@@ -1397,12 +1397,7 @@
     <string name="ui_95bd1530bb531913">"폭력"</string>
     <string name="ui_a50d881504c65330">"극심한 폭력"</string>
     <string name="ui_f0fedfb387df6c68">"지금 플레이 중인 친구"</string>
-    <string name="ui_ee67a1eea8f24961">"모든 도전 과제 보기"</string>
     <string name="ui_78d8e0647288842f">"설명을 사용할 수 없습니다."</string>
-    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
-    <string name="ui_9d95e08eefc03547">"잠금 해제됨"</string>
-    <string name="ui_0fff1ccde9ea237a">"잠김"</string>
-    <string name="ui_3c1f8ada45d0b8e4">"도전 과제"</string>
     <string name="ui_21bf344b14c314e0">"시스템 DNS"</string>
     <string name="ui_9a395c56379175a5">"세션에 가장 적합한 DNS"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>

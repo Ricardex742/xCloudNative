@@ -1397,12 +1397,7 @@
     <string name="ui_95bd1530bb531913">"Violencia"</string>
     <string name="ui_a50d881504c65330">"Violencia extrema"</string>
     <string name="ui_f0fedfb387df6c68">"Amigos jugando ahora"</string>
-    <string name="ui_ee67a1eea8f24961">"Ver todos los logros"</string>
     <string name="ui_78d8e0647288842f">"Descripción no disponible."</string>
-    <string name="ui_ae17b6bea14a699a">"{0} G · {1}"</string>
-    <string name="ui_9d95e08eefc03547">"Desbloqueado"</string>
-    <string name="ui_0fff1ccde9ea237a">"Bloqueado"</string>
-    <string name="ui_3c1f8ada45d0b8e4">"Logros"</string>
     <string name="ui_21bf344b14c314e0">"DNS del sistema"</string>
     <string name="ui_9a395c56379175a5">"Mejor DNS para la sesión"</string>
     <string name="ui_f008e56027d1cf11">"DNS: {0}"</string>

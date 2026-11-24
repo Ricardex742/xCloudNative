@@ -256,7 +256,10 @@ class DashboardTest {
             }, onLoadGameProgress = {
                 assertEquals("42", it)
                 progressLoads++
-                XboxGameProgress(430, 800, 6, 15, listOf(XboxAchievement("Primeira corrida", 20, null, "Vença uma corrida.")))
+                XboxGameProgress(430, 800, 6, 15, listOf(
+                    XboxAchievement("Primeira corrida", 20, null, "Vença uma corrida."),
+                    XboxAchievement("Colecionador", 15, null, "Compre três carros.")
+                ))
             }, onGameOptions = { options = it }, onStoreProduct = { openedStore = it },
             onLoadFriends = {
                 listOf(XboxFriend("7", "Corredor", FriendPresence.ONLINE, null, "42", friendAvatar),
@@ -295,6 +298,11 @@ class DashboardTest {
         assertFalse(details.body.allViews.filterIsInstance<TextView>().any { it.text.toString() == "Em outro jogo" })
         details.body.findViewWithTag<View>("game-progress-refresh").performClick()
         assertEquals(2, progressLoads)
+        val achievementDescription = details.body.findViewWithTag<TextView>("game-progress-description")
+        assertEquals("Vença uma corrida.", achievementDescription.text.toString())
+        assertTrue(details.body.findViewWithTag<View>("game-progress-badge-1").performClick())
+        assertEquals("Compre três carros.", achievementDescription.text.toString())
+        assertNull(details.body.findViewWithTag<View>("game-progress-all"))
         assertTrue(gallery.height > 0)
         val thumbnail = (gallery.getChildAt(0) as ViewGroup).getChildAt(0)
         assertTrue(thumbnail.width > 0 && thumbnail.height > 0)
@@ -314,10 +322,6 @@ class DashboardTest {
             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
         }
         bitmap.recycle()
-        details.body.findViewWithTag<View>("game-progress-all").performClick()
-        val achievements = org.robolectric.shadows.ShadowDialog.getLatestDialog() as com.xcloud.tclnative.ui.dashboard.ConsoleDialog
-        assertTrue(achievements.body.allViews.filterIsInstance<TextView>().any { it.text.contains("Vença uma corrida.") })
-        achievements.dismiss()
         details.panel.findViewWithTag<View>("game-details-progress").performClick()
         layout(root, 1280, 600)
         assertEquals(View.GONE, progress.visibility)
