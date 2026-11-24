@@ -23,6 +23,17 @@ internal class SessionTimeLimit {
     fun remainingSeconds(nowMs: Long): Long? =
         deadlineMs?.let { (it - nowMs).coerceAtLeast(0L) }?.let { (it + 999L) / 1_000L }
 
+    fun diagnostics(nowMs: Long): String {
+        val seconds = remainingSeconds(nowMs)
+        val source = when {
+            receivedTimer && seconds == null -> "XBOX_TIMER_INACTIVE"
+            receivedTimer -> "XBOX_TIMER"
+            seconds != null -> "SESSION_STATE"
+            else -> "UNAVAILABLE"
+        }
+        return "SESSION_TIME/$source; remaining_s=${seconds ?: "n/d"}"
+    }
+
     fun takeWarningMinutes(remainingSeconds: Long): Int? {
         val minutes = when (remainingSeconds) {
             in 1L..60L -> 1

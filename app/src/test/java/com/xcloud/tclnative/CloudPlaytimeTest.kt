@@ -65,13 +65,15 @@ class CloudPlaytimeTest {
             message(4,budget(-1,-1))+message(1,message(1,"some-game".toByteArray())+message(2,budget(-1,-1)))
         assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,5400),decode(account("12345",q)))
         assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,0),decode(account("12345",quota(budget(max=7200)))))
+        for (emptyAdFree in listOf(byteArrayOf(), quota(byteArrayOf()), message(4,budget(-1,-1)))) {
+            assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,0),decode(account("12345",emptyAdFree)))
+        }
         for(q2 in listOf(quota(budget(-1,0)),quota(budget(0,-1)),quota(persistent=budget(-1,-1))))
             assertEquals(CloudPlaytimeStatus.UNLIMITED,decode(account("12345",q2)).status)
     }
     @Test fun absentAmbiguousOrMalformedQuotasNeverClaimZeroOrUnlimited() {
         val valid=account("12345",quota(budget(3600,7200)))
-        val invalid=listOf(byteArrayOf(),message(2,byteArrayOf(1,2)),account("12345",byteArrayOf()),
-            account("12345",quota(byteArrayOf())),account("12345",message(4,budget(-1,-1))),
+        val invalid=listOf(byteArrayOf(),message(2,byteArrayOf(1,2)),message(3,message(1,"12345".toByteArray())),
             account("12345",quota(budget(-2,7200))),valid+account("23456",quota(budget(-1,-1))),
             valid+valid,account("18446744073709551616",quota(budget(-1,-1))),
             account("not-a-puid",quota(budget(-1,-1))),valid.copyOf(valid.size-1),

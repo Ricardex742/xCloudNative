@@ -43,7 +43,9 @@ internal class SessionStartNotice(context: Context) : LinearLayout(context) {
         if (heading.textSize != fitted) heading.setTextSize(TypedValue.COMPLEX_UNIT_PX, fitted)
         super.onMeasure(MeasureSpec.makeMeasureSpec(available, MeasureSpec.EXACTLY), heightMeasureSpec)
     }
+    private var awaitingInitialTime = false
     private val dismiss = Runnable { visibility = View.GONE }
+    private val stopWaiting = Runnable { awaitingInitialTime = false }
 
     init {
         orientation = VERTICAL
@@ -64,17 +66,27 @@ internal class SessionStartNotice(context: Context) : LinearLayout(context) {
     }
 
     fun show(seconds: Long?) {
-        removeCallbacks(dismiss)
+        hide()
+        awaitingInitialTime = seconds == null
+        if (awaitingInitialTime) postDelayed(stopWaiting, 30_000)
         visibility = View.VISIBLE
         update(seconds)
         postDelayed(dismiss, 5_000)
     }
 
     fun update(seconds: Long?) {
+        if (awaitingInitialTime && seconds != null) {
+            awaitingInitialTime = false
+            removeCallbacks(stopWaiting)
+            removeCallbacks(dismiss)
+            visibility = View.VISIBLE
+            postDelayed(dismiss, 5_000)
+        }
         if (visibility != View.VISIBLE) return
+        time.visibility = if (seconds == null) View.GONE else View.VISIBLE
         val minutes = seconds?.let { (it + 59) / 60 }
         val label = when {
-            minutes == null -> UiText.text("Tempo da sessão não informado")
+            minutes == null -> ""
             minutes < 60 -> UiText.text("Tempo restante na sessão: {0} min", UiText.nested(minutes))
             minutes % 60 == 0L -> UiText.text("Tempo restante na sessão: {0} h", UiText.nested(minutes / 60))
             else -> UiText.text("Tempo restante na sessão: {0} h {1} min",
@@ -85,6 +97,8 @@ internal class SessionStartNotice(context: Context) : LinearLayout(context) {
 
     fun hide() {
         removeCallbacks(dismiss)
+        removeCallbacks(stopWaiting)
+        awaitingInitialTime = false
         visibility = View.GONE
     }
 

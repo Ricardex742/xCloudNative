@@ -51,8 +51,12 @@ class ProtocolTest {
             val actions = protocol.onHandshakeAck()
             assertTrue(protocol.ready)
             assertEquals("authorizationRequest", JSONObject(String(actions.first().bytes, Charsets.UTF_8)).getString("message"))
-            val dimensions = actions.filterNot { it.binary }.map { JSONObject(String(it.bytes, Charsets.UTF_8)) }
-                .single { it.optString("target").endsWith("dimensionschanged") }
+            val messages = actions.filterNot { it.binary }.map { JSONObject(String(it.bytes, Charsets.UTF_8)) }
+            val systemUi = messages.single { it.optString("target") == "/streaming/systemUi/configuration" }
+            val supportedUi = JSONObject(systemUi.getString("content")).getJSONArray("systemUis")
+            assertEquals(1, supportedUi.length())
+            assertEquals(42, supportedUi.getInt(0))
+            val dimensions = messages.single { it.optString("target").endsWith("dimensionschanged") }
             assertEquals(1920, JSONObject(dimensions.getString("content")).getInt("preferredWidth"))
             assertTrue(actions.filterNot { it.binary }.all { it.bytes.last() != 0.toByte() })
             assertTrue(protocol.onHandshakeAck().isEmpty()); assertTrue(protocol.onOpen("control").isEmpty())

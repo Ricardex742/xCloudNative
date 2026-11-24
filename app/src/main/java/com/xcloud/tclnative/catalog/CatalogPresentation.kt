@@ -80,6 +80,13 @@ internal class CatalogPresentationEngine {
             if(game.gamePass==member) game else game.copy(gamePass=member)
         }
         val subscription=XboxProfile.subscription(source.games.flatMap { it.userSubscriptions+it.userPrograms })
+            ?: "FREE".takeIf {
+                source.games.none { it.userSubscriptions.isNotEmpty() } && source.games.any { game ->
+                    (game.freeToPlay && game.noTitleSubscription) || game.userPrograms.any { program ->
+                        program.equals("F2P", ignoreCase = true) || program.equals("FreeToPlay", ignoreCase = true)
+                    }
+                }
+            }
         private val index=CloudTitleIndex(games)
         private val touchProducts=source.galleries[OfficialGalleryKind.TOUCH]?.products.orEmpty()
             .mapTo(hashSetOf()) { it.productId }

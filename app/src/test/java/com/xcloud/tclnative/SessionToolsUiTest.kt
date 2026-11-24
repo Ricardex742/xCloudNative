@@ -32,7 +32,7 @@ class SessionToolsUiTest {
         layout(notice)
         try {
             notice.show(null)
-            assertTrue(all(notice).filterIsInstance<TextView>().any { it.text.toString().contains("Tempo da sessão não informado") })
+            assertEquals(View.GONE, notice.getChildAt(1).visibility)
             notice.measure(View.MeasureSpec.makeMeasureSpec(165, View.MeasureSpec.AT_MOST),
                 View.MeasureSpec.makeMeasureSpec(280, View.MeasureSpec.AT_MOST))
             notice.layout(0, 0, notice.measuredWidth, notice.measuredHeight)
@@ -49,6 +49,37 @@ class SessionToolsUiTest {
             shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(4_999))
             assertEquals(View.VISIBLE, notice.visibility)
             shadowOf(Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(1))
+            assertEquals(View.GONE, notice.visibility)
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun sessionNoticeDisplaysALateXboxTimeOnceAndStopsWaitingWhenDismissed() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            val activity = controller.get()
+            val notice = com.xcloud.tclnative.ui.SessionStartNotice(activity)
+            activity.setContentView(notice)
+            val main = shadowOf(Looper.getMainLooper())
+            notice.show(null)
+            main.idleFor(java.time.Duration.ofSeconds(6))
+            assertEquals(View.GONE, notice.visibility)
+            notice.update(1790)
+            assertEquals(View.VISIBLE, notice.visibility)
+            assertEquals("Tempo restante na sessão: 30 min", (notice.getChildAt(1) as TextView).text.toString())
+            main.idleFor(java.time.Duration.ofSeconds(5))
+            notice.update(1780)
+            assertEquals(View.GONE, notice.visibility)
+
+            notice.show(null)
+            main.idleFor(java.time.Duration.ofSeconds(31))
+            notice.update(1770)
+            assertEquals(View.GONE, notice.visibility)
+
+            notice.show(null)
+            notice.hide()
+            notice.update(1760)
             assertEquals(View.GONE, notice.visibility)
         } finally {
             controller.pause().stop().destroy()

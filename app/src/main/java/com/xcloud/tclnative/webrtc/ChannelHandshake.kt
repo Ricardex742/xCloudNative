@@ -1,5 +1,6 @@
 package com.xcloud.tclnative.webrtc
 
+import org.json.JSONArray
 import org.json.JSONObject
 import java.util.UUID
 
@@ -44,7 +45,8 @@ class ChannelHandshake(private val nativeTouch: Boolean = false,
             gamepadSync.begin(),
             // The server must learn maxTouchPoints before touchInputEnabled, as in the web client.
             ChannelMessage("input", GamepadPacket.metadata(0.0, if(nativeTouch) 10 else 0), true),
-            config("/streaming/systemUi/configuration", JSONObject().put("version", org.json.JSONArray(listOf(0, 2, 0))).put("systemUis", org.json.JSONArray())),
+            config("/streaming/systemUi/configuration", JSONObject().put("version", JSONArray(listOf(0, 2, 0)))
+                .put("systemUis", JSONArray().apply { if (activateCloudTitle) put(StreamingSessionMessages.GAME_TIME_UI_ID) })),
             config("/streaming/properties/clientappinstallidchanged", JSONObject().put("clientAppInstallId", UUID.randomUUID().toString())),
             config("/streaming/characteristics/orientationchanged", JSONObject().put("orientation", 0)),
             config("/streaming/characteristics/touchinputenabledchanged", JSONObject().put("touchInputEnabled", nativeTouch)),

@@ -22,7 +22,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 ## Conta e biblioteca
 
 - Login direto na página oficial da Microsoft pelo próprio aparelho, com QR Code como alternativa e restauração da sessão salva. Celulares priorizam o login direto; TVs e boxes mantêm o QR Code em primeiro lugar.
-- Perfil Xbox com avatar e identificação da assinatura, quando informados pelo serviço.
+- Perfil Xbox com avatar e identificação do plano. Contas cujo catálogo autenticado indica acesso gratuito aparecem como **Free**.
 - **Tempo restante de nuvem** abaixo da assinatura, com selos do plano e do saldo que acompanham cada tema, consultado no serviço Xbox: horas disponíveis, ilimitado ou indisponível quando não há confirmação. Atualiza ao entrar, retornar da partida ou usar **Conta e amigos › Atualizar tempo restante**; não é uma contagem regressiva local. Pode ser exibido nas estatísticas durante a partida; com o painel visível, a consulta se renova a cada cinco minutos. **Detalhes do tempo restante** informa o motivo de uma consulta indisponível, sem expor dados da conta.
 - **Voltar a jogar** com o histórico da conta no Xbox Cloud Gaming.
 - Favoritos separados por conta e salvos no aparelho.
@@ -32,7 +32,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 - **Conquistas** mostra a lista do jogo e o Gamerscore no cartão de detalhes. Selecione uma linha para expandir a descrição, o progresso e a porcentagem de jogadores que desbloquearam a conquista, quando o Xbox informa esses dados.
 - **Amigos jogando agora** mostra na ficha do jogo o gamertag e a foto de perfil dos amigos que o Xbox informa estarem online naquele título.
 - **Melhor DNS para a sessão** compara o resolvedor do sistema e Cloudflare, Google, Quad9, AdGuard e OpenDNS ao conectar à nuvem. A opção fica em **Opções das partidas** e vale para a resolução do servidor de sinalização.
-- Ao iniciar uma partida na nuvem, um aviso de cinco segundos mostra quantos minutos restam até o fim da sessão quando o Xbox informa seu prazo.
+- Ao iniciar uma partida na nuvem, um aviso confirma o início. Quando o Xbox informa o prazo, o aviso mostra o tempo restante em minutos ou horas, inclusive se o dado chegar logo depois do primeiro quadro.
 - Selos de Game Pass e Xbox Series X|S conforme a inclusão e otimização informadas pelo catálogo.
 - Pesquisa por nome, tolerando diferenças de acentos, pontuação e marcas.
 - Em **Pesquisa › Jogos**, filtro experimental por **Adquiridos**, **Não adquiridos** ou **Propriedade não confirmada**, usando as licenças da conta. O filtro se aplica ao catálogo disponível no app; acesso por assinatura não comprova propriedade. Consultas incompletas ou indisponíveis ficam sem confirmação.

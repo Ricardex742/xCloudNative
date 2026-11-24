@@ -108,6 +108,7 @@ class StreamingSessionMessages(clockMs: () -> Long={ System.nanoTime()/1_000_000
     companion object {
         const val TITLE_INFO="/streaming/properties/titleinfo"
         const val GAME_TIME="/streaming/systemUi/messages/ShowGameTimeNotification"
+        internal const val GAME_TIME_UI_ID = 42
         const val TITLE_CONSTRAIN="/streaming/title/constrain"
         const val SERVER_DISCONNECT="/streaming/sessionLifetimeManagement/serverInitiatedDisconnect"
         private fun correlationVector()=UUID.randomUUID().let { id ->

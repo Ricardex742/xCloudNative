@@ -59,7 +59,8 @@ data class GameTitle(
     val freeToPlay: Boolean = false, val supportedInputTypes: Set<String> = emptySet(),
     val englishName: String? = null,
     val genres: Set<com.xcloud.tclnative.catalog.CatalogGenre> = emptySet(),
-    val touchBundleIds: List<String> = emptyList()
+    val touchBundleIds: List<String> = emptyList(),
+    val noTitleSubscription: Boolean = false
 ) {
     internal fun offersOfficialTouch() = touchBundleIds.isNotEmpty() ||
         supportedInputTypes.any { it.equals("customTouchOverlay",true) || it.equals("nativeTouchOrCustomTouchOverlay",true) }
@@ -187,7 +188,8 @@ class XCloudSignalingClient(
             programs = XboxProfile.subscriptionClaims(details?.opt("programs")),
             freeToPlay = details?.optBoolean("isFreeInStore",false) == true,
             supportedInputTypes = XboxProfile.subscriptionClaims(details?.opt("supportedInputTypes")).toSet(),
-            touchBundleIds = touchBundleIds(details))
+            touchBundleIds = touchBundleIds(details),
+            noTitleSubscription = details?.optJSONArray("userSubscriptions")?.length() == 0)
     }
 
     internal suspend fun officialTouchBundle(game: GameTitle, locale: String, cache: File): OfficialTouchLoad =

@@ -134,7 +134,7 @@ class CloudPlaytimeService(
 /** Small bounded reader for ContentAccessAllV1Response's quota fields. Product data is skipped. */
 internal object ContentAccessPlaytime {
     const val MAX_BYTES=4*1024*1024
-    private data class Budget(val remaining: Int,val maximum: Int,val declared: Boolean)
+    private data class Budget(val remaining: Int,val maximum: Int)
     private data class Quota(val periodic: Budget?,val persistent: Budget?)
     fun decode(bytes: ByteArray): CloudPlaytime = try {
         require(bytes.isNotEmpty() && bytes.size<=MAX_BYTES)
@@ -165,7 +165,7 @@ internal object ContentAccessPlaytime {
         check(accounts.size==1) { "PLAYTIME_UNAVAILABLE" }
         val quota=quotas[accounts.single()] ?: error("PLAYTIME_UNAVAILABLE")
         val present=listOfNotNull(quota.periodic,quota.persistent)
-        check(present.isNotEmpty() && present.any { it.declared }) { "PLAYTIME_UNAVAILABLE" }
+        // An authenticated quota entry uses protobuf defaults of zero for omitted ad-free fields.
         require(present.all { it.remaining>=-1 && it.maximum>=-1 })
         // The official quota classifier uses -1 in either ad-free remaining/max field for unlimited.
         if(present.any { it.remaining==-1 || it.maximum==-1 }) CloudPlaytime(CloudPlaytimeStatus.UNLIMITED)
@@ -198,7 +198,7 @@ internal object ContentAccessPlaytime {
                 else -> message.skip(tag)
             }
         }
-        return Budget(remaining,maximum,leftSeen||maxSeen)
+        return Budget(remaining,maximum)
     }
 }
 

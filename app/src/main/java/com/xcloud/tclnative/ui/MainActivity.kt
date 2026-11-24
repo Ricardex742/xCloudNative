@@ -2027,7 +2027,9 @@ open class MainActivity : Activity() {
                 webrtcClient = rtc
                 val appVersion=packageManager.getPackageInfo(packageName,0).versionName ?: "n/d"
                 tracker.inputDetails = {
-                    "$startupInput\n" + (if (remote) "" else dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" }.orEmpty()) +
+                    "$startupInput\n" + (if (remote) "" else
+                        dashboard?.cloudPlaytimeDiagnostics()?.let { "$it\n" }.orEmpty() +
+                            sessionTime.diagnostics(android.os.SystemClock.elapsedRealtime()) + "\n") +
                         UiText.text("xCLOUD {0} • Entrada inicial: {1} • {2}",UiText.nested(appVersion),
                             UiText.nested(touchMode.label),UiText.nested(rtc.inputDiagnostics())) +
                         "\n${controllerPath.diagnostics()}\n${controllerPath.buttonDiagnostics()}\n${signaling.startupDiagnostics()}\n" +

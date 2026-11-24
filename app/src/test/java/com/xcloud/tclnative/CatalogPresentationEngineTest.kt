@@ -7,6 +7,20 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CatalogPresentationEngineTest {
+    @Test fun freeAccountUsesUserAccessAndPaidClaimsKeepTheirPriority() {
+        val freeGame = GameTitle("free", "Free game", freeToPlay = true, programs = listOf("F2P"))
+        val input = CatalogInput(listOf(freeGame), emptyMap(), emptyMap(), null, emptySet(),
+            LibraryTab.ALL, emptySet(), null, null, "")
+        assertNull(CatalogPresentation.build(input).subscription)
+        val authenticated = input.copy(games = listOf(freeGame.copy(userPrograms = listOf("F2P"))))
+        assertEquals("FREE", CatalogPresentation.build(authenticated).subscription)
+        assertEquals("FREE", CatalogPresentation.build(input.copy(games = listOf(freeGame.copy(noTitleSubscription = true)))).subscription)
+        val subscriber = GameTitle("paid", "Game Pass title", userSubscriptions = listOf("ultimate"))
+        assertEquals("ULTIMATE", CatalogPresentation.build(authenticated.copy(games = authenticated.games + subscriber)).subscription)
+        val anotherPlan = subscriber.copy(userSubscriptions = listOf("future-tier"))
+        assertNull(CatalogPresentation.build(authenticated.copy(games = authenticated.games + anotherPlan)).subscription)
+    }
+
     @Test fun alphabeticalIndexFollowsTheFilteredStoreGenresAndGroupsAccentedTitles() {
         val stored = StoreMetadata.galleryProduct(JSONObject(
             """{"ProductId":"AAAAAAAAAAAA","ProductTitle":"Águia","Properties":{"Category":"Role playing","Categories":["Shooter","Other"]}}"""
