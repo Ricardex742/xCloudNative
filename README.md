@@ -22,7 +22,7 @@ A galeria reúne capturas reais dos menus, das filas e de partidas, além de tel
 ## Conta e biblioteca
 
 - Login direto na página oficial da Microsoft pelo próprio aparelho, com QR Code como alternativa e restauração da sessão salva. Celulares priorizam o login direto; TVs e boxes mantêm o QR Code em primeiro lugar.
-- Perfil Xbox com avatar e identificação do plano. Contas cujo catálogo autenticado indica acesso gratuito aparecem como **Free**.
+- Perfil Xbox com avatar e identificação do plano. O app consulta as assinaturas da conta Xbox e exibe **Free** para contas sem Game Pass.
 - **Tempo restante de nuvem** abaixo da assinatura, com selos do plano e do saldo que acompanham cada tema, consultado no serviço Xbox: horas disponíveis, ilimitado ou indisponível quando não há confirmação. Atualiza ao entrar, retornar da partida ou usar **Conta e amigos › Atualizar tempo restante**; não é uma contagem regressiva local. Pode ser exibido nas estatísticas durante a partida; com o painel visível, a consulta se renova a cada cinco minutos. **Detalhes do tempo restante** informa o motivo de uma consulta indisponível, sem expor dados da conta.
 - **Voltar a jogar** com o histórico da conta no Xbox Cloud Gaming.
 - Favoritos separados por conta e salvos no aparelho.

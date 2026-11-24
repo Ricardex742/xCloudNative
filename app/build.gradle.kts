@@ -14,8 +14,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 140
-        versionName = "0.41.27-cloud-time"
+        versionCode = 141
+        versionName = "0.41.28-account-plan"
     }
 
     signingConfigs {

@@ -14,6 +14,8 @@ import android.text.Spanned
 import android.text.style.ForegroundColorSpan
 import androidx.core.view.allViews
 import androidx.recyclerview.widget.RecyclerView
+import com.xcloud.tclnative.catalog.CloudPlaytime
+import com.xcloud.tclnative.catalog.CloudPlaytimeStatus
 import com.xcloud.tclnative.catalog.GameLibrary
 import com.xcloud.tclnative.catalog.FriendPresence
 import com.xcloud.tclnative.catalog.LibraryTab
@@ -381,6 +383,37 @@ class DashboardTest {
         view.setGamePassProducts(null); layout(view,1280,720)
         assertEquals(0,grid.adapter!!.itemCount); assertNull(view.selectedGame)
         view.close(); controller.pause().stop().destroy()
+    }
+    @Test fun confirmedFreePlanAppearsWithZeroBalanceWithoutTitleSubscriptionData() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val view = GameDashboardView(activity, GameLibrary(activity, "account-plan-test"), {}, {}, {}, {})
+        try {
+            activity.setContentView(view)
+            view.setGames(listOf(GameTitle("free-game", "Free game")))
+            view.setProfile(XboxProfile("Jogador", "Demo"))
+            val balance = CloudPlaytime(CloudPlaytimeStatus.LIMITED, 0)
+            view.setCloudPlaytime(balance)
+            assertNull(view.profileSnapshot().subscription)
+
+            view.setCloudPlaytime(balance.copy(accountSubscription = "FREE"))
+            layout(view, 1280, 720)
+            val labels = view.allViews.filterIsInstance<TextView>().map { it.text.toString() }.toList()
+            assertTrue(labels.contains("FREE"))
+            assertTrue(labels.contains(balance.label))
+            assertFalse(labels.contains("ASSINATURA NÃO INFORMADA"))
+
+            view.setCloudPlaytime(CloudPlaytime(CloudPlaytimeStatus.CHECKING))
+            assertEquals("FREE", view.profileSnapshot().subscription)
+            view.setGames(listOf(GameTitle("paid-game", "Game Pass title", userSubscriptions = listOf("ultimate"))))
+            layout(view, 1280, 720)
+            assertEquals("ULTIMATE", view.profileSnapshot().subscription)
+            view.setCloudPlaytime(balance.copy(accountSubscription = "PREMIUM"))
+            assertEquals("PREMIUM", view.profileSnapshot().subscription)
+        } finally {
+            view.close()
+            controller.pause().stop().destroy()
+        }
     }
     @Test fun recentHistoryPersistsPerAccountAcrossCatalogRecreation() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()

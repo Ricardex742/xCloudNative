@@ -19,6 +19,10 @@ class CloudPlaytimeTest {
     private fun budget(left: Int?=null,max: Int?=null)=
         (left?.let { number(2,it.toLong()) } ?: byteArrayOf())+(max?.let { number(4,it.toLong()) } ?: byteArrayOf())
     private fun account(id: String,quota: ByteArray)=message(3,message(1,id.toByteArray())+message(2,quota))
+    private fun passes(id: String, vararg plans: ByteArray) = message(1,
+        message(1, id.toByteArray()) + message(2, plans.fold(byteArrayOf(), ByteArray::plus)))
+    private fun plan(id: String, data: ByteArray = byteArrayOf()) =
+        message(1, message(1, id.toByteArray()) + message(2, data))
     private fun quota(periodic: ByteArray?=null,persistent: ByteArray?=null)=
         (periodic?.let {message(2,it)} ?: byteArrayOf())+(persistent?.let {message(3,it)} ?: byteArrayOf())
     private fun decode(bytes: ByteArray)=ContentAccessPlaytime.decode(bytes)
@@ -63,10 +67,11 @@ class CloudPlaytimeTest {
     @Test fun officialAdFreeBudgetsAddWithoutUsingAdSupportedOrPerGameCounters() {
         val q=quota(budget(3600,7200)+number(3,1800000000),budget(1800,1800))+
             message(4,budget(-1,-1))+message(1,message(1,"some-game".toByteArray())+message(2,budget(-1,-1)))
-        assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,5400),decode(account("12345",q)))
-        assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,0),decode(account("12345",quota(budget(max=7200)))))
+        assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,5400,accountSubscription="FREE"),decode(account("12345",q)))
+        val exhausted = CloudPlaytime(CloudPlaytimeStatus.LIMITED,0,accountSubscription="FREE")
+        assertEquals(exhausted,decode(account("12345",quota(budget(max=7200)))))
         for (emptyAdFree in listOf(byteArrayOf(), quota(byteArrayOf()), message(4,budget(-1,-1)))) {
-            assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,0),decode(account("12345",emptyAdFree)))
+            assertEquals(exhausted,decode(account("12345",emptyAdFree)))
         }
         for(q2 in listOf(quota(budget(-1,0)),quota(budget(0,-1)),quota(persistent=budget(-1,-1))))
             assertEquals(CloudPlaytimeStatus.UNLIMITED,decode(account("12345",q2)).status)
@@ -88,7 +93,29 @@ class CloudPlaytimeTest {
         val products=message(2,ByteArray(2000){0xff.toByte()})
         val fixed64=varint((20*8+1).toLong())+ByteArray(8)
         val fixed32=varint((21*8+5).toLong())+ByteArray(4)
-        assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,123),decode(products+fixed64+valid+fixed32+number(22,42)))
+        assertEquals(CloudPlaytime(CloudPlaytimeStatus.LIMITED,123,accountSubscription="FREE"),decode(products+fixed64+valid+fixed32+number(22,42)))
+    }
+    @Test fun accountPlanUsesPassesIndependentlyOfTheRemainingHours() {
+        val exhausted = account("12345", byteArrayOf())
+        assertEquals("FREE", decode(exhausted).accountSubscription)
+        assertEquals("FREE", decode(exhausted + passes("12345")).accountSubscription)
+        assertEquals("FREE", decode(exhausted + passes("12345", plan("CFQ7TTC0KHS0", number(1, 1)))).accountSubscription)
+
+        val essential = plan("CFQ7TTC0K5DJ")
+        val ultimate = plan("CFQ7TTC0KHS0", number(3, 2_000))
+        val active = exhausted + passes("12345", essential, ultimate)
+        val beforeExpiry = ContentAccessPlaytime.decode(active, nowSeconds = 1_999)
+        assertEquals("ULTIMATE", beforeExpiry.accountSubscription)
+        assertEquals(0L, beforeExpiry.seconds)
+        assertEquals("ESSENTIAL", ContentAccessPlaytime.decode(active, nowSeconds = 2_000).accountSubscription)
+
+        val planOnly = decode(passes("12345", essential))
+        assertEquals("ESSENTIAL", planOnly.accountSubscription)
+        assertEquals(PlaytimeFailure.NO_QUOTA, planOnly.failure)
+        assertNull(decode(exhausted + passes("23456", essential)).accountSubscription)
+        val malformed = decode(exhausted + passes("12345", plan("CFQ7TTC0KHS0", byteArrayOf(0))))
+        assertEquals(CloudPlaytimeStatus.LIMITED, malformed.status)
+        assertNull(malformed.accountSubscription)
     }
     @Test fun labelsDistinguishUnknownUnlimitedExhaustedAndLessThanAMinute() {
         assertTrue(CloudPlaytime().label.contains("indisponível"))

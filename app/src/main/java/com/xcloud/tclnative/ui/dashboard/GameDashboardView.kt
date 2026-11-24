@@ -134,6 +134,8 @@ class GameDashboardView(
     private var recentLoading=true
     private var recentFailed=false
     private var profile = XboxProfile()
+    private var catalogSubscription: String? = null
+    private var accountSubscription: String? = null
     private var cloudPlaytime=CloudPlaytime()
     var activeTab = LibraryTab.RECENT
         private set
@@ -545,7 +547,16 @@ class GameDashboardView(
         val updated=value.copy(subscription=value.subscription ?: profile.subscription)
         if(updated!=profile) { profile=updated; renderProfile() }
     }
-    fun setCloudPlaytime(value: CloudPlaytime) { cloudPlaytime=value;remainingTime.bindTime(value);updatePlayStationQuota() }
+    fun setCloudPlaytime(value: CloudPlaytime) {
+        cloudPlaytime = value
+        val reportedPlan = value.accountSubscription
+        if (reportedPlan != null && reportedPlan != accountSubscription) {
+            accountSubscription = reportedPlan
+            renderAccountPlan()
+        }
+        remainingTime.bindTime(value)
+        updatePlayStationQuota()
+    }
     private fun updatePlayStationQuota() {
         if(!designScene.playStation) return
         playStationQuotaValue.text=when(cloudPlaytime.status) {
@@ -558,11 +569,24 @@ class GameDashboardView(
     }
     fun cloudPlaytimeSnapshot()=cloudPlaytime
     fun cloudPlaytimeDiagnostics()=cloudPlaytime.diagnostics()
+    private fun subscriptionTier(): String? {
+        val catalogPlan = catalogSubscription ?: profile.subscription
+        // A named plan takes precedence over a free label from the other source.
+        return accountSubscription?.takeUnless { it == "FREE" && catalogPlan != null } ?: catalogPlan
+    }
+    private fun renderAccountPlan() {
+        val tier = subscriptionTier()
+        subscription.bindPlan(when (tier) {
+            null -> UiText.text("ASSINATURA NÃO INFORMADA")
+            "FREE" -> "FREE"
+            else -> "GAME PASS $tier"
+        })
+        subscription.refreshBadge(if(designScene==ConsoleScene.NONE) .8f*scale else scale)
+    }
     private fun renderProfile() {
         accountName.text = if(designScene==ConsoleScene.NONE) profile.displayName.uppercase(Locale.getDefault()) else profile.displayName
         gamertag.text = if(designScene==ConsoleScene.NONE) profile.gamertag.uppercase(Locale.getDefault()) else profile.gamertag
-        subscription.bindPlan(profile.subscription?.let { if (it == "FREE") "FREE" else "GAME PASS $it" } ?: UiText.text("ASSINATURA NÃO INFORMADA"))
-        subscription.refreshBadge(if(designScene==ConsoleScene.NONE) .8f*scale else scale)
+        renderAccountPlan()
         remainingTime.bindTime(cloudPlaytime)
         avatarLetter.text = profile.displayName.take(1).uppercase(Locale.getDefault())
         connected.contentDescription = UiText.text("Conta autenticada no Xbox Cloud")
@@ -652,8 +676,10 @@ class GameDashboardView(
         purchaseProductIds=presentation.purchaseProducts
         if (activeTab == LibraryTab.PURCHASED && ownershipFilter == OwnershipFilter.ALL &&
             purchaseProductIds.any { it !in ownershipRequested }) onOwnershipNeeded()
-        val updated=profile.copy(subscription=presentation.subscription ?: profile.subscription)
-        if(updated!=profile) { profile=updated; renderProfile() }
+        if (catalogSubscription != presentation.subscription) {
+            catalogSubscription = presentation.subscription
+            renderAccountPlan()
+        }
         adapter.submit(presentation.cards,changes)
         val selectedPosition=positions[selectedKey]
         updateSelected(selectedPosition?.let { presentation.cards[it] } ?: presentation.cards.firstOrNull())
@@ -1619,7 +1645,7 @@ class GameDashboardView(
     }
     fun wallpaperChoices()=SeriesWallpaperGallery.fromGames(games,
         listOfNotNull(selectedGame)+games.asSequence().filter { library.isFavorite(it.titleId) }.take(20).toList())
-    fun profileSnapshot()=profile
+    fun profileSnapshot(): XboxProfile = profile.copy(subscription = subscriptionTier())
     private fun showPlayStationAccount() {
         val dialog=ConsoleDialog(context,UiText.text("Conta e amigos"),ConsolePanelPurpose.PROFILE)
         listOf(profile.displayName,profile.gamertag,subscription.text.toString(),cloudPlaytime.label).distinct().forEachIndexed { index,value ->
@@ -1643,7 +1669,7 @@ class GameDashboardView(
         if(!SeriesGuidePanel.enabled(context)) { onOptions();return }
         val quick=listOfNotNull(onFriends?.let { ConsoleAction(UiText.text("Amigos"),it) },
             selectedGame?.takeIf { onGameShortcut!=null }?.let { game -> ConsoleAction(UiText.text("Atalho na tela inicial")) { onGameShortcut?.invoke(game) } })
-        SeriesGuidePanel.show(context,UiText.text("Guia"),profile,quick+listOf(
+        SeriesGuidePanel.show(context,UiText.text("Guia"),profileSnapshot(),quick+listOf(
             ConsoleAction(LibraryTab.RECENT.label) { selectTab(LibraryTab.RECENT);focusFirstCover() },
             ConsoleAction(LibraryTab.ALL.label) { selectTab(LibraryTab.ALL);focusFirstCover() },
             ConsoleAction(LibraryTab.FAVORITES.label) { selectTab(LibraryTab.FAVORITES);focusFirstCover() },

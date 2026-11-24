@@ -478,6 +478,6 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 
 ### Identificação de conta gratuita e tempo da sessão
 
-- O catálogo usa `userPrograms` de acesso gratuito ou a lista explícita de assinaturas vazia de um título gratuito para apresentar `FREE`, depois de verificar as informações de assinatura dos títulos autenticados. As marcas de acesso do catálogo público não identificam o plano do usuário.
+- O perfil usa `passesByPuid` da mesma resposta autenticada de Content Access que informa o saldo. Uma resposta válida de uma única conta sem Game Pass ativo pode apresentar `FREE` mesmo quando os títulos não trazem os campos de acesso. O catálogo autenticado também identifica planos e acesso gratuito por `userPrograms` e assinaturas por título. Um plano identificado tem prioridade sobre o selo gratuito da outra fonte. A validação com a conta Xbox real permanece pendente.
 - Uma entrada autenticada de saldo para uma única conta usa zero como valor padrão protobuf para campos de horas sem anúncios omitidos. A ausência dessa entrada ou uma falha na consulta preserva o estado indisponível. Horas com anúncios e tempo de sessão são informações distintas do saldo sem anúncios.
 - O handshake de nuvem anuncia `ShowGameTimeNotification` (`42`). O aviso inicial acrescenta o prazo do Xbox assim que chegar e pode reaparecer uma vez nos primeiros 30 segundos. `SESSION_TIME/` indica a fonte no relatório. A recepção do prazo em uma sessão real continua pendente de validação.

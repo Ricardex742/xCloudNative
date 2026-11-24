@@ -26,7 +26,8 @@ enum class PlaytimeFailure(private val source: String) {
     val label get()=UiText.text(source)
 }
 data class CloudPlaytime(val status: CloudPlaytimeStatus=CloudPlaytimeStatus.UNAVAILABLE,val seconds: Long=0,
-    val failure: PlaytimeFailure?=null,val httpStatus: Int?=null,val serviceCode: String?=null,val rejectedField: String?=null) {
+    val failure: PlaytimeFailure?=null,val httpStatus: Int?=null,val serviceCode: String?=null,val rejectedField: String?=null,
+    val accountSubscription: String?=null) {
     val label: String get()=when(status) {
         CloudPlaytimeStatus.CHECKING -> UiText.text("Tempo restante: consultando…")
         CloudPlaytimeStatus.UNAVAILABLE -> UiText.text("Tempo restante: indisponível")
@@ -38,6 +39,7 @@ data class CloudPlaytime(val status: CloudPlaytimeStatus=CloudPlaytimeStatus.UNA
     fun diagnostics()=label+(failure?.let { "\n"+it.label } ?: "")+
         (httpStatus?.takeIf { it in 100..599 }?.let { "\nHTTP $it" } ?: "")+
         "\nPLAYTIME/${failure?.name ?: status.name}"+
+        (accountSubscription?.let { "\nSUBSCRIPTION/CAS_$it" } ?: "")+
         (CloudPlaytimeContract.safeCode(serviceCode)?.let { "\nCAS/$it" } ?: "")+
         (CloudPlaytimeContract.field(rejectedField)?.let { "\nCAS_FIELD/$it" } ?: "")
 }
@@ -131,50 +133,91 @@ class CloudPlaytimeService(
     }
 }
 
-/** Small bounded reader for ContentAccessAllV1Response's quota fields. Product data is skipped. */
+/** Account quota and Game Pass records from one authenticated ContentAccessAllV1Response. */
 internal object ContentAccessPlaytime {
     const val MAX_BYTES=4*1024*1024
+    private val accountId = Regex("[1-9][0-9]{0,19}")
+    // Store product IDs in Xbox's priority order for Game Pass plans.
+    private val plans = mapOf(
+        "CFQ7TTC0KHS0" to "ULTIMATE", "CFQ7TTC0P85B" to "PREMIUM",
+        "CFQ7TTC0KGQ8" to "PC", "CFQ7TTC0K6L8" to "CONSOLE",
+        "CFQ7TTC10QFD" to "DUET", "CFQ7TTC0K5DJ" to "ESSENTIAL"
+    )
     private data class Budget(val remaining: Int,val maximum: Int)
     private data class Quota(val periodic: Budget?,val persistent: Budget?)
-    fun decode(bytes: ByteArray): CloudPlaytime = try {
-        require(bytes.isNotEmpty() && bytes.size<=MAX_BYTES)
-        val root=ContentAccessWire(bytes);val accounts=mutableSetOf<String>();val quotas=mutableMapOf<String,Quota>()
-        while(root.more()) {
-            val tag=root.tag()
-            if(tag ushr 3==1 || tag ushr 3==3) {
-                val entry=root.message(tag);var id: String?=null;var quota: Quota?=null;var valueSeen=false
-                while(entry.more()) {
-                    val field=entry.tag()
-                    when(field ushr 3) {
-                        1 -> { require(id==null);id=entry.key(field) }
-                        2 -> {
-                            require(!valueSeen);valueSeen=true
-                            if(tag ushr 3==3) quota=readQuota(entry.message(field)) else entry.skip(field)
-                        }
-                        else -> entry.skip(field)
-                    }
-                }
-                val key=id ?: error("PLAYTIME_ACCOUNT_MISSING")
-                require(key.matches(Regex("[1-9][0-9]{0,19}")) && (key.length<20 || key<="18446744073709551615"))
-                accounts+=key;require(accounts.size<=8)
-                if(tag ushr 3==3) { require(key !in quotas);quotas[key]=quota ?: error("PLAYTIME_QUOTA_MISSING") }
-            } else root.skip(tag)
+    fun decode(bytes: ByteArray, nowSeconds: Long = System.currentTimeMillis() / 1000): CloudPlaytime = try {
+        require(bytes.isNotEmpty() && bytes.size <= MAX_BYTES)
+        val root = ContentAccessWire(bytes)
+        var account: String? = null
+        val entries = mutableMapOf<Int, ContentAccessWire?>()
+        while (root.more()) {
+            val tag = root.tag()
+            val field = tag ushr 3
+            if (field != 1 && field != 3) {
+                root.skip(tag)
+                continue
+            }
+            val (id, value) = root.message(tag).entry()
+            require(id.matches(accountId) && (id.length < 20 || id <= "18446744073709551615"))
+            // A cloud user token normally returns one PUID. Never combine different accounts.
+            check(account == null || account == id) { "PLAYTIME_ACCOUNT_SELECTION" }
+            account = id
+            if (field == 3) require(field !in entries)
+            entries[field] = value
         }
-        // A cloud user token normally returns one PUID. Never combine or guess between accounts.
-        check(accounts.size<=1) { "PLAYTIME_ACCOUNT_SELECTION" }
-        check(accounts.size==1) { "PLAYTIME_UNAVAILABLE" }
-        val quota=quotas[accounts.single()] ?: error("PLAYTIME_UNAVAILABLE")
-        val present=listOfNotNull(quota.periodic,quota.persistent)
-        // An authenticated quota entry uses protobuf defaults of zero for omitted ad-free fields.
-        require(present.all { it.remaining>=-1 && it.maximum>=-1 })
-        // The official quota classifier uses -1 in either ad-free remaining/max field for unlimited.
-        if(present.any { it.remaining==-1 || it.maximum==-1 }) CloudPlaytime(CloudPlaytimeStatus.UNLIMITED)
-        else CloudPlaytime(CloudPlaytimeStatus.LIMITED,present.sumOf { it.remaining.toLong() })
+        val balance = if (3 in entries) playtime(readQuota(checkNotNull(entries[3])))
+            else CloudPlaytime(failure = PlaytimeFailure.NO_QUOTA)
+        val passes = entries[1]
+        val subscription = when {
+            passes != null -> runCatching { readSubscription(passes, nowSeconds) }.getOrNull()
+            3 in entries -> "FREE" // Verified account with no Game Pass records in the snapshot.
+            else -> null
+        }
+        balance.copy(accountSubscription = subscription)
     } catch(error: Exception) { CloudPlaytime(failure=when(error.message) {
         "PLAYTIME_ACCOUNT_SELECTION" -> PlaytimeFailure.ACCOUNT_SELECTION
-        "PLAYTIME_UNAVAILABLE" -> PlaytimeFailure.NO_QUOTA
         else -> PlaytimeFailure.INVALID_RESPONSE
     }) }
+
+    private fun playtime(quota: Quota): CloudPlaytime {
+        val budgets = listOfNotNull(quota.periodic, quota.persistent)
+        // An authenticated quota entry uses protobuf defaults of zero for omitted ad-free fields.
+        require(budgets.all { it.remaining >= -1 && it.maximum >= -1 })
+        return if (budgets.any { it.remaining == -1 || it.maximum == -1 }) CloudPlaytime(CloudPlaytimeStatus.UNLIMITED)
+        else CloudPlaytime(CloudPlaytimeStatus.LIMITED, budgets.sumOf { it.remaining.toLong() })
+    }
+
+    private fun readSubscription(wire: ContentAccessWire, nowSeconds: Long): String {
+        val active = mutableSetOf<String>()
+        val seen = mutableSetOf<String>()
+        while (wire.more()) {
+            val tag = wire.tag()
+            if (tag ushr 3 != 1) {
+                wire.skip(tag)
+                continue
+            }
+            val (product, data) = wire.message(tag).entry(maxKeyBytes = 128)
+            if (product !in plans) continue
+            require(seen.add(product))
+            if (isActivePass(checkNotNull(data), nowSeconds)) active += product
+        }
+        return plans.entries.firstOrNull { it.key in active }?.value ?: "FREE"
+    }
+
+    private fun isActivePass(wire: ContentAccessWire, nowSeconds: Long): Boolean {
+        var status = 0 // Protobuf default PASS_STATUS_ACTIVE.
+        var end = 0L
+        while (wire.more()) {
+            val tag = wire.tag()
+            when (tag ushr 3) {
+                1 -> status = wire.int32(tag)
+                3 -> end = wire.number(tag) // Seconds since Unix epoch.
+                else -> wire.skip(tag)
+            }
+        }
+        require(status in 0..3)
+        return status == 0 && (end == 0L || end > nowSeconds)
+    }
 
     private fun readQuota(message: ContentAccessWire): Quota {
         var periodic: Budget?=null;var persistent: Budget?=null
@@ -228,6 +271,19 @@ internal class ContentAccessWire(val bytes: ByteArray,var at: Int=0,val end: Int
     fun key(tag: Int, maxBytes: Int = 20): String {
         val child=message(tag);require(child.end-child.at in 1..maxBytes)
         return bytes.copyOfRange(child.at,child.end).toString(Charsets.UTF_8)
+    }
+    fun entry(maxKeyBytes: Int = 20): Pair<String, ContentAccessWire?> {
+        var key: String? = null
+        var value: ContentAccessWire? = null
+        while (more()) {
+            val tag = tag()
+            when (tag ushr 3) {
+                1 -> { require(key == null); key = this.key(tag, maxKeyBytes) }
+                2 -> { require(value == null); value = message(tag) }
+                else -> skip(tag)
+            }
+        }
+        return checkNotNull(key) to value
     }
     fun skip(tag: Int) {
         when(tag and 7) {

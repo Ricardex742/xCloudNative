@@ -34,7 +34,8 @@ internal object ContentAccessOwnership {
             val tag = root.tag()
             when (tag ushr 3) {
                 2 -> {
-                    val (key, product) = root.message(tag).entry(maxKeyBytes = 128)
+                    val (key, data) = root.message(tag).entry(maxKeyBytes = 128)
+                    val product = checkNotNull(data)
                     val id = ownershipProductKey(key) ?: continue
                     check(seen.add(id))
                     val access = product.directAccess(accounts)
@@ -63,6 +64,7 @@ internal object ContentAccessOwnership {
             }
             check(flags == null)
             val (account, access) = message(tag).entry()
+            checkNotNull(access)
             accounts.addAccount(account)
             var direct: Long? = null
             while (access.more()) {
@@ -75,19 +77,5 @@ internal object ContentAccessOwnership {
             flags = direct ?: 0L
         }
         return flags
-    }
-
-    private fun ContentAccessWire.entry(maxKeyBytes: Int = 20): Pair<String, ContentAccessWire> {
-        var key: String? = null
-        var value: ContentAccessWire? = null
-        while (more()) {
-            val tag = tag()
-            when (tag ushr 3) {
-                1 -> { require(key == null); key = this.key(tag, maxKeyBytes) }
-                2 -> { require(value == null); value = message(tag) }
-                else -> skip(tag)
-            }
-        }
-        return checkNotNull(key) to checkNotNull(value)
     }
 }
