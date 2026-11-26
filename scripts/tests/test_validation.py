@@ -96,6 +96,9 @@ class AndroidContractTest(unittest.TestCase):
         self.assertEqual(90_000, total_pss("     TOTAL      90000     30000     50000"))
         self.assertIsNone(total_pss("** No process found"))
         self.assertTrue(app_resumed(f"  topResumedActivity: ActivityRecord{{abc u0 {ACTIVITY} t17}}"))
+        self.assertTrue(app_resumed(f"  topResumedActivity=ActivityRecord{{abc u0 {ACTIVITY} t17}}"))
+        self.assertTrue(app_resumed(f"  mResumedActivity: ActivityRecord{{abc u0 {ACTIVITY} t17}}"))
+        self.assertFalse(app_resumed(f"  topPausingActivity=ActivityRecord{{abc u0 {ACTIVITY} t17}}"))
         self.assertFalse(app_resumed(f"  Hist #0: ActivityRecord{{abc u0 {ACTIVITY} t17}}"))
 
     def test_smoke_records_a_resume_and_rejects_a_process_restart(self):

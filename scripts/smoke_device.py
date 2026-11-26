@@ -33,7 +33,7 @@ def total_pss(output):
 def app_resumed(output):
     expanded = PACKAGE + "/" + PACKAGE + ".ui.MainActivity"
     for line in output.splitlines():
-        if re.search(r"\b(?:topResumedActivity|mResumedActivity|ResumedActivity):", line):
+        if re.match(r"\s*(?:topResumedActivity|mResumedActivity|ResumedActivity)\s*[:=]", line):
             if ACTIVITY in line.split() or expanded in line.split():
                 return True
     return False
