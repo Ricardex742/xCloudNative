@@ -24,25 +24,26 @@ import java.io.File
 @Config(sdk=[28],qualifiers="w1280dp-h720dp-land-mdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ImageTreatmentUiTest {
-    @Test fun reconstructionActivationAndSameFrameComparisonPreserveStreamAndControllerSettings() {
+    @Test fun fsrActivationAndSameFrameComparisonPreserveStreamAndControllerSettings() {
         val c=Robolectric.buildActivity(Activity::class.java).setup()
         try {
             val activity=c.get().apply { setContentView(FrameLayout(this)) }
             activity.getSharedPreferences("stream_preferences",0).edit().clear().commit()
             val store=PlaybackSettingsStore(activity);val original=store.read()
             val panel=PlaybackSettingsPanel(activity,store,{},{},{},{})
-            val first=panel.showAdvancedImage();capture(first,"adaptive-reconstruction-options")
+            val first=panel.showAdvancedImage();capture(first,"fsr-detail-options")
             assertEquals(original,store.read())
             click(first,"Método:")
-            click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Reconstrução xCloud")
-            assertEquals(FsrMode.RECONSTRUCTION,store.read().fsr);assertEquals(FsrOutput.AUTO,store.read().fsrOutput)
+            click(ShadowDialog.getLatestDialog() as ConsoleDialog,"AMD FSR 1.0.2")
+            assertEquals(FsrMode.FSR1,store.read().fsr);assertEquals(FsrOutput.AUTO,store.read().fsrOutput)
             assertEquals(original.resolution,store.read().resolution);assertEquals(original.touchMode,store.read().touchMode)
             click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Qualidade do processamento")
             click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Qualidade")
             assertEquals(ReconstructionQuality.QUALITY,store.read().reconstruction.quality)
-            click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Comparação:")
+            (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
+            click(panel.showUpscaling(),"Comparação:")
             click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Dividida")
-            assertEquals(ImageComparison.SPLIT,store.read().reconstruction.comparison)
+            assertEquals(ImageComparison.SPLIT,store.read().imageComparison)
             assertEquals(original.videoCodec,store.read().videoCodec)
             (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
         } finally { c.pause().stop().destroy() }
@@ -72,8 +73,10 @@ class ImageTreatmentUiTest {
             assertEquals(ImageSharpening.RCAS_LUMA,store.read().imageTreatment.sharpening)
             assertEquals(0,store.read().imageTreatment.deband);assertFalse(store.read().imageTreatment.spatial);assertEquals(25,store.read().sharpness)
             (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
-            val scale=panel.chooseFsr();click(scale,"SGSR 1")
-            assertEquals(FsrMode.SGSR1,store.read().fsr)
+            val scale=panel.chooseFsr()
+            assertEquals(2,all(scale.body).filterIsInstance<TextView>().count { it.isClickable })
+            click(scale,"AMD FSR 1.0.2")
+            assertEquals(FsrMode.FSR1,store.read().fsr)
             (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
             val codec=panel.chooseCodec();capture(codec,"h264-main-options");click(codec,"H.264 Main")
             assertEquals(VideoCodecMode.H264_MAIN,store.read().videoCodec)
@@ -95,7 +98,8 @@ class ImageTreatmentUiTest {
             val panel=PlaybackSettingsPanel(activity,store,{},{},{},{})
             val image=panel.showImage()
             val rows=all(image.body).filterIsInstance<TextView>().filter { it.isClickable }
-            assertTrue(rows.any { it.text.contains("Perfil de imagem:") });assertTrue(rows.any { it.text.contains("Rede e sessão") })
+            assertTrue(rows.any { it.text.contains("Perfil de imagem:") })
+            assertNotNull(image.panel.findViewWithTag<TextView>("settings-section-network"))
             assertFalse(rows.any { it.text.contains("Upscaling e tratamento:") })
             image.dismiss()
             for(mode in FsrMode.entries) {
@@ -105,22 +109,22 @@ class ImageTreatmentUiTest {
                 assertEquals(settings,store.read())
                 assertEquals(mode!=FsrMode.OFF,names.any { it.contains("Saída do escalador:") })
                 assertEquals(mode==FsrMode.OFF,names.any { it.contains("Upscaling nativo:") })
-                assertEquals(mode==FsrMode.OFF || mode==FsrMode.FSR1,names.any { it.contains("Método de nitidez:") })
-                assertEquals(mode==FsrMode.RECONSTRUCTION,names.any { it.contains("Comparação:") })
-                assertEquals(mode!=FsrMode.RECONSTRUCTION,names.any { it.startsWith("Nitidez:") })
+                assertTrue(names.any { it.contains("Método de nitidez:") })
+                assertEquals(mode==FsrMode.FSR1,names.any { it.startsWith("Intensidade dos detalhes:") })
+                assertTrue(names.any { it.startsWith("Nitidez:") })
                 assertTrue(names.any { it.contains("Filtros adicionais:") });dialog.dismiss()
             }
             store.save(original)
             var back=0
             val session=panel.showUpscaling(onBack={back++});click(session,"Avançado — métodos e filtros")
             click(ShadowDialog.getLatestDialog() as ConsoleDialog,"Método:")
-            click(ShadowDialog.getLatestDialog() as ConsoleDialog,"SGSR 1")
+            click(ShadowDialog.getLatestDialog() as ConsoleDialog,"AMD FSR 1.0.2")
             (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel()
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel()
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
             assertEquals(1,back)
-            store.save(original.copy(videoMode=VideoMode.COMPATIBILITY,fsr=FsrMode.RECONSTRUCTION))
+            store.save(original.copy(videoMode=VideoMode.COMPATIBILITY,fsr=FsrMode.FSR1))
             val compatibility=panel.showUpscaling()
             assertFalse(all(compatibility.body).filterIsInstance<TextView>().any { it.isClickable && it.text.contains("Intensidade") })
             compatibility.dismiss()
@@ -132,7 +136,7 @@ class ImageTreatmentUiTest {
             val store=PlaybackSettingsStore(c.get());val panel=PlaybackSettingsPanel(c.get(),store,{},{},{},{})
             for(mode in FsrMode.entries) {
                 val before=PlaybackSettings(fsr=mode,sharpness=0,fsrSharpness=75,
-                    reconstruction=ReconstructionSettings(strength=100,comparison=ImageComparison.ORIGINAL))
+                    reconstruction=ReconstructionSettings(strength=100),imageComparison=ImageComparison.ORIGINAL)
                 store.save(before);val dialog=panel.showTreatment()
                 assertFalse(all(dialog.body).filterIsInstance<TextView>().any { it.isClickable && it.text.contains("Perfil") })
                 click(dialog,"Limpeza de compressão:")
@@ -154,7 +158,7 @@ class ImageTreatmentUiTest {
         try {
             c.get().setContentView(FrameLayout(c.get()))
             val store=PlaybackSettingsStore(c.get());val panel=PlaybackSettingsPanel(c.get(),store,{},{},{},{})
-            val original=PlaybackSettings(fsr=FsrMode.RECONSTRUCTION,fsrOutput=FsrOutput.UHD_4K,
+            val original=PlaybackSettings(fsr=FsrMode.FSR1,fsrOutput=FsrOutput.UHD_4K,
                 imageTreatment=ImageTreatmentSettings(deband=25,chroma=50),touchMode=TouchMode.NATIVE)
             for(mode in VideoCodecMode.entries) {
                 store.save(original);val dialog=panel.chooseCodec()

@@ -11,7 +11,7 @@ class ImageProfilesTest {
             fsr=FsrMode.FSR1,fsrOutput=FsrOutput.UHD_4K,saturation=115,brightness=5,contrast=110,
             imageTreatment=ImageTreatmentSettings(deband=50,cleanup=50,neural=100,autoProtect=false),
             imageLab=ImageLabSettings(enabled=true),imageComparison=ImageComparison.SPLIT)
-        for(profile in listOf(ImageProfile.ORIGINAL,ImageProfile.LIGHT,ImageProfile.RECONSTRUCTION)) {
+        for(profile in listOf(ImageProfile.ORIGINAL,ImageProfile.LIGHT,ImageProfile.FSR)) {
             val after=ImageProfiles.apply(before,profile)
             assertEquals(profile,ImageProfiles.selected(after));assertTrue(after.imageTreatment.autoProtect)
             assertEquals(before.resolution,after.resolution);assertEquals(before.videoCodec,after.videoCodec)
@@ -23,20 +23,20 @@ class ImageProfilesTest {
         assertEquals(before,ImageProfiles.apply(before,ImageProfile.CUSTOM))
     }
     @Test fun oldCustomSettingsAreRecognizedWithoutMigrationAndIntensityIsBounded() {
-        val old=PlaybackSettings(fsr=FsrMode.SGSR1,imageTreatment=ImageTreatmentSettings(cleanup=50))
+        val old=PlaybackSettings(fsr=FsrMode.FSR1,imageTreatment=ImageTreatmentSettings(cleanup=50))
         assertEquals(ImageProfile.CUSTOM,ImageProfiles.selected(old));assertEquals(old,ImageProfiles.withIntensity(old,80))
-        val recon=ImageProfiles.apply(old,ImageProfile.RECONSTRUCTION)
+        val recon=ImageProfiles.apply(old,ImageProfile.FSR)
         val high=ImageProfiles.withIntensity(recon,1000)
         assertEquals(100,high.reconstruction.strength);assertEquals(50,high.imageTreatment.temporal)
         val zero=ImageProfiles.withIntensity(recon,-100)
         assertEquals(0,zero.reconstruction.strength);assertEquals(0,zero.imageTreatment.temporal)
-        assertEquals(ImageProfile.RECONSTRUCTION,ImageProfiles.selected(zero))
+        assertEquals(ImageProfile.FSR,ImageProfiles.selected(zero))
     }
-    @Test fun comparisonUsesTheActiveLegacyMethodUntilACommonComparisonIsChosen() {
-        val old=PlaybackSettings(fsr=FsrMode.RECONSTRUCTION,reconstruction=ReconstructionSettings(comparison=ImageComparison.ORIGINAL))
-        assertEquals(ImageComparison.ORIGINAL,old.effectiveImageComparison())
-        assertEquals(ImageComparison.PROCESSED,old.copy(fsr=FsrMode.OFF).effectiveImageComparison())
-        assertEquals(ImageComparison.SPLIT,old.copy(imageComparison=ImageComparison.SPLIT).effectiveImageComparison())
-        assertEquals(ImageComparison.SPLIT,old.copy(imageLab=ImageLabSettings(enabled=true,comparison=ImageComparison.SPLIT)).effectiveImageComparison())
+    @Test fun explicitComparisonTakesPriorityOverTheOptionalImageLab() {
+        val value=PlaybackSettings(fsr=FsrMode.FSR1,
+            imageLab=ImageLabSettings(enabled=true,comparison=ImageComparison.ORIGINAL))
+        assertEquals(ImageComparison.ORIGINAL,value.effectiveImageComparison())
+        assertEquals(ImageComparison.SPLIT,value.copy(imageComparison=ImageComparison.SPLIT).effectiveImageComparison())
+        assertEquals(ImageComparison.PROCESSED,value.copy(videoMode=VideoMode.COMPATIBILITY).forSession().effectiveImageComparison())
     }
 }

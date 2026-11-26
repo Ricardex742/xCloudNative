@@ -21,7 +21,7 @@ enum class VideoCodecMode(private val sourceLabel: String) {
     VP9("VP9 — experimental"), AV1("AV1 — experimental");
     val label: String get()=UiText.text(sourceLabel)
 }
-enum class FsrMode(private val sourceLabel: String) { OFF("Desativado"), FSR1("AMD FSR 1.0.2 — experimental"), SGSR1("SGSR 1 — experimental"), RECONSTRUCTION("xCloud — reconstrução adaptativa (experimental)") ;
+enum class FsrMode(private val sourceLabel: String) { OFF("Desativado"), FSR1("AMD FSR 1.0.2");
     val label: String get()=UiText.text(sourceLabel)
 }
 enum class FsrOutput(private val sourceLabel: String) {
@@ -83,7 +83,6 @@ data class PlaybackSettings(
     fun effectiveImageComparison(): ImageComparison = when {
         imageComparison!=ImageComparison.PROCESSED -> imageComparison
         imageLab.enabled -> imageLab.comparison
-        fsr==FsrMode.RECONSTRUCTION -> reconstruction.comparison
         else -> ImageComparison.PROCESSED
     }
     fun forSession(): PlaybackSettings {
@@ -115,6 +114,20 @@ class PlaybackSettingsStore(context: Context,
             if(prefs.getString("touch_mode",null)==TouchMode.NATIVE.name) editor.putString("touch_mode",TouchMode.VIRTUAL.name)
             editor.apply()
         }
+        synchronized(writes) {
+            val previous = prefs.getString("fsr_mode", null)
+            if (previous == "SGSR1" || previous == "RECONSTRUCTION") {
+                val editor = prefs.edit().putString("fsr_mode", FsrMode.FSR1.name)
+                if (prefs.getString("image_sharpening", ImageSharpening.LEGACY.name) == ImageSharpening.LEGACY.name)
+                    editor.putString("image_sharpening", ImageSharpening.RCAS_LUMA.name)
+                val comparison=prefs.getString("image_comparison",null)
+                if (previous=="RECONSTRUCTION" && comparison in setOf("ORIGINAL","SPLIT") &&
+                    prefs.getString("image_comparison_all",ImageComparison.PROCESSED.name)==ImageComparison.PROCESSED.name &&
+                    !prefs.getBoolean("image_lab_enabled",false)) editor.putString("image_comparison_all",comparison)
+                editor.remove("image_comparison")
+                editor.apply()
+            }
+        }
     }
     fun read(): PlaybackSettings {
         val legacy = if (prefs.getBoolean("low_latency_video",true)) VideoMode.LOW_LATENCY else VideoMode.ADAPTIVE
@@ -145,8 +158,7 @@ class PlaybackSettingsStore(context: Context,
             PresentationPacing.entries.firstOrNull { it.name==prefs.getString("presentation_pacing",null) } ?: PresentationPacing.OFF,
             ReconstructionSettings(
                 ReconstructionQuality.entries.firstOrNull { it.name==prefs.getString("reconstruction_quality",null) } ?: ReconstructionQuality.AUTO,
-                prefs.getInt("reconstruction_strength",50),
-                ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_comparison",null) } ?: ImageComparison.PROCESSED).bounded(),
+                prefs.getInt("reconstruction_strength",50)).bounded(),
             audioMode = AudioPlaybackMode.entries.firstOrNull { it.name==prefs.getString("audio_mode",null) } ?: AudioPlaybackMode.STANDARD,
             imageLab = ImageLabSettings(prefs.getBoolean("image_lab_enabled",false),prefs.getInt("image_lab_restoration",35),
                 HudProtection.entries.firstOrNull { it.name==prefs.getString("image_lab_protection",null) } ?: HudProtection.AUTO,
@@ -229,7 +241,6 @@ class PlaybackSettingsStore(context: Context,
         "presentation_pacing" to settings.presentationPacing.name,
         "reconstruction_quality" to settings.reconstruction.quality.name,
         "reconstruction_strength" to settings.reconstruction.strength.coerceIn(0,100),
-        "image_comparison" to settings.reconstruction.comparison.name,
         "audio_mode" to settings.audioMode.name,
         "image_lab_enabled" to settings.imageLab.enabled,
         "image_lab_restoration" to settings.imageLab.restoration.coerceIn(0,100),

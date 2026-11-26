@@ -50,23 +50,22 @@ class ConsoleIdentityUiTest {
     }
     @Test fun eachConsoleUsesItsOwnSettingsLayoutAndKeepsCategoriesAndBackReachable() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get();a.setContentView(FrameLayout(a));layout(a.window.decorView,1280,720)
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
         val signatures=mutableSetOf<Int>();val store=PlaybackSettingsStore(a);val before=store.read()
         try {
             for(theme in themes) {
                 DashboardTheme.apply(a,theme)
                 val settings=PlaybackSettingsPanel(a,store,{fail("Appearance must not change playback")},{},{},{})
                 val d=settings.show();val items=all(d.body).filterIsInstance<TextView>().filter { it.isClickable }
-                assertEquals(6,items.size)
-                assertEquals(!theme.scene.playStation,all(d.panel).any { it is ConsoleBrandView && it.isShown })
+                assertEquals(3,items.size)
+                assertEquals(5,all(d.panel).count { it.tag?.toString()?.startsWith("settings-section-")==true })
                 signatures+=render(d,"settings-${theme.name.lowercase()}")
-                if(theme.scene in listOf(ConsoleScene.XBOX_ONE,ConsoleScene.XBOX_SERIES,ConsoleScene.XBOX_360_METRO)) {
-                    assertSame(items[0].parent,items[1].parent);assertNotSame(items[1].parent,items[2].parent)
-                } else assertSame(d.body,items[0].parent)
+                assertTrue(items.all { it.parent===d.body })
                 items[0].requestFocus();render(d,"settings-focus-${theme.name.lowercase()}")
                 val row=items[0];val b=Bitmap.createBitmap(row.width,row.height,Bitmap.Config.ARGB_8888)
                 row.background.draw(Canvas(b));val bg=b.getPixel(row.width/2,row.height/2);b.recycle()
                 assertTrue("$theme focused text must remain readable",ColorUtils.calculateContrast(row.currentTextColor,bg)>=3.0)
-                items.first { it.text.toString()=="Aparência e temas" }.performClick()
+                items.first { it.text.startsWith("Aparência e temas") }.performClick()
                 val appearance=ShadowDialog.getLatestDialog() as ConsoleDialog
                 assertTrue(all(appearance.body).filterIsInstance<TextView>().any { it.text.contains("Tema do aplicativo") })
                 appearance.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B));d.dismiss()

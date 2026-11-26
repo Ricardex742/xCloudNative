@@ -131,7 +131,7 @@ class FsrOutputSurfaceTest {
         view.setOutputBuffer(VideoViewport(3840,2160))
         val draws=ReflectionHelpers.getField<AtomicLong>(owner,"allDraws")
         val observedSizes=mutableListOf<VideoViewport?>()
-        repeat(21) { second ->
+        repeat(28) { second ->
             draws.set((second+1L)*13)
             val now=android.os.SystemClock.elapsedRealtime()
             owner.observeFsrPerformance(now,StreamMetrics(receivedVideoBytes=500000,packetLossPercent=0.0,intervalSeconds=1.0,receivedFrames=60),true)
@@ -140,6 +140,7 @@ class FsrOutputSurfaceTest {
         }
         assertEquals(VideoViewport(1920,1080),Shadow.extract<RecordingSurfaceShadow>(view).lastSize)
         assertTrue(observedSizes.contains(VideoViewport(2560,1440)))
+        assertTrue(owner.diagnostics().contains("FSR detail level 0 (13.0 draws/s), output 1440p"))
         assertTrue(owner.diagnostics().contains("output 1440p (13.0 draws/s)"))
         assertTrue(owner.diagnostics().contains("output native (13.0 draws/s)"))
         assertTrue(owner.diagnostics().contains("scaling off (13.0 draws/s)"))

@@ -19,7 +19,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-enum class SettingsPage { ROOT, VIDEO, IMAGE, APPEARANCE, NETWORK, CONTROLS, PHYSICAL, MOUSE, GYRO, RUMBLE, AUDIO, DIAGNOSTICS, ACCOUNT, TREATMENT, RECONSTRUCTION, UPSCALING, IMAGE_ADVANCED }
+enum class SettingsPage { ROOT, VIDEO, IMAGE, APPEARANCE, NETWORK, CONTROLS, PHYSICAL, MOUSE, GYRO, RUMBLE, AUDIO, DIAGNOSTICS, ACCOUNT, TREATMENT, UPSCALING, IMAGE_ADVANCED, VIDEO_ADVANCED }
 
 /** Explicit single-choice menus: opening a row does not change the selected value. */
 class PlaybackSettingsPanel(
@@ -50,7 +50,6 @@ class PlaybackSettingsPanel(
     private val videoMemoryInformation: () -> String? = { null },
     private val buyHours: (() -> Unit)? = null
 ) {
-    private var videoSection=0
     private var currentPage=SettingsPage.ROOT
     private var upscalingBack: () -> Unit = { showImage() }
     private var advancedImageBack: () -> Unit={ showUpscaling() }
@@ -66,77 +65,123 @@ class PlaybackSettingsPanel(
         SettingsPage.MOUSE -> showMouse();SettingsPage.GYRO -> showGyro();SettingsPage.RUMBLE -> showRumble()
         SettingsPage.AUDIO -> showAudio();SettingsPage.DIAGNOSTICS -> showDiagnostics();SettingsPage.ACCOUNT -> showAccount()
         SettingsPage.TREATMENT -> showTreatment()
-        SettingsPage.RECONSTRUCTION -> showReconstruction()
+        SettingsPage.VIDEO_ADVANCED -> showAdvancedVideo()
         SettingsPage.UPSCALING -> showUpscaling()
         SettingsPage.IMAGE_ADVANCED -> showAdvancedImage()
     }
+    private fun settingsDialog(title: String) = ConsoleDialog(context,title,ConsolePanelPurpose.SETTINGS_LIST)
     private fun category(page: SettingsPage,title: String,rows: List<ConsoleAction>,parent: SettingsPage=SettingsPage.ROOT): ConsoleDialog {
         enter(page)
-        return ConsoleDialogs.menu(context,UiText.text("Configurações › {0}",UiText.nested(title)),rows,onBack={ open(parent) })
+        return settingsDialog(title).apply {
+            rows.forEach { addMenuItem(it.label,it.action) }
+            addAction(UiText.text("Voltar")) { open(parent) }
+            setOnCancelListener { open(parent) }
+            show()
+        }
     }
-    fun show(): ConsoleDialog {
-        enter(SettingsPage.ROOT)
-        return ConsoleDialogs.menu(context,UiText.text("Configurações"),listOf(
-            ConsoleAction(UiText.text("Vídeo e conexão")) { showVideo() },
-            ConsoleAction(UiText.text("Controles e toque")) { showControls() },
-            ConsoleAction(UiText.text("Áudio e microfone")) { showAudio() },
-            ConsoleAction(UiText.text("Aparência e temas")) { showAppearance() },
-            ConsoleAction(UiText.text("Conta e amigos")) { showAccount() },
-            ConsoleAction(UiText.text("Ajuda e diagnóstico")) { showDiagnostics() }
-        ),onBack=back)
+
+    fun show(): ConsoleDialog = showSettings(SettingsPage.ROOT)
+    fun showVideo(): ConsoleDialog = showSettings(SettingsPage.VIDEO)
+    fun showNetwork(): ConsoleDialog = showSettings(SettingsPage.NETWORK)
+    fun showControls(): ConsoleDialog = showSettings(SettingsPage.CONTROLS)
+
+    private fun showSettings(initial: SettingsPage): ConsoleDialog {
+        val dialog=settingsDialog(UiText.text("Configurações"))
+        val tabs=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL;isBaselineAligned=false }
+        val pages=listOf(
+            SettingsPage.ROOT to UiText.text("Geral"),
+            SettingsPage.VIDEO to UiText.text("Vídeo"),
+            SettingsPage.NETWORK to UiText.text("Rede"),
+            SettingsPage.CONTROLS to UiText.text("Controles"),
+            SettingsPage.AUDIO to UiText.text("Áudio")
+        )
+        val buttons=linkedMapOf<SettingsPage,android.widget.TextView>()
+        fun select(page: SettingsPage) {
+            enter(page)
+            pages.forEach { (section,label) -> buttons[section]?.apply {
+                isSelected=section==page
+                text=UiText.join(if(isSelected) "✓ " else "",label)
+            } }
+            dialog.clearSettingsRows()
+            when(page) {
+                SettingsPage.VIDEO -> appendVideo(dialog)
+                SettingsPage.NETWORK -> appendNetwork(dialog)
+                SettingsPage.CONTROLS -> appendControls(dialog)
+                SettingsPage.AUDIO -> audioRows { showSettings(SettingsPage.AUDIO) }.forEach { dialog.addMenuItem(it.label,it.action) }
+                else -> with(dialog) {
+                    addSetting(UiText.text("Aparência e temas"),UiText.text("Tema, cor e idioma do aplicativo.")) { showAppearance() }
+                    addSetting(UiText.text("Conta e amigos"),UiText.text("Contas Xbox, tempo de jogo e catálogo.")) { showAccount() }
+                    addSetting(UiText.text("Ajuda e diagnóstico"),UiText.text("Estatísticas e informações para resolver problemas.")) { showDiagnostics() }
+                }
+            }
+        }
+        pages.forEachIndexed { index,(page,label) ->
+            val tab=dialog.keyButton(label) { select(page) }.apply {
+                tag="settings-section-${page.name.lowercase(java.util.Locale.ROOT)}"
+                minHeight=dialog.touchSize()
+                setPadding(dialog.px(4),0,dialog.px(4),0)
+                setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,dialog.px(19).toFloat())
+                maxLines=2
+            }
+            buttons[page]=tab
+            tabs.addView(tab,LinearLayout.LayoutParams(0,dialog.touchSize(),1f).apply { if(index<pages.lastIndex) marginEnd=dialog.px(4) })
+        }
+        dialog.setSettingsNavigation(tabs)
+        select(initial)
+        dialog.addAction(UiText.text("Voltar"),back)
+        dialog.setOnCancelListener { back() }
+        dialog.show()
+        return dialog
     }
-    fun showVideo(): ConsoleDialog {
-        enter(if(videoSection==2) SettingsPage.NETWORK else SettingsPage.VIDEO)
+
+    private fun appendVideo(dialog: ConsoleDialog) = with(dialog) {
         val value=store.read()
-        return ConsoleDialog(context,UiText.text("Vídeo e conexão")).apply {
-            val tabs=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL;isBaselineAligned=false }
-            listOf(UiText.text("Imagem e tela"),UiText.text("Rede e sessão"),UiText.text("Avançado")).forEachIndexed { index,label ->
-                val tab=keyButton(UiText.join(if(index==videoSection) "✓ " else "",label)) {
-                    dismiss();videoSection=index;showVideo()
-                }.apply { isSelected=index==videoSection;tag="video-tab-$index";minimumHeight=touchSize() }
-                tabs.addView(tab,LinearLayout.LayoutParams(0,maxOf(touchSize(),px(54)),1f).apply { marginEnd=px(6) })
+        addSetting(UiText.text("Resolução: {0}",UiText.nested(value.forSession().resolution.label)),
+            UiText.text("Qualidade do vídeo recebido. Vale na próxima partida.")) { chooseResolution() }
+        addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
+        addMenuItem(UiText.text("Proporção: {0}",UiText.nested(value.aspect.label))) { chooseAspect { showVideo() } }
+        if(!compatibility(value)) {
+            val profile=ImageProfiles.selected(value)
+            addSetting(UiText.text("Perfil de imagem: {0}",UiText.nested(ImageProfiles.label(value))),
+                UiText.text("Ajusta a imagem na sua tela. Inclui a ampliação com FSR.")) { chooseImageProfile { showVideo() } }
+            if(profile==ImageProfile.LIGHT || profile==ImageProfile.FSR)
+                addMenuItem(UiText.text("Intensidade: {0}%",UiText.nested(ImageProfiles.intensity(value)))) { chooseImageIntensity { showVideo() } }
+            addMenuItem(UiText.text("Cores da imagem")) { showImageAdjustments { showVideo() } }
+        }
+        addMenuItem(UiText.text("Ajustes avançados")) { showAdvancedVideo() }
+        Unit
+    }
+
+    private fun appendNetwork(dialog: ConsoleDialog) {
+        sessionPanel?.appendTo(dialog) { showNetwork() }
+        dialog.addSection(UiText.text("Rede avançada"))
+        val value=store.read()
+        dialog.addMenuItem(UiText.text("IPv4 / IPv6: {0}",UiText.nested(value.ipPreference.label))) { chooseNetwork() }
+        dialog.addMenuItem(UiText.text("Bypass de região: {0}",UiText.nested(RegionBypassStore(context).read().label))) {
+            RegionBypassPanel.show(context) { showNetwork() }
+        }
+    }
+
+    private fun showAdvancedVideo(): ConsoleDialog {
+        enter(SettingsPage.VIDEO_ADVANCED)
+        val value=store.read()
+        return settingsDialog(UiText.text("Ajustes avançados")).apply {
+            addMenuItem(UiText.text("Codec: {0}",UiText.nested(value.videoCodec.label))) { chooseCodec() }
+            addMenuItem(UiText.text("Fluidez: {0}",UiText.nested(value.presentationPacing.label))) { choosePacing() }
+            addMenuItem(UiText.text("Ajuste automático da tela: {0}", UiText.nested(
+                if(value.matchDisplayMode) UiText.text("Ativado") else UiText.text("Desativado")))) {
+                save(value,value.copy(matchDisplayMode=!value.matchDisplayMode)) { showAdvancedVideo() }
             }
-            body.addView(tabs,LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(10) })
-            when(videoSection) {
-                0 -> {
-                    addSection(UiText.text("Vídeo deste aparelho"))
-                    addMenuItem(UiText.text("Resolução: {0}",UiText.nested(value.forSession().resolution.label))) { chooseResolution() }
-                    addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
-                    addMenuItem(UiText.text("Proporção: {0}",UiText.nested(value.aspect.label))) { chooseAspect { showVideo() } }
-                    addMenuItem(UiText.text("Ajuste automático da tela: {0}", UiText.nested(
-                        if (value.matchDisplayMode) UiText.text("Ativado") else UiText.text("Desativado")))) {
-                        save(value, value.copy(matchDisplayMode = !value.matchDisplayMode)) { showVideo() }
-                    }
-                    if(value.videoMode==VideoMode.COMPATIBILITY) {
-                        body.addView(text(UiText.text("Compatibilidade está ativa e desativa os métodos e filtros experimentais. Mude o modo em Vídeo e transmissão para usá-los."),20,color=DashboardTheme.muted))
-                    } else {
-                        val profile=ImageProfiles.selected(value)
-                        addMenuItem(UiText.text("Perfil de imagem: {0}",UiText.nested(profile.label))) { chooseImageProfile { showVideo() } }
-                        if(profile==ImageProfile.LIGHT || profile==ImageProfile.RECONSTRUCTION) {
-                            addMenuItem(UiText.text("Intensidade: {0}%",UiText.nested(ImageProfiles.intensity(value)))) { chooseImageIntensity { showVideo() } }
-                            addMenuItem(UiText.text("Comparação: {0}",UiText.nested(value.effectiveImageComparison().label))) { chooseGlobalComparison { showVideo() } }
-                        }
-                        addMenuItem(UiText.text("Cores da imagem")) { showImageAdjustments { showVideo() } }
-                    }
-                }
-                1 -> sessionPanel?.appendTo(this) { showVideo() }
-                2 -> {
-                    addSection(UiText.text("Avançado — vídeo e conexão"))
-                    addMenuItem(UiText.text("Codec: {0}",UiText.nested(value.videoCodec.label))) { chooseCodec() }
-                    addMenuItem(UiText.text("Fluidez: {0}",UiText.nested(value.presentationPacing.label))) { choosePacing() }
-                    addMenuItem(UiText.text("IPv4 / IPv6: {0}",UiText.nested(value.ipPreference.label))) { chooseNetwork() }
-                    addMenuItem(UiText.text("Bypass de região: {0}",UiText.nested(RegionBypassStore(context).read().label))) { RegionBypassPanel.show(context) { showVideo() } }
-                    addMenuItem(UiText.text("Avançado — métodos e filtros")) { showAdvancedImage { showVideo() } }
-                    addMenuItem(UiText.text("Testes de desempenho")) { showPerformanceTrials() }
-                }
-            }
-            addAction(UiText.text("Voltar")) { this@PlaybackSettingsPanel.show() }
-            setOnCancelListener { this@PlaybackSettingsPanel.show() };show()
+            addMenuItem(UiText.text("Avançado — métodos e filtros")) { showAdvancedImage { showAdvancedVideo() } }
+            addMenuItem(UiText.text("Testes de desempenho")) { showPerformanceTrials() }
+            addAction(UiText.text("Voltar")) { showVideo() }
+            setOnCancelListener { showVideo() }
+            show()
         }
     }
     private fun showPerformanceTrials(): ConsoleDialog {
         val value = store.read()
-        return ConsoleDialog(context, UiText.text("Testes de desempenho")).apply {
+        return settingsDialog(UiText.text("Testes de desempenho")).apply {
             body.addView(text(UiText.text("Esses testes valem na próxima partida. O decoder alternativo exige H.264 no modo Adaptativo. A sincronização por fence exige geração de quadros. O controle neutro usa 60 Hz no modo sem toque. Sem análise de áudio, ganho acima de 100% exige iniciar outra partida."), 20, color = DashboardTheme.muted))
             fun toggle(label: String, enabled: Boolean, next: PlaybackSettings) {
                 val state = if (enabled) UiText.text("Ativado") else UiText.text("Desativado")
@@ -150,8 +195,8 @@ class PlaybackSettingsPanel(
                 value.copy(tryIdleGamepadCadence = !value.tryIdleGamepadCadence))
             toggle(UiText.text("Pular análise de áudio com ganho até 100%"), value.trySkipAudioSamples,
                 value.copy(trySkipAudioSamples = !value.trySkipAudioSamples))
-            addAction(UiText.text("Voltar")) { showVideo() }
-            setOnCancelListener { showVideo() }
+            addAction(UiText.text("Voltar")) { showAdvancedVideo() }
+            setOnCancelListener { showAdvancedVideo() }
             show()
         }
     }
@@ -172,13 +217,18 @@ class PlaybackSettingsPanel(
             LanguageMenu.show(context) { showAppearance() }
         }
         enter(SettingsPage.APPEARANCE)
-        return ConsoleDialogs.menu(context,UiText.text("Configurações › {0}",UiText.nested(UiText.text("Aparência e temas"))),rows,
-            onBack={ appearanceBack?.invoke() ?: open(SettingsPage.ROOT) })
+        return settingsDialog(UiText.text("Aparência e temas")).apply {
+            rows.forEach { addMenuItem(it.label,it.action) }
+            val returnToSettings: () -> Unit = { appearanceBack?.invoke() ?: open(SettingsPage.ROOT) }
+            addAction(UiText.text("Voltar"),returnToSettings)
+            setOnCancelListener { returnToSettings() }
+            show()
+        }
     }
     private fun chooseBackgroundMotion(): ConsoleDialog {
         enter(SettingsPage.APPEARANCE)
         val preferences=AppearanceSettingsStore(context)
-        return ConsoleDialog(context,UiText.text("Fundo dinâmico")).apply {
+        return settingsDialog(UiText.text("Fundo dinâmico")).apply {
             body.addView(text(UiText.text("Automático respeita a economia de energia e as animações do sistema. Ativado mantém um movimento leve, reduzido em aparelhos modestos ou em economia de energia. O fundo para durante a partida e quando o aplicativo não está visível."),20,color=DashboardTheme.muted))
             BackgroundMotion.entries.forEach { mode ->
                 val row=addMenuItem(UiText.text("{0}  {1}",UiText.nested(if(mode==preferences.motion()) "✓" else "○"),UiText.nested(mode.label))) {
@@ -232,15 +282,11 @@ class PlaybackSettingsPanel(
     fun showImage(): ConsoleDialog = showVideo()
     private fun methodName(mode: FsrMode): String = when(mode) {
         FsrMode.OFF -> UiText.text("Padrão do aparelho")
-        FsrMode.FSR1 -> "AMD FSR 1.0.2"
-        FsrMode.SGSR1 -> "SGSR 1"
-        FsrMode.RECONSTRUCTION -> UiText.text("Reconstrução xCloud")
+        FsrMode.FSR1 -> mode.label
     }
     private fun methodDescription(mode: FsrMode): String = when(mode) {
         FsrMode.OFF -> UiText.text("Usa a escala padrão do aparelho. A nitidez e os filtros adicionais abaixo são opcionais.")
-        FsrMode.FSR1 -> UiText.text("FSR amplia a imagem com EASU e aplica a nitidez escolhida abaixo. Em tamanho nativo, aplica somente a nitidez. Método experimental.")
-        FsrMode.SGSR1 -> UiText.text("SGSR combina ampliação e realce próprio. A nitidez abaixo é do SGSR; os métodos RCAS e USM não se aplicam a ele. Método experimental.")
-        FsrMode.RECONSTRUCTION -> UiText.text("A reconstrução xCloud prioriza definição, inclusive sem ampliar. Qualidade, intensidade e comparação abaixo pertencem a este método. Método experimental.")
+        FsrMode.FSR1 -> UiText.text("O FSR melhora detalhes e amplia o vídeo para a tela. A qualidade automática ajusta o processamento à fluidez da partida.")
     }
     /** A few everyday chains; saved custom combinations stay available under Advanced. */
     fun showUpscaling(onBack: (() -> Unit)? = null): ConsoleDialog {
@@ -249,7 +295,7 @@ class PlaybackSettingsPanel(
         val value=store.read();val profile=ImageProfiles.selected(value)
         val live=liveVideoMode!=null
         val compatible=compatibility(value)
-        return ConsoleDialog(context,if(live) UiText.text("Imagem e tela") else UiText.text("Upscaling e tratamento")).apply {
+        return settingsDialog(if(live) UiText.text("Imagem e tela") else UiText.text("Upscaling e tratamento")).apply {
             if(live) addMenuItem(UiText.text("Proporção: {0}",UiText.nested(value.aspect.label))) { chooseAspect { showUpscaling() } }
             if(!live || !compatible) {
                 body.addView(text(UiText.text("Escolha um perfil e compare a mesma cena. Mais intensidade não garante mais detalhes. Os ajustes personalizados ficam em Avançado."),20,color=DashboardTheme.muted))
@@ -260,8 +306,8 @@ class PlaybackSettingsPanel(
                     addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
                 }
             } else {
-                addMenuItem(UiText.text("Perfil de imagem: {0}",UiText.nested(profile.label))) { chooseImageProfile() }
-                if(profile==ImageProfile.LIGHT || profile==ImageProfile.RECONSTRUCTION)
+                addMenuItem(UiText.text("Perfil de imagem: {0}",UiText.nested(ImageProfiles.label(value)))) { chooseImageProfile() }
+                if(profile==ImageProfile.LIGHT || profile==ImageProfile.FSR)
                     addMenuItem(UiText.text("Intensidade: {0}%",UiText.nested(ImageProfiles.intensity(value)))) { chooseImageIntensity() }
                 addMenuItem(UiText.text("Comparação: {0}",UiText.nested(value.effectiveImageComparison().label))) { chooseGlobalComparison() }
                 addMenuItem(UiText.text("Cores da imagem")) { showImageAdjustments { showUpscaling() } }
@@ -276,13 +322,13 @@ class PlaybackSettingsPanel(
     }
     private fun chooseImageProfile(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
         enter(SettingsPage.UPSCALING);val value=store.read()
-        val profiles=listOf(ImageProfile.ORIGINAL,ImageProfile.LIGHT,ImageProfile.RECONSTRUCTION)
-        return choices(UiText.text("Perfil de imagem"),UiText.text("Original usa a imagem recebida com seus ajustes de cor. Leve aplica nitidez moderada em uma passagem. Reconstrução combina detalhe e histórico temporal, com proteção de desempenho; continua experimental. Nenhum perfil muda o codec ou a resolução solicitada."),
+        val profiles=listOf(ImageProfile.ORIGINAL,ImageProfile.LIGHT,ImageProfile.FSR)
+        return choices(UiText.text("Perfil de imagem"),UiText.text("Original mantém a imagem recebida e os ajustes de cor. Leve acrescenta nitidez. FSR combina ampliação, realce de detalhes e estabilidade entre quadros."),
             profiles.map {it.label to (it==ImageProfiles.selected(value))},onReturn) { save(value,ImageProfiles.apply(value,profiles[it]),onReturn) }
     }
     private fun chooseImageIntensity(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
         enter(SettingsPage.UPSCALING);val value=store.read();val levels=listOf(0,25,50,75,100)
-        return choices(UiText.text("Intensidade"),UiText.text("Ajusta o realce e, no perfil Reconstrução, o peso temporal. 0% preserva os detalhes recebidos. A intensidade não mede o custo da GPU."),
+        return choices(UiText.text("Intensidade"),UiText.text("Ajusta a nitidez e, no FSR, os detalhes e a estabilidade da imagem. Em 0%, o FSR ainda pode ampliar o vídeo."),
             levels.map {"$it%" to (it==ImageProfiles.intensity(value))},onReturn) {save(value,ImageProfiles.withIntensity(value,levels[it]),onReturn)}
     }
     private fun chooseGlobalComparison(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
@@ -290,7 +336,6 @@ class PlaybackSettingsPanel(
         return choices(UiText.text("Comparação da imagem"),UiText.text("Compara o mesmo quadro com e sem tratamento, mantendo as cores e o enquadramento. Dividida mostra o original à esquerda. A comparação suspende a geração de quadros até a próxima partida. O custo de meia tela não representa o de tela inteira."),
             ImageComparison.entries.map {it.label to (it==value.effectiveImageComparison())},onReturn) {
             save(value,value.copy(imageComparison=ImageComparison.entries[it],
-                reconstruction=value.reconstruction.copy(comparison=ImageComparison.PROCESSED),
                 imageLab=value.imageLab.copy(comparison=ImageComparison.PROCESSED)),onReturn)
         }
     }
@@ -301,7 +346,7 @@ class PlaybackSettingsPanel(
         val value=store.read();val mode=value.fsr
         if(liveVideoMode!=null && compatibility(value)) return showUpscaling()
         fun back() { showAdvancedImage() }
-        return ConsoleDialog(context,UiText.text("Avançado — métodos e filtros")).apply {
+        return settingsDialog(UiText.text("Avançado — métodos e filtros")).apply {
             if(compatibility(value)) {
                 body.addView(text(UiText.text("Compatibilidade está ativa e desativa os métodos e filtros experimentais. Mude o modo em Vídeo e transmissão para usá-los."),20,color=DashboardTheme.muted))
                 addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
@@ -311,20 +356,16 @@ class PlaybackSettingsPanel(
                 if(mode==FsrMode.OFF && liveVideoMode==null) {
                     addMenuItem(UiText.text("Upscaling nativo: {0}",UiText.nested(if(value.nativeUpscaling) UiText.text("Ativado") else UiText.text("Desativado")))) { chooseUpscaling() }
                 } else if(mode!=FsrMode.OFF) addMenuItem(UiText.text("Saída do escalador: {0}",UiText.nested(value.fsrOutput.label))) { chooseFsrOutput() }
-                when(mode) {
-                    FsrMode.OFF,FsrMode.FSR1,FsrMode.SGSR1 -> {
-                        val amount=if(mode==FsrMode.OFF) value.sharpness else value.fsrSharpness
-                        addMenuItem(UiText.text("Nitidez: {0}%",UiText.nested(amount))) { chooseSharpeningStrength() }
-                        if(mode!=FsrMode.SGSR1) addMenuItem(UiText.text("Método de nitidez: {0}",UiText.nested(sharpeningName(value)))) { chooseSharpeningMethod() }
-                    }
-                    FsrMode.RECONSTRUCTION -> {
-                        addMenuItem(UiText.text("Qualidade do processamento: {0}",UiText.nested(value.reconstruction.quality.label))) { chooseReconstructionQuality() }
-                        addMenuItem(UiText.text("Intensidade da reconstrução: {0}%",UiText.nested(value.reconstruction.strength))) { chooseReconstructionStrength() }
-                        addMenuItem(UiText.text("Comparação: {0}",UiText.nested(value.reconstruction.comparison.label))) { chooseImageComparison() }
-                    }
+                val amount=if(mode==FsrMode.OFF) value.sharpness else value.fsrSharpness
+                addMenuItem(UiText.text("Nitidez: {0}%",UiText.nested(amount))) { chooseSharpeningStrength() }
+                addMenuItem(UiText.text("Método de nitidez: {0}",UiText.nested(sharpeningName(value)))) { chooseSharpeningMethod() }
+                if(mode==FsrMode.FSR1) {
+                    addMenuItem(UiText.text("Qualidade do processamento: {0}",UiText.nested(value.reconstruction.quality.label))) { chooseReconstructionQuality() }
+                    addMenuItem(UiText.text("Intensidade dos detalhes: {0}%",UiText.nested(value.reconstruction.strength))) { chooseReconstructionStrength() }
                 }
-                val filters=value.imageTreatment.let { it.spatial || it.temporal>0 || it.neural>0 }
+                val filters=value.imageTreatment.spatial || value.imageTreatment.temporal>0 || value.imageTreatment.neural>0
                 addMenuItem(UiText.text("Filtros adicionais: {0}",UiText.nested(if(filters) UiText.text("Ativados") else UiText.text("Desativados")))) { showTreatment() }
+                addMenuItem(UiText.text("Comparação: {0}",UiText.nested(value.effectiveImageComparison().label))) { chooseGlobalComparison(::back) }
                 addMenuItem(UiText.text("Cores da imagem")) { showImageAdjustments(onBack=::back) }
                 addMenuItem(UiText.text("Proteção de desempenho: {0}",UiText.nested(if(value.imageTreatment.autoProtect) UiText.text("Ativada") else UiText.text("Desativada")))) { choosePerformanceProtection() }
                 addMenuItem(UiText.text("Laboratório de imagem: {0}",UiText.nested(if(value.imageLab.enabled) UiText.text("Ativado") else UiText.text("Desativado")))) {
@@ -363,7 +404,6 @@ class PlaybackSettingsPanel(
         return choices(UiText.text("Proteção de desempenho"),UiText.text("Reduz temporal, saída, antialiasing, neural e filtros quando a cadência desenhada fica abaixo da recebida. As escolhas salvas são preservadas. Os cortes valem nesta partida e aparecem no diagnóstico."),
             listOf(UiText.text("Ativada") to image.autoProtect,UiText.text("Desativada") to !image.autoProtect)) { save(value,value.copy(imageTreatment=image.copy(autoProtect=it==0))) }
     }
-    fun showNetwork(): ConsoleDialog { videoSection=2;return showVideo() }
     fun showDiagnostics(): ConsoleDialog {
         val value=store.read()
         return category(SettingsPage.DIAGNOSTICS,UiText.text("Ajuda e diagnóstico"),listOfNotNull(
@@ -385,7 +425,7 @@ class PlaybackSettingsPanel(
     private fun showMemoryDiagnostics() {
         val title = UiText.text("Memória e última saída do app")
         val technical = videoMemoryInformation()
-        val dialog = ConsoleDialog(context, title)
+        val dialog = settingsDialog(title)
         val report = dialog.text(UiText.text("Consultando memória…"), 19)
         dialog.body.addView(report)
         val copy = dialog.addPersistentAction(UiText.text("Copiar detalhes")) {
@@ -429,7 +469,7 @@ class PlaybackSettingsPanel(
     }
     private fun choices(title: String, description: String, entries: List<Pair<String,Boolean>>,
                         onBack: () -> Unit = { open(currentPage) }, select: (Int) -> Unit): ConsoleDialog {
-        val dialog=ConsoleDialog(context,title)
+        val dialog=settingsDialog(title)
         dialog.body.addView(dialog.text(description,20,color=DashboardTheme.muted),LinearLayout.LayoutParams(-1,-2)
             .apply { bottomMargin=dialog.px(16) })
         entries.forEachIndexed { i,(label,selected) ->
@@ -454,7 +494,7 @@ class PlaybackSettingsPanel(
         }
     }
     fun chooseCodec(): ConsoleDialog {
-        enter(SettingsPage.VIDEO)
+        enter(SettingsPage.VIDEO_ADVANCED)
         val current=store.read()
         return choices(UiText.text("Codec de vídeo"),UiText.join(UiText.text("Padrão mantém a negociação H.264 habitual. Leve oferece somente Baseline, solicita 720p e até 6 Mbps no Automático. O teto manual da partida pode substituir esse orçamento. É um perfil do H.264, sem garantia de ganho se o jogo já usava Baseline. A resolução e o bitrate recebidos dependem do serviço. Compatibilidade também usa Baseline. Aplica-se à próxima partida."),"\n\n",
             UiText.text("Experimentos: High, HEVC, VP9 e AV1 exigem decoder de hardware e suporte do serviço. Se indisponíveis, usamos H.264. Confira o codec recebido no diagnóstico."),"\n\n",UiText.text("Para comparar codecs, use Restaurar imagem original em Upscaling e tratamento. Mais compressão não garante imagem melhor.")),
@@ -464,7 +504,7 @@ class PlaybackSettingsPanel(
         }
     }
     fun choosePacing(): ConsoleDialog {
-        enter(SettingsPage.VIDEO);val value=store.read()
+        enter(SettingsPage.VIDEO_ADVANCED);val value=store.read()
         return choices(UiText.text("Fluidez da apresentação"),UiText.text("Suave agenda os quadros com uma pequena espera e pode aumentar o atraso do controle. Mantém apenas o quadro pendente mais recente; não gera novos quadros. Só atua em Adaptativo. Menor atraso e Compatibilidade mantêm a apresentação imediata. Vale na próxima partida."),
             PresentationPacing.entries.map { it.label to (it==value.presentationPacing) }) { save(value,value.copy(presentationPacing=PresentationPacing.entries[it])) }
     }
@@ -487,8 +527,13 @@ class PlaybackSettingsPanel(
     fun chooseFsr(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED)
         val current=store.read()
-        return choices(UiText.text("Escolher método de imagem"),UiText.text("Escolha apenas um método. Padrão usa a escala do aparelho. FSR e SGSR ampliam e realçam a imagem. Reconstrução xCloud prioriza definição. Os três métodos alternativos são experimentais. Ao escolher, os ajustes correspondentes aparecem na mesma tela."),
-            FsrMode.entries.map { methodName(it) to (it==current.fsr) }) { save(current,current.copy(fsr=FsrMode.entries[it])) }
+        return choices(UiText.text("Escolher método de imagem"),UiText.text("Padrão usa a escala do aparelho. O FSR amplia o vídeo e melhora os detalhes na tela."),
+            FsrMode.entries.map { methodName(it) to (it==current.fsr) }) {
+            val mode=FsrMode.entries[it]
+            val treatment=if(mode==FsrMode.FSR1 && current.fsr==FsrMode.OFF && current.imageTreatment.sharpening==ImageSharpening.LEGACY)
+                current.imageTreatment.copy(sharpening=ImageSharpening.RCAS_LUMA) else current.imageTreatment
+            save(current,current.copy(fsr=mode,imageTreatment=treatment))
+        }
     }
     fun chooseFsrOutput(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED)
@@ -508,7 +553,7 @@ class PlaybackSettingsPanel(
         enter(SettingsPage.IMAGE)
         val settings=store.read()
         fun backToImage() { showImageAdjustments(onBack) }
-        return ConsoleDialog(context,UiText.text("Cores da imagem")).apply {
+        return settingsDialog(UiText.text("Cores da imagem")).apply {
             body.addView(text(UiText.text("Brilho, contraste e saturação são ajustes de cor compartilhados. A nitidez fica em Upscaling e tratamento, junto ao método escolhido."),20,color=DashboardTheme.muted))
             addMenuItem(UiText.text("Brilho: {0}%",UiText.nested(settings.brightness))) {
                 val levels=listOf(-50,-25,-10,0,10,25,50)
@@ -530,22 +575,15 @@ class PlaybackSettingsPanel(
             addAction(UiText.text("Voltar"),onBack); setOnCancelListener { onBack() }; show()
         }
     }
-    // Legacy page IDs and entry points reopen the single image-processing hub.
-    fun showReconstruction(): ConsoleDialog = showUpscaling()
     private fun chooseReconstructionQuality(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED);val value=store.read();val options=value.reconstruction
-        return choices(UiText.text("Qualidade do processamento"),UiText.text("Automático começa Leve e aumenta após observar cadência estável. Equilibrado e Qualidade usam mais amostras para reconstrução de detalhes. Se houver queda sustentada, a proteção reduz o nível e evita repetir a tentativa nesta partida. Sem proteção de desempenho, Automático permanece Leve. A cadência não é uma medição de tempo de GPU. Compatibilidade desativa o modo."),
+        return choices(UiText.text("Qualidade do processamento"),UiText.text("Automático começa leve e aumenta a qualidade enquanto a partida estiver fluida. Em aparelhos com pouca memória, o FSR prioriza a ampliação."),
             ReconstructionQuality.entries.map { it.label to (it==options.quality) }) { save(value,value.copy(reconstruction=options.copy(quality=ReconstructionQuality.entries[it]))) }
     }
     private fun chooseReconstructionStrength(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED);val value=store.read();val options=value.reconstruction;val levels=listOf(0,25,50,75,100)
-        return choices(UiText.text("Intensidade da reconstrução"),UiText.text("0% desativa a reconstrução de detalhes. Valores maiores aumentam o realce com limites de ruído e halos. A intensidade não altera a resolução; 50% não significa metade do custo da GPU."),
+        return choices(UiText.text("Intensidade dos detalhes"),UiText.text("Controla o realce antes da ampliação. Em 0%, o FSR aplica apenas a ampliação e a nitidez escolhida."),
             levels.map { "$it%" to (it==options.strength) }) { save(value,value.copy(reconstruction=options.copy(strength=levels[it]))) }
-    }
-    private fun chooseImageComparison(): ConsoleDialog {
-        enter(SettingsPage.IMAGE_ADVANCED);val value=store.read();val options=value.reconstruction
-        return choices(UiText.text("Comparação da imagem"),UiText.text("Original mostra o quadro recebido sem os filtros do app. Dividida mostra esse mesmo quadro original à esquerda e tratado à direita. Só atua na reconstrução adaptativa; não altera o toque nem o enquadramento. A adaptação automática fica pausada durante a comparação. O desempenho em meia tela não representa o custo em tela inteira."),
-            ImageComparison.entries.map { it.label to (it==options.comparison) }) { save(value,value.copy(reconstruction=options.copy(comparison=ImageComparison.entries[it]))) }
     }
     fun showTreatment(): ConsoleDialog {
         if(compatibility(store.read())) return showAdvancedImage()
@@ -558,7 +596,7 @@ class PlaybackSettingsPanel(
                 val now=store.read();save(now,now.copy(imageTreatment=change(now.imageTreatment,levels[index])))
             }
         }
-        return ConsoleDialog(context,UiText.text("Filtros adicionais — compartilhados")).apply {
+        return settingsDialog(UiText.text("Filtros adicionais — compartilhados")).apply {
             body.addView(text(UiText.text("Método: {0}",UiText.nested(methodName(value.fsr))),20,color=DashboardTheme.muted))
             body.addView(text(UiText.text("Filtros opcionais. Use intensidades baixas e compare com a imagem original. Temporal pode deixar rastros. A rede neural exige renderização half-float e fonte de até 1080p; o diagnóstico informa quando não há suporte. Compatibilidade desativa o tratamento."),20,color=DashboardTheme.muted))
             addMenuItem(UiText.text("Degradês: {0}%",UiText.nested(image.deband))) { level(UiText.text("Degradês"),image.deband) { s,n -> s.copy(deband=n) } }
@@ -570,14 +608,18 @@ class PlaybackSettingsPanel(
             addAction(UiText.text("Voltar")) { showAdvancedImage() };setOnCancelListener { showAdvancedImage() };show()
         }
     }
-    fun showControls(): ConsoleDialog = category(SettingsPage.CONTROLS,UiText.text("Controles e toque"),listOfNotNull(
-        gameControls?.let { ConsoleAction(UiText.text("HUD e controles deste jogo"),it) },
-        ConsoleAction(UiText.text("Controle físico e coop local")) { showPhysical() },
-        ConsoleAction(UiText.text("Jogar com toque: {0}",UiText.nested(store.read().touchMode.label))) { chooseTouch() },
-        ConsoleAction(UiText.text("Mouse e teclado")) { showMouse() },
-        ConsoleAction(UiText.text("Giroscópio")) { showGyro() },
-        ConsoleAction(UiText.text("Vibração do controle e celular")) { showRumble() }
-    ))
+    private fun appendControls(dialog: ConsoleDialog) = with(dialog) {
+        val value=store.read()
+        addSetting(UiText.text("Jogar com toque: {0}",UiText.nested(value.touchMode.label)),
+            UiText.text("Escolhe como os jogos respondem ao toque no celular.")) { chooseTouch() }
+        gameControls?.let { addMenuItem(UiText.text("HUD e controles deste jogo"),it) }
+        addMenuItem(UiText.text("Controle físico e coop local")) { showPhysical() }
+        addMenuItem(UiText.text("Vibração do controle e celular")) { showRumble() }
+        addSection(UiText.text("Outras formas de jogar"))
+        addMenuItem(UiText.text("Mouse e teclado")) { showMouse() }
+        addMenuItem(UiText.text("Giroscópio")) { showGyro() }
+        Unit
+    }
     fun showPhysical(): ConsoleDialog {
         val value=store.read()
         return category(SettingsPage.PHYSICAL,UiText.text("Controles › Controle físico"),listOf(
@@ -632,7 +674,7 @@ class PlaybackSettingsPanel(
     private fun gyroApplyLabel() = if (liveGyro) UiText.text("Aplica ao retomar a partida.") else UiText.text("Vale na próxima partida.")
 
     private fun showGyroTest(source: GyroSource,sensitivity: Int) {
-        val dialog = ConsoleDialog(context,UiText.text("Testar giroscópio"))
+        val dialog = settingsDialog(UiText.text("Testar giroscópio"))
         dialog.body.addView(dialog.text(UiText.text("Mova o aparelho ou controle selecionado para testar o sensor e o analógico direito."),20))
         val sample = dialog.text("",20,color=DashboardTheme.muted)
         dialog.body.addView(sample)
@@ -707,34 +749,45 @@ class PlaybackSettingsPanel(
         return choices(UiText.text("Mira por movimento"),UiText.text("Emula o analógico direito em controle/HUD. Para combinar com toque nativo Xbox, ative também o teste na categoria Giroscópio. LT/LB no toque nativo dependem de controle físico. {0}", UiText.nested(gyroApplyLabel())),
             GyroMode.entries.map { it.label to (it==current.gyroMode) },{ showGyro() }) { save(current,current.copy(gyroMode=GyroMode.entries[it])) { showGyro() } }
     }
-    fun showAudio(onBack: () -> Unit={ show() }): ConsoleDialog {
+    fun showAudio(onBack: (() -> Unit)?=null): ConsoleDialog {
+        if(onBack==null && liveVideoMode==null) return showSettings(SettingsPage.AUDIO)
         enter(SettingsPage.AUDIO)
+        val back: () -> Unit=onBack ?: { show() }
+        return settingsDialog(UiText.text("Áudio e microfone")).apply {
+            audioRows { showAudio(onBack) }.forEach { addMenuItem(it.label,it.action) }
+            addAction(UiText.text("Voltar"),back)
+            setOnCancelListener { back() }
+            show()
+        }
+    }
+
+    private fun audioRows(onReturn: () -> Unit): List<ConsoleAction> {
         val current=store.read()
         val audio=context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
-        return ConsoleDialogs.menu(context,UiText.text("Áudio e microfone"),listOfNotNull(
+        return listOfNotNull(
             if(audio.isVolumeFixed) null else ConsoleAction(UiText.text("Volume de mídia: {0}/{1}",UiText.nested(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)),UiText.nested(audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)))) {
                 val values=(0..audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC)).toList()
-                choices(UiText.text("Volume de mídia"),UiText.text("Áudio e microfone"),values.map { it.toString() to (it==audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)) },{ showAudio(onBack) }) {
-                    audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC,values[it],0);showAudio(onBack)
+                choices(UiText.text("Volume de mídia"),UiText.text("Áudio e microfone"),values.map { it.toString() to (it==audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC)) },{ onReturn() }) {
+                    audio.setStreamVolume(android.media.AudioManager.STREAM_MUSIC,values[it],0);onReturn()
                 }
             },
             microphone?.let { ConsoleAction(microphoneLabel(),it) },
             if(liveVideoMode!=null) null else ConsoleAction(UiText.text("Perfil de áudio: {0}", UiText.nested(current.audioMode.label))) {
                 choices(UiText.text("Perfil de áudio"), UiText.text("Solicita saída de áudio de baixa latência no Android 8 ou superior. O sistema pode ignorar o pedido. Padrão mantém o comportamento atual. Vale na próxima partida; volte ao padrão se houver estalos ou cortes."),
-                    AudioPlaybackMode.entries.map { it.label to (it==current.audioMode) }, { showAudio(onBack) }) {
-                    save(current,current.copy(audioMode=AudioPlaybackMode.entries[it])) { showAudio(onBack) }
+                    AudioPlaybackMode.entries.map { it.label to (it==current.audioMode) }, { onReturn() }) {
+                    save(current,current.copy(audioMode=AudioPlaybackMode.entries[it])) { onReturn() }
                 }
             },
             ConsoleAction(UiText.text("Ganho de áudio: {0}%",UiText.nested(current.audioGain))) {
                 val values=listOf(0,50,75,100,125,150,175,200,250,300)
                 choices(UiText.text("Ganho de áudio"),UiText.text("100% preserva o volume. Acima disso, o app aumenta gradualmente e reduz o ganho ao detectar picos no áudio. Transientes ainda podem distorcer. Comece em 125%. O foco e o volume do Android continuam ativos."),
-                    values.map { "$it%" to (it==current.audioGain) },{ showAudio(onBack) }) { save(current,current.copy(audioGain=values[it])) { showAudio(onBack) } }
+                    values.map { "$it%" to (it==current.audioGain) },{ onReturn() }) { save(current,current.copy(audioGain=values[it])) { onReturn() } }
             },
             if(liveVideoMode!=null) null else ConsoleAction(UiText.text("Microfone nas próximas partidas: {0}",UiText.nested(if(current.microphone) UiText.text("Disponível — inicia mudo") else UiText.text("Desativado")))) {
                 choices(UiText.text("Microfone opcional"),UiText.text("A sessão sempre inicia muda. Com esta opção, o app consulta suporte a chat; ative a captura no menu da partida, após conceder a permissão do Android. Ir para segundo plano silencia. Alguns servidores podem não oferecer chat."),
-                    listOf(UiText.text("Desativado") to !current.microphone,UiText.text("Disponível — iniciar mudo") to current.microphone),{ showAudio(onBack) }) { save(current,current.copy(microphone=it==1)) { showAudio(onBack) } }
+                    listOf(UiText.text("Desativado") to !current.microphone,UiText.text("Disponível — iniciar mudo") to current.microphone),{ onReturn() }) { save(current,current.copy(microphone=it==1)) { onReturn() } }
             }
-        ),onBack=onBack)
+        )
     }
 
 }

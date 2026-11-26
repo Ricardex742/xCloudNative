@@ -19,13 +19,13 @@ public final class ImageTreatmentPipeline {
   private ReconstructionDrawer labRestorer;
   private volatile int usedNeuralAmount;
   private final int[] framebuffer=new int[1],viewport=new int[4],activeTexture=new int[1],scissorBox=new int[4];
-  private int reconstructionLevel,reconstructionStrength=50,comparison,requestedComparison,globalComparison;
+  private int reconstructionLevel,reconstructionStrength=50,comparison,globalComparison;
   private int finalX,finalY,finalWidth,finalHeight;
   private final ReconstructionDrawer[] reconstruction=new ReconstructionDrawer[3];
   private boolean scissor,blend,closed,broken,historyValid,neuralRejected;
   private TreatmentOptions options=TreatmentOptions.OFF;
   private TreatmentOptions finishingOptions=TreatmentOptions.OFF;
-  private int sharpness,fsrSharpness=50,saturation=100,brightness,contrast=100,lastW,lastH;
+  private int sharpness,saturation=100,brightness,contrast=100,lastW,lastH;
   private long lastFrameNs;
   private final float[] lastTransform=new float[16];
   private boolean transformKnown;
@@ -36,7 +36,7 @@ public final class ImageTreatmentPipeline {
   private volatile String motionStatus="off";
   private HalfTarget featureA,featureB;
   private GlRectDrawer copy;
-  private TreatmentShaderDrawer spatial,sgsr;
+  private TreatmentShaderDrawer spatial;
   private Pass featurePassA,featurePassB,neuralApply,temporal;
   private volatile String failure,neuralStatus="off";
   private volatile int passes;
@@ -48,10 +48,9 @@ public final class ImageTreatmentPipeline {
   public void configureLab(boolean enabled,int restoration,int protection,float scale,int comparison,int level,boolean neural) {
     if(lab.configure(enabled,restoration,protection,scale,comparison,level,neural))historyValid=false;
   }
-  public void configureReconstruction(int level,int strength,int comparison) {
-    if(reconstructionLevel!=level || this.requestedComparison!=comparison) historyValid=false;
+  public void configureFsrDetails(int level,int strength) {
+    if(reconstructionLevel!=level || reconstructionStrength!=strength) historyValid=false;
     reconstructionLevel=Math.max(0,Math.min(3,level));reconstructionStrength=Math.max(0,Math.min(100,strength));
-    this.requestedComparison=reconstructionLevel==0?0:Math.max(0,Math.min(2,comparison));
   }
   public void configureComparison(int value) {
     value=Math.max(0,Math.min(2,value));if(globalComparison!=value)historyValid=false;globalComparison=value;
@@ -59,24 +58,18 @@ public final class ImageTreatmentPipeline {
   public void configureMotionHistory(boolean allowed) {
     if(motionAllowed!=allowed)historyValid=false;motionAllowed=allowed;
   }
-  public void configure(TreatmentOptions requested,int sharpness,int fsrSharpness,int saturation,int brightness,int contrast) {
+  public void configure(TreatmentOptions requested,int sharpness,int saturation,int brightness,int contrast) {
     if(options!=requested) {
       historyValid=false;finishingOptions=new TreatmentOptions(requested.sharpening,0,0,0,0,0,0);
     }
-    options=requested;this.sharpness=sharpness;this.fsrSharpness=fsrSharpness;
+    options=requested;this.sharpness=sharpness;
     this.saturation=saturation;this.brightness=brightness;this.contrast=contrast;
   }
   private TreatmentShaderDrawer spatial() {
-    if(spatial==null) spatial=new TreatmentShaderDrawer(context,false);
+    if(spatial==null) spatial=new TreatmentShaderDrawer(context);
     return spatial;
   }
   private static void input(RendererCommon.GlDrawer drawer,Input kind,int texture,int[] textures,float[] matrix,
-      int fw,int fh,int x,int y,int w,int h) {
-    if(kind==Input.OES) drawer.drawOes(texture,matrix,fw,fh,x,y,w,h);
-    else if(kind==Input.RGB) drawer.drawRgb(texture,matrix,fw,fh,x,y,w,h);
-    else drawer.drawYuv(textures,matrix,fw,fh,x,y,w,h);
-  }
-  private static void input(TreatmentShaderDrawer drawer,Input kind,int texture,int[] textures,float[] matrix,
       int fw,int fh,int x,int y,int w,int h) {
     if(kind==Input.OES) drawer.drawOes(texture,matrix,fw,fh,x,y,w,h);
     else if(kind==Input.RGB) drawer.drawRgb(texture,matrix,fw,fh,x,y,w,h);
@@ -100,7 +93,7 @@ public final class ImageTreatmentPipeline {
     GLES20.glEnable(GLES20.GL_SCISSOR_TEST);GLES20.glScissor(x,y,Math.max(0,right-x),Math.max(0,top-y));
   }
   public boolean draw(Input kind,int texture,int[] textures,float[] matrix,int fw,int fh,int iw,int ih,
-      int x,int y,int width,int height,FsrUpscaler fsr,boolean useSgsr) {
+      int x,int y,int width,int height,FsrUpscaler fsr) {
     if(closed || broken || iw<=0 || ih<=0) return false;
     Input rawKind=kind;long started=System.nanoTime();
     GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING,framebuffer,0);
@@ -111,7 +104,7 @@ public final class ImageTreatmentPipeline {
     finalX=x;finalY=y;finalWidth=width;finalHeight=height;
     try {
       passes=0;usedTemporal=false;usedNeural=false;usedNeuralAmount=0;usedScaling=false;usedMotion=false;mergedRestoration=false;
-      comparison=globalComparison!=0?globalComparison:lab.enabled()?lab.comparison():requestedComparison;
+      comparison=globalComparison!=0?globalComparison:lab.enabled()?lab.comparison():0;
       if(comparison==1) {
         if(copy==null)copy=new GlRectDrawer();
         if(sharpness==0 && saturation==100 && brightness==0 && contrast==100)
@@ -124,6 +117,7 @@ public final class ImageTreatmentPipeline {
       }
       long pixels=(long)iw*ih;
       if(pixels>3840L*2160 || pixels*12>MAX_BYTES) throw new IllegalStateException("source exceeds treatment memory limit");
+      boolean restoreFsr=fsr!=null && reconstructionLevel>0 && reconstructionStrength>0 && pixels<=NEURAL_PIXELS;
       boolean changed=iw!=lastW || ih!=lastH;
       if(changed || started-lastFrameNs>200_000_000L) historyValid=false;
       if(!transformKnown || !java.util.Arrays.equals(matrix,lastTransform)) {
@@ -159,13 +153,13 @@ public final class ImageTreatmentPipeline {
       if(!wantsHistory || !motionAllowed)releaseMotionTarget();
       if(!wantsNeural) releaseFeatures();
       if(!wantsHistory && !wantsNeural) {
-        if(b!=null && !labActive) { b.release();b=null; }
-        if((!options.spatial() || fsr==null && !useSgsr && reconstructionLevel==0) && a!=null && !labActive) { a.release();a=null; }
+        if(b!=null && !labActive && !restoreFsr) { b.release();b=null; }
+        if((!options.spatial() || fsr==null) && a!=null && !labActive && !restoreFsr) { a.release();a=null; }
       }
-      if(!labActive && !wantsHistory && !wantsNeural && !options.spatial() && sharpness==0 && fsr==null && !useSgsr && reconstructionLevel==0) {
+      if(!labActive && !wantsHistory && !wantsNeural && !options.spatial() && sharpness==0 && fsr==null) {
         workingBytes=0;return false;
       }
-      if(!labActive && !wantsHistory && !wantsNeural && fsr==null && !useSgsr && reconstructionLevel==0) {
+      if(!labActive && !wantsHistory && !wantsNeural && fsr==null) {
         // Common 1080p case: selective cleanup + colors + sharpening in the existing input pass.
         original();spatial().configure(options,sharpness,saturation,brightness,contrast,true);
         input(spatial(),kind,texture,textures,matrix,fw,fh,x,y,width,height);passes++;
@@ -235,12 +229,24 @@ public final class ImageTreatmentPipeline {
           }
           finalKind=Input.RGB;finalTexture=current.getTextureId();finalTextures=null;finalMatrix=IDENTITY;finalW=iw;finalH=ih;
         }
-        if(labActive && lab.restoration()>0 && !usedNeural && reconstructionLevel==0) {
+        boolean restoreLab=labActive && lab.restoration()>0 && !usedNeural;
+        if(restoreFsr || restoreLab) {
           GlTextureFrameBuffer restored=target(a!=null && finalTexture==a.getTextureId(),iw,ih);
           GLES20.glDisable(GLES20.GL_SCISSOR_TEST);GLES20.glDisable(GLES20.GL_BLEND);bind(restored);
-          if(labRestorer==null)labRestorer=new ReconstructionDrawer(context,1);
-          labRestorer.configure(lab.restoration(),100,0,100,false);
-          input(labRestorer,finalKind,finalTexture,finalTextures,finalMatrix,finalW,finalH,0,0,iw,ih);passes++;
+          ReconstructionDrawer restorer;
+          if(restoreFsr) {
+            int index=reconstructionLevel-1;
+            if(reconstruction[index]==null) reconstruction[index]=new ReconstructionDrawer(context,reconstructionLevel);
+            restorer=reconstruction[index];
+          } else {
+            if(labRestorer==null) labRestorer=new ReconstructionDrawer(context,1);
+            restorer=labRestorer;
+          }
+          int strength=Math.max(restoreFsr?reconstructionStrength:0,restoreLab?lab.restoration():0);
+          mergedRestoration=restoreFsr && restoreLab;
+          restorer.configure(strength,100,0,100,false);
+          // Restore the decoded-size image once. EASU alone resamples it to the presentation size.
+          input(restorer,finalKind,finalTexture,finalTextures,finalMatrix,finalW,finalH,0,0,iw,ih);passes++;
           finalKind=Input.RGB;finalTexture=restored.getTextureId();finalTextures=null;finalMatrix=IDENTITY;finalW=iw;finalH=ih;
         }
         int drawX=x,drawY=y,drawWidth=width,drawHeight=height;
@@ -249,18 +255,7 @@ public final class ImageTreatmentPipeline {
           GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER,lab.stageFramebuffer());
           drawX=0;drawY=0;drawWidth=lab.width();drawHeight=lab.height();
         } else original();
-        if(reconstructionLevel>0) {
-          ReconstructionDrawer drawer=reconstruction[reconstructionLevel-1];
-          if(drawer==null) { drawer=new ReconstructionDrawer(context,reconstructionLevel);reconstruction[reconstructionLevel-1]=drawer; }
-          int strength=labActive && !usedNeural?Math.max(reconstructionStrength,lab.restoration()):reconstructionStrength;
-          mergedRestoration=labActive && !usedNeural && lab.restoration()>0;
-          drawer.configure(strength,saturation,brightness,contrast,options.deband>0);
-          input(drawer,finalKind,finalTexture,finalTextures,finalMatrix,finalW,finalH,drawX,drawY,drawWidth,drawHeight);passes++;usedScaling=true;
-        } else if(useSgsr) {
-          if(sgsr==null) sgsr=new TreatmentShaderDrawer(context,true);
-          sgsr.configure(options,fsrSharpness,saturation,brightness,contrast,true);
-          input(sgsr,finalKind,finalTexture,finalTextures,finalMatrix,finalW,finalH,drawX,drawY,drawWidth,drawHeight);passes++;usedScaling=true;
-        } else if(fsr!=null && drawFsr(fsr,finalKind,finalTexture,finalTextures,finalMatrix,finalW,finalH,drawX,drawY,drawWidth,drawHeight)) {
+        if(fsr!=null && drawFsr(fsr,finalKind,finalTexture,finalTextures,finalMatrix,finalW,finalH,drawX,drawY,drawWidth,drawHeight)) {
           passes+=fsr.lastPassCount();usedScaling=true;
         } else {
           spatial().configure(finishingOptions,sharpness,saturation,brightness,contrast,true);
@@ -323,7 +318,7 @@ public final class ImageTreatmentPipeline {
   private void releaseMotionTarget(){if(motion!=null)motion.release();motion=null;usedMotion=false;}
   public int effectiveNeural() { return usedNeural && !broken ? usedNeuralAmount : 0; }
   public String diagnostics() {
-    return lab.diagnostics()+"\n"+(reconstructionLevel>0?"Reconstruction: level="+reconstructionLevel+" | strength="+reconstructionStrength+"% | comparison="+comparison+" | ":"")+String.format(Locale.US,"Treatment: spatial=%s | sharpen=%d | temporal=%s | neural=%s | passes=%d | storage=%.1f MiB | CPU/GL submission=%.2f/%.2f ms (not GPU/display)",
+    return lab.diagnostics()+"\n"+(reconstructionLevel>0?"FSR detail: level="+reconstructionLevel+" | strength="+reconstructionStrength+"% | comparison="+comparison+" | ":"")+String.format(Locale.US,"Treatment: spatial=%s | sharpen=%d | temporal=%s | neural=%s | passes=%d | storage=%.1f MiB | CPU/GL submission=%.2f/%.2f ms (not GPU/display)",
         options.spatial(),options.sharpening,usedTemporal,(options.neural>0||lab.neural())?neuralStatus:"off",passes,
         workingBytes/1048576.,frames==0?0:totalNs/1e6/frames,maxNs/1e6)+
         " | motion="+(usedMotion?motionStatus:"off/local")+" | merged restoration="+mergedRestoration+(failure==null?"":" | "+failure);
@@ -333,7 +328,7 @@ public final class ImageTreatmentPipeline {
     if(a!=null)a.release();if(b!=null)b.release();if(history!=null)history.release();releaseFeatures();
     lab.release();if(labRestorer!=null)labRestorer.release();
     releaseMotionTarget();if(motionPass!=null)motionPass.shader.release();
-    if(copy!=null)copy.release();if(spatial!=null)spatial.release();if(sgsr!=null)sgsr.release();
+    if(copy!=null)copy.release();if(spatial!=null)spatial.release();
     for(ReconstructionDrawer drawer:reconstruction) if(drawer!=null) drawer.release();
     for(Pass pass:new Pass[]{featurePassA,featurePassB,neuralApply,temporal}) if(pass!=null)pass.shader.release();
   }

@@ -63,9 +63,14 @@ class QuickSettingsNavigationTest {
     @Test fun closeLeavesAllSettingsWhileBackReturnsOneLevelAndRestoresCategoryFocus() {
         val store=PlaybackSettingsStore(activity);val before=store.read();var changes=0;var returned=0
         val panel=PlaybackSettingsPanel(activity,store,{changes++},{},{},{},back={returned++})
-        click(panel.show(),"Controles e toque");latest().cancel();shadowOf(Looper.getMainLooper()).idle()
-        assertEquals("Controles e toque",(latest().window!!.currentFocus as TextView).text.toString())
-        click(latest(),"Vídeo e conexão");click(latest(),"Resolução:")
+        val settings=panel.show()
+        val controls=settings.panel.findViewWithTag<TextView>("settings-section-controls")
+        controls.requestFocus();controls.performClick()
+        assertSame(settings,latest());assertTrue(controls.isSelected)
+        click(settings,"Giroscópio");latest().cancel();shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(latest().panel.findViewWithTag<TextView>("settings-section-controls").isSelected)
+        latest().panel.findViewWithTag<TextView>("settings-section-video").performClick()
+        click(latest(),"Resolução:")
         close(latest());shadowOf(Looper.getMainLooper()).idle()
         assertFalse(latest().isShowing);assertEquals(0,returned);assertEquals(0,changes);assertEquals(before,store.read())
         val root=panel.show();root.cancel();shadowOf(Looper.getMainLooper()).idle();assertEquals(1,returned)
@@ -96,7 +101,7 @@ class QuickSettingsNavigationTest {
         val session=SessionOptionsStore(activity,"navigation-scopes")
         val scoped=SessionOptionsPanel(activity,session,listOf(CloudRegion("BrazilSouth","https://example.test")),"game","Demo") {}
         val panel=PlaybackSettingsPanel(activity,PlaybackSettingsStore(activity),{},{},{},{},sessionPanel=scoped)
-        val video=panel.showVideo();capture(video,"unified-video");click(video,"Rede e sessão");capture(latest(),"game-session-scope")
+        val video=panel.showVideo();capture(video,"unified-video");video.panel.findViewWithTag<TextView>("settings-section-network").performClick();capture(latest(),"game-session-scope")
         assertTrue(all(latest().body).filterIsInstance<TextView>().any { it.text.toString()=="Este jogo: Demo" })
         click(latest(),"Idioma do jogo:");click(latest(),"简体中文")
         click(latest(),"Idioma do jogo:");capture(latest(),"game-language-chinese")
@@ -106,10 +111,30 @@ class QuickSettingsNavigationTest {
         click(latest(),"Região:");click(latest(),"BrazilSouth")
         assertEquals(SessionOptions(15000,"zh-CN","BrazilSouth"),session.read("game"))
         close(latest());assertEquals("zh-CN",SessionOptionsStore(activity,"navigation-scopes").read("game").locale)
-        val reopen=panel.showVideo();click(reopen,"Padrão das partidas")
+        val reopen=panel.showNetwork();click(reopen,"Padrão das partidas")
         click(latest(),"Idioma do jogo:");click(latest(),"English (US)")
         assertEquals("en-US",session.read().locale);assertEquals("zh-CN",session.read("game").locale)
         capture(latest(),"global-session-scope")
+    }
+    @Test fun settingsTabsStayFixedDuringScrollAndRowsDoNotTakeTouchFocus() {
+        val panel=PlaybackSettingsPanel(activity,PlaybackSettingsStore(activity),{},{},{},{})
+        val settings=panel.showVideo()
+        layout(settings.panel,820,360)
+        val video=settings.panel.findViewWithTag<TextView>("settings-section-video")
+        val scroll=settings.body.parent as ScrollView
+        val tabY=IntArray(2).apply(video::getLocationInWindow)[1]
+        assertTrue(settings.body.height>scroll.height)
+        scroll.scrollTo(0,scroll.height)
+        assertTrue(scroll.scrollY>0)
+        assertEquals(tabY,IntArray(2).apply(video::getLocationInWindow)[1])
+        assertTrue(all(settings.body).filterIsInstance<TextView>().filter { it.isClickable }.all {
+            it.isFocusable && !it.isFocusableInTouchMode
+        })
+        settings.panel.findViewWithTag<TextView>("settings-section-controls").performClick()
+        assertSame(settings,latest())
+        assertEquals(0,scroll.scrollY)
+        assertTrue(all(settings.body).any { it is TextView && it.text.startsWith("Jogar com toque") })
+        capture(settings,"settings-fixed-categories")
     }
     @Test fun longStatisticsShortcutOpensCustomizationWithoutTogglingAndMediaVolumeIsExplicit() {
         var customizations=0;var toggles=0;var updates=0

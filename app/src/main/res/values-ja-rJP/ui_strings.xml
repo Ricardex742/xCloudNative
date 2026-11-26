@@ -431,7 +431,6 @@
     <string name="ui_879cfabd793d0157" formatted="false">"FSR出力: {0}"</string>
     <string name="ui_87c3860190710a08" formatted="false">"{0} 製品 • 部分データ"</string>
     <string name="ui_881e8bd48dc88da0" formatted="false">"感度{0}%。デッドゾーン {1}%; "</string>
-    <string name="ui_886e0210ef167b68" formatted="false">"AMD FSR 1.0.2 — 実験的"</string>
     <string name="ui_8892d243f5537424" formatted="false">"100% は元のコントラストを維持します。極端な値を設定すると、明るい部分や暗い部分が隠れてしまう可能性があります。"</string>
     <string name="ui_892188af00d5e76a" formatted="false">"予測は変更される可能性があります。時間を保証するものではありません。"</string>
     <string name="ui_893b96a29b56340e" formatted="false">"Game Passで購入可能"</string>
@@ -823,19 +822,15 @@
     <string name="ui_0714f5039a12ca60" formatted="false">"フレームペーシング"</string>
     <string name="ui_4d440994fa1026b6" formatted="false">"スムーズ ペーシングでは、待機時間が短いフレームがスケジュールされるため、コントローラーの遅延が増加する可能性があります。最新の保留中のフレームのみを保持し、フレームは生成しません。これはアダプティブ モードでのみ機能します。低遅延と互換性により、フレームがすぐに表示されます。次回のセッションに適用されます。"</string>
     <string name="ui_01ff7b9877fd2590" formatted="false">"画像のアップスケーラー"</string>
-    <string name="ui_eb6463428c90e902" formatted="false">"FSR 1 は、EASU と 1 つのシャープニング ステージを使用します。 SGSR 1 は、アップスケーリングとシャープニングを 1 つのパスで組み合わせ、異なる結果をもたらします。自動出力と 50% シャープニングから始めます。ネイティブ サイズでは、処理によって画像は拡大されません。 1440p と 4K には、より多くの GPU パワーが必要です。保護により、セッション中の出力と効果が低下する可能性があります。互換性によりアップスケーラーが無効になります。"</string>
     <string name="ui_6f1c74f0b6d32c86" formatted="false">"アップスケーラーの出力"</string>
-    <string name="ui_3c5b67278b62ff76" formatted="false">"出力解像度はローカルであり、受信したストリームは変更されません。自動ではスムーズな再生を優先し、TV を 1080p に制限します。 FSR または SGSR を有効にして使用します。オプションはアスペクト比を維持し、物理的なディスプレイ出力を尊重します。レンダリングが受信フレームに遅れる場合、保護により出力が削減されます。 1440p および 4K は 60 FPS を保証しません。"</string>
     <string name="ui_c32d6a6c5f6c85a8" formatted="false">"アップスケーラーのシャープネス: {0}%"</string>
     <string name="ui_89466b600f44d82a" formatted="false">"アップスケーラーのシャープネス"</string>
-    <string name="ui_0a35106015a464ce" formatted="false">"0% はシャープ化を無効にします。 50% は、GPU コストの半分を意味するわけではありません。画像処理でFSRシャープニング方法を選択します。 SGSRは独自のシャープニングを使用しています。アップスケーラーがアクティブでない場合は、標準シャープニングが使用されます。"</string>
     <string name="ui_145ba142c0a28897" formatted="false">"オプションのフィルター。低い強度を使用して、元の画像と比較します。時間的ブレンドによりゴーストが発生する可能性があります。ニューラル ネットワークには、half-float レンダリングと 1080p までのビデオが必要です。診断では、サポートされていない構成が報告されます。互換性により処理が無効になります。"</string>
     <string name="ui_a23f3531df367526" formatted="false">"元のイメージを復元する"</string>
     <string name="ui_816142b270bd86ed" formatted="false">"ライトプリセット"</string>
     <string name="ui_3dffb6b05ab299a0" formatted="false">"ナチュラルプリセット"</string>
     <string name="ui_fa91b6e02863c5e4" formatted="false">"研ぎ方法：{0}"</string>
     <string name="ui_502db55d154534d2" formatted="false">"研ぎ方"</string>
-    <string name="ui_0aa57beba9491190" formatted="false">"アダプティブ RCAS および USM は、ノイズやハローを制限しながら輝度をシャープにします。画像調整の強さを設定します。 FSR は最終段階でこの方法を使用します。 SGSRには独自のシャープニングが施されています。"</string>
     <string name="ui_2b6c2095f463e2a5" formatted="false">"バンド除去: {0}%"</string>
     <string name="ui_fe312903471d9474" formatted="false">"バンディング除去"</string>
     <string name="ui_ff31493bef5098c7" formatted="false">"圧縮クリーンアップ: {0}%"</string>
@@ -851,25 +846,16 @@
     <string name="ui_2035d973bf9e515e" formatted="false">"パフォーマンスの保護"</string>
     <string name="ui_5bc89f56c8f6a2fb" formatted="false">"レンダリングが受信フレームに遅れる場合、時間的ブレンディング、出力解像度、アンチエイリアス、ニューラル再構成、フィルターが低下します。保存された設定は保持されます。削減はこのセッション中継続し、診断に表示されます。"</string>
     <string name="ui_1b84e208cc1a58a8" formatted="false">"H.264 Main — 実験的"</string>
-    <string name="ui_3a2a300619a63143" formatted="false">"SGSR 1 — 実験的"</string>
     <string name="ui_9b01d2edc42e9906" formatted="false">"アダプティブ RCAS — 輝度"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — 輝度"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"スムーズ — 実験的"</string>
-    <string name="ui_eac0ce77eb55c8a4" formatted="false">"適応的再構成"</string>
-    <string name="ui_1d8ef3b791a0d023" formatted="false">"xCloudの適応型再構成は、現在の解像度で細部の明瞭さを優先します。「適応型再構成」で品質、強度、比較方法を設定できます。FSR/SGSRのシャープ処理に代わるもので、映像を拡大しなくても動作します。"</string>
     <string name="ui_51ebe1789bd20746" formatted="false">"出力解像度は端末側の設定で、受信する映像は変わりません。自動は滑らかさを優先し、テレビの出力を1080pまでに制限します。この設定を使うにはアップスケーラーを有効にしてください。縦横比と実際の画面出力を尊重します。描画が受信フレームに追いつかない場合、保護機能が出力を下げます。1440pや4Kで60 FPSを保証するものではありません。"</string>
-    <string name="ui_dd22d535719a563e" formatted="false">"復元力：{0}%"</string>
     <string name="ui_8555935b67caf434" formatted="false">"映像を整え、細部を明瞭にする実験的な処理です。拡大しない1080pでも使えます。Xboxの解像度やビットレートは変えません。まずは品質を自動、強度を50%、出力を自動にしてください。他の任意フィルターの設定は維持されます。"</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"自動出力で有効にする"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"処理品質: {0}"</string>
     <string name="ui_7c3cbeb7b60be0e2" formatted="false">"加工品質"</string>
-    <string name="ui_0eb30a3dd4158ee0" formatted="false">"自動は軽量から開始し、安定したフレーム間隔を確認すると処理を増やします。バランスと高品質は、細部の再構成により多くのサンプルを使用します。継続的な速度低下があると保護機能が段階を下げ、そのセッションでは再試行しません。性能保護が無効の場合、自動は軽量のままです。フレーム間隔はGPU処理時間の測定値ではありません。互換性モードではこの機能は無効です。"</string>
-    <string name="ui_902655b68adff737" formatted="false">"復興力"</string>
-    <string name="ui_f3dfa159a318772b" formatted="false">"0%で細部の再構成を無効にします。値を上げると、ノイズやハローを抑えながらシャープさを強めます。強度は解像度を変えません。50%はGPU負荷が半分という意味ではありません。"</string>
     <string name="ui_a79e563191d05b46" formatted="false">"比較: {0}"</string>
     <string name="ui_8c0915ecfa90532a" formatted="false">"画像比較"</string>
-    <string name="ui_1a35a34073721a5e" formatted="false">"元の映像は、アプリの映像フィルターを適用せずに受信フレームを表示します。分割は同じフレームの元の映像を左側、処理後の映像を右側に表示します。適応型再構成でのみ動作し、タッチ操作や表示範囲は変えません。比較中は自動調整を停止します。半画面での性能は、全画面処理の負荷を表すものではありません。"</string>
-    <string name="ui_7e5098599892e880" formatted="false">"xCloud — 適応再構成 (実験的)"</string>
     <string name="ui_ba68d32e9584a982" formatted="false">"軽量"</string>
     <string name="ui_9123685a0d2a98ba" formatted="false">"バランス"</string>
     <string name="ui_c51403a4fdb9cd06" formatted="false">"高品質"</string>
@@ -882,11 +868,7 @@
     <string name="ui_1e53dc3bd47bfd37" formatted="false">"アップスケーラー: 標準の拡大処理に戻りました — {0}"</string>
     <string name="ui_ab80b661abb4d819" formatted="false">"拡大・映像処理: {0}"</string>
     <string name="ui_421fc3b80d653c41" formatted="false">"端末の標準設定"</string>
-    <string name="ui_19641a71ea37bded" formatted="false">"xCloud再構成"</string>
     <string name="ui_1915d14ae05fb304" formatted="false">"端末の標準の拡大処理を使います。以下のシャープネスと追加フィルターは任意です。"</string>
-    <string name="ui_c50e172c261d8c7e" formatted="false">"FSRはEASUで映像を拡大し、以下で選んだシャープ処理を適用します。等倍ではシャープ処理のみを行います。実験的な方式です。"</string>
-    <string name="ui_bd256736c94b60c2" formatted="false">"SGSRは拡大と独自のシャープ処理を組み合わせます。以下のシャープネスはSGSR用で、RCASやUSMは適用されません。実験的な方式です。"</string>
-    <string name="ui_a1a502f6cbd61c13" formatted="false">"xCloud再構成は、拡大しない場合も細部の明瞭さを優先します。以下の品質、強度、比較はこの方式の設定です。実験的な方式です。"</string>
     <string name="ui_c75da833acbd4f43" formatted="false">"拡大・映像処理"</string>
     <string name="ui_38b562e06a2e6f8a" formatted="false">"互換性モードが有効なため、実験的な方式とフィルターは無効です。使用するには「映像とストリーミング」でモードを変更してください。"</string>
     <string name="ui_57dcc836395931d8" formatted="false">"方式: {0}"</string>
@@ -899,10 +881,8 @@
     <string name="ui_f87888746e40f335" formatted="false">"{0} — シャープネス"</string>
     <string name="ui_8a16e0aa4971e729" formatted="false">"選択した方式の設定です。適応型RCASとUSMは輝度を処理し、ノイズやハローを抑えます。"</string>
     <string name="ui_c559eea667737d74" formatted="false">"映像処理方式を選択"</string>
-    <string name="ui_726dd1ebf97968ef" formatted="false">"方式を1つ選んでください。標準は端末の拡大処理を使います。FSRとSGSRは映像を拡大してシャープにします。xCloud再構成は細部の明瞭さを優先します。この3つは実験的な方式です。選択すると、対応する設定が同じ画面に表示されます。"</string>
     <string name="ui_604124660b08c782" formatted="false">"明るさ、コントラスト、彩度は共通の色設定です。シャープネスは「拡大・映像処理」の選択した方式の項目にあります。"</string>
     <string name="ui_2dc867123a3f77a9" formatted="false">"追加フィルター — 共通"</string>
-    <string name="ui_4e539bd60654f414" formatted="false">"これらのフィルターは、標準、FSR、SGSR、xCloud再構成の選択した方式と併用されます。プリセットはその方式のシャープネスも調整します。別のアップスケーラーを有効にする必要はありません。"</string>
     <string name="ui_e823d8526c139e5f" formatted="false">"0%はこの方式のシャープ処理だけを無効にします。拡大と追加フィルターは独立しています。まずは25%から試してください。"</string>
     <string name="ui_75eb1f44a3b4507b" formatted="false">"動く背景: {0}"</string>
     <string name="ui_7e366ecca899c0da" formatted="false">"動く背景"</string>
@@ -1143,7 +1123,6 @@
     <string name="ui_b349d76be7b4196f" formatted="false">"強度: {0}%"</string>
     <string name="ui_130109754b26bd14" formatted="false">"詳細設定 — 方式とフィルター"</string>
     <string name="ui_d15dfe13919d6bdc" formatted="false">"画質プロファイル"</string>
-    <string name="ui_3cb6517ac3bbc236" formatted="false">"オリジナルは受信画像に色設定を適用します。軽量は1パスで適度に鮮明化します。再構成は細部と時間履歴を組み合わせ、性能保護を使います。実験的な機能です。どのプロファイルも要求コーデックや解像度を変更しません。"</string>
     <string name="ui_22046fdceaf398b6" formatted="false">"強度"</string>
     <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"細部の強調と、再構成では時間履歴の重みを調整します。0%は受信した細部を保ちます。強度はGPU負荷を示しません。"</string>
     <string name="ui_de1c6d14af7c0137" formatted="false">"色と表示範囲を保ち、同じフレームを処理あり・なしで比較します。分割表示は左側がオリジナルです。比較中は次のセッションまでフレーム生成が停止します。半画面の負荷は全画面の負荷を示しません。"</string>
@@ -1219,7 +1198,6 @@
     <string name="ui_5423e8e87e381255" formatted="false">"メニューは表示されたままです。1回タップすると操作ボタンが再表示されます。押し続けているボタンは指を離すまで有効です。"</string>
     <string name="ui_b29787a85987a3b1" formatted="false">"ヘルプと診断"</string>
     <string name="ui_ea004de431a48442" formatted="false">"ゲームのショートカット"</string>
-    <string name="ui_dfe001c0349758ee" formatted="false">"詳細設定 — 映像と接続"</string>
     <string name="ui_cb511e13be6742ac" formatted="false">"ゲームのビットレート、地域、言語は次のセッションから適用されます。"</string>
     <string name="ui_bab1bbd31394bce7" formatted="false">"Xbox ボタン — 試験的"</string>
     <string name="ui_de6cc609150213bf" formatted="false">"アカウントとフレンド"</string>
@@ -1427,4 +1405,25 @@
     <string name="ui_382512eae2b74f8f">"入力のないコントローラーの送信頻度を低減"</string>
     <string name="ui_3448385e4f13254d" formatted="false">"ゲインが 100% 以下の場合に音声解析を省略"</string>
     <string name="ui_77601fafb0b66e20" formatted="false">"100% を超えるゲインは次のセッションで適用されます。"</string>
+    <string name="ui_2130a3b5e09e419f" formatted="false">"全般"</string>
+    <string name="ui_bc10c86c24b5ba44" formatted="false">"映像"</string>
+    <string name="ui_25c7658bb9289d92" formatted="false">"ネットワーク"</string>
+    <string name="ui_4319e7528fc5b2cb" formatted="false">"アプリのテーマ、色、言語。"</string>
+    <string name="ui_74ef2f4dca78ac69" formatted="false">"Xbox アカウント、プレイ時間、カタログ。"</string>
+    <string name="ui_b6bb2d06879091a8" formatted="false">"統計と問題解決に役立つ情報。"</string>
+    <string name="ui_f2bfe0b8a0ef819b" formatted="false">"受信する映像の品質。次のプレイから適用します。"</string>
+    <string name="ui_513ae50a22f4af28" formatted="false">"画面に表示する映像を調整します。FSR 拡大も含みます。"</string>
+    <string name="ui_1fa249941e925122" formatted="false">"詳細設定"</string>
+    <string name="ui_f5302f0a194c88ed" formatted="false">"ネットワークの詳細設定"</string>
+    <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR は映像を拡大して細部を補正します。自動品質は映像の滑らかさに応じて処理を調整します。"</string>
+    <string name="ui_fa567f5d8fcb4e4e" formatted="false">"オリジナルは受信映像と色設定を維持します。軽量は鮮明さを加えます。FSR は拡大、細部補正、フレームの安定化を組み合わせます。"</string>
+    <string name="ui_2d8784beab54c16f" formatted="false">"鮮明さと、FSR の細部や映像の安定性を調整します。0% でも FSR による拡大は可能です。"</string>
+    <string name="ui_7d36b1c8e07efdf2" formatted="false">"細部補正の強さ: {0}%"</string>
+    <string name="ui_a3eb48b566c209fc" formatted="false">"標準は端末のスケーリングを使います。FSR は映像を拡大し、細部を改善します。"</string>
+    <string name="ui_f9fd64861bd35c21" formatted="false">"自動は軽量から始め、映像が滑らかな間は画質を上げます。メモリが少ない端末では拡大を優先します。"</string>
+    <string name="ui_d6b7753917686db8" formatted="false">"細部補正の強さ"</string>
+    <string name="ui_3e4fc39303896629" formatted="false">"拡大前の細部補正を調整します。0% では拡大と選択した鮮明さのみ適用します。"</string>
+    <string name="ui_9f6c10c40dedb9fc" formatted="false">"モバイルでのタッチ操作の動作を選びます。"</string>
+    <string name="ui_02521703013f54b0" formatted="false">"その他の操作方法"</string>
+    <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
 </resources>

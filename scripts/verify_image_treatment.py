@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the shipped GLES2 treatment, SGSR, temporal and neural shaders on Mesa.
+"""Run the shipped GLES2 treatment, temporal and neural shaders on Mesa.
 
 Pixel readback is confined to this offline test; the Android render loop never reads pixels.
 """
@@ -95,11 +95,10 @@ def verify(condition, message):
     checks+=1
 
 
-spatial_source=(ASSETS/"spatial.glsl").read_text();sgsr_source=(ASSETS/"sgsr.glsl").read_text()
-for source in (spatial_source,sgsr_source):
-    for kind in ("RGB","OES","YUV"):
-        program(source,True,kind);checks+=1
-spatial=program(spatial_source,True);sgsr=program(sgsr_source,True)
+spatial_source=(ASSETS/"spatial.glsl").read_text()
+for kind in ("RGB","OES","YUV"):
+    program(spatial_source,True,kind);checks+=1
+spatial=program(spatial_source,True)
 temporal=program((ASSETS/"temporal.frag").read_text())
 features=[program((ASSETS/f"neural-{i}.frag").read_text()) for i in (0,1)]
 neural=program((ASSETS/"neural-apply.frag").read_text())
@@ -107,8 +106,6 @@ flat=[80,100,120,255]*256;flat_tex=texture(flat,16,16)
 for mode in (0,1,2):
     out=draw(spatial,{"rgb_tex":flat_tex},16,16,{"finish_image":1,"selective":1,"quantize":1,"sharpen_mode":mode,"sharpness":1.,"deband":.5,"cleanup":.5,"chroma":.75})
     verify(max(abs(a-b) for a,b in zip(out,flat))<=1,"Flat color must remain stable with sharpening/cleanup/deband")
-    out=draw(sgsr,{"rgb_tex":flat_tex},32,32,{"input_w":16,"input_h":16,"sharpness":.5})
-    verify(max(abs(a-b) for a,b in zip(out,[80,100,120,255]*1024))<=1,"SGSR must preserve flat colors")
 
 pattern=[]
 for y in range(16):
@@ -122,18 +119,12 @@ for mode in (0,1,2):
         verify(difference<=7,f"Adaptive sharpening must protect HUD edges (mode={mode}, max error={difference})")
     else:
         verify(difference>7,"The legacy RGB unsharp control must exercise the test's halo detector")
-for origin in ((0,0),(3,5)):
-    out=draw(sgsr,{"rgb_tex":edge_tex},32,32,{"input_w":16,"input_h":16,"sharpness":.5},origin=origin)
-    for y in range(32):
-        verify(abs(out[(y*32+2)*4]-20)<=1 and abs(out[(y*32+29)*4]-230)<=1,"SGSR source alignment/border failed")
-    verify(all(out[i]==255 for i in range(3,len(out),4)),"SGSR alpha must remain opaque")
-
 # True bypass and transformed input at zero sharpening.
 plain=draw(spatial,{"rgb_tex":edge_tex},16,16,{"finish_image":1,"sharpen_mode":0,"quantize":0})
 verify(plain==pattern,"Zero treatment must preserve all pixels")
 flip=[-1.,0.,0.,0.,0.,1.,0.,0.,0.,0.,1.,0.,1.,0.,0.,1.]
-out=draw(sgsr,{"rgb_tex":edge_tex},16,16,{"input_w":16,"input_h":16,"sharpness":0.},matrix=flip)
-verify(all(abs(out[(y*16+x)*4]-pattern[(y*16+15-x)*4])<=1 for y in range(16) for x in range(16)),"SGSR must honor the decoder transform")
+out=draw(spatial,{"rgb_tex":edge_tex},16,16,{"finish_image":1,"quantize":0},matrix=flip)
+verify(all(abs(out[(y*16+x)*4]-pattern[(y*16+15-x)*4])<=1 for y in range(16) for x in range(16)),"Spatial treatment must honor the decoder transform")
 
 # Validate the exact shader variants exported by the Java runtime's unit test.
 # Disabled effects must preserve output while disappearing from the compiled variant.
@@ -222,7 +213,7 @@ for mode in (1,2):
 enable=gl("glEnable",None,uint);disable=gl("glDisable",None,uint)
 set_scissor=gl("glScissor",None,integer,integer,integer,integer)
 reconstruction=program("\n#define RECON_LEVEL 2\n"+(ASSETS/"reconstruction.glsl").read_text(),True)
-for method in (spatial,sgsr,reconstruction):
+for method in (spatial,reconstruction):
     for flip in (False,True):
         matrix=IDENTITY[:]
         if flip:matrix[5]=-.75;matrix[13]=.875
@@ -281,7 +272,7 @@ verify(cut==[20,90,160,255]*(w*h),"Scene-cut/color rejection must remain effecti
 report_dir=root/"app/build/reports/reconstruction";report_dir.mkdir(parents=True,exist_ok=True)
 (report_dir/"motion-history-quality.json").write_text(json.dumps({"scope":"controlled synthetic pan/noise/HUD; Mesa pixels, not device performance", "cases":motion_metrics},indent=2))
 
-report=f"GLES2 treatment: {checks} shader/flat-color/HUD/transform/comparison/SGSR/temporal/half-float-CNN checks passed.\n"
+report=f"GLES2 treatment: {checks} shader/flat-color/HUD/transform/comparison/temporal/half-float-CNN checks passed.\n"
 output=root/"app/build/reports/dashboard/image-treatment-validation.txt";output.parent.mkdir(parents=True,exist_ok=True);output.write_text(report)
 print(report,end="")
 terminate(display)

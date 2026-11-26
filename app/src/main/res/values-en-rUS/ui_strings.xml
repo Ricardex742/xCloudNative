@@ -431,7 +431,6 @@
     <string name="ui_879cfabd793d0157" formatted="false">"FSR Output: {0}"</string>
     <string name="ui_87c3860190710a08" formatted="false">"{0} PRODUCTS • PARTIAL DATA"</string>
     <string name="ui_881e8bd48dc88da0" formatted="false">"sensitivity {0}%; dead zone {1}%; "</string>
-    <string name="ui_886e0210ef167b68" formatted="false">"AMD FSR 1.0.2 — experimental"</string>
     <string name="ui_8892d243f5537424" formatted="false">"100% preserves the original contrast. Extreme values can hide light or dark details."</string>
     <string name="ui_892188af00d5e76a" formatted="false">"The forecast may change; It is not a guarantee of time."</string>
     <string name="ui_893b96a29b56340e" formatted="false">"Available on Game Pass"</string>
@@ -823,19 +822,15 @@
     <string name="ui_0714f5039a12ca60" formatted="false">"Frame pacing"</string>
     <string name="ui_4d440994fa1026b6" formatted="false">"Smooth pacing schedules frames with a short wait and may increase controller latency. It keeps only the latest pending frame and does not generate frames. It works only in Adaptive mode. Low latency and Compatibility present frames immediately. Applies to the next session."</string>
     <string name="ui_01ff7b9877fd2590" formatted="false">"Image upscaler"</string>
-    <string name="ui_eb6463428c90e902" formatted="false">"FSR 1 uses EASU and one sharpening stage. SGSR 1 combines upscaling and sharpening in one pass, with a different result. Start with Auto output and 50% sharpening. At native size, processing does not enlarge the image. 1440p and 4K need more GPU power. Protection may reduce output and effects during the session. Compatibility disables upscalers."</string>
     <string name="ui_6f1c74f0b6d32c86" formatted="false">"Upscaler output"</string>
-    <string name="ui_3c5b67278b62ff76" formatted="false">"Output resolution is local and does not change the received stream. Auto prioritizes smooth playback and limits TVs to 1080p. Enable FSR or SGSR to use it. Options preserve aspect ratio and respect the physical display output. Protection reduces output if rendering falls behind incoming frames. 1440p and 4K do not guarantee 60 FPS."</string>
     <string name="ui_c32d6a6c5f6c85a8" formatted="false">"Upscaler sharpening: {0}%"</string>
     <string name="ui_89466b600f44d82a" formatted="false">"Upscaler sharpening"</string>
-    <string name="ui_0a35106015a464ce" formatted="false">"0% disables sharpening; 50% does not mean half the GPU cost. Select the FSR sharpening method in Image processing. SGSR uses its own sharpening. Standard sharpening is used when no upscaler is active."</string>
     <string name="ui_145ba142c0a28897" formatted="false">"Optional filters. Use low strengths and compare with the original image. Temporal blending may cause ghosting. The neural network requires half-float rendering and video up to 1080p; diagnostics report unsupported configurations. Compatibility disables processing."</string>
     <string name="ui_a23f3531df367526" formatted="false">"Restore original image"</string>
     <string name="ui_816142b270bd86ed" formatted="false">"Light preset"</string>
     <string name="ui_3dffb6b05ab299a0" formatted="false">"Natural preset"</string>
     <string name="ui_fa91b6e02863c5e4" formatted="false">"Sharpening method: {0}"</string>
     <string name="ui_502db55d154534d2" formatted="false">"Sharpening method"</string>
-    <string name="ui_0aa57beba9491190" formatted="false">"Adaptive RCAS and USM sharpen luminance while limiting noise and halos. Set the strength in Image adjustments. FSR uses this method in its final stage; SGSR has its own sharpening."</string>
     <string name="ui_2b6c2095f463e2a5" formatted="false">"Debanding: {0}%"</string>
     <string name="ui_fe312903471d9474" formatted="false">"Debanding"</string>
     <string name="ui_ff31493bef5098c7" formatted="false">"Compression cleanup: {0}%"</string>
@@ -851,25 +846,16 @@
     <string name="ui_2035d973bf9e515e" formatted="false">"Performance protection"</string>
     <string name="ui_5bc89f56c8f6a2fb" formatted="false">"Reduces temporal blending, output resolution, antialiasing, neural reconstruction and filters when rendering falls behind incoming frames. Saved preferences are preserved. Reductions last for this session and appear in diagnostics."</string>
     <string name="ui_1b84e208cc1a58a8" formatted="false">"H.264 Main — experimental"</string>
-    <string name="ui_3a2a300619a63143" formatted="false">"SGSR 1 — experimental"</string>
     <string name="ui_9b01d2edc42e9906" formatted="false">"Adaptive RCAS — luminance"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — luminance"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"Smooth — experimental"</string>
-    <string name="ui_eac0ce77eb55c8a4" formatted="false">"Adaptive reconstruction"</string>
-    <string name="ui_1d8ef3b791a0d023" formatted="false">"xCloud adaptive reconstruction prioritizes definition at the current resolution. Set quality, strength and comparison in Adaptive reconstruction. It replaces FSR/SGSR sharpening and works without enlarging the image."</string>
     <string name="ui_51ebe1789bd20746" formatted="false">"Output resolution is local and does not change the received stream. Auto prioritizes smooth playback and limits TVs to 1080p. Enable an upscaler to use this option. Choices preserve aspect ratio and respect the physical display output. Protection reduces output if rendering falls behind incoming frames. 1440p and 4K do not guarantee 60 FPS."</string>
-    <string name="ui_dd22d535719a563e" formatted="false">"Reconstruction strength: {0}%"</string>
     <string name="ui_8555935b67caf434" formatted="false">"Experimental processing to clean and define the video, including at 1080p without enlargement. It does not change Xbox resolution or bitrate. Start with Auto quality, 50% strength and Auto output. Other optional filters keep your existing settings."</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"Enable with Auto output"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"Processing quality: {0}"</string>
     <string name="ui_7c3cbeb7b60be0e2" formatted="false">"Processing quality"</string>
-    <string name="ui_0eb30a3dd4158ee0" formatted="false">"Auto starts with Light processing and increases after observing stable cadence. Balanced and Quality use more samples for detail reconstruction. With sustained slowdowns, protection lowers the level and prevents another attempt this session. Without performance protection, Auto stays Light. Cadence does not measure GPU duration. Compatibility disables this mode."</string>
-    <string name="ui_902655b68adff737" formatted="false">"Reconstruction strength"</string>
-    <string name="ui_f3dfa159a318772b" formatted="false">"0% disables detail reconstruction. Higher values increase sharpening with noise and halo limits. Strength does not change resolution; 50% does not mean half the GPU cost."</string>
     <string name="ui_a79e563191d05b46" formatted="false">"Comparison: {0}"</string>
     <string name="ui_8c0915ecfa90532a" formatted="false">"Image comparison"</string>
-    <string name="ui_1a35a34073721a5e" formatted="false">"Original shows the received frame without app image filters. Split shows that same original frame on the left and the processed frame on the right. It works only in Adaptive reconstruction and changes neither touch input nor framing. Automatic adaptation pauses during comparison. Half-screen performance does not represent full-screen processing cost."</string>
-    <string name="ui_7e5098599892e880" formatted="false">"xCloud — adaptive reconstruction (experimental)"</string>
     <string name="ui_ba68d32e9584a982" formatted="false">"Light"</string>
     <string name="ui_9123685a0d2a98ba" formatted="false">"Balanced"</string>
     <string name="ui_c51403a4fdb9cd06" formatted="false">"Quality"</string>
@@ -882,11 +868,7 @@
     <string name="ui_1e53dc3bd47bfd37" formatted="false">"Upscaler: fallback to standard scaling — {0}"</string>
     <string name="ui_ab80b661abb4d819" formatted="false">"Upscaling and processing: {0}"</string>
     <string name="ui_421fc3b80d653c41" formatted="false">"Device default"</string>
-    <string name="ui_19641a71ea37bded" formatted="false">"xCloud reconstruction"</string>
     <string name="ui_1915d14ae05fb304" formatted="false">"Uses the device’s standard scaling. Sharpening and the additional filters below are optional."</string>
-    <string name="ui_c50e172c261d8c7e" formatted="false">"FSR enlarges the image with EASU and applies the sharpening selected below. At native size, it applies sharpening only. Experimental method."</string>
-    <string name="ui_bd256736c94b60c2" formatted="false">"SGSR combines enlargement with its own sharpening. The strength below belongs to SGSR; RCAS and USM do not apply to it. Experimental method."</string>
-    <string name="ui_a1a502f6cbd61c13" formatted="false">"xCloud reconstruction prioritizes definition, including without enlargement. Quality, strength and comparison below belong to this method. Experimental method."</string>
     <string name="ui_c75da833acbd4f43" formatted="false">"Upscaling and processing"</string>
     <string name="ui_38b562e06a2e6f8a" formatted="false">"Compatibility is active and disables experimental methods and filters. Change the mode in Video and streaming to use them."</string>
     <string name="ui_57dcc836395931d8" formatted="false">"Method: {0}"</string>
@@ -899,10 +881,8 @@
     <string name="ui_f87888746e40f335" formatted="false">"{0} — Sharpening"</string>
     <string name="ui_8a16e0aa4971e729" formatted="false">"This setting belongs to the selected method. Adaptive RCAS and USM work on luminance to limit noise and halos."</string>
     <string name="ui_c559eea667737d74" formatted="false">"Choose image method"</string>
-    <string name="ui_726dd1ebf97968ef" formatted="false">"Choose one method. Default uses device scaling. FSR and SGSR enlarge and sharpen the image. xCloud reconstruction prioritizes definition. The three alternatives are experimental. After selection, the corresponding settings appear on the same screen."</string>
     <string name="ui_604124660b08c782" formatted="false">"Brightness, contrast and saturation are shared color settings. Sharpening is in Upscaling and processing, alongside the selected method."</string>
     <string name="ui_2dc867123a3f77a9" formatted="false">"Additional filters — shared"</string>
-    <string name="ui_4e539bd60654f414" formatted="false">"These filters work alongside the chosen method: Default, FSR, SGSR or xCloud reconstruction. Presets also adjust that method’s sharpening. You do not need to enable another upscaler."</string>
     <string name="ui_e823d8526c139e5f" formatted="false">"0% disables only this method’s sharpening. Enlargement and additional filters remain independent. Start with 25%."</string>
     <string name="ui_75eb1f44a3b4507b" formatted="false">"Dynamic background: {0}"</string>
     <string name="ui_7e366ecca899c0da" formatted="false">"Dynamic background"</string>
@@ -1143,7 +1123,6 @@
     <string name="ui_b349d76be7b4196f" formatted="false">"Intensity: {0}%"</string>
     <string name="ui_130109754b26bd14" formatted="false">"Advanced — methods and filters"</string>
     <string name="ui_d15dfe13919d6bdc" formatted="false">"Image profile"</string>
-    <string name="ui_3cb6517ac3bbc236" formatted="false">"Original uses the received image with your color adjustments. Light applies moderate sharpening in one pass. Reconstruction combines detail and temporal history with performance protection; it remains experimental. No profile changes the requested codec or resolution."</string>
     <string name="ui_22046fdceaf398b6" formatted="false">"Intensity"</string>
     <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Adjusts detail enhancement and, in Reconstruction, temporal weight. 0% preserves received detail. Intensity does not measure GPU cost."</string>
     <string name="ui_de1c6d14af7c0137" formatted="false">"Compares the same frame with and without processing, keeping colors and framing. Split shows the original on the left. Comparison suspends frame generation until the next session. Half-screen cost does not represent full-screen cost."</string>
@@ -1219,7 +1198,6 @@
     <string name="ui_5423e8e87e381255" formatted="false">"The menu stays visible. Tap once to show the controls again. A held button stays active until you release it."</string>
     <string name="ui_b29787a85987a3b1" formatted="false">"Help and diagnostics"</string>
     <string name="ui_ea004de431a48442" formatted="false">"Game shortcuts"</string>
-    <string name="ui_dfe001c0349758ee" formatted="false">"Advanced — video and connection"</string>
     <string name="ui_cb511e13be6742ac" formatted="false">"Game bitrate, region and language apply to the next session."</string>
     <string name="ui_bab1bbd31394bce7" formatted="false">"Xbox button — experimental"</string>
     <string name="ui_de6cc609150213bf" formatted="false">"Account and friends"</string>
@@ -1427,4 +1405,25 @@
     <string name="ui_382512eae2b74f8f">"Reduced neutral gamepad report rate"</string>
     <string name="ui_3448385e4f13254d" formatted="false">"Skip audio analysis at gain up to 100%"</string>
     <string name="ui_77601fafb0b66e20" formatted="false">"Gain above 100% will apply in the next session."</string>
+    <string name="ui_2130a3b5e09e419f" formatted="false">"General"</string>
+    <string name="ui_bc10c86c24b5ba44" formatted="false">"Video"</string>
+    <string name="ui_25c7658bb9289d92" formatted="false">"Network"</string>
+    <string name="ui_4319e7528fc5b2cb" formatted="false">"App theme, color and language."</string>
+    <string name="ui_74ef2f4dca78ac69" formatted="false">"Xbox accounts, playtime and catalog."</string>
+    <string name="ui_b6bb2d06879091a8" formatted="false">"Statistics and troubleshooting information."</string>
+    <string name="ui_f2bfe0b8a0ef819b" formatted="false">"Incoming video quality. Applies to the next game."</string>
+    <string name="ui_513ae50a22f4af28" formatted="false">"Adjusts the picture on your screen, including FSR upscaling."</string>
+    <string name="ui_1fa249941e925122" formatted="false">"Advanced settings"</string>
+    <string name="ui_f5302f0a194c88ed" formatted="false">"Advanced network"</string>
+    <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR restores detail and scales video for your screen. Auto quality adapts the processing to the session's frame cadence."</string>
+    <string name="ui_fa567f5d8fcb4e4e" formatted="false">"Original keeps the incoming picture and color adjustments. Light adds sharpening. FSR combines upscaling, detail enhancement and frame stability."</string>
+    <string name="ui_2d8784beab54c16f" formatted="false">"Adjusts sharpness and the detail and stability of FSR. At 0%, FSR can still upscale the video."</string>
+    <string name="ui_7d36b1c8e07efdf2" formatted="false">"Detail strength: {0}%"</string>
+    <string name="ui_a3eb48b566c209fc" formatted="false">"Default uses device scaling. FSR upscales video and improves visible detail."</string>
+    <string name="ui_f9fd64861bd35c21" formatted="false">"Auto starts light and increases quality while playback remains smooth. On devices with limited memory, FSR prioritizes upscaling."</string>
+    <string name="ui_d6b7753917686db8" formatted="false">"Detail strength"</string>
+    <string name="ui_3e4fc39303896629" formatted="false">"Adjusts enhancement before upscaling. At 0%, FSR applies only upscaling and the selected sharpness."</string>
+    <string name="ui_9f6c10c40dedb9fc" formatted="false">"Choose how games respond to touch on mobile."</string>
+    <string name="ui_02521703013f54b0" formatted="false">"Other ways to play"</string>
+    <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
 </resources>

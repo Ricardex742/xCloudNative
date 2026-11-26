@@ -190,7 +190,7 @@ def texture(w,h,data=None,linear=False):
     return t
 
 
-def draw(p,source,iw,ih,ow,oh,strength=.5,saturation=1.,origin=(0,0),matrix=None,brightness=0.,contrast=0.,keep_texture=False,sample_points=None,source_target=0x0DE1,source_matrix=None):
+def draw(p,source,iw,ih,ow,oh,strength=.5,saturation=1.,origin=(0,0),matrix=None,brightness=0.,contrast=0.,keep_texture=False,sample_points=None,source_target=0x0DE1,source_matrix=None,adaptive=False):
     x,y=origin;tw,th=(ow,oh) if keep_texture else (ow+x+2,oh+y+2)
     result=texture(tw,th)
     fbo=uint();gen_framebuffers(1,C.byref(fbo));bind_framebuffer(0x8D40,fbo)
@@ -207,6 +207,8 @@ def draw(p,source,iw,ih,ow,oh,strength=.5,saturation=1.,origin=(0,0),matrix=None
     uniform2f(uniform_location(p,b"output_size"),ow,oh)
     uniform2f(uniform_location(p,b"viewport_origin"),x,y)
     uniform1f(uniform_location(p,b"rcas_strength"),strength)
+    uniform1i(uniform_location(p,b"sharpening_mode"),int(adaptive))
+    uniform1f(uniform_location(p,b"adaptive_amount"),1. if adaptive else 0.)
     uniform1f(uniform_location(p,b"saturation"),saturation)
     uniform1f(uniform_location(p,b"brightness"),brightness)
     uniform1f(uniform_location(p,b"contrast_adjust"),contrast)
@@ -412,6 +414,21 @@ for brightness,contrast in [(.1,0.),(0.,.25),(-.2,-.25)]:
     assert all(abs(a-b)<=2 for a,b in zip(pixels[:3],expected)),(pixels[:3],expected)
     checks+=1
 delete_textures(1,C.byref(source))
+# The luma finish rejects faint variations and preserves channel differences at real edges.
+for step in (1,32):
+    patch=[channel for y in range(8) for x in range(8)
+           for channel in (90+step*(x>=4),110+step*(x>=4),130+step*(x>=4),255)]
+    source=texture(8,8,patch)
+    pixels=draw(app_rcas,source,8,8,8,8,adaptive=True)
+    if step==1:
+        assert pixels==patch,"Low-contrast noise was sharpened"
+    else:
+        assert pixels!=patch,"The adaptive finish failed to enhance the edge"
+        for i in range(0,len(pixels),4):
+            rgb=pixels[i:i+3]
+            assert abs(rgb[1]-rgb[0]-20)<=1 and abs(rgb[2]-rgb[1]-20)<=1,"Colored sharpening fringe"
+            assert abs(rgb[0]-patch[i])<=6,"Sharpening halo exceeded the local bound"
+    delete_textures(1,C.byref(source));checks+=1
 # Full-size targets: keep EASU output on the GPU and probe pixels after RCAS.
 # Small-pattern tests above compare the kernel to AMD; these also check real 1440p/4K allocation.
 full_resolution=[]

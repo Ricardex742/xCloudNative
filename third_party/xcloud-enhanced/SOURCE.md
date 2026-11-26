@@ -9,7 +9,7 @@ LICENSE and shipped in assets/enhancement/LICENSE.txt. The GLES 2 adaptation
 uses WebRTC input samplers, optional separate half-float feature targets, bounded
 storage and native frame delivery rather than JavaScript/WebView hooks.
 
-The optional SGSR 1 shader is adapted from its Qualcomm SGSR 1 port. Qualcomm's
-BSD-3-Clause copyright, conditions and disclaimer are retained in the shader
-and in the bundled SGSR-LICENSE.txt. Neural weights are retained in restore.json;
+The adaptive FSR finish draws on the luma edge check in the Qualcomm SGSR 1
+port. The bundled SGSR-LICENSE.txt retains the BSD-3-Clause notice.
+Neural weights are retained in restore.json. The script
 scripts/build_enhancement_shaders.py deterministically produces the GLES 2 passes.

@@ -11,6 +11,6 @@ enum class ImageComparison(private val source: String) {
     val label get()=UiText.text(source)
 }
 data class ReconstructionSettings(val quality: ReconstructionQuality=ReconstructionQuality.AUTO,
-    val strength: Int=50,val comparison: ImageComparison=ImageComparison.PROCESSED) {
+    val strength: Int=50) {
     fun bounded()=copy(strength=strength.coerceIn(0,100))
 }

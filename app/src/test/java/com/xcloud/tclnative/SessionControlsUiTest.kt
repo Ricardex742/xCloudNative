@@ -109,20 +109,21 @@ class SessionControlsUiTest {
         val store=PlaybackSettingsStore(activity);store.save(PlaybackSettings())
         val pages=mutableListOf<SettingsPage>();var changes=0
         val panel=PlaybackSettingsPanel(activity,store,{changes++},{},{},{},onPageEntered={pages.add(it)})
-        val root=panel.show();capture(root,"categorized-settings-0.31.7")
-        val rows=all(root.body).filterIsInstance<TextView>().filter { it.isClickable }.map { it.text.toString() }
-        assertEquals(listOf("Vídeo e conexão","Controles e toque","Áudio e microfone","Aparência e temas","Conta e amigos","Ajuda e diagnóstico"),rows)
-        choose(root,"Vídeo e conexão");choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Avançado");choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"IPv4 / IPv6")
+        val root=panel.show();capture(root,"categorized-settings")
+        val rows=all(root.body).filterIsInstance<TextView>().filter { it.isClickable }.map { it.text.toString().substringBefore('\n') }
+        assertEquals(listOf("Aparência e temas","Conta e amigos","Ajuda e diagnóstico"),rows)
+        root.panel.findViewWithTag<TextView>("settings-section-network").performClick()
+        assertSame(root,ShadowDialog.getLatestDialog())
+        choose(root,"IPv4 / IPv6")
         assertEquals(0,changes);assertEquals(PlaybackSettings(),store.read())
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Preferir IPv4")
         assertEquals(IpPreference.IPV4,store.read().ipPreference);assertEquals(SettingsPage.NETWORK,pages.last())
-        (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel();shadowOf(Looper.getMainLooper()).idle();assertEquals(SettingsPage.ROOT,pages.last())
-        choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Controles e toque")
-        choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Giroscópio")
+        val network=ShadowDialog.getLatestDialog() as ConsoleDialog
+        network.panel.findViewWithTag<TextView>("settings-section-controls").performClick()
+        choose(network,"Giroscópio")
         capture(ShadowDialog.getLatestDialog() as ConsoleDialog,"native-gyro-options-0.31.7")
         assertEquals(SettingsPage.GYRO,pages.last())
         (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel();shadowOf(Looper.getMainLooper()).idle();assertEquals(SettingsPage.CONTROLS,pages.last())
-        (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel();shadowOf(Looper.getMainLooper()).idle();assertEquals(SettingsPage.ROOT,pages.last())
         (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss();controller.pause().stop().destroy()
     }
     @Test fun nativeGyroIsExplicitOptInAndRequiresASensorWithoutRequestingPermissions() {

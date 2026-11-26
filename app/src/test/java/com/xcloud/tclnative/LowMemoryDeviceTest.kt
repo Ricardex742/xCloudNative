@@ -54,7 +54,7 @@ class LowMemoryDeviceTest {
         assertTrue(initial.nativeUpscaling)
         assertEquals(initial,PlaybackSettingsStore(app).read())
         val manual=PlaybackSettings(resolution=StreamResolution.HD_1080,videoCodec=VideoCodecMode.H264_MAIN,
-            fsr=FsrMode.SGSR1)
+            fsr=FsrMode.FSR1)
         store.save(manual)
         assertEquals(manual,PlaybackSettingsStore(app).read())
         prefs.edit().clear().putBoolean("low_latency_video",false).commit()

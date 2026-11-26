@@ -29,7 +29,7 @@ The complete license is included in
 [app/src/main/assets/fonts/OFL.txt](app/src/main/assets/fonts/OFL.txt)
 and shipped inside the APK as `assets/fonts/OFL.txt`.
 
-## Optional image restoration and SGSR
+## Optional image restoration
 
 The optional image treatment adapts spatial filtering and the small luma
 restoration network from [xCloud Enhanced](https://github.com/MatheusDourado/xbox-xcloud-image-enhancer)
@@ -37,9 +37,9 @@ by MatheusDourado, under its MIT license. The pinned source, adaptations and
 complete notice are retained in [third_party/xcloud-enhanced](third_party/xcloud-enhanced/SOURCE.md)
 and shipped as `assets/enhancement/LICENSE.txt`.
 
-The optional SGSR 1 spatial upscaler incorporates Qualcomm's BSD-3-Clause
-implementation. Its copyright, conditions and disclaimer are preserved in
-the shader and shipped as `assets/enhancement/SGSR-LICENSE.txt`.
+The adaptive FSR finish takes inspiration from the luma edge check in Qualcomm
+SGSR 1. Qualcomm's BSD-3-Clause notice is retained as
+`assets/enhancement/SGSR-LICENSE.txt`.
 
 ## Third-party artwork and trademarks
 

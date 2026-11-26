@@ -53,6 +53,12 @@ vec3 adaptiveSharpen(vec3 e,vec3 w,vec3 r,vec3 n,vec3 s,int mode,float amount){
  }
  delta*=smoothstep(4./255.,8./255.,range);
  float margin=(2.+4.*amount)/255.;
+ if(mode==1){
+  // SGSR-style edge voting on RCAS's existing taps keeps the finish luma-only and single-pass.
+  float vote=abs(y-yn)+abs(y-ys)+abs(y-yw)+abs(y-yr);
+  delta*=smoothstep(8./255.,24./255.,vote);
+  margin=min(margin,range*.125);
+ }
  delta=clamp(y+delta,lo-margin,hi+margin)-y;
  // Equal channel changes keep chroma intact, including at saturated colors.
  delta=clamp(delta,-min(min(e.r,e.g),e.b),1.-max(max(e.r,e.g),e.b));

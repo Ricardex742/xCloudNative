@@ -180,6 +180,8 @@ class AiPqSurfaceRenderer internal constructor(context: Context, private val pla
     private var totalRamMiB: Long? = null
     private var bufferVerification: Runnable?=null
     private val fsrEnabled get()=fsrRequested && treatmentBudget.scaling && !compatibility && fsrFailure==null
+    private val fsrDetailLevel get()=if(fsrEnabled && treatmentFailure==null && !constrainOptionalEffects &&
+        reconstructionSettings.strength>0 && videoWidth.toLong()*videoHeight<=1920L*1080) reconstructionController.level else 0
     var compatibility = false
     var tryMotionFence = false
     fun setFsr(requested: Boolean,sharpness: Int,output: FsrOutput=FsrOutput.AUTO) {
@@ -222,11 +224,9 @@ class AiPqSurfaceRenderer internal constructor(context: Context, private val pla
             // Never accumulate generated pictures as new temporal source evidence.
             drawer.treatment=if(interpolationSession)effective.copy(temporal=0) else effective
             drawer.motionTemporalAllowed=!constrainOptionalEffects
-            drawer.fsrEnabled=fsrEnabled && fsrMode==FsrMode.FSR1
-            drawer.sgsrEnabled=fsrEnabled && fsrMode==FsrMode.SGSR1
-            drawer.reconstructionLevel=if(fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION) reconstructionController.level else 0
-            drawer.reconstructionStrength=reconstructionSettings.strength
-            drawer.imageComparison=reconstructionSettings.comparison.ordinal
+            drawer.fsrEnabled=fsrEnabled
+            drawer.fsrDetailLevel=fsrDetailLevel
+            drawer.fsrDetailStrength=reconstructionSettings.strength
             drawer.globalImageComparison=if(compatibility)0 else imageComparison.ordinal
             drawer.imageLab=if(compatibility || treatmentFailure!=null) ImageLabSettings() else imageLab.forDevice(constrainOptionalEffects)
             drawer.imageLabLevel=imageLabLevel
@@ -286,7 +286,6 @@ class AiPqSurfaceRenderer internal constructor(context: Context, private val pla
         },treatmentFactory={ org.webrtc.ImageTreatmentPipeline(context) },onTreatmentFailure={ reason ->
             post { if(!released && generation==id) {
                 treatmentFailure=reason;applyTreatmentBudget()
-                if(fsrMode==FsrMode.SGSR1 || fsrMode==FsrMode.RECONSTRUCTION) fallbackFsr(reason)
             } }
         }).also {
             it.onFsrDraw={ if(!released && generation==id) fsrDraws.incrementAndGet();Unit }
@@ -318,6 +317,7 @@ class AiPqSurfaceRenderer internal constructor(context: Context, private val pla
                         }
                         videoWidth = nextWidth
                         videoHeight = nextHeight
+                        applyTreatmentBudget()
                         updateVideoLayout()
                     } }
                 }
@@ -436,19 +436,17 @@ class AiPqSurfaceRenderer internal constructor(context: Context, private val pla
     fun observeFsrPerformance(sampledAtMs: Long,metrics: StreamMetrics,foreground: Boolean) {
         val now=android.os.SystemClock.elapsedRealtime()
         val fresh=now>=sampledAtMs && now-sampledAtMs<=500
-        if(fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION) {
-            val eligible=foreground && fresh && requestedTreatment.autoProtect && reconstructionSettings.strength>0 &&
-                reconstructionSettings.comparison==ImageComparison.PROCESSED && imageComparison==ImageComparison.PROCESSED
+        if(fsrDetailLevel>0) {
+            val eligible=foreground && fresh && requestedTreatment.autoProtect && imageComparison==ImageComparison.PROCESSED
             if(reconstructionController.observe(now,allDraws.get(),metrics,eligible)) {
                 applyTreatmentBudget();fsrPerformance.reset()
             }
-            if(reconstructionSettings.comparison!=ImageComparison.PROCESSED) { fsrPerformance.reset();return }
         }
         frameInterpolation?.observePresentation(allDraws.get(),now)
         if((context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager)?.isPowerSaveMode==true)
             frameInterpolation?.setEnabled(false,FrameGenerationPhase.PROTECTED)
         if(imageComparison!=ImageComparison.PROCESSED || compatibility || (!requestedTreatment.autoProtect && imageLabLevel==0) || (!fsrEnabled && !treatmentBudget.image.active && imageLabLevel==0) ||
-            (fsrMode==FsrMode.FSR1 && aspectDrawer?.isFsrBypassed()==true && !treatmentBudget.image.active && imageLabLevel==0)) { fsrPerformance.reset();return }
+            (fsrEnabled && fsrDetailLevel==0 && aspectDrawer?.isFsrBypassed()==true && !treatmentBudget.image.active && imageLabLevel==0)) { fsrPerformance.reset();return }
         val slow=fsrPerformance.observe(now,allDraws.get(),metrics,foreground && fresh) ?: return
         val rate=String.format(java.util.Locale.US,"%.1f",slow.drawsPerSecond)
         if(imageLabLevel>0) {
@@ -456,8 +454,8 @@ class AiPqSurfaceRenderer internal constructor(context: Context, private val pla
             if(imageLabLevel==0)frameInterpolation?.setEnabled(false,FrameGenerationPhase.PROTECTED)
             applyTreatmentBudget();fsrPerformance.reset();return
         }
-        if(fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION && reconstructionController.reduce()) {
-            treatmentCuts.add("reconstruction level ${reconstructionController.level} ($rate draws/s)")
+        if(fsrDetailLevel>0 && reconstructionController.reduce()) {
+            treatmentCuts.add("FSR detail level ${reconstructionController.level} ($rate draws/s)")
             applyTreatmentBudget();fsrPerformance.reset();return
         }
         val cut=treatmentBudget.reduce(requestedBuffer?.let { minOf(it.width,it.height) } ?: minOf(width,height))
@@ -586,12 +584,12 @@ class AiPqSurfaceRenderer internal constructor(context: Context, private val pla
     private fun imageDiagnostics(): String {
         val active=if(compatibility || treatmentFailure!=null || imageComparison==ImageComparison.ORIGINAL) ImageTreatmentSettings() else treatmentBudget.image.copy(
             neural=aspectDrawer?.effectiveNeural() ?: 0,temporal=aspectDrawer?.effectiveTemporal() ?: 0)
-        fun describe(value: ImageTreatmentSettings,applied: Boolean=false)="${if(applied && fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION) "XCLOUD_RECONSTRUCTION" else if(applied && fsrEnabled && fsrMode==FsrMode.SGSR1) "SGSR1" else value.sharpening.name}; deband=${value.deband}%; cleanup=${value.cleanup}%; chroma=${value.chroma}%; AA=${value.antialias}%; temporal=${value.temporal}%; neural=${value.neural}%"
+        fun describe(value: ImageTreatmentSettings)="${value.sharpening.name}; deband=${value.deband}%; cleanup=${value.cleanup}%; chroma=${value.chroma}%; AA=${value.antialias}%; temporal=${value.temporal}%; neural=${value.neural}%"
         return (frameGenerationSummary()?.let { "$it\n" } ?: "")+UiText.join(UiText.text("Tratamento solicitado: {0}",UiText.nested(describe(requestedTreatment))),"\n",
-            UiText.text("Tratamento aplicado: {0}",UiText.nested(describe(active,true))),"\n",
+            UiText.text("Tratamento aplicado: {0}",UiText.nested(describe(active))),"\n",
             "Cuts: ${treatmentCuts.joinToString()}${treatmentFailure?.let { "; $it" } ?: ""}\n",
             aspectDrawer?.treatmentDiagnostics() ?: "Treatment: off","\n",
-            if(fsrMode==FsrMode.RECONSTRUCTION) "Reconstruction requested=${reconstructionSettings.quality}; applied level=${if(fsrEnabled) reconstructionController.level else 0}; ${reconstructionController.decision}\n" else "",
+            if(fsrRequested) "FSR detail requested=${reconstructionSettings.quality}; applied level=$fsrDetailLevel; ${reconstructionController.decision}\n" else "",
             pacedSink?.diagnostics() ?: "Pacing: immediate","\n",
             submissionCadence.diagnostics(),"\n",
             "Image lab requested=$imageLab | effective level=$imageLabLevel | constrainedMemory=${devicePolicy.constrainedMemory}\n",

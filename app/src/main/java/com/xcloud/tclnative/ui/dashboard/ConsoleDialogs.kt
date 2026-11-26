@@ -38,7 +38,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 data class ConsoleAction(val label: String, val action: () -> Unit) { var longAction: (() -> Unit)?=null }
-enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, GUIDE, CONTROL_CENTER, PROFILE, GAME_SESSION, NETWORK_STATS, REMOTE_PLAY, GAME_DETAILS }
+enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, SETTINGS_LIST, GUIDE, CONTROL_CENTER, PROFILE, GAME_SESSION, NETWORK_STATS, REMOTE_PLAY, GAME_DETAILS }
 
 /** Shared native panels for search, account menus and messages. No platform alert buttons/rows. */
 class ConsoleDialog(context: Context, private val heading: String,private val purpose: ConsolePanelPurpose=ConsolePanelPurpose.GENERAL) : Dialog(context, R.style.ConsoleDialog) {
@@ -50,6 +50,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val compactNetwork=purpose==ConsolePanelPurpose.NETWORK_STATS
     private val remotePlayPage=purpose==ConsolePanelPurpose.REMOTE_PLAY
     private val gameDetails=purpose==ConsolePanelPurpose.GAME_DETAILS
+    private val settingsList=purpose==ConsolePanelPurpose.SETTINGS_LIST
     internal val gameDetailsStyle by lazy { GameDetailsStyle(DashboardTheme.palette) }
     private val playingBehindPanel get() = (activity as? MainActivity)?.hasPlaybackBehindPanels() == true
     private val edgeToEdge get() = fullScreen || compactNetwork || playingBehindPanel
@@ -92,19 +93,20 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             setPadding(side, px(18), side, px(18))
         }
         else if(remotePlayPage) setPadding(px(28),px(16),px(28),px(16))
+        else if(settingsList) setPadding(px(24),px(12),px(24),px(12))
         else setPadding(px(if(fullScreen) 64 else 32), px(if(fullScreen) 32 else 26), px(if(fullScreen) 64 else 32), px(if(phone) 20 else 26))
     }
     val body = object: LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
     }.apply {
         orientation = LinearLayout.VERTICAL
-        if(fullScreen && !remotePlayPage && !gameDetails) setPadding(px(100),0,px(100),0)
+        if(fullScreen && !remotePlayPage && !gameDetails && !settingsList) setPadding(px(100),0,px(100),0)
     }
     private val actions = object: LinearLayout(context) {
         override fun dispatchTouchEvent(event: android.view.MotionEvent)=ConsoleHitTargets.dispatch(this,event) || super.dispatchTouchEvent(event)
     }.apply { orientation = LinearLayout.HORIZONTAL;isBaselineAligned=false }
     private val scroll = ScrollView(context).apply {
-        isVerticalScrollBarEnabled = sessionSidebar || compactNetwork || skin.scene.playStation || remotePlayPage || gameDetails
+        isVerticalScrollBarEnabled = settingsList || sessionSidebar || compactNetwork || skin.scene.playStation || remotePlayPage || gameDetails
         if(sessionSidebar) {
             isVerticalFadingEdgeEnabled=true
             setFadingEdgeLength(px(18))
@@ -200,6 +202,9 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         } else if(sessionSidebar || purpose==ConsolePanelPurpose.CONTROL_CENTER || purpose==ConsolePanelPurpose.GUIDE && skin.scene.playStation) {
             headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { if(!sessionSidebar) bottomMargin=px(14) })
             if(purpose==ConsolePanelPurpose.GUIDE) panel.minimumHeight=(screenHeight*.88f).roundToInt()
+        } else if(settingsList) {
+            headingContent.addView(text(heading,30,true).apply { gravity=Gravity.CENTER_VERTICAL;minHeight=touchSize() },
+                LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(9) })
         } else if(skin.scene.playStation) {
             headingContent.addView(text(heading,34),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(22) })
         } else if(purpose==ConsolePanelPurpose.GUIDE) {
@@ -259,6 +264,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         panel.addView(footer, LinearLayout.LayoutParams(-1, -2).apply {
             topMargin = px(when {
                 compactNetwork || remotePlayPage -> 0
+                settingsList -> 9
                 gameDetails -> 14
                 else -> 22
             })
@@ -302,6 +308,26 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     fun touchSize()=(48*context.resources.displayMetrics.density).roundToInt()
     fun addSection(label: String) {
         body.addView(text(label,20,true,DashboardTheme.accent),LinearLayout.LayoutParams(-1,-2).apply { topMargin=px(14);bottomMargin=px(9) })
+    }
+    internal fun setSettingsNavigation(navigation: View) {
+        panel.addView(navigation,panel.indexOfChild(scroll),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(8) })
+    }
+
+    internal fun clearSettingsRows() {
+        body.removeAllViews()
+        body.touchDelegate=null
+        menuItems=0
+        returningFocus=null
+        initialFocus=null
+        explicitFocus=false
+        scroll.scrollTo(0,0)
+    }
+
+    internal fun addSetting(label: String, summary: String, action: () -> Unit): TextView = addMenuItem(label,action).apply {
+        text=android.text.SpannableString("$label\n$summary").apply {
+            setSpan(android.text.style.RelativeSizeSpan(.78f),label.length+1,length,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        contentDescription="$label. $summary"
     }
     /** Compact shortcuts keep text labels and use real native focus/accessibility nodes. */
     internal fun addShortcuts(items: List<Pair<ConsoleGlyph,ConsoleAction>>) {
@@ -352,6 +378,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     fun focusFirst(view: View) { initialFocus = view;explicitFocus=true }
     internal fun keyButton(label: String,action: () -> Unit): TextView = DashboardTheme.button(context,label,scale,action).apply {
         if(skin.enabled) { background=skin.row();setTextColor(skin.textColors());typeface=skin.font() }
+        if(settingsList) isFocusableInTouchMode=false
     }
     fun addAction(label: String, action: () -> Unit): TextView = actionButton(label,true,action)
     fun addPersistentAction(label: String, action: () -> Unit): TextView = actionButton(label,false,action)
@@ -403,6 +430,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             else -> 0
         }
         val actionHeight = when {
+            settingsList -> touchSize()
             gameDetails -> maxOf(px(52), touchSize())
             phone -> ViewGroup.LayoutParams.WRAP_CONTENT
             else -> maxOf(px(if(ps4Guide) 80 else 58),touchSize())
@@ -444,8 +472,14 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
                 body.addView(tileRow,LinearLayout.LayoutParams(-1,px(88)).apply { bottomMargin=px(7) })
             }
             tileRow!!.addView(item,LinearLayout.LayoutParams(0,-1,1f).apply { if(menuItems%skin.columns!=0) marginStart=px(10) })
-        } else body.addView(item, LinearLayout.LayoutParams(-1, if(phone || sessionSidebar) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(62),touchSize())).apply { bottomMargin = px(if(skin.scene.playStation) 0 else 7) })
-        if(phone || sessionSidebar) {
+        } else body.addView(item, LinearLayout.LayoutParams(-1, if(settingsList || phone || sessionSidebar) ViewGroup.LayoutParams.WRAP_CONTENT else maxOf(px(62),touchSize())).apply { bottomMargin = px(if(settingsList) 4 else if(skin.scene.playStation) 0 else 7) })
+        if(settingsList) {
+            item.isFocusableInTouchMode=false
+            item.minimumHeight=touchSize();item.maxLines=3
+            if(android.os.Build.VERSION.SDK_INT>=26) item.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
+            item.setTextSize(TypedValue.COMPLEX_UNIT_PX,20*scale)
+            item.setPadding(px(16),px(6),px(16),px(6))
+        } else if(phone || sessionSidebar) {
             item.minimumHeight=if(sessionSidebar) touchSize() else px(62);item.maxLines=3
             if(android.os.Build.VERSION.SDK_INT>=26) item.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
             item.setTextSize(TypedValue.COMPLEX_UNIT_PX,23*scale)
@@ -483,6 +517,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         visiblePanels.add(java.lang.ref.WeakReference(this))
         activity?.let { owner -> window?.let { AppControllerWindows.attach(owner,it) } }
         window?.apply {
+            if(settingsList) setWindowAnimations(0)
             setBackgroundDrawableResource(android.R.color.transparent)
             decorView.setPadding(0,0,0,0)
             if (!compactNetwork && !playing) {
@@ -520,8 +555,10 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             ImmersiveWindow.apply(this, edgeToEdge)
         }
         val target=if(explicitFocus) initialFocus else returningFocus ?: initialFocus
-        target?.requestFocus()
-        target?.post { if(isShowing) target.requestRectangleOnScreen(android.graphics.Rect(0,0,target.width,target.height)) }
+        if(target!=null && (!settingsList || !target.isInTouchMode)) {
+            target.requestFocus()
+            target.post { if(isShowing && (!settingsList || !target.isInTouchMode)) target.requestRectangleOnScreen(android.graphics.Rect(0,0,target.width,target.height)) }
+        }
     }
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)

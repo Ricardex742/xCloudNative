@@ -34,7 +34,7 @@ class ReconstructionController {
     private fun unhealthy(): Boolean { healthyMs=0;return false }
     fun reduce(): Boolean {
         healthyMs=0
-        if(level<=1) return false
+        if(level==0) return false
         level--;ceiling=level;decision="cadence protection: level $level; promotion locked this session";return true
     }
 }

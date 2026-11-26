@@ -17,14 +17,36 @@ class ImageTreatmentSettingsTest {
         val c=Robolectric.buildActivity(Activity::class.java).setup()
         try {
             val store=PlaybackSettingsStore(c.get());val original=store.read()
-            val requested=original.copy(fsr=FsrMode.RECONSTRUCTION,reconstruction=ReconstructionSettings(
-                ReconstructionQuality.QUALITY,500,ImageComparison.SPLIT))
+            val requested=original.copy(fsr=FsrMode.FSR1,reconstruction=ReconstructionSettings(
+                ReconstructionQuality.QUALITY,500),imageComparison=ImageComparison.SPLIT)
             store.save(requested)
             val saved=store.read()
-            assertEquals(100,saved.reconstruction.strength);assertEquals(ImageComparison.SPLIT,saved.reconstruction.comparison)
+            assertEquals(100,saved.reconstruction.strength);assertEquals(ImageComparison.SPLIT,saved.imageComparison)
             assertEquals(original.resolution,saved.resolution);assertEquals(original.touchMode,saved.touchMode)
             assertEquals(FsrMode.OFF,saved.copy(videoMode=VideoMode.COMPATIBILITY).forSession().fsr)
             assertEquals(saved,store.read())
+        } finally { c.pause().stop().destroy() }
+    }
+    @Test fun legacyScalersMigrateToFsrWithoutResettingVideoAndInput() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            val prefs=c.get().getSharedPreferences("stream_preferences",0)
+            for(mode in listOf("SGSR1","RECONSTRUCTION")) {
+                prefs.edit().clear().putString("fsr_mode",mode).putString("fsr_output","QHD_1440")
+                    .putInt("fsr_sharpness",75).putInt("reconstruction_strength",25)
+                    .putString("image_comparison","SPLIT").putString("touch_mode","VIRTUAL")
+                    .putString("resolution","HD_720").putString("video_codec","H264_MAIN").commit()
+                val migrated=PlaybackSettingsStore(c.get()).read()
+                assertEquals(FsrMode.FSR1,migrated.fsr)
+                assertEquals(FsrOutput.QHD_1440,migrated.fsrOutput)
+                assertEquals(75,migrated.fsrSharpness);assertEquals(25,migrated.reconstruction.strength)
+                assertEquals(ImageSharpening.RCAS_LUMA,migrated.imageTreatment.sharpening)
+                assertEquals(if(mode=="RECONSTRUCTION") ImageComparison.SPLIT else ImageComparison.PROCESSED,migrated.effectiveImageComparison())
+                assertEquals(TouchMode.VIRTUAL,migrated.touchMode)
+                assertEquals(StreamResolution.HD_720,migrated.resolution)
+                assertEquals(VideoCodecMode.H264_MAIN,migrated.videoCodec)
+                assertEquals(migrated,PlaybackSettingsStore(c.get()).read())
+            }
         } finally { c.pause().stop().destroy() }
     }
     @Test fun newStagesAreOptInAndRoundTripWithoutChangingTheStreamOrTouchPreferences() {
@@ -35,7 +57,7 @@ class ImageTreatmentSettingsTest {
             assertFalse(store.read().imageTreatment.active)
             assertEquals(PresentationPacing.OFF,store.read().presentationPacing)
             val value=store.read().copy(videoMode=VideoMode.ADAPTIVE,videoCodec=VideoCodecMode.H264_MAIN,
-                fsr=FsrMode.SGSR1,presentationPacing=PresentationPacing.SMOOTH,
+                fsr=FsrMode.FSR1,presentationPacing=PresentationPacing.SMOOTH,
                 imageTreatment=ImageTreatmentSettings(ImageSharpening.USM_LUMA,25,50,75,25,50,25,false))
             store.save(value)
             assertEquals(value,PlaybackSettingsStore(activity).read())
@@ -48,7 +70,7 @@ class ImageTreatmentSettingsTest {
         try {
             val store=PlaybackSettingsStore(c.get())
             val selected=PlaybackSettings(videoMode=VideoMode.COMPATIBILITY,videoCodec=VideoCodecMode.H264_MAIN,
-                fsr=FsrMode.SGSR1,presentationPacing=PresentationPacing.SMOOTH,
+                fsr=FsrMode.FSR1,presentationPacing=PresentationPacing.SMOOTH,
                 imageTreatment=ImageTreatmentSettings(ImageSharpening.RCAS_LUMA,200,-10,200,200,200,200))
             store.save(selected)
             val saved=store.read();assertEquals(100,saved.imageTreatment.deband);assertEquals(0,saved.imageTreatment.cleanup)

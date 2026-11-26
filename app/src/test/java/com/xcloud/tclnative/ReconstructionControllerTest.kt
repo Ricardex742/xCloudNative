@@ -44,7 +44,8 @@ class ReconstructionControllerTest {
         repeat(40) { c.observe(it*1000L,it*60L,good,true) };assertEquals(3,c.level)
         assertTrue(c.reduce());assertEquals(2,c.level)
         repeat(90) { c.observe((it+40)*1000L,(it+40)*60L,good,true) };assertEquals(2,c.level)
-        assertTrue(c.reduce());assertEquals(1,c.level);assertFalse(c.reduce())
+        assertTrue(c.reduce());assertEquals(1,c.level)
+        assertTrue(c.reduce());assertEquals(0,c.level);assertFalse(c.reduce())
         c.reset(ReconstructionQuality.AUTO)
         repeat(40) { c.observe(it*1000L,it*60L,good,true) };assertEquals(3,c.level)
     }

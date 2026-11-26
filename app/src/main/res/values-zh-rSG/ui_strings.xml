@@ -431,7 +431,6 @@
     <string name="ui_879cfabd793d0157" formatted="false">"FSR 输出：{0}"</string>
     <string name="ui_87c3860190710a08" formatted="false">"{0} 产品 • 部分数据"</string>
     <string name="ui_881e8bd48dc88da0" formatted="false">"灵敏度{0}%；死区{1}%； "</string>
-    <string name="ui_886e0210ef167b68" formatted="false">"AMD FSR 1.0.2 — 实验性"</string>
     <string name="ui_8892d243f5537424" formatted="false">"100% 保留原始对比度。极值可以隐藏亮或暗的细节。"</string>
     <string name="ui_892188af00d5e76a" formatted="false">"预测可能会改变；它不是时间的保证。"</string>
     <string name="ui_893b96a29b56340e" formatted="false">"适用于 Game Pass"</string>
@@ -823,19 +822,15 @@
     <string name="ui_0714f5039a12ca60" formatted="false">"帧节奏"</string>
     <string name="ui_4d440994fa1026b6" formatted="false">"平滑的节奏调度帧需要短暂的等待，并且可能会增加控制器延迟。它仅保留最新的待处理帧，并且不生成帧。它仅在自适应模式下工作。低延迟和兼容性立即呈现帧。适用于下一届会议。"</string>
     <string name="ui_01ff7b9877fd2590" formatted="false">"图像缩放器"</string>
-    <string name="ui_eb6463428c90e902" formatted="false">"FSR 1 使用 EASU 和一个锐化级。 SGSR 1 将放大和锐化一次性结合在一起，产生了不同的结果。从自动输出和 50% 锐化开始。在原始尺寸下，处理不会放大图像。 1440p 和 4K 需要更多的 GPU 功率。保护可能会减少会话期间的输出和效果。兼容性禁用升级程序。"</string>
     <string name="ui_6f1c74f0b6d32c86" formatted="false">"缩放器输出"</string>
-    <string name="ui_3c5b67278b62ff76" formatted="false">"输出分辨率是本地的，不会改变接收到的流。自动优先考虑流畅播放，并将电视限制为 1080p。启用FSR或SGSR即可使用它。选项保留宽高比并尊重物理显示输出。如果渲染落后于传入帧，保护会减少输出。 1440p 和 4K 不保证 60 FPS。"</string>
     <string name="ui_c32d6a6c5f6c85a8" formatted="false">"缩放器锐度: {0}%"</string>
     <string name="ui_89466b600f44d82a" formatted="false">"缩放器锐度"</string>
-    <string name="ui_0a35106015a464ce" formatted="false">"0% 禁用锐化； 50%并不意味着GPU成本的一半。在图像处理中选择FSR锐化方法。 SGSR使用自己的锐化。当没有活动的升级器时，使用标准锐化。"</string>
     <string name="ui_145ba142c0a28897" formatted="false">"可选过滤器。使用低强度并与原始图像进行比较。时间混合可能会导致重影。神经网络需要half-float渲染，视频最多1080p；诊断报告不支持的配置。兼容性禁用处理。"</string>
     <string name="ui_a23f3531df367526" formatted="false">"恢复原始图像"</string>
     <string name="ui_816142b270bd86ed" formatted="false">"灯光预设"</string>
     <string name="ui_3dffb6b05ab299a0" formatted="false">"自然预设"</string>
     <string name="ui_fa91b6e02863c5e4" formatted="false">"锐化方式：{0}"</string>
     <string name="ui_502db55d154534d2" formatted="false">"锐化方法"</string>
-    <string name="ui_0aa57beba9491190" formatted="false">"自适应 RCAS 和 USM 锐化亮度，同时限制噪音和光晕。在图像调整中设置强度。 FSR在最后阶段使用了这种方法； SGSR有自己的锐化。"</string>
     <string name="ui_2b6c2095f463e2a5" formatted="false">"解带：{0}%"</string>
     <string name="ui_fe312903471d9474" formatted="false">"解带"</string>
     <string name="ui_ff31493bef5098c7" formatted="false">"压缩清理：{0}%"</string>
@@ -851,25 +846,16 @@
     <string name="ui_2035d973bf9e515e" formatted="false">"性能保障"</string>
     <string name="ui_5bc89f56c8f6a2fb" formatted="false">"当渲染落后于传入帧时，减少时间混合、输出分辨率、抗锯齿、神经重建和滤波器。已保存的首选项将被保留。减少持续此会话并出现在诊断中。"</string>
     <string name="ui_1b84e208cc1a58a8" formatted="false">"H.264 Main — 实验性"</string>
-    <string name="ui_3a2a300619a63143" formatted="false">"SGSR 1 — 实验性"</string>
     <string name="ui_9b01d2edc42e9906" formatted="false">"自适应 RCAS — 亮度"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — 亮度"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"平滑——实验性的"</string>
-    <string name="ui_eac0ce77eb55c8a4" formatted="false">"自适应重建"</string>
-    <string name="ui_1d8ef3b791a0d023" formatted="false">"xCloud 自适应重建优先改善当前分辨率下的细节清晰度。请在“自适应重建”中设置画质、强度和对比方式。它取代 FSR/SGSR 的锐化，也可在不放大画面的情况下使用。"</string>
     <string name="ui_51ebe1789bd20746" formatted="false">"输出分辨率在本地处理，不会改变收到的视频流。自动模式优先保证流畅度，并将电视输出限制为 1080p。请先启用画面缩放器再使用此选项。各选项保持宽高比并遵循屏幕的实际输出。渲染跟不上收到的帧时，保护功能会降低输出分辨率。1440p 和 4K 不保证达到 60 FPS。"</string>
-    <string name="ui_dd22d535719a563e" formatted="false">"重建强度：{0}%"</string>
     <string name="ui_8555935b67caf434" formatted="false">"这是一项用于清理视频并改善细节的实验性处理，在不放大的 1080p 下也能使用。它不会更改 Xbox 分辨率或码率。建议从自动画质、50% 强度和自动输出开始。其他可选滤镜会保留已有设置。"</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"启用自动输出"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"加工质量：{0}"</string>
     <string name="ui_7c3cbeb7b60be0e2" formatted="false">"加工质量"</string>
-    <string name="ui_0eb30a3dd4158ee0" formatted="false">"自动模式从轻量开始，观察到帧节奏稳定后才提高处理级别。均衡和画质优先会使用更多采样来重建细节。如果持续出现性能下降，保护功能会降低级别，并在本次会话中停止重试。关闭性能保护时，自动模式保持轻量。帧节奏不是 GPU 耗时的测量值。兼容模式会禁用此功能。"</string>
-    <string name="ui_902655b68adff737" formatted="false">"重建实力"</string>
-    <string name="ui_f3dfa159a318772b" formatted="false">"0% 关闭细节重建。较高的值会在限制噪点和光晕的同时增强锐化。强度不会改变分辨率；50% 不代表 GPU 开销减半。"</string>
     <string name="ui_a79e563191d05b46" formatted="false">"比较：{0}"</string>
     <string name="ui_8c0915ecfa90532a" formatted="false">"图片对比"</string>
-    <string name="ui_1a35a34073721a5e" formatted="false">"原始画面显示收到的帧，不应用本应用的图像滤镜。分屏在左侧显示同一帧的原始画面，在右侧显示处理后的画面。此功能仅用于自适应重建，不改变触控或画面构图。对比期间会暂停自动调整。半屏性能不代表全屏处理的开销。"</string>
-    <string name="ui_7e5098599892e880" formatted="false">"xCloud — 自适应重建（实验性）"</string>
     <string name="ui_ba68d32e9584a982" formatted="false">"轻量"</string>
     <string name="ui_9123685a0d2a98ba" formatted="false">"均衡"</string>
     <string name="ui_c51403a4fdb9cd06" formatted="false">"画质优先"</string>
@@ -882,11 +868,7 @@
     <string name="ui_1e53dc3bd47bfd37" formatted="false">"缩放器：恢复标准缩放 — {0}"</string>
     <string name="ui_ab80b661abb4d819" formatted="false">"缩放与图像处理：{0}"</string>
     <string name="ui_421fc3b80d653c41" formatted="false">"设备默认"</string>
-    <string name="ui_19641a71ea37bded" formatted="false">"xCloud 重建"</string>
     <string name="ui_1915d14ae05fb304" formatted="false">"使用设备的标准缩放。下面的锐化和附加滤镜均为可选项。"</string>
-    <string name="ui_c50e172c261d8c7e" formatted="false">"FSR 使用 EASU 放大画面，并应用下方选择的锐化。在原生尺寸下仅进行锐化。这是实验性方式。"</string>
-    <string name="ui_bd256736c94b60c2" formatted="false">"SGSR 将放大与自身的锐化结合。下方锐化属于 SGSR，RCAS 和 USM 不适用于它。这是实验性方式。"</string>
-    <string name="ui_a1a502f6cbd61c13" formatted="false">"xCloud 重建优先改善细节清晰度，即使不放大也能使用。下方的画质、强度和对比属于此方式。这是实验性方式。"</string>
     <string name="ui_c75da833acbd4f43" formatted="false">"缩放与图像处理"</string>
     <string name="ui_38b562e06a2e6f8a" formatted="false">"兼容模式已启用，实验性方式和滤镜已禁用。请在视频与串流中更改模式后使用。"</string>
     <string name="ui_57dcc836395931d8" formatted="false">"方式：{0}"</string>
@@ -899,10 +881,8 @@
     <string name="ui_f87888746e40f335" formatted="false">"{0} — 锐化"</string>
     <string name="ui_8a16e0aa4971e729" formatted="false">"此设置属于所选方式。自适应 RCAS 和 USM 处理亮度，以限制噪点和光晕。"</string>
     <string name="ui_c559eea667737d74" formatted="false">"选择图像处理方式"</string>
-    <string name="ui_726dd1ebf97968ef" formatted="false">"请选择一种方式。默认使用设备缩放。FSR 和 SGSR 放大并锐化画面。xCloud 重建优先改善细节清晰度。这三种替代方式均为实验性。选择后，相应设置将显示在同一页面。"</string>
     <string name="ui_604124660b08c782" formatted="false">"亮度、对比度和饱和度是共用的颜色设置。锐化位于缩放与图像处理中，与所选方式放在一起。"</string>
     <string name="ui_2dc867123a3f77a9" formatted="false">"附加滤镜 — 共用"</string>
-    <string name="ui_4e539bd60654f414" formatted="false">"这些滤镜与所选的默认、FSR、SGSR 或 xCloud 重建方式共同使用。预设还会调整该方式的锐化。无需启用其他缩放器。"</string>
     <string name="ui_e823d8526c139e5f" formatted="false">"0% 仅关闭此方式的锐化。放大和附加滤镜仍然独立。建议从 25% 开始。"</string>
     <string name="ui_75eb1f44a3b4507b" formatted="false">"动态背景：{0}"</string>
     <string name="ui_7e366ecca899c0da" formatted="false">"动态背景"</string>
@@ -1143,7 +1123,6 @@
     <string name="ui_b349d76be7b4196f" formatted="false">"强度：{0}%"</string>
     <string name="ui_130109754b26bd14" formatted="false">"高级 — 处理方式和滤镜"</string>
     <string name="ui_d15dfe13919d6bdc" formatted="false">"图像预设"</string>
-    <string name="ui_3cb6517ac3bbc236" formatted="false">"原始使用接收的图像并保留颜色调整。轻量仅用一个处理通道适度锐化。重建结合细节和时域历史，并启用性能保护，仍属实验功能。所有预设均不改变请求的编解码器或分辨率。"</string>
     <string name="ui_22046fdceaf398b6" formatted="false">"强度"</string>
     <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"调整细节增强和重建模式的时域权重。0%保留接收的细节。强度不代表GPU开销。"</string>
     <string name="ui_de1c6d14af7c0137" formatted="false">"在保留颜色和取景的情况下比较同一帧处理前后的效果。分屏左侧显示原始图像。比较会暂停帧生成，直至下一次会话。半屏开销不代表全屏开销。"</string>
@@ -1219,7 +1198,6 @@
     <string name="ui_5423e8e87e381255" formatted="false">"菜单保持可见。轻触一次即可重新显示控件。按住的按钮会保持生效，直到松开。"</string>
     <string name="ui_b29787a85987a3b1" formatted="false">"帮助与诊断"</string>
     <string name="ui_ea004de431a48442" formatted="false">"游戏快捷操作"</string>
-    <string name="ui_dfe001c0349758ee" formatted="false">"高级 — 视频与连接"</string>
     <string name="ui_cb511e13be6742ac" formatted="false">"游戏码率、区域和语言将在下一次游戏会话中生效。"</string>
     <string name="ui_bab1bbd31394bce7" formatted="false">"Xbox 按钮 — 实验性"</string>
     <string name="ui_de6cc609150213bf" formatted="false">"账户与好友"</string>
@@ -1427,4 +1405,25 @@
     <string name="ui_382512eae2b74f8f">"降低无输入时的手柄上报频率"</string>
     <string name="ui_3448385e4f13254d" formatted="false">"增益不超过 100% 时跳过音频分析"</string>
     <string name="ui_77601fafb0b66e20" formatted="false">"超过 100% 的增益将在下一次会话中应用。"</string>
+    <string name="ui_2130a3b5e09e419f" formatted="false">"常规"</string>
+    <string name="ui_bc10c86c24b5ba44" formatted="false">"视频"</string>
+    <string name="ui_25c7658bb9289d92" formatted="false">"网络"</string>
+    <string name="ui_4319e7528fc5b2cb" formatted="false">"应用主题、颜色和语言。"</string>
+    <string name="ui_74ef2f4dca78ac69" formatted="false">"Xbox 帐户、游玩时间和游戏目录。"</string>
+    <string name="ui_b6bb2d06879091a8" formatted="false">"统计数据与故障排查信息。"</string>
+    <string name="ui_f2bfe0b8a0ef819b" formatted="false">"接收的视频质量，下次游玩时生效。"</string>
+    <string name="ui_513ae50a22f4af28" formatted="false">"调整屏幕上的画面，包括 FSR 放大。"</string>
+    <string name="ui_1fa249941e925122" formatted="false">"高级设置"</string>
+    <string name="ui_f5302f0a194c88ed" formatted="false">"高级网络"</string>
+    <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR 可改善细节并放大视频。自动画质会根据游玩流畅度调整处理。"</string>
+    <string name="ui_fa567f5d8fcb4e4e" formatted="false">"原始模式保留接收的画面和颜色调整。轻量模式增加锐度。FSR 结合放大、细节增强和帧间稳定。"</string>
+    <string name="ui_2d8784beab54c16f" formatted="false">"调整锐度与 FSR 的细节和稳定性。即使为 0%，FSR 仍可放大视频。"</string>
+    <string name="ui_7d36b1c8e07efdf2" formatted="false">"细节强度：{0}%"</string>
+    <string name="ui_a3eb48b566c209fc" formatted="false">"默认使用设备缩放。FSR 可放大视频并改善细节。"</string>
+    <string name="ui_f9fd64861bd35c21" formatted="false">"自动从轻量模式开始，流畅时提高画质。内存较少的设备优先使用放大。"</string>
+    <string name="ui_d6b7753917686db8" formatted="false">"细节强度"</string>
+    <string name="ui_3e4fc39303896629" formatted="false">"控制放大前的增强。设为 0% 时，FSR 仅应用放大与所选锐度。"</string>
+    <string name="ui_9f6c10c40dedb9fc" formatted="false">"选择手机游戏的触控方式。"</string>
+    <string name="ui_02521703013f54b0" formatted="false">"其他操作方式"</string>
+    <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
 </resources>

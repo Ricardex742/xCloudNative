@@ -431,7 +431,6 @@
     <string name="ui_879cfabd793d0157" formatted="false">"Saída do FSR: {0}"</string>
     <string name="ui_87c3860190710a08" formatted="false">"{0} PRODUTOS • DADOS PARCIAIS"</string>
     <string name="ui_881e8bd48dc88da0" formatted="false">"sensibilidade {0}%; zona morta {1}%; "</string>
-    <string name="ui_886e0210ef167b68" formatted="false">"AMD FSR 1.0.2 — experimental"</string>
     <string name="ui_8892d243f5537424" formatted="false">"100% preserva o contraste original. Valores extremos podem esconder detalhes claros ou escuros."</string>
     <string name="ui_892188af00d5e76a" formatted="false">"A previsão pode mudar; não é garantia de horário."</string>
     <string name="ui_893b96a29b56340e" formatted="false">"Disponível no Game Pass"</string>
@@ -823,19 +822,15 @@
     <string name="ui_0714f5039a12ca60" formatted="false">"Fluidez da apresentação"</string>
     <string name="ui_4d440994fa1026b6" formatted="false">"Suave agenda os quadros com uma pequena espera e pode aumentar o atraso do controle. Mantém apenas o quadro pendente mais recente; não gera novos quadros. Só atua em Adaptativo. Menor atraso e Compatibilidade mantêm a apresentação imediata. Vale na próxima partida."</string>
     <string name="ui_01ff7b9877fd2590" formatted="false">"Escalador da imagem"</string>
-    <string name="ui_eb6463428c90e902" formatted="false">"FSR 1 usa EASU e uma etapa de nitidez. SGSR 1 combina ampliação e realce numa passagem, com resultado diferente. Comece em Automático e nitidez 50%. Em tamanho nativo, há somente tratamento, sem ampliação. 1440p e 4K exigem mais GPU. A proteção pode reduzir a saída e os efeitos durante a partida. Compatibilidade desativa os escaladores."</string>
     <string name="ui_6f1c74f0b6d32c86" formatted="false">"Saída do escalador"</string>
-    <string name="ui_3c5b67278b62ff76" formatted="false">"A saída é local e não altera o stream recebido. Automático prioriza a fluidez e limita TVs a 1080p. FSR ou SGSR devem estar ligados. As escolhas preservam a proporção e respeitam a saída física. A proteção reduz a saída se os desenhos não acompanharem os quadros recebidos. 1440p e 4K não garantem 60 FPS."</string>
     <string name="ui_c32d6a6c5f6c85a8" formatted="false">"Nitidez do escalador: {0}%"</string>
     <string name="ui_89466b600f44d82a" formatted="false">"Nitidez do escalador"</string>
-    <string name="ui_0a35106015a464ce" formatted="false">"0% desativa o realce; 50% não significa metade do custo de GPU. O método de nitidez do FSR pode ser escolhido em Tratamento da imagem. SGSR usa seu próprio realce. A nitidez padrão é usada quando não há escalador ativo."</string>
     <string name="ui_145ba142c0a28897" formatted="false">"Filtros opcionais. Use intensidades baixas e compare com a imagem original. Temporal pode deixar rastros. A rede neural exige renderização half-float e fonte de até 1080p; o diagnóstico informa quando não há suporte. Compatibilidade desativa o tratamento."</string>
     <string name="ui_a23f3531df367526" formatted="false">"Restaurar imagem original"</string>
     <string name="ui_816142b270bd86ed" formatted="false">"Perfil leve"</string>
     <string name="ui_3dffb6b05ab299a0" formatted="false">"Perfil natural"</string>
     <string name="ui_fa91b6e02863c5e4" formatted="false">"Método de nitidez: {0}"</string>
     <string name="ui_502db55d154534d2" formatted="false">"Método de nitidez"</string>
-    <string name="ui_0aa57beba9491190" formatted="false">"RCAS adaptativo e USM atuam na luminância, com proteção contra ruído e halos. A intensidade fica em Ajustes da imagem. O FSR usa esse método na etapa final; SGSR tem seu próprio realce."</string>
     <string name="ui_2b6c2095f463e2a5" formatted="false">"Degradês: {0}%"</string>
     <string name="ui_fe312903471d9474" formatted="false">"Degradês"</string>
     <string name="ui_ff31493bef5098c7" formatted="false">"Limpeza de compressão: {0}%"</string>
@@ -851,25 +846,16 @@
     <string name="ui_2035d973bf9e515e" formatted="false">"Proteção de desempenho"</string>
     <string name="ui_5bc89f56c8f6a2fb" formatted="false">"Reduz temporal, saída, antialiasing, neural e filtros quando a cadência desenhada fica abaixo da recebida. As escolhas salvas são preservadas. Os cortes valem nesta partida e aparecem no diagnóstico."</string>
     <string name="ui_1b84e208cc1a58a8" formatted="false">"H.264 Main — experimental"</string>
-    <string name="ui_3a2a300619a63143" formatted="false">"SGSR 1 — experimental"</string>
     <string name="ui_9b01d2edc42e9906" formatted="false">"RCAS adaptativo — luminância"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — luminância"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"Suave — experimental"</string>
-    <string name="ui_eac0ce77eb55c8a4" formatted="false">"Reconstrução adaptativa"</string>
-    <string name="ui_1d8ef3b791a0d023" formatted="false">"A reconstrução adaptativa xCloud prioriza definição na resolução atual. Configure qualidade, intensidade e comparação em Reconstrução adaptativa. Ela substitui o realce do FSR/SGSR e funciona sem ampliar a imagem."</string>
     <string name="ui_51ebe1789bd20746" formatted="false">"A saída é local e não altera o stream recebido. Automático prioriza a fluidez e limita TVs a 1080p. Ative um escalador para usar esta opção. As escolhas preservam a proporção e respeitam a saída física. A proteção reduz a saída se os desenhos não acompanharem os quadros recebidos. 1440p e 4K não garantem 60 FPS."</string>
-    <string name="ui_dd22d535719a563e" formatted="false">"Intensidade da reconstrução: {0}%"</string>
     <string name="ui_8555935b67caf434" formatted="false">"Modo experimental para limpar e definir o vídeo, inclusive em 1080p sem ampliação. Não muda a resolução ou o bitrate do Xbox. Comece em Automático, intensidade 50% e saída automática. Outros filtros opcionais continuam respeitando suas escolhas."</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"Ativar com saída automática"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"Qualidade do processamento: {0}"</string>
     <string name="ui_7c3cbeb7b60be0e2" formatted="false">"Qualidade do processamento"</string>
-    <string name="ui_0eb30a3dd4158ee0" formatted="false">"Automático começa Leve e aumenta após observar cadência estável. Equilibrado e Qualidade usam mais amostras para reconstrução de detalhes. Se houver queda sustentada, a proteção reduz o nível e evita repetir a tentativa nesta partida. Sem proteção de desempenho, Automático permanece Leve. A cadência não é uma medição de tempo de GPU. Compatibilidade desativa o modo."</string>
-    <string name="ui_902655b68adff737" formatted="false">"Intensidade da reconstrução"</string>
-    <string name="ui_f3dfa159a318772b" formatted="false">"0% desativa a reconstrução de detalhes. Valores maiores aumentam o realce com limites de ruído e halos. A intensidade não altera a resolução; 50% não significa metade do custo da GPU."</string>
     <string name="ui_a79e563191d05b46" formatted="false">"Comparação: {0}"</string>
     <string name="ui_8c0915ecfa90532a" formatted="false">"Comparação da imagem"</string>
-    <string name="ui_1a35a34073721a5e" formatted="false">"Original mostra o quadro recebido sem os filtros do app. Dividida mostra esse mesmo quadro original à esquerda e tratado à direita. Só atua na reconstrução adaptativa; não altera o toque nem o enquadramento. A adaptação automática fica pausada durante a comparação. O desempenho em meia tela não representa o custo em tela inteira."</string>
-    <string name="ui_7e5098599892e880" formatted="false">"xCloud — reconstrução adaptativa (experimental)"</string>
     <string name="ui_ba68d32e9584a982" formatted="false">"Leve"</string>
     <string name="ui_9123685a0d2a98ba" formatted="false">"Equilibrado"</string>
     <string name="ui_c51403a4fdb9cd06" formatted="false">"Qualidade"</string>
@@ -882,11 +868,7 @@
     <string name="ui_1e53dc3bd47bfd37" formatted="false">"Escalador: retorno à escala padrão — {0}"</string>
     <string name="ui_ab80b661abb4d819" formatted="false">"Upscaling e tratamento: {0}"</string>
     <string name="ui_421fc3b80d653c41" formatted="false">"Padrão do aparelho"</string>
-    <string name="ui_19641a71ea37bded" formatted="false">"Reconstrução xCloud"</string>
     <string name="ui_1915d14ae05fb304" formatted="false">"Usa a escala padrão do aparelho. A nitidez e os filtros adicionais abaixo são opcionais."</string>
-    <string name="ui_c50e172c261d8c7e" formatted="false">"FSR amplia a imagem com EASU e aplica a nitidez escolhida abaixo. Em tamanho nativo, aplica somente a nitidez. Método experimental."</string>
-    <string name="ui_bd256736c94b60c2" formatted="false">"SGSR combina ampliação e realce próprio. A nitidez abaixo é do SGSR; os métodos RCAS e USM não se aplicam a ele. Método experimental."</string>
-    <string name="ui_a1a502f6cbd61c13" formatted="false">"A reconstrução xCloud prioriza definição, inclusive sem ampliar. Qualidade, intensidade e comparação abaixo pertencem a este método. Método experimental."</string>
     <string name="ui_c75da833acbd4f43" formatted="false">"Upscaling e tratamento"</string>
     <string name="ui_38b562e06a2e6f8a" formatted="false">"Compatibilidade está ativa e desativa os métodos e filtros experimentais. Mude o modo em Vídeo e transmissão para usá-los."</string>
     <string name="ui_57dcc836395931d8" formatted="false">"Método: {0}"</string>
@@ -899,10 +881,8 @@
     <string name="ui_f87888746e40f335" formatted="false">"{0} — Nitidez"</string>
     <string name="ui_8a16e0aa4971e729" formatted="false">"Este ajuste pertence ao método selecionado. RCAS adaptativo e USM trabalham na luminância para limitar ruído e halos."</string>
     <string name="ui_c559eea667737d74" formatted="false">"Escolher método de imagem"</string>
-    <string name="ui_726dd1ebf97968ef" formatted="false">"Escolha apenas um método. Padrão usa a escala do aparelho. FSR e SGSR ampliam e realçam a imagem. Reconstrução xCloud prioriza definição. Os três métodos alternativos são experimentais. Ao escolher, os ajustes correspondentes aparecem na mesma tela."</string>
     <string name="ui_604124660b08c782" formatted="false">"Brilho, contraste e saturação são ajustes de cor compartilhados. A nitidez fica em Upscaling e tratamento, junto ao método escolhido."</string>
     <string name="ui_2dc867123a3f77a9" formatted="false">"Filtros adicionais — compartilhados"</string>
-    <string name="ui_4e539bd60654f414" formatted="false">"Estes filtros são aplicados junto ao método escolhido, seja Padrão, FSR, SGSR ou Reconstrução xCloud. Os perfis também ajustam a nitidez desse método. Não é necessário ativar outro escalador."</string>
     <string name="ui_e823d8526c139e5f" formatted="false">"0% desativa somente a nitidez deste método. A ampliação e os filtros adicionais continuam independentes. Comece com 25%."</string>
     <string name="ui_75eb1f44a3b4507b" formatted="false">"Fundo dinâmico: {0}"</string>
     <string name="ui_7e366ecca899c0da" formatted="false">"Fundo dinâmico"</string>
@@ -1143,7 +1123,6 @@
     <string name="ui_b349d76be7b4196f" formatted="false">"Intensidade: {0}%"</string>
     <string name="ui_130109754b26bd14" formatted="false">"Avançado — métodos e filtros"</string>
     <string name="ui_d15dfe13919d6bdc" formatted="false">"Perfil de imagem"</string>
-    <string name="ui_3cb6517ac3bbc236" formatted="false">"Original usa a imagem recebida com seus ajustes de cor. Leve aplica nitidez moderada em uma passagem. Reconstrução combina detalhe e histórico temporal, com proteção de desempenho; continua experimental. Nenhum perfil muda o codec ou a resolução solicitada."</string>
     <string name="ui_22046fdceaf398b6" formatted="false">"Intensidade"</string>
     <string name="ui_f95cdd1d6dbc3bbb" formatted="false">"Ajusta o realce e, no perfil Reconstrução, o peso temporal. 0% preserva os detalhes recebidos. A intensidade não mede o custo da GPU."</string>
     <string name="ui_de1c6d14af7c0137" formatted="false">"Compara o mesmo quadro com e sem tratamento, mantendo as cores e o enquadramento. Dividida mostra o original à esquerda. A comparação suspende a geração de quadros até a próxima partida. O custo de meia tela não representa o de tela inteira."</string>
@@ -1219,7 +1198,6 @@
     <string name="ui_5423e8e87e381255" formatted="false">"O menu permanece visível. Toque uma vez para mostrar os controles novamente. Um botão segurado continua ativo até você soltar."</string>
     <string name="ui_b29787a85987a3b1" formatted="false">"Ajuda e diagnóstico"</string>
     <string name="ui_ea004de431a48442" formatted="false">"Atalhos da partida"</string>
-    <string name="ui_dfe001c0349758ee" formatted="false">"Avançado — vídeo e conexão"</string>
     <string name="ui_cb511e13be6742ac" formatted="false">"Bitrate, região e idioma do jogo valem na próxima partida."</string>
     <string name="ui_bab1bbd31394bce7" formatted="false">"Botão Xbox — experimental"</string>
     <string name="ui_de6cc609150213bf" formatted="false">"Conta e amigos"</string>
@@ -1428,4 +1406,25 @@
     <string name="ui_382512eae2b74f8f" tools:ignore="UnusedResources">"Cadência reduzida no controle neutro"</string>
     <string name="ui_3448385e4f13254d" formatted="false" tools:ignore="UnusedResources">"Pular análise de áudio com ganho até 100%"</string>
     <string name="ui_77601fafb0b66e20" formatted="false" tools:ignore="UnusedResources">"Ganho acima de 100% será aplicado na próxima partida."</string>
+    <string name="ui_2130a3b5e09e419f" formatted="false">"Geral"</string>
+    <string name="ui_bc10c86c24b5ba44" formatted="false">"Vídeo"</string>
+    <string name="ui_25c7658bb9289d92" formatted="false">"Rede"</string>
+    <string name="ui_4319e7528fc5b2cb" formatted="false">"Tema, cor e idioma do aplicativo."</string>
+    <string name="ui_74ef2f4dca78ac69" formatted="false">"Contas Xbox, tempo de jogo e catálogo."</string>
+    <string name="ui_b6bb2d06879091a8" formatted="false">"Estatísticas e informações para resolver problemas."</string>
+    <string name="ui_f2bfe0b8a0ef819b" formatted="false">"Qualidade do vídeo recebido. Vale na próxima partida."</string>
+    <string name="ui_513ae50a22f4af28" formatted="false">"Ajusta a imagem na sua tela. Inclui a ampliação com FSR."</string>
+    <string name="ui_1fa249941e925122" formatted="false">"Ajustes avançados"</string>
+    <string name="ui_f5302f0a194c88ed" formatted="false">"Rede avançada"</string>
+    <string name="ui_27cb9f45cd2600fa" formatted="false">"O FSR melhora detalhes e amplia o vídeo para a tela. A qualidade automática ajusta o processamento à fluidez da partida."</string>
+    <string name="ui_fa567f5d8fcb4e4e" formatted="false">"Original mantém a imagem recebida e os ajustes de cor. Leve acrescenta nitidez. FSR combina ampliação, realce de detalhes e estabilidade entre quadros."</string>
+    <string name="ui_2d8784beab54c16f" formatted="false">"Ajusta a nitidez e, no FSR, os detalhes e a estabilidade da imagem. Em 0%, o FSR ainda pode ampliar o vídeo."</string>
+    <string name="ui_7d36b1c8e07efdf2" formatted="false">"Intensidade dos detalhes: {0}%"</string>
+    <string name="ui_a3eb48b566c209fc" formatted="false">"Padrão usa a escala do aparelho. O FSR amplia o vídeo e melhora os detalhes na tela."</string>
+    <string name="ui_f9fd64861bd35c21" formatted="false">"Automático começa leve e aumenta a qualidade enquanto a partida estiver fluida. Em aparelhos com pouca memória, o FSR prioriza a ampliação."</string>
+    <string name="ui_d6b7753917686db8" formatted="false">"Intensidade dos detalhes"</string>
+    <string name="ui_3e4fc39303896629" formatted="false">"Controla o realce antes da ampliação. Em 0%, o FSR aplica apenas a ampliação e a nitidez escolhida."</string>
+    <string name="ui_9f6c10c40dedb9fc" formatted="false">"Escolhe como os jogos respondem ao toque no celular."</string>
+    <string name="ui_02521703013f54b0" formatted="false">"Outras formas de jogar"</string>
+    <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
 </resources>

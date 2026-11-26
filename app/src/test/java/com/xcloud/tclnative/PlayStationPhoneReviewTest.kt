@@ -226,13 +226,21 @@ class PlayStationPhoneReviewTest {
                     confirmGameDetailsPlay()
                     assertEquals(listOf("INPUT-20","INPUT-20"),played)
                     val panel=PlaybackSettingsPanel(a,PlaybackSettingsStore(a),{},{},{},{})
+                    androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
                     val root=panel.show();dialog(root,p,"${theme.name}-input-root")
-                    val controls=all(root.body).filterIsInstance<TextView>().single { it.isClickable && it.text.toString()=="Controles e toque" }
-                    controls.requestFocus();root.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
-                    val child=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog;assertFalse(root.isShowing)
+                    val controls=root.panel.findViewWithTag<TextView>("settings-section-controls")
+                    assertTrue(controls.requestFocus())
+                    root.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
+                    assertTrue(root.isShowing);assertTrue(controls.isSelected)
+                    measure(root.panel,root.panel.width,p.ch,false)
+                    val gyro=all(root.body).filterIsInstance<TextView>().single { it.isClickable && it.text.toString()=="Giroscópio" }
+                    assertTrue(gyro.requestFocus())
+                    root.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
+                    val child=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
+                    assertFalse(root.isShowing)
                     child.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B));shadowOf(Looper.getMainLooper()).idle()
                     val returned=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
-                    assertEquals("Controles e toque",(returned.window!!.currentFocus as TextView).text.toString())
+                    assertTrue(returned.panel.findViewWithTag<TextView>("settings-section-controls").isSelected)
                     returned.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_X));assertFalse(returned.isShowing)
                     home.pauseArtwork();assertFalse(all(home).filterIsInstance<ConsoleThemeBackdrop>().single().framePending)
                     home.resumeArtwork();home.restoreFocus();measure(home,p.cw,p.ch)
@@ -292,6 +300,7 @@ class PlayStationPhoneReviewTest {
         }
     }
     @Test fun translatedLandscapePanelsWrapInsteadOfClippingAndScrollToTheLastSettings() {
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
         val p=phones.first();RuntimeEnvironment.setQualifiers(p.qualifiers)
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));measure(a.window.decorView,p.w,p.h)
         try { for(theme in listOf(UiTheme.PS4,UiTheme.PS5)) for(language in AppLanguage.entries) {

@@ -51,11 +51,10 @@ class ImageProfilesUiTest {
         try {
             val activity=controller.get();UiText.apply(activity,AppLanguage.PORTUGUESE)
             val store=PlaybackSettingsStore(activity)
-            val old=PlaybackSettings(fsr=FsrMode.FSR1,imageTreatment=ImageTreatmentSettings(cleanup=75),
-                reconstruction=ReconstructionSettings(comparison=ImageComparison.ORIGINAL))
+            val old=PlaybackSettings(fsr=FsrMode.FSR1,imageTreatment=ImageTreatmentSettings(cleanup=75))
             store.save(old)
             // Legacy reconstruction comparison does not opt the entire app into the new comparison.
-            activity.getSharedPreferences("stream_preferences",0).edit().remove("image_comparison_all").commit()
+            activity.getSharedPreferences("stream_preferences",0).edit().putString("image_comparison","ORIGINAL").remove("image_comparison_all").commit()
             assertEquals(old,store.read())
             PlaybackSettingsPanel(activity,store,{},{},{},{}).showUpscaling()
             assertTrue(all(latest().body).filterIsInstance<TextView>().any {it.text.toString().contains("Personalizado")})

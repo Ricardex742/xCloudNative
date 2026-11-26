@@ -44,10 +44,8 @@ class AspectVideoDrawer(@Volatile var stretch: Boolean,
     @Volatile var contrast=100
     @Volatile var fsrEnabled=false
     @Volatile var fsrSharpness=50
-    @Volatile var sgsrEnabled=false
-    @Volatile var reconstructionLevel=0
-    @Volatile var reconstructionStrength=50
-    @Volatile var imageComparison=0
+    @Volatile var fsrDetailLevel=0
+    @Volatile var fsrDetailStrength=50
     @Volatile var globalImageComparison=0
     @Volatile var motionTemporalAllowed=true
     @Volatile var treatment=ImageTreatmentSettings()
@@ -69,9 +67,7 @@ class AspectVideoDrawer(@Volatile var stretch: Boolean,
     fun treatmentDiagnostics(): String = pipeline?.diagnostics() ?: "Treatment: off"
     fun effectiveNeural(): Int = pipeline?.effectiveNeural() ?: 0
     fun effectiveTemporal(): Int = pipeline?.effectiveTemporal() ?: 0
-    fun fsrDiagnostics(): String = if(reconstructionLevel>0) "xCloud reconstruction: ${pipeline?.diagnostics() ?: "waiting for video"}"
-        else if(sgsrEnabled) "SGSR 1: ${pipeline?.diagnostics() ?: "waiting for video"}"
-        else if(!fsrEnabled) UiText.text("AMD FSR 1.0.2: desligado")
+    fun fsrDiagnostics(): String = if(!fsrEnabled) UiText.text("AMD FSR 1.0.2: desligado")
         else fsr?.diagnostics() ?: UiText.text("AMD FSR 1.0.2: solicitado; aguardando vídeo")
     private fun upscaler(width: Int,height: Int): FsrUpscaler? {
         if(!fsrEnabled) { fsr?.release();fsr=null;return null }
@@ -84,16 +80,17 @@ class AspectVideoDrawer(@Volatile var stretch: Boolean,
     private fun enhanced(kind: ImageTreatmentPipeline.Input,texture: Int,textures: IntArray?,matrix: FloatArray,
         fw: Int,fh: Int,x: Int,y: Int,w: Int,h: Int,upscaler: FsrUpscaler?): Boolean {
         val value=treatment
-        if(!value.active && !sgsrEnabled && reconstructionLevel==0 && globalImageComparison==0 && (!imageLab.hasImageEffects || imageLabLevel==0)) { pipeline?.release();pipeline=null;return false }
+        val restoreDetail=upscaler!=null && fsrDetailLevel>0 && fsrDetailStrength>0
+        if(!value.active && !restoreDetail && globalImageComparison==0 && (!imageLab.hasImageEffects || imageLabLevel==0)) { pipeline?.release();pipeline=null;return false }
         val engine=pipeline ?: treatmentFactory?.invoke()?.also { pipeline=it } ?: return false
         if(lastTreatment!=value) { lastTreatment=value;treatmentOptions=value.glOptions() }
-        engine.configure(treatmentOptions,sharpness,fsrSharpness,saturation,brightness,contrast)
-        engine.configureReconstruction(reconstructionLevel,reconstructionStrength,imageComparison)
+        engine.configure(treatmentOptions,sharpness,saturation,brightness,contrast)
+        engine.configureFsrDetails(fsrDetailLevel,fsrDetailStrength)
         engine.configureComparison(globalImageComparison)
         engine.configureMotionHistory(motionTemporalAllowed)
         engine.configureLab(imageLab.hasImageEffects,imageLab.restoration,imageLab.protection.ordinal,imageLab.supersampling.scale,imageLab.comparison.ordinal,imageLabLevel,imageLab.neural)
         val drawn=engine.draw(kind,texture,textures,matrix,fw,fh,if(stretch) sourceWidth else fw,
-            if(stretch) sourceHeight else fh,x,y,w,h,upscaler,sgsrEnabled)
+            if(stretch) sourceHeight else fh,x,y,w,h,upscaler)
         if(drawn && engine.didScaleThisFrame()) onFsrDraw?.invoke()
         if(!treatmentFailureReported) engine.failureReason()?.let { treatmentFailureReported=true;onTreatmentFailure(it) }
         checkFailure()

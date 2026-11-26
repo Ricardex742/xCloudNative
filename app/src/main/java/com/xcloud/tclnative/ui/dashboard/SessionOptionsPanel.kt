@@ -36,7 +36,7 @@ class SessionOptionsPanel(private val context: Context,private val store: Sessio
             }
         }
     }
-    fun show(): ConsoleDialog = ConsoleDialog(context,UiText.text("Opções das partidas")).apply {
+    fun show(): ConsoleDialog = ConsoleDialog(context,UiText.text("Opções das partidas"),ConsolePanelPurpose.SETTINGS_LIST).apply {
         appendTo(this) { this@SessionOptionsPanel.show() }
         addAction(UiText.text("Voltar"),back);setOnCancelListener { back() };show()
     }
@@ -67,7 +67,7 @@ class SessionOptionsPanel(private val context: Context,private val store: Sessio
         if(game!=null && store.hasOverride(game)) dialog.addMenuItem(UiText.text("Usar o padrão das partidas")) { store.reset(game);onReturn() }
     }
     private fun choices(title: String,description: String,rows: List<Pair<String,Boolean>>,field: SessionOptionField,select: (Int)->Unit): ConsoleDialog =
-        ConsoleDialog(context,title).apply {
+        ConsoleDialog(context,title,ConsolePanelPurpose.SETTINGS_LIST).apply {
             body.addView(text(description,20,color=DashboardTheme.muted))
             selectedGame?.let { game ->
                 addMenuItem(UiText.text("Usar o padrão das partidas")) { store.inherit(game,field);returnTo() }

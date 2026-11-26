@@ -96,17 +96,18 @@ class ConsoleUiTest {
         val updates=mutableListOf<PlaybackSettings>()
         var managed=0; var refreshed=0; var loggedOut=0
         val panel=PlaybackSettingsPanel(activity,store,{ updates.add(it) },{ managed++ },{ refreshed++ },{ loggedOut++ })
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
         val dialog=panel.show()
         render(dialog,"green-settings")
         assertFalse(all(dialog.body).filterIsInstance<TextView>().any { it.text.contains("Rewards") || it.text.contains("Pesquisar") })
         fun choose(dialog: ConsoleDialog, text: String) {
-            val item=all(dialog.body).filterIsInstance<TextView>().single { it.isClickable && it.text.toString().contains(text) }
+            val item=all(dialog.panel).filterIsInstance<TextView>().single { it.isClickable && it.text.toString().contains(text) }
             assertFalse(item.defaultFocusHighlightEnabled)
             assertTrue(item.requestFocus())
             dialog.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
             dialog.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_BUTTON_A))
         }
-        choose(dialog,"Vídeo e conexão")
+        choose(dialog,"Vídeo")
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Modo de vídeo:")
         val video=ShadowDialog.getLatestDialog() as ConsoleDialog
         render(video,"green-video-choice")
@@ -123,7 +124,7 @@ class ConsoleUiTest {
         (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
         val imageCategory=panel.showImage()
         render(imageCategory,"image-settings-0.32.0")
-        choose(imageCategory,"Avançado")
+        choose(imageCategory,"Ajustes avançados")
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Avançado — métodos e filtros")
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Upscaling nativo:")
         val upscale=ShadowDialog.getLatestDialog() as ConsoleDialog
@@ -132,7 +133,8 @@ class ConsoleUiTest {
         assertFalse(store.read().nativeUpscaling); assertEquals(3,updates.size)
         (ShadowDialog.getLatestDialog() as ConsoleDialog).dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_B))
         shadowOf(Looper.getMainLooper()).idle()
-        choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Imagem e tela")
+        (ShadowDialog.getLatestDialog() as ConsoleDialog).cancel()
+        shadowOf(Looper.getMainLooper()).idle()
 
         choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Proporção:")
         val aspect=ShadowDialog.getLatestDialog() as ConsoleDialog
@@ -316,6 +318,7 @@ class ConsoleUiTest {
         store.save(before)
         val panel=PlaybackSettingsPanel(activity,store,{}, {}, {}, {})
         try {
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
             val dialog=panel.chooseResolution()
             render(dialog,"resolution-qhd-options")
             val qhd=all(dialog.body).filterIsInstance<TextView>().single { it.isClickable && it.text.contains("1440p") }
