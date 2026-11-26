@@ -156,6 +156,7 @@ open class MainActivity : Activity() {
             val retired=(aliases+listOfNotNull(androidId)).mapNotNull { controllers.existingSlot(ControllerSource.Android(it)) }.toSet()
             controllers.attachUsb(source,androidId,aliases)?.let { slot ->
                 retired.filter { it!=slot }.forEach { webrtcClient?.removeGamepad(it) }
+                if(slot==0) refreshControllerGyro()
                 if(gameplayInputEnabled()) publishGamepad(slot)
             }
         },input=::handleUsbInput,disconnected=::removeUsbController).also {
@@ -2747,13 +2748,26 @@ open class MainActivity : Activity() {
     private fun resumeAuxiliaryInput() {
         val settings=sessionSettings ?: return
         if(!gameplayInputEnabled() || guideTouchControls.active) return
-        gyro.start(settings.gyroMode,settings.gyroSensitivity,currentTouchMode==TouchMode.NATIVE,settings.gyroNativeTouch,
-            settings.gyroSource,controllers.deviceFor(0) ?: preferredControllerId)
+        resumeGyro(settings)
         if(sessionDesktopMode!=DesktopInputMode.OFF) setDesktopCapture(true)
     }
+
+    private fun resumeGyro(settings: PlaybackSettings) {
+        val primary=controllers.sourceFor(0)
+        val controllerId=when(primary) {
+            is ControllerSource.Android -> primary.deviceId
+            is ControllerSource.Usb -> usbDirect.androidAliases().singleOrNull() ?: -1
+            null -> preferredControllerId
+        }
+        gyro.start(settings.gyroMode,settings.gyroSensitivity,currentTouchMode==TouchMode.NATIVE,
+            settings.gyroNativeTouch || primary!=null,settings.gyroSource,controllerId)
+    }
+
     private fun refreshControllerGyro() {
-        if(sessionSettings?.gyroSource!=GyroSource.CONTROLLER || !gameplayInputEnabled()) return
-        resumeAuxiliaryInput()
+        val settings=sessionSettings ?: return
+        if(settings.gyroMode==GyroMode.OFF || !gameplayInputEnabled() || guideTouchControls.active) return
+        if(settings.gyroSource!=GyroSource.CONTROLLER && currentTouchMode!=TouchMode.NATIVE) return
+        resumeGyro(settings)
         publishGamepad(0)
     }
 
@@ -2831,6 +2845,7 @@ open class MainActivity : Activity() {
         usbNavigation.clear();usbBlockedButtons=0;usbShortcutHeld=0
         resetControllerShortcut(slot)
         webrtcClient?.removeGamepad(slot)
+        if(slot==0) refreshControllerGyro()
         if(slot==0 && currentTouchMode==TouchMode.VIRTUAL) publishGamepad(0)
     }
 

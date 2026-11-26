@@ -37,7 +37,7 @@ class AuxiliaryAudioInputTest {
         assertTrue(GyroAim.active(GyroMode.LT,GamepadState(leftTrigger=1f)))
         assertTrue(GyroAim.active(GyroMode.LB,GamepadState(buttons=4096)))
         val landscape=GyroAim.axes(1f,2f,1,100)
-        assertTrue(landscape.first<0);assertTrue(landscape.second>0)
+        assertTrue(landscape.first<0);assertTrue(landscape.second<0)
         assertEquals(0f to 0f,GyroAim.axes(Float.NaN,0f,0,100))
         assertEquals(-1f,GyroAim.axes(100f,0f,1,300).first,0f)
         assertTrue(GyroAim.axes(0f,0f,1,100,z=1f).first<0)

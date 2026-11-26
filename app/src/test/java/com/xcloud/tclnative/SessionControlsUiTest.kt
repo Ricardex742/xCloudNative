@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.os.Looper
+import android.view.InputDevice
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
@@ -23,8 +24,10 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowDialog
+import org.robolectric.shadows.ShadowInputDevice
 import org.robolectric.shadows.ShadowSensor
 import org.robolectric.shadows.ShadowSensorManager
+import org.robolectric.util.ReflectionHelpers
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -95,13 +98,53 @@ class SessionControlsUiTest {
         gyro.start(GyroMode.ALWAYS,100,true)
         assertFalse(shadowOf(manager).hasListener(gyro));assertTrue(gyro.status.contains("toque nativo"))
         gyro.start(GyroMode.ALWAYS,100,false);assertTrue(shadowOf(manager).hasListener(gyro))
-        val event=ShadowSensorManager.createSensorEvent(3);event.sensor=sensor;event.values[0]=1f;event.values[1]=2f
+        val event=ShadowSensorManager.createSensorEvent(3);event.sensor=sensor;event.values[0]=1f;event.values[1]=-2f
         gyro.onSensorChanged(event)
         assertTrue(gyro.apply(GamepadState()).rightX>0)
         shadowOf(Looper.getMainLooper()).idleFor(101,TimeUnit.MILLISECONDS)
         assertEquals(GamepadState(),gyro.apply(GamepadState()));assertEquals(2,changes)
         gyro.stop();assertFalse(shadowOf(manager).hasListener(gyro))
         controller.pause().stop().destroy()
+    }
+    @Test @Config(sdk=[34]) fun controllerMotionNodeIsMatchedToItsOwnGamepad() {
+        fun input(id: Int, name: String, source: Int, vendor: Int = 0x054c): InputDevice =
+            ShadowInputDevice.makeInputDeviceNamed(name).also {
+                ReflectionHelpers.setField(it,"mId",id)
+                ReflectionHelpers.setField(it,"mVendorId",vendor)
+                ReflectionHelpers.setField(it,"mProductId",0x0ce6)
+                ReflectionHelpers.setField(it,"mSources",source)
+            }
+        val pad = input(3,"DualSense Wireless Controller",InputDevice.SOURCE_GAMEPAD)
+        val motion = input(4,"DualSense Wireless Controller Motion Sensors",InputDevice.SOURCE_SENSOR)
+        val other = input(5,"DualSense Wireless Controller Motion Sensors",InputDevice.SOURCE_SENSOR,vendor=1)
+        val inputs = listOf(other,motion,pad)
+        assertEquals(listOf(3,4),controllerMotionNodes(inputs,3).map { it.id })
+        assertEquals(listOf(3,4),controllerMotionNodes(inputs,null).map { it.id })
+        assertTrue(controllerMotionNodes(inputs,5).isEmpty())
+        val secondPad = input(6,pad.name,InputDevice.SOURCE_GAMEPAD)
+        assertEquals(listOf(3),controllerMotionNodes(inputs + secondPad,3).map { it.id })
+    }
+    @Test fun deviceGyroUsesTheUncalibratedSensorWithBiasRemoved() {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            val context = activity.get()
+            val manager = context.getSystemService(SensorManager::class.java)
+            val sensor = ShadowSensor.newInstance(Sensor.TYPE_GYROSCOPE_UNCALIBRATED)
+            shadowOf(manager).addSensor(sensor)
+            val gyro = GyroController(context,{0},{})
+            gyro.start(GyroMode.ALWAYS,100,false)
+            assertTrue(gyro.listening)
+            val sample = ShadowSensorManager.createSensorEvent(6).apply {
+                this.sensor=sensor; values[1]=.3f; values[4]=.3f
+            }
+            gyro.onSensorChanged(sample)
+            assertEquals(0f,gyro.apply(GamepadState()).rightX,0f)
+            sample.values[1]=.6f
+            gyro.onSensorChanged(sample)
+            assertEquals(-.3008f,gyro.apply(GamepadState()).rightX,.0001f)
+            assertTrue(gyro.diagnostics().contains("SAMPLES=2; MOTION=1"))
+            gyro.stop()
+        } finally { activity.pause().stop().destroy() }
     }
     @Test fun categoriesAndBackKeepTheUserInTheRightSectionWithoutChangingPreferences() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
@@ -142,7 +185,7 @@ class SessionControlsUiTest {
         (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
         var changes=0;val gyro=GyroController(activity,{0},{changes++})
         gyro.start(GyroMode.ALWAYS,100,true,true);assertTrue(shadowOf(manager).hasListener(gyro))
-        val event=ShadowSensorManager.createSensorEvent(3);event.sensor=sensor;event.values[1]=2f
+        val event=ShadowSensorManager.createSensorEvent(3);event.sensor=sensor;event.values[1]=-2f
         gyro.onSensorChanged(event);assertEquals(1f,gyro.apply(GamepadState()).rightX,0f)
         gyro.start(GyroMode.ALWAYS,100,true,true)
         assertEquals(1f,gyro.apply(GamepadState()).rightX,0f)

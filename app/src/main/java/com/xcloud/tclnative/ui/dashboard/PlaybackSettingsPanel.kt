@@ -3,9 +3,11 @@ package com.xcloud.tclnative.ui.dashboard
 import com.xcloud.tclnative.i18n.UiText
 
 import android.content.Context
+import android.hardware.input.InputManager
 import android.view.Surface
 import android.view.ViewTreeObserver
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.content.ClipData
 import android.content.ClipboardManager
 import com.xcloud.tclnative.diagnostics.AppMemoryDiagnostics
@@ -85,17 +87,24 @@ class PlaybackSettingsPanel(
     fun showNetwork(): ConsoleDialog = showSettings(SettingsPage.NETWORK)
     fun showControls(): ConsoleDialog = showSettings(SettingsPage.CONTROLS)
 
+    private fun TextView.settingsIcon(dialog: ConsoleDialog, glyph: ConsoleGlyph, above: Boolean = false) {
+        val icon = ConsoleIconDrawable(glyph, dialog.px(if (above) 25 else 23), textColors)
+        compoundDrawablePadding = dialog.px(if (above) 4 else 10)
+        if (above) setCompoundDrawablesRelativeWithIntrinsicBounds(null, icon, null, null)
+        else setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null)
+    }
+
     private fun showSettings(initial: SettingsPage): ConsoleDialog {
         val dialog=settingsDialog(UiText.text("Configurações"))
         val tabs=LinearLayout(context).apply { orientation=LinearLayout.HORIZONTAL;isBaselineAligned=false }
         val pages=listOf(
-            SettingsPage.ROOT to UiText.text("Geral"),
-            SettingsPage.VIDEO to UiText.text("Vídeo"),
-            SettingsPage.NETWORK to UiText.text("Rede"),
-            SettingsPage.CONTROLS to UiText.text("Controles"),
-            SettingsPage.AUDIO to UiText.text("Áudio")
+            Triple(SettingsPage.ROOT, UiText.text("Geral"), ConsoleGlyph.SETTINGS),
+            Triple(SettingsPage.VIDEO, UiText.text("Vídeo"), ConsoleGlyph.DISPLAY),
+            Triple(SettingsPage.NETWORK, UiText.text("Rede"), ConsoleGlyph.NETWORK),
+            Triple(SettingsPage.CONTROLS, UiText.text("Controles"), ConsoleGlyph.CONTROLLER),
+            Triple(SettingsPage.AUDIO, UiText.text("Áudio"), ConsoleGlyph.AUDIO)
         )
-        val buttons=linkedMapOf<SettingsPage,android.widget.TextView>()
+        val buttons=linkedMapOf<SettingsPage,TextView>()
         fun select(page: SettingsPage) {
             enter(page)
             pages.forEach { (section,label) -> buttons[section]?.apply {
@@ -110,21 +119,26 @@ class PlaybackSettingsPanel(
                 SettingsPage.AUDIO -> audioRows { showSettings(SettingsPage.AUDIO) }.forEach { dialog.addMenuItem(it.label,it.action) }
                 else -> with(dialog) {
                     addSetting(UiText.text("Aparência e temas"),UiText.text("Tema, cor e idioma do aplicativo.")) { showAppearance() }
+                        .settingsIcon(this, ConsoleGlyph.PALETTE)
                     addSetting(UiText.text("Conta e amigos"),UiText.text("Contas Xbox, tempo de jogo e catálogo.")) { showAccount() }
+                        .settingsIcon(this, ConsoleGlyph.ACCOUNT)
                     addSetting(UiText.text("Ajuda e diagnóstico"),UiText.text("Estatísticas e informações para resolver problemas.")) { showDiagnostics() }
+                        .settingsIcon(this, ConsoleGlyph.DIAGNOSTICS)
                 }
             }
         }
-        pages.forEachIndexed { index,(page,label) ->
+        val tabHeight = maxOf(dialog.touchSize(), dialog.px(62))
+        pages.forEachIndexed { index,(page,label,glyph) ->
             val tab=dialog.keyButton(label) { select(page) }.apply {
                 tag="settings-section-${page.name.lowercase(java.util.Locale.ROOT)}"
                 minHeight=dialog.touchSize()
                 setPadding(dialog.px(4),0,dialog.px(4),0)
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,dialog.px(19).toFloat())
                 maxLines=2
+                settingsIcon(dialog, glyph, above = true)
             }
             buttons[page]=tab
-            tabs.addView(tab,LinearLayout.LayoutParams(0,dialog.touchSize(),1f).apply { if(index<pages.lastIndex) marginEnd=dialog.px(4) })
+            tabs.addView(tab,LinearLayout.LayoutParams(0,tabHeight,1f).apply { if(index<pages.lastIndex) marginEnd=dialog.px(4) })
         }
         dialog.setSettingsNavigation(tabs)
         select(initial)
@@ -138,15 +152,18 @@ class PlaybackSettingsPanel(
         val value=store.read()
         addSetting(UiText.text("Resolução: {0}",UiText.nested(value.forSession().resolution.label)),
             UiText.text("Qualidade do vídeo recebido. Vale na próxima partida.")) { chooseResolution() }
+            .settingsIcon(this, ConsoleGlyph.DISPLAY)
         addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
         addMenuItem(UiText.text("Proporção: {0}",UiText.nested(value.aspect.label))) { chooseAspect { showVideo() } }
         if(!compatibility(value)) {
             val profile=ImageProfiles.selected(value)
             addSetting(UiText.text("Perfil de imagem: {0}",UiText.nested(ImageProfiles.label(value))),
                 UiText.text("Ajusta a imagem na sua tela. Inclui a ampliação com FSR.")) { chooseImageProfile { showVideo() } }
+                .settingsIcon(this, ConsoleGlyph.IMAGE)
             if(profile==ImageProfile.LIGHT || profile==ImageProfile.FSR)
                 addMenuItem(UiText.text("Intensidade: {0}%",UiText.nested(ImageProfiles.intensity(value)))) { chooseImageIntensity { showVideo() } }
             addMenuItem(UiText.text("Cores da imagem")) { showImageAdjustments { showVideo() } }
+                .settingsIcon(this, ConsoleGlyph.PALETTE)
         }
         addMenuItem(UiText.text("Ajustes avançados")) { showAdvancedVideo() }
         Unit
@@ -614,10 +631,11 @@ class PlaybackSettingsPanel(
             UiText.text("Escolhe como os jogos respondem ao toque no celular.")) { chooseTouch() }
         gameControls?.let { addMenuItem(UiText.text("HUD e controles deste jogo"),it) }
         addMenuItem(UiText.text("Controle físico e coop local")) { showPhysical() }
+        addMenuItem(UiText.text("Giroscópio: {0}",UiText.nested(value.gyroMode.label))) { showGyro() }
+            .settingsIcon(dialog, ConsoleGlyph.GYROSCOPE)
         addMenuItem(UiText.text("Vibração do controle e celular")) { showRumble() }
         addSection(UiText.text("Outras formas de jogar"))
         addMenuItem(UiText.text("Mouse e teclado")) { showMouse() }
-        addMenuItem(UiText.text("Giroscópio")) { showGyro() }
         Unit
     }
     fun showPhysical(): ConsoleDialog {
@@ -692,18 +710,28 @@ class PlaybackSettingsPanel(
                 if (preview.listening) sample.postDelayed(poll,100)
             }
         }
-        val focus = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
+        fun refreshSensor() {
+            if (!sample.hasWindowFocus()) return
             sample.removeCallbacks(poll)
-            if (focused) {
-                preview.start(GyroMode.ALWAYS,sensitivity,nativeTouch=false,source=source)
-                sample.post(poll)
-            } else preview.stop()
+            preview.start(GyroMode.ALWAYS,sensitivity,nativeTouch=false,source=source)
+            sample.post(poll)
+        }
+        val focus = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
+            if (focused) refreshSensor() else { sample.removeCallbacks(poll); preview.stop() }
+        }
+        val inputs = if(source==GyroSource.CONTROLLER) context.getSystemService(InputManager::class.java) else null
+        val devices = object : InputManager.InputDeviceListener {
+            override fun onInputDeviceAdded(deviceId: Int) = refreshSensor()
+            override fun onInputDeviceRemoved(deviceId: Int) = refreshSensor()
+            override fun onInputDeviceChanged(deviceId: Int) = refreshSensor()
         }
         dialog.show()
         val tree = sample.viewTreeObserver
         tree.addOnWindowFocusChangeListener(focus)
-        if (sample.hasWindowFocus()) focus.onWindowFocusChanged(true)
+        inputs?.registerInputDeviceListener(devices, android.os.Handler(android.os.Looper.getMainLooper()))
+        refreshSensor()
         dialog.addCleanup {
+            inputs?.unregisterInputDeviceListener(devices)
             if (tree.isAlive) tree.removeOnWindowFocusChangeListener(focus)
             sample.removeCallbacks(poll)
             preview.stop()

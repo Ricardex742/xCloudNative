@@ -121,6 +121,9 @@ class QuickSettingsNavigationTest {
         val settings=panel.showVideo()
         layout(settings.panel,820,360)
         val video=settings.panel.findViewWithTag<TextView>("settings-section-video")
+        val tabs=all(settings.panel).filterIsInstance<TextView>().filter { it.tag?.toString()?.startsWith("settings-section-")==true }
+        assertEquals(5,tabs.size)
+        assertTrue(tabs.all { it.compoundDrawablesRelative[1] != null && it.height >= it.compoundPaddingTop + it.lineHeight })
         val scroll=settings.body.parent as ScrollView
         val tabY=IntArray(2).apply(video::getLocationInWindow)[1]
         assertTrue(settings.body.height>scroll.height)

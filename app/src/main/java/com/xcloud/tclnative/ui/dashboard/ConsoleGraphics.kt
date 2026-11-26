@@ -6,7 +6,7 @@ import android.graphics.drawable.Drawable
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID,CHEVRON_LEFT,CHEVRON_DOWN,FILTER,MORE,EXIT,SHORTCUT,TROPHY }
+internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,GYROSCOPE,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID,CHEVRON_LEFT,CHEVRON_DOWN,FILTER,MORE,EXIT,SHORTCUT,TROPHY }
 
 internal class ConsoleIconDrawable(private val glyph: ConsoleGlyph,private val size: Int,private val colors: android.content.res.ColorStateList): Drawable() {
     private val icons=ConsoleIcons()
@@ -117,6 +117,12 @@ internal class ConsoleIcons {
             ConsoleGlyph.PALETTE -> { rect.set(2f,2f,22f,22f);c.drawOval(rect,p);c.drawCircle(8f,7f,1f,p);c.drawCircle(15f,7f,1f,p);c.drawCircle(18f,13f,1f,p);c.drawCircle(7f,14f,1f,p);c.drawCircle(12f,18f,2f,p) }
             ConsoleGlyph.NETWORK -> { c.drawCircle(12f,5f,3f,p);c.drawRect(1f,17f,7f,23f,p);c.drawRect(17f,17f,23f,23f,p);c.drawLine(12f,8f,12f,13f,p);c.drawLine(4f,13f,20f,13f,p);c.drawLine(4f,13f,4f,17f,p);c.drawLine(20f,13f,20f,17f,p) }
             ConsoleGlyph.CONTROLLER -> { path.moveTo(6f,5f);path.lineTo(18f,5f);path.cubicTo(23f,7f,25f,21f,20f,20f);path.lineTo(16f,16f);path.lineTo(8f,16f);path.cubicTo(1f,24f,0f,18f,2f,11f);path.quadTo(3f,5f,6f,5f);c.drawPath(path,p);c.drawLine(5f,9f,5f,14f,p);c.drawLine(3f,11.5f,7f,11.5f,p);c.drawCircle(18f,10f,1f,p);c.drawCircle(20f,13f,1f,p) }
+            ConsoleGlyph.GYROSCOPE -> {
+                c.drawCircle(12f,12f,9.5f,p)
+                val tilt=c.save();c.rotate(-35f,12f,12f)
+                c.drawOval(7.5f,2.5f,16.5f,21.5f,p);c.restoreToCount(tilt)
+                c.drawCircle(12f,12f,2f,p)
+            }
             ConsoleGlyph.AUDIO -> { path.moveTo(2f,9f);path.lineTo(6f,9f);path.lineTo(12f,4f);path.lineTo(12f,20f);path.lineTo(6f,15f);path.lineTo(2f,15f);path.close();c.drawPath(path,p);rect.set(10f,3f,23f,21f);c.drawArc(rect,-60f,120f,false,p);rect.set(12f,7f,19f,17f);c.drawArc(rect,-60f,120f,false,p) }
             ConsoleGlyph.DIAGNOSTICS -> { c.drawRect(2f,2f,22f,22f,p);path.moveTo(3f,13f);path.lineTo(7f,13f);path.lineTo(10f,7f);path.lineTo(14f,18f);path.lineTo(17f,11f);path.lineTo(21f,11f);c.drawPath(path,p) }
             ConsoleGlyph.ACCOUNT -> { c.drawCircle(12f,7f,4f,p);rect.set(4f,13f,20f,25f);c.drawArc(rect,180f,180f,false,p);c.drawLine(4f,19f,4f,22f,p);c.drawLine(20f,19f,20f,22f,p) }
