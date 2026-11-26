@@ -100,9 +100,13 @@ class ConsoleFidelityReviewTest {
                                     assertTrue("Setting category clipped: ${item.text}",Rect(0,0,d.panel.width,d.panel.height).contains(bounds))
                                 }
                                 val viewport=d.body.parent as ScrollView
+                                val visible=Rect(0,0,viewport.width,viewport.height)
+                                d.panel.offsetDescendantRectToMyCoords(viewport,visible)
                                 for(item in all(d.body).filterIsInstance<TextView>().filter { it.isClickable }) {
-                                    val bounds=Rect(0,0,item.width,item.height);viewport.offsetDescendantRectToMyCoords(item,bounds)
-                                    assertTrue("Setting category clipped: ${item.text}",Rect(0,0,viewport.width,viewport.height).contains(bounds))
+                                    val bounds=Rect(0,0,item.width,item.height)
+                                    item.requestRectangleOnScreen(Rect(bounds),true)
+                                    d.panel.offsetDescendantRectToMyCoords(item,bounds)
+                                    assertTrue("Setting row unreachable: ${item.text} ($bounds in $visible)",visible.contains(bounds))
                                 }
                             }
                         } finally { d.dismiss() }
