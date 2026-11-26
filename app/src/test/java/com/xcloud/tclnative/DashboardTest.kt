@@ -76,6 +76,39 @@ class DashboardTest {
             assertTrue(all(view).filterIsInstance<TextView>().any { it.text.contains("Não foi possível consultar") })
         } finally { view.close(); controller.pause().stop().destroy() }
     }
+    @Test fun dpadKeepsTheSelectedCoverAfterResizeAndAccessibilityCanOpenItsDetails() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        var played = 0
+        val view = GameDashboardView(activity, GameLibrary(activity,"resize-focus"),{ played++ },{},{},{})
+        try {
+            activity.setContentView(view)
+            view.setGames(games)
+            key(view,KeyEvent.KEYCODE_BUTTON_L1)
+            layout(view,1280,720)
+            val grid = view.allViews.filterIsInstance<RecyclerView>().single()
+            val selected = requireNotNull(grid.findViewHolderForAdapterPosition(2)).itemView
+            assertTrue(selected.requestFocus())
+            assertEquals(selected.contentDescription.toString(),grid.findFocus()?.contentDescription.toString())
+            val label = selected.contentDescription.toString()
+            layout(view,841,623)
+            val focused = requireNotNull(grid.findFocus())
+            assertEquals(label,focused.contentDescription.toString())
+            val details = android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction.ACTION_LONG_CLICK
+            val action = focused.createAccessibilityNodeInfo().actionList.single { it.id == details.id }
+            assertEquals("Detalhes do jogo",action.label)
+            assertTrue(focused.performAccessibilityAction(details.id,null))
+            val dialog = org.robolectric.shadows.ShadowDialog.getLatestDialog()
+            assertTrue(dialog.isShowing)
+            assertEquals(0,played)
+            dialog.dismiss()
+            layout(view,841,623)
+            assertEquals(label,grid.findFocus()?.contentDescription.toString())
+        } finally {
+            view.close()
+            controller.pause().stop().destroy()
+        }
+    }
     @Test fun magnifierOpensSearchAndOnlyActivatingTheFieldShowsTheKeyboard() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val activity=controller.get()

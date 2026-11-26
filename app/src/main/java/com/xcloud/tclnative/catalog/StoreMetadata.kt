@@ -176,14 +176,65 @@ internal fun GameTitle.withMetadataFallback(previous: GameTitle) = copy(
 )
 
 /** Public art only. A cached product never adds a playable title or restores account entitlements. */
-class CatalogCache(private val file: File) {
+class CatalogCache(
+    private val file: File,
+    private val readText: (File) -> String = { it.readText() }
+) {
+    private data class Revision(val modified: Long, val bytes: Long)
+    private class ArtIndex(products: List<JSONObject>) {
+        private val byProduct = HashMap<String, GameTitle>()
+        private val byTitle = HashMap<String, GameTitle>()
+
+        init {
+            for (data in products) {
+                val title = data.optString("XCloudTitleId")
+                val art = StoreMetadata.enrich(GameTitle(title, ""), data)
+                art.productId?.let { byProduct[it] = art }
+                if (title.isNotBlank() && title != "null") byTitle[title] = art
+            }
+        }
+
+        fun merge(game: GameTitle): GameTitle {
+            val art = byProduct[game.productId] ?: byTitle[game.titleId] ?: return game
+            // Only public presentation fields are cached. Launchability comes from the live title.
+            return game.copy(
+                productId = art.productId ?: game.productId,
+                name = art.name.ifBlank { game.name },
+                englishName = art.englishName ?: game.englishName,
+                posterUrl = art.posterUrl ?: game.posterUrl,
+                tileUrl = art.tileUrl ?: game.tileUrl,
+                heroUrl = art.heroUrl ?: game.heroUrl,
+                seriesOptimized = art.seriesOptimized || game.seriesOptimized,
+                genres = art.genres.ifEmpty { game.genres }
+            )
+        }
+    }
+    private var revision: Revision? = null
+    private var artwork: ArtIndex? = null
+
+    private fun index(): ArtIndex? {
+        val current = Revision(file.lastModified(), file.length())
+        if (revision == current) return artwork
+        artwork = if (current.bytes in 1..MAX_BYTES) try {
+            ArtIndex(StoreMetadata.products(JSONObject(readText(file))))
+        } catch (_: Exception) {
+            null
+        } else null
+        revision = current
+        return artwork
+    }
+
     /** A visual hint before authentication; callers must validate launch access with the live catalog. */
-    fun artwork(titleId: String): GameTitle? = restore(listOf(GameTitle(titleId,UiText.text("Seu jogo")))).single()
-        .takeIf { it.posterUrl!=null || it.tileUrl!=null || it.heroUrl!=null }
-    fun restore(games: List<GameTitle>): List<GameTitle> = try {
-        if (!file.exists() || file.length() > 10*1024*1024) games else StoreMetadata.merge(games, JSONObject(file.readText()))
-    } catch (_: Exception) { games }
+    @Synchronized fun artwork(titleId: String): GameTitle? = index()
+        ?.merge(GameTitle(titleId,UiText.text("Seu jogo")))
+        ?.takeIf { it.posterUrl!=null || it.tileUrl!=null || it.heroUrl!=null }
+
+    @Synchronized fun restore(games: List<GameTitle>): List<GameTitle> = index()?.let { index ->
+        games.map(index::merge)
+    } ?: games
+
     @Synchronized fun save(games: List<GameTitle>) {
+        var next: File? = null
         try {
             val products = JSONArray()
             games.zip(restore(games)) { fresh, cached -> fresh.withMetadataFallback(cached) }
@@ -194,10 +245,20 @@ class CatalogCache(private val file: File) {
                     .put("Image_Hero", game.heroUrl).put("SeriesOptimized", game.seriesOptimized)
                     .put("Genres", JSONArray(game.genres.map { it.name })))
             }
-            file.parentFile?.mkdirs()
-            val next = File(file.parentFile, file.name+".tmp")
-            next.writeText(JSONObject().put("Products", products).toString())
-            next.renameTo(file)
-        } catch (_: Exception) { /* Cache failure does not block browsing/playing. */ }
+            val directory = file.absoluteFile.parentFile ?: return
+            directory.mkdirs()
+            next = File.createTempFile("catalog-art-", ".tmp", directory)
+            next.bufferedWriter().use { it.write(JSONObject().put("Products", products).toString()) }
+            if (next.length() <= MAX_BYTES && next.renameTo(file)) {
+                artwork = ArtIndex((0 until products.length()).map(products::getJSONObject))
+                revision = Revision(file.lastModified(), file.length())
+            }
+        } catch (_: Exception) {
+            // A partial cache write must not prevent browsing or replace the previous snapshot.
+        } finally {
+            next?.delete()
+        }
     }
+
+    private companion object { const val MAX_BYTES = 10 * 1024 * 1024 }
 }

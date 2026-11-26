@@ -28,9 +28,7 @@ internal object BackgroundMotionPolicy {
         return if(powerSave) 250L else if(independentAnimation) { if(lowRam || largeUi) 100L else 33L }
             else if(lowRam || largeUi) 167L else 84L
     }
-    fun television(context: Context)=
-        context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK==android.content.res.Configuration.UI_MODE_TYPE_TELEVISION ||
-            context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK)
+    fun television(context: Context) = com.xcloud.tclnative.settings.DevicePlatform.read(context).television
 }
 
 /** A separate render node avoids invalidating/rebinding catalogue cards for background motion. */

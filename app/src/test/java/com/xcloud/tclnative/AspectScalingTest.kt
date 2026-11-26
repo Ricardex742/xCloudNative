@@ -36,12 +36,25 @@ class AspectScalingTest {
         assertEquals(VideoViewport(1225,689),standard) // Previously 1166x656 with hardware scaling disabled.
         assertEquals(VideoViewport(1452,684),VideoScalingPolicy.viewport(1452,689,1392,656,VideoAspect.ORIGINAL))
         assertEquals(VideoViewport(1452,689),VideoScalingPolicy.viewport(1452,689,1392,656,VideoAspect.STRETCH))
-        val left=(1452-standard.width)/2f
+        val left=((1452-standard.width)/2).toFloat()
         fun point(x: Float,y: Float)=VideoScalingPolicy.touchCoordinates(1452,689,1392,656,VideoAspect.RATIO_16_9,x,y)
         assertNull(point(left-1f,100f))
         assertEquals(0f,point(left,0f)!!.first,0f)
-        assertEquals(.5f,point(726f,344.5f)!!.first,0f)
+        assertEquals(.5f,point(left+standard.width/2f,344.5f)!!.first,0f)
         assertEquals(1f,point(left+standard.width,689f)!!.second,0f)
+    }
+    @Test fun centeredVideoAndTouchAgreeOnOddTabletWindowMarginsAfterAResize() {
+        for ((windowWidth, windowHeight) in listOf(1280 to 800, 1001 to 669, 801 to 601)) {
+            val screen = VideoScalingPolicy.viewport(windowWidth,windowHeight,1920,1080,VideoAspect.ORIGINAL)
+            val left = ((windowWidth-screen.width)/2).toFloat()
+            val top = ((windowHeight-screen.height)/2).toFloat()
+            fun touch(x: Float,y: Float) =
+                VideoScalingPolicy.touchCoordinates(windowWidth,windowHeight,1920,1080,VideoAspect.ORIGINAL,x,y)
+            assertNull(touch(left,top-0.25f))
+            assertEquals(0f to 0f,touch(left,top))
+            assertEquals(.5f to .5f,touch(left+screen.width/2f,top+screen.height/2f))
+            assertEquals(1f to 1f,touch(left+screen.width,top+screen.height))
+        }
     }
     @Test fun stretchUndoesOnlyTheCenteredCropAndKeepsTextureRotationMirroringAndOffset() {
         val base=floatArrayOf(0f,1f,0f,0f, -1f,0f,0f,0f, 0f,0f,1f,0f, .8f,.1f,0f,1f)

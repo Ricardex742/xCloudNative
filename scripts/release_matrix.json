@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "pairedRuns": 3,
+  "pairedRunSeconds": 900,
+  "longSessionSeconds": 3600,
+  "conditions": ["titleScene", "accountPlan", "network", "region", "videoProfile", "renderEffects", "display", "audioRoute", "input", "thermal"],
+  "checks": ["install", "upgrade", "catalogFocus", "firstVideo", "controls", "resumeRecovery", "endAndReturn"],
+  "incidents": ["crashes", "anrs", "reboots", "stuckInputs", "lostResumes"],
+  "mandatoryMetrics": {
+    "coldMs": 5, "warmMs": 5, "pssPeakKiB": 3, "pssAfterKiB": 3,
+    "decodeMs": 3, "droppedFrames": 3, "recoveryMs": 3
+  },
+  "optionalMetrics": {
+    "cpuMs": 3, "gpuMs": 3, "gcPauseMs": 3, "frameIntervalVariationMs": 3,
+    "inputToPhotonMs": 3, "avDriftAbsMs": 3, "energyMilliWh": 3, "thermalRiseC": 3
+  },
+  "targets": {
+    "phone_entry": {"cycles": 20, "apiMax": 29, "ramMaxMiB": 3072, "checks": ["dungeonsTouch", "catalogMemory"]},
+    "phone_mid": {"cycles": 1, "apiMin": 29, "checks": ["remotePlay", "switchNetwork", "bluetoothAudio"]},
+    "phone_premium": {"cycles": 1, "apiMin": 35, "abi": "arm64-v8a", "pageSize": 16384, "checks": ["highRefresh", "pageSize", "audioVideoSync"]},
+    "android_tv": {"cycles": 20, "checks": ["leanback", "hdmiRestore", "shortcut", "usbControl"]},
+    "google_tv": {"cycles": 1, "checks": ["leanback", "shortcut", "savedAccounts"]},
+    "tv_box_old": {"cycles": 20, "abi": "armeabi-v7a", "checks": ["leanback", "outputGeometry", "codecFallback"]},
+    "tablet_old": {"cycles": 20, "apiMax": 30, "checks": ["officialHud", "multiTouch", "aspectRatio"]},
+    "tablet_modern": {"cycles": 20, "apiMin": 33, "checks": ["officialHud", "backgroundResume", "sessionTime", "savedAccounts"]}
+  }
+}

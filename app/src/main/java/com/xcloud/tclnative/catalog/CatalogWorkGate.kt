@@ -2,11 +2,14 @@ package com.xcloud.tclnative.catalog
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 
-/** Stop starting catalog requests while streaming; cancellation still works while waiting. */
-class CatalogWorkGate {
-    private val open=MutableStateFlow(true)
-    fun pause() { open.value=false }
-    fun resume() { open.value=true }
-    suspend fun await() { open.first { it } }
+/** Start background catalog requests only while the catalog can use their result. */
+class CatalogWorkGate(foreground: Boolean = true) {
+    private data class State(val open: Boolean, val foreground: Boolean)
+    private val state = MutableStateFlow(State(true, foreground))
+    fun pause() { state.update { it.copy(open = false) } }
+    fun resume() { state.update { it.copy(open = true) } }
+    fun setForeground(value: Boolean) { state.update { it.copy(foreground = value) } }
+    suspend fun await() { state.first { it.open && it.foreground } }
 }

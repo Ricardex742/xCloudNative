@@ -56,7 +56,7 @@ class RejectingRendererActivity: MainActivity() {
 class RendererStartupFailureTest {
     private fun all(view: View): List<View> = listOf(view)+if(view is ViewGroup)
         (0 until view.childCount).flatMap { all(view.getChildAt(it)) } else emptyList()
-    private fun playback(activity: MainActivity) = ReflectionHelpers.getField<PlaybackCoordinator>(activity, "playback")
+    private fun playback(activity: MainActivity) = ReflectionHelpers.getField<PlaybackCoordinator<*, *>>(activity, "playback")
     private val launch = MainActivity::class.java.getDeclaredMethod("launchCloudGame", XCloudSignalingClient::class.java,
         GameTitle::class.java, TouchMode::class.java, Boolean::class.javaPrimitiveType).apply { isAccessible = true }
 

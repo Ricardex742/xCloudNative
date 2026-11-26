@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"请使用与应用中相同的 Xbox 账户登录官方页面。"</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"打开购买页面"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"本次会话剩余时间：{0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"自动调整显示模式：{0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"游戏详情"</string>
+    <string name="ui_ed017ee27ce19a31">"性能试验"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"这些设置从下一次会话开始生效。备用解码器需要自适应模式下的 H.264。围栏同步需要帧生成。关闭触控时，无输入的手柄以 60 Hz 上报。跳过音频分析后，增益超过 100% 需要开始新会话。"</string>
+    <string name="ui_cc53733aa7793208">"备用 H.264 解码器"</string>
+    <string name="ui_05b5beea584b768c">"围栏同步"</string>
+    <string name="ui_382512eae2b74f8f">"降低无输入时的手柄上报频率"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"增益不超过 100% 时跳过音频分析"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"超过 100% 的增益将在下一次会话中应用。"</string>
 </resources>

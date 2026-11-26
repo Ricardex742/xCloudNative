@@ -183,7 +183,7 @@ class SessionToolsUiTest {
             var native=true
             fun panel()=GameHudPanel(a,game,store,{},{},{},{},
                 activate=if(native) ({ native=false }) else null,
-                nativeTouch=if(native) null else ({ native=true }))
+                nativeTouch=if(native) null else ({ native=true }),writeHud=::writeHudForTest)
             val first=panel().show();assertTrue(native)
             capture(first,"touch-mode-native")
             assertFalse(all(first.panel).filterIsInstance<TextView>().any { it.isClickable && it.text.contains("Ocultar HUD") })

@@ -7,7 +7,8 @@ import java.nio.ByteBuffer
 
 class RecoverableVideoDecoderTest {
     private class Decoder(val initResult: VideoCodecStatus = VideoCodecStatus.OK,
-                          val releaseResult: VideoCodecStatus = VideoCodecStatus.OK) : VideoDecoder {
+                          val releaseResult: VideoCodecStatus = VideoCodecStatus.OK,
+                          val decodeResult: VideoCodecStatus = VideoCodecStatus.OK) : VideoDecoder {
         var settings: VideoDecoder.Settings? = null
         var callback: VideoDecoder.Callback? = null
         var releases = 0
@@ -18,7 +19,7 @@ class RecoverableVideoDecoderTest {
             return initResult
         }
         override fun decode(image: EncodedImage, info: VideoDecoder.DecodeInfo): VideoCodecStatus {
-            assertSame(thread, Thread.currentThread()); frames++; return VideoCodecStatus.OK
+            assertSame(thread, Thread.currentThread()); frames++; return decodeResult
         }
         override fun release(): VideoCodecStatus { releases++; return releaseResult }
         override fun getImplementationName() = "test-hardware"
@@ -36,7 +37,8 @@ class RecoverableVideoDecoderTest {
         val created = mutableListOf<Decoder>()
         val decoder = RecoverableVideoDecoder({ Decoder().also(created::add) }, { Decoder() }, control)
         assertFalse(control.requestReset())
-        assertEquals(VideoCodecStatus.OK, decoder.initDecode(settings, callback))
+        var forwarded = 0
+        assertEquals(VideoCodecStatus.OK, decoder.initDecode(settings) { _, _, _ -> forwarded++ })
         Thread { assertTrue(control.requestReset()) }.apply { start(); join() }
         assertEquals(0, created.first().releases)
         decoder.decode(image(false), info)
@@ -46,7 +48,10 @@ class RecoverableVideoDecoderTest {
         assertEquals(1, created.first().releases)
         assertEquals(1280, created.last().settings!!.width)
         assertEquals(720, created.last().settings!!.height)
-        assertSame(callback, created.last().callback)
+        created.first().callback!!.onDecodedFrame(null, 1, 0)
+        assertEquals(0, forwarded)
+        created.last().callback!!.onDecodedFrame(null, 1, 0)
+        assertEquals(1, forwarded)
         assertEquals(1, created.last().frames) // Decode the same IDR used to reset.
         decoder.decode(image(true), info)
         assertEquals(2, created.size) // No endless reset on every keyframe.
@@ -67,6 +72,65 @@ class RecoverableVideoDecoderTest {
         decoder.release()
         assertEquals(1, normal.releases)
         assertFalse(control.requestReset())
+    }
+    @Test fun unavailablePreferredFactoryStillUsesStandardHardware() {
+        val normal = Decoder()
+        val decoder = RecoverableVideoDecoder({ throw IllegalStateException("vendor codec unavailable") },
+            { normal }, DecoderRecoveryController())
+        assertEquals(VideoCodecStatus.OK, decoder.initDecode(settings, callback))
+        assertEquals(VideoCodecStatus.OK, decoder.decode(image(true), info))
+        assertEquals(1, normal.frames)
+        decoder.release()
+    }
+    @Test fun keyframeFailureTriesStandardHardwareWithTheSameFrameAndReleasesPreferredFirst() {
+        val preferred = Decoder(decodeResult = VideoCodecStatus.ERROR)
+        val normal = Decoder()
+        val control = DecoderRecoveryController()
+        var normalAllocations = 0
+        val decoder = RecoverableVideoDecoder({ preferred }, {
+            assertEquals(1, preferred.releases)
+            normalAllocations++
+            normal
+        }, control)
+        assertEquals(VideoCodecStatus.OK, decoder.initDecode(settings, callback))
+        assertEquals(VideoCodecStatus.ERROR, decoder.decode(image(false), info))
+        assertEquals(0, normalAllocations)
+        assertEquals(VideoCodecStatus.OK, decoder.decode(image(true, 1280, 720), info))
+        assertEquals(2, preferred.frames)
+        assertEquals(1, normal.frames)
+        assertEquals(720, normal.settings!!.height)
+        assertEquals("DECODER_RECOVERY/STANDARD_RESET", control.diagnostics())
+        decoder.decode(image(true), info)
+        assertEquals(1, normalAllocations)
+        decoder.release()
+    }
+    @Test fun timeoutOnDeltaFrameWaitsForKeyframeBeforeSwitchingDecoder() {
+        val preferred = Decoder(decodeResult = VideoCodecStatus.TIMEOUT)
+        val normal = Decoder()
+        val decoder = RecoverableVideoDecoder({ preferred }, { normal }, DecoderRecoveryController())
+        decoder.initDecode(settings, callback)
+        assertEquals(VideoCodecStatus.ERROR, decoder.decode(image(false), info))
+        assertEquals(0, preferred.releases)
+        assertEquals(0, normal.frames)
+        assertEquals(VideoCodecStatus.OK, decoder.decode(image(true), info))
+        assertEquals(1, preferred.releases)
+        assertEquals(1, normal.frames)
+        decoder.release()
+    }
+    @Test fun repeatedRecoveryWithoutDecodedOutputUsesStandardHardware() {
+        val preferred = mutableListOf<Decoder>()
+        val normal = Decoder()
+        val control = DecoderRecoveryController()
+        val decoder = RecoverableVideoDecoder({ Decoder().also(preferred::add) }, { normal }, control)
+        decoder.initDecode(settings, callback)
+        repeat(2) {
+            assertTrue(control.requestReset())
+            assertEquals(VideoCodecStatus.OK, decoder.decode(image(true), info))
+        }
+        assertEquals(2, preferred.size)
+        assertTrue(preferred.all { it.releases == 1 })
+        assertEquals(1, normal.frames)
+        decoder.release()
     }
     @Test fun missingIdrDimensionsRetainThePreviousDimensions() {
         val control = DecoderRecoveryController()

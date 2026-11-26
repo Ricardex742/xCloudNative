@@ -38,6 +38,35 @@ import java.util.zip.ZipOutputStream
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class GameHudUiTest {
+    @Test fun editorWaitsForConfirmationAndIgnoresCompletionForAnOldDraft() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val view = GameTouchView(activity, {}, {}, { _, _ -> null }, {})
+        try {
+            activity.setContentView(view)
+            view.configure(TouchMode.VIRTUAL)
+            layout(view)
+            val callbacks = mutableListOf<(Boolean) -> Unit>()
+            view.onHudSaved = { _, complete -> callbacks.add(complete) }
+            view.beginEditing()
+            tap(view, 800f, 50f)
+            tap(view, 800f, 50f)
+            assertEquals(1, callbacks.size)
+            assertTrue(view.isEditing)
+            callbacks[0](false)
+            assertTrue(view.isEditing)
+            tap(view, 800f, 50f)
+            assertEquals(2, callbacks.size)
+            view.configure(TouchMode.VIRTUAL)
+            view.beginEditing()
+            callbacks[1](true)
+            assertTrue(view.isEditing)
+            tap(view, 800f, 50f)
+            callbacks[2](true)
+            assertFalse(view.isEditing)
+        } finally { controller.pause().stop().destroy() }
+    }
+
     @Test fun xboxBundleRendersInTheNativeHudAndHideReleasesTheGamepad() {
         val output=ByteArrayOutputStream()
         val art=ByteArrayOutputStream()
@@ -234,13 +263,13 @@ class GameHudUiTest {
         val local = HudSettings(placements = mapOf(control.id to HudPlacement(.20f, .30f, binding = HudBinding.Y)))
         store.save(game.titleId, local)
         view.onReadOfficialHud = { store.readOfficial(game.titleId, it) }
-        view.onOfficialHudSaved = { id, positions -> store.saveOfficial(game.titleId, id, positions); true }
+        view.onOfficialHudSaved = { id, positions, complete -> store.saveOfficial(game.titleId, id, positions); complete(true) }
         view.configure(TouchMode.NATIVE, game, local)
         view.installOfficialControls(combat)
         layout(view)
 
         val panel = GameHudPanel(activity, game, store, {}, {}, {}, {},
-            editOfficial = view::beginOfficialEditing).show()
+            editOfficial = view::beginOfficialEditing, writeHud = ::writeHudForTest).show()
         fun findEditorRow(child: View): TextView? {
             if (child is TextView && child.isClickable && child.text == "Editar HUD oficial") return child
             if (child is ViewGroup) for (i in 0 until child.childCount) {
@@ -336,7 +365,7 @@ class GameHudUiTest {
         view.setEditedAction("pass",HudAction(HudBinding.RT,HudBinding.A))
         assertEquals(GamepadState(),state)
         val store=GameHudStore(activity)
-        view.onHudSaved={ store.save("EAFC",it); true }
+        view.onHudSaved={ settings, complete -> store.save("EAFC",settings); complete(true) }
         tap(view,1280*.635f,720*.07f)
         assertEquals(HudAction(HudBinding.RT,HudBinding.A),store.read("EAFC").placements["pass"]!!.action)
         assertEquals(1,store.read("EAFC").placements["pass"]!!.gestures!!.size)
@@ -419,7 +448,7 @@ class GameHudUiTest {
         activity.setContentView(view)
         val game=GameTitle("EAFC26","EA SPORTS FC 26")
         view.configure(TouchMode.VIRTUAL,game,store.read(game.titleId)); layout(view)
-        view.onHudSaved={ store.save(game.titleId,it); saves++; true }
+        view.onHudSaved={ settings, complete -> store.save(game.titleId,settings); saves++; complete(true) }
         view.beginEditing()
         val pass=VirtualGamepad(1280,720,HudPreset.EA_FC).controls.single { it.id=="pass" }
         event(view,MotionEvent.ACTION_DOWN,0,Triple(0,pass.x,pass.y))
@@ -450,7 +479,7 @@ class GameHudUiTest {
         layout(activity.window.decorView)
         val store=GameHudStore(activity); val game=GameTitle("EAFC26","EA SPORTS FC 26")
         var applied=HudSettings(); var edits=0; var hidden=0; var page=HudPreset.EA_FC
-        val panel=GameHudPanel(activity,game,store,{ applied=it },{ edits++ },{ hidden++ },{ page=it })
+        val panel=GameHudPanel(activity,game,store,{ applied=it },{ edits++ },{ hidden++ },{ page=it },writeHud=::writeHudForTest)
         fun all(view: View): List<View> = listOf(view)+if(view is ViewGroup)
             (0 until view.childCount).flatMap { all(view.getChildAt(it)) } else emptyList()
         fun choose(text: String) {
@@ -492,4 +521,8 @@ class GameHudUiTest {
         assertEquals(HudPreset.EA_FC_DEFENSE,view.preset)
         controller.pause().stop().destroy()
     }
+}
+
+internal fun writeHudForTest(write: () -> HudSettings, complete: (HudSettings?) -> Unit) {
+    complete(write())
 }

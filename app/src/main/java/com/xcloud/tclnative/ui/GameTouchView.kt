@@ -39,6 +39,7 @@ class GameTouchView(context: Context,
     private var officialPositions: Map<String, HudPlacement> = emptyMap()
     private data class OfficialEdit(val layout: OfficialTouchLayout, var positions: Map<String, HudPlacement>)
     private var officialEdit: OfficialEdit? = null
+    private var pendingSave: Any? = null
     private val displayedOfficialLayout get() = officialEdit?.layout ?: officialLayout
     val usingOfficialControls get() = displayedOfficialLayout != null
     internal val canEditOfficialHud get() = officialLayout?.let { it.id != null && it.controls.isNotEmpty() } == true &&
@@ -56,6 +57,7 @@ class GameTouchView(context: Context,
     var immediateNativeDispatch=true
     private val native=mutableMapOf<Int,NativePointer>()
     private var nativeEvents=NativeEvents()
+    private val officialTouchTrace = TouchRouteTrace()
     private class NativeEvents {
         var down=0L;var up=0L;var moves=0L;var cancel=0L;var menu=0L;var outside=0L;var ignored=0L
         var releases=0L;var generatedDown=0L;var generatedUp=0L
@@ -67,11 +69,13 @@ class GameTouchView(context: Context,
         releaseInputs()
         officialLayout=null
         officialEdit=null
+        pendingSave=null
         officialPositions=emptyMap()
         adjustOfficialLayout=null
         officialPressMs=0
         isEditing=false
         nativeEvents=NativeEvents()
+        officialTouchTrace.clear()
         lastHudPress=UiText.text("nenhum")
     }
     private var lastHudPress=UiText.text("nenhum")
@@ -86,6 +90,7 @@ class GameTouchView(context: Context,
     }
     fun hudDiagnostics(): String = UiText.join("HUD: ${preset.label}; ",(if(preset.football) UiText.text("esquema {0}; ",UiText.nested(configuration.footballScheme.label)) else ""),UiText.text("sensibilidade {0}%; zona morta {1}%; ",UiText.nested(configuration.sensitivity),UiText.nested(configuration.lookDeadzone)),(if(preset.family==HudPreset.CALL_OF_DUTY) UiText.text("mirar ao atirar {0}; ",UiText.nested(if(configuration.aimAndFire) UiText.text("ativado") else UiText.text("desativado")))+
             UiText.text("corrida por arrasto {0}; ",UiText.nested(if(configuration.sprintGesture) "ativada" else "desativada")) else ""),UiText.text("atualizações {0}; contatos interrompidos descartados {1}; último controle: {2}\n{3}",UiText.nested(nativeEvents.hudUpdates),UiText.nested(nativeEvents.staleHudContacts),UiText.nested(lastHudPress),UiText.nested(nativeDiagnostics())))
+    internal fun officialRouteDiagnostics() = "TOUCH_HUD_VIEW/${officialTouchTrace.diagnostics()}"
     private fun emitNative(events: List<NativePointer>) {
         nativeEvents.generatedDown+=events.count { it.type==1 };nativeEvents.generatedUp+=events.count { it.type==2 }
         onPointers(events)
@@ -99,9 +104,10 @@ class GameTouchView(context: Context,
     private var editPointer: Int?=null
     private var dragX=0f; private var dragY=0f
     private var editAction: String?=null
-    var onHudSaved: (HudSettings) -> Boolean = { true }
+    internal var onHudSaved: (HudSettings, (Boolean) -> Unit) -> Unit = { _, complete -> complete(true) }
     internal var onReadOfficialHud: (String) -> Map<String, HudPlacement> = { emptyMap() }
-    internal var onOfficialHudSaved: (String, Map<String, HudPlacement>) -> Boolean = { _, _ -> true }
+    internal var onOfficialHudSaved: (String, Map<String, HudPlacement>, (Boolean) -> Unit) -> Unit =
+        { _, _, complete -> complete(true) }
     var onBindingRequested: (String,HudAction?) -> Unit = { _,_ -> }
     var onGesturesRequested: (String,Map<HudSwipe,HudGesture>) -> Unit = { _,_ -> }
     private val lookReset=Runnable {
@@ -165,7 +171,7 @@ class GameTouchView(context: Context,
     }
 
     fun configure(mode: TouchMode,game: GameTitle?=null,settings: HudSettings?=null) {
-        releaseInputs(); officialEdit=null;isEditing=false;menuButton.visibility=VISIBLE
+        releaseInputs(); officialEdit=null;pendingSave=null;isEditing=false;menuButton.visibility=VISIBLE
         autoHidden=false
         if(game!=null) {
             automatic=GameHud.automatic(game.titleId,game.name)
@@ -238,7 +244,7 @@ class GameTouchView(context: Context,
     }
     override fun refreshLanguage() { menuButton.contentDescription=UiText.text("Atalhos da partida");releaseInputs();rebuild();scheduleAutoHide();invalidate() }
     fun beginEditing() {
-        if(mode!=TouchMode.VIRTUAL || usingOfficialControls) return
+        if(mode!=TouchMode.VIRTUAL || usingOfficialControls || isEditing) return
         openEditor()
     }
     internal fun beginOfficialEditing() {
@@ -251,13 +257,14 @@ class GameTouchView(context: Context,
         releaseInputs();autoHidden=false; beforeEdit=configuration; beforeEditPreset=preset; selected=null; isEditing=true;menuButton.visibility=GONE; invalidate()
     }
     fun cancelEditing() {
-        if (!isEditing) return
+        if (!isEditing || pendingSave != null) return
         if (officialEdit == null) configuration = beforeEdit
         closeEditor()
     }
     private fun closeEditor() {
         releaseInputs()
         officialEdit = null
+        pendingSave = null
         isEditing = false
         rebuild(beforeEditPreset)
         menuButton.visibility = VISIBLE
@@ -265,28 +272,37 @@ class GameTouchView(context: Context,
         invalidate()
     }
     private fun saveEditing() {
+        if (pendingSave != null) return
         val edit = officialEdit
-        if (edit == null) {
-            if (onHudSaved(configuration)) closeEditor()
-        } else {
-            val id = edit.layout.id ?: return
-            if (!onOfficialHudSaved(id, edit.positions)) return
-            if (officialLayout?.id == id) officialPositions = edit.positions
-            closeEditor()
+        val id = edit?.layout?.id
+        if (edit != null && id == null) return
+        val request = Any()
+        pendingSave = request
+        val positions = edit?.positions
+        val complete: (Boolean) -> Unit = { saved ->
+            if (pendingSave === request) {
+                pendingSave = null
+                if (saved) {
+                    if (positions != null && officialLayout?.id == id) officialPositions = positions
+                    closeEditor()
+                }
+            }
         }
+        if (id == null || positions == null) onHudSaved(configuration, complete)
+        else onOfficialHudSaved(id, positions, complete)
     }
     fun setEditedBinding(id: String,binding: HudBinding) {
-        if(!isEditing || officialEdit != null) return
+        if(!isEditing || officialEdit != null || pendingSave != null) return
         val control=model.controls.firstOrNull { it.id==id } ?: return
         placement(control) { it.copy(binding=binding,action=null) }
     }
     fun setEditedAction(id: String,action: HudAction) {
-        if(!isEditing || officialEdit != null) return
+        if(!isEditing || officialEdit != null || pendingSave != null) return
         val control=model.controls.firstOrNull { it.id==id } ?: return
         placement(control) { it.copy(binding=null,action=action) }
     }
     fun setEditedGestures(id: String,gestures: Map<HudSwipe,HudGesture>) {
-        if(!isEditing || officialEdit != null) return
+        if(!isEditing || officialEdit != null || pendingSave != null) return
         val control=model.controls.firstOrNull { it.id==id } ?: return
         placement(control) { it.copy(gestures=gestures) }
     }
@@ -405,6 +421,9 @@ class GameTouchView(context: Context,
                         else if (controlsVisible) {
                             model.down(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)?.let {
                                 recordHudPress(it)
+                                val actionLabel = it.action?.keys?.joinToString("+") { key -> key.name } ?: it.kind.name
+                                val layoutId = TouchRouteTrace.label(displayedOfficialLayout?.id)
+                                officialTouchTrace.add("HIT,$id,$layoutId,${TouchRouteTrace.label(it.id)},$actionLabel")
                                 virtualPointers.add(id)
                                 removeCallbacks(autoHideTask)
                                 publish()
@@ -413,6 +432,7 @@ class GameTouchView(context: Context,
                         }
                     }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> if (virtualPointers.remove(id)) {
+                        officialTouchTrace.add("UP,$id")
                         model.move(id,event.getX(index),event.getY(index),event.eventTime,receivedAt)
                         model.up(id,event.eventTime,receivedAt)
                         publish()
@@ -446,6 +466,7 @@ class GameTouchView(context: Context,
                 // Android ids start at zero; DOM PointerEvents use stable positive contact ids.
                 val p=NativePointer(pointerId+1,x,y,type,if(type==2) 0f else pressure,
                     diameter/width.coerceAtLeast(1),diameter/height.coerceAtLeast(1))
+                if (type == 1 && usingOfficialControls) officialTouchTrace.add("NATIVE,$pointerId")
                 if(type==2) native.remove(pointerId) else native[pointerId]=p
                 events.add(p)
             }
@@ -493,6 +514,7 @@ class GameTouchView(context: Context,
         else -> null
     }
     private fun editTouch(event: MotionEvent): Boolean {
+        if (pendingSave != null) return true
         val action=event.actionMasked
         val index=event.actionIndex
         val id=event.getPointerId(index)

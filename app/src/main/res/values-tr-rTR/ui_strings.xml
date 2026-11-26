@@ -1115,7 +1115,7 @@
     <string name="ui_a877364109ff8ea4">"Laboratuvar: {0}"</string>
     <string name="ui_9fe5d68cd57976b9">"Artık iyileştirme: {0}%"</string>
     <string name="ui_490938aaf8a779f4">"Artık iyileştirme"</string>
-    <string name="ui_2658b9614c0e0964">"Parlaklık ve renk sınırlarıyla ayrıntıları iyileştirir. %0 bu yeniden oluşturmayı kapatır. Destekleniyorsa uygulamanın küçük sinir ağı modeli, yoksa uzamsal yeniden oluşturma kullanılır."</string>
+    <string name="ui_2658b9614c0e0964" formatted="false">"Parlaklık ve renk sınırlarıyla ayrıntıları iyileştirir. %0 bu yeniden oluşturmayı kapatır. Destekleniyorsa uygulamanın küçük sinir ağı modeli, yoksa uzamsal yeniden oluşturma kullanılır."</string>
     <string name="ui_7b015f90ee2a86af">"Sinir ağıyla yeniden oluşturma: {0}"</string>
     <string name="ui_313dba358bc48645">"HUD ve metin koruması: {0}"</string>
     <string name="ui_1be7f55001e09c0e">"HUD ve metin koruması"</string>
@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"Resmî sayfada uygulamada kullandığınız Xbox hesabıyla oturum açın."</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"Satın alma sayfasını aç"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"Kalan oturum süresi: {0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"Otomatik ekran ayarı: {0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"Oyun ayrıntıları"</string>
+    <string name="ui_ed017ee27ce19a31">"Performans denemeleri"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"Bu denemeler sonraki oturumdan itibaren geçerlidir. Alternatif kod çözücü, Uyarlanabilir modda H.264 gerektirir. Fence senkronizasyonu kare üretimi gerektirir. Dokunmatik kapalıyken giriş olmayan kumanda 60 Hz hızında veri gönderir. Ses analizi yoksa %100 üzeri kazanç için yeni oturum gerekir."</string>
+    <string name="ui_cc53733aa7793208">"Alternatif H.264 kod çözücü"</string>
+    <string name="ui_05b5beea584b768c">"Fence senkronizasyonu"</string>
+    <string name="ui_382512eae2b74f8f">"Boştaki kumandanın bildirim hızını düşür"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"Kazanç %100 ve altındayken ses analizini atla"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"%100 üzeri kazanç sonraki oturumda uygulanacak."</string>
 </resources>

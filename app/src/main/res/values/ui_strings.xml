@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="ui_00337a440affe8d9" formatted="false">"renderer em resolução de saída para FSR"</string>
     <string name="ui_01097ccc24bdd54c" formatted="false">"Pedido: {0}, {1} Mbps (VBR recebido pode variar) | Menu+View: Partida; INFO/F10: estatísticas\n{2}"</string>
     <string name="ui_013a1e5debec7510" formatted="false">"Vibração do celular"</string>
@@ -1418,4 +1418,14 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"Entre na página oficial com a mesma conta Xbox usada no app."</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"Abrir página de compra"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"Tempo restante na sessão: {0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"Ajuste automático da tela: {0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"Detalhes do jogo"</string>
+    <!-- Resolved at runtime by UiText using the message hash. -->
+    <string name="ui_ed017ee27ce19a31" tools:ignore="UnusedResources">"Testes de desempenho"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false" tools:ignore="UnusedResources">"Esses testes valem na próxima partida. O decoder alternativo exige H.264 no modo Adaptativo. A sincronização por fence exige geração de quadros. O controle neutro usa 60 Hz no modo sem toque. Sem análise de áudio, ganho acima de 100% exige iniciar outra partida."</string>
+    <string name="ui_cc53733aa7793208" tools:ignore="UnusedResources">"Decoder H.264 alternativo"</string>
+    <string name="ui_05b5beea584b768c" tools:ignore="UnusedResources">"Sincronização por fence"</string>
+    <string name="ui_382512eae2b74f8f" tools:ignore="UnusedResources">"Cadência reduzida no controle neutro"</string>
+    <string name="ui_3448385e4f13254d" formatted="false" tools:ignore="UnusedResources">"Pular análise de áudio com ganho até 100%"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false" tools:ignore="UnusedResources">"Ganho acima de 100% será aplicado na próxima partida."</string>
 </resources>

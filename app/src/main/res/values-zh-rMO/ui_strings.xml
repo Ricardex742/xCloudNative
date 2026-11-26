@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"請使用與應用程式中相同的 Xbox 帳戶登入官方頁面。"</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"開啟購買頁面"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"本次工作階段剩餘時間：{0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"自動調整顯示模式：{0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"遊戲詳情"</string>
+    <string name="ui_ed017ee27ce19a31">"效能試驗"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"這些設定下次工作階段生效。備用解碼器需要自適應模式的 H.264。柵欄同步需要影格生成。關閉觸控時，無輸入的控制器以 60 Hz 回報。略過音訊分析後，超過 100% 的增益需要開始新的工作階段。"</string>
+    <string name="ui_cc53733aa7793208">"備用 H.264 解碼器"</string>
+    <string name="ui_05b5beea584b768c">"柵欄同步"</string>
+    <string name="ui_382512eae2b74f8f">"降低無輸入時的控制器回報頻率"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"增益不超過 100% 時略過音訊分析"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"超過 100% 的增益將在下次工作階段套用。"</string>
 </resources>

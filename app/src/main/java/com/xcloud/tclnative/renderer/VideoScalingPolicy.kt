@@ -10,8 +10,8 @@ object VideoScalingPolicy {
                          aspect: VideoAspect,x: Float,y: Float): Pair<Float,Float>? {
         if(windowWidth<=0 || windowHeight<=0 || videoWidth<=0 || videoHeight<=0) return null
         val viewport=viewport(windowWidth,windowHeight,videoWidth,videoHeight,aspect)
-        var u=(x-(windowWidth-viewport.width)/2f)/viewport.width
-        var v=(y-(windowHeight-viewport.height)/2f)/viewport.height
+        var u=(x-(windowWidth-viewport.width)/2)/viewport.width
+        var v=(y-(windowHeight-viewport.height)/2)/viewport.height
         if(!u.isFinite() || !v.isFinite() || u !in 0f..1f || v !in 0f..1f) return null
         if(aspect==VideoAspect.ZOOM) {
             val source=videoWidth.toFloat()/videoHeight

@@ -3,6 +3,9 @@ package org.webrtc;
 import android.media.MediaCodecInfo;
 import android.media.MediaCodecList;
 import android.os.Build;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -11,25 +14,66 @@ public final class LowLatencyDecoderFactory implements VideoDecoderFactory {
   private final EglBase.Context context;
   private final boolean enabled;
   private final Consumer<String> status;
-  private final DefaultVideoDecoderFactory standard;
-  private final HardwareVideoDecoderFactory hardware;
+  private final VideoDecoderFactory hardware;
+  private final VideoDecoderFactory software;
+  private final VideoDecoderFactory platformSoftware;
   private final DecoderRecoveryController recovery;
+  private final AvcDecoderTrial avcTrial;
+  private final int width;
+  private final int height;
 
   public LowLatencyDecoderFactory(EglBase.Context context, boolean enabled, DecoderRecoveryController recovery, Consumer<String> status) {
+    this(context, enabled, recovery, status, null, 0, 0);
+  }
+
+  LowLatencyDecoderFactory(EglBase.Context context, boolean enabled, DecoderRecoveryController recovery,
+      Consumer<String> status, AvcDecoderTrial avcTrial, int width, int height) {
+    this(context, enabled, recovery, status, new HardwareVideoDecoderFactory(context),
+        new SoftwareVideoDecoderFactory(), new PlatformSoftwareVideoDecoderFactory(context), avcTrial, width, height);
+  }
+
+  LowLatencyDecoderFactory(EglBase.Context context, boolean enabled, DecoderRecoveryController recovery,
+      Consumer<String> status, VideoDecoderFactory hardware, VideoDecoderFactory software,
+      VideoDecoderFactory platformSoftware) {
+    this(context, enabled, recovery, status, hardware, software, platformSoftware, null, 0, 0);
+  }
+
+  private LowLatencyDecoderFactory(EglBase.Context context, boolean enabled, DecoderRecoveryController recovery,
+      Consumer<String> status, VideoDecoderFactory hardware, VideoDecoderFactory software,
+      VideoDecoderFactory platformSoftware, AvcDecoderTrial avcTrial, int width, int height) {
     this.context = context;
     this.enabled = enabled;
     this.status = status;
     this.recovery = recovery;
-    standard = new DefaultVideoDecoderFactory(context);
-    hardware = new HardwareVideoDecoderFactory(context);
+    this.hardware = hardware;
+    this.software = software;
+    this.platformSoftware = platformSoftware;
+    this.avcTrial = avcTrial; this.width = width; this.height = height;
   }
 
-  @Override public VideoCodecInfo[] getSupportedCodecs() { return standard.getSupportedCodecs(); }
+  @Override public VideoCodecInfo[] getSupportedCodecs() {
+    // Keep the pinned default factory's order and deduplication.
+    Set<VideoCodecInfo> supported = new LinkedHashSet<>();
+    Collections.addAll(supported, software.getSupportedCodecs());
+    Collections.addAll(supported, hardware.getSupportedCodecs());
+    Collections.addAll(supported, platformSoftware.getSupportedCodecs());
+    return supported.toArray(new VideoCodecInfo[0]);
+  }
 
   @Override public VideoDecoder createDecoder(VideoCodecInfo codec) {
-    VideoDecoder fallback = standard.createDecoder(codec);
     VideoDecoder original = hardware.createDecoder(codec);
-    if (original == null || fallback == null) return fallback;
+    VideoDecoder fallback = software.createDecoder(codec);
+    if (fallback == null) fallback = platformSoftware.createDecoder(codec);
+    if (original == null) return fallback;
+    if (!enabled && avcTrial != null && codec.getName().equalsIgnoreCase("H264")) {
+      VideoDecoder routed = null;
+      try {
+        routed = avcTrial.route(context, codec, width, height, original, hardware, recovery);
+      } catch (RuntimeException unavailable) {
+        recovery.record("ALTERNATE_CAPABILITIES_UNAVAILABLE");
+      }
+      if (routed != null) return fallback == null ? routed : new VideoDecoderFallback(fallback, routed);
+    }
     Supplier<VideoDecoder> normal = () -> hardware.createDecoder(codec);
     Supplier<VideoDecoder> preferred = normal;
     if (enabled && codec.getName().equalsIgnoreCase("H264")) {
@@ -60,8 +104,11 @@ public final class LowLatencyDecoderFactory implements VideoDecoderFactory {
         status.accept("Codec: capacidades indisponíveis; decoder padrão");
       }
     }
-    // Only raw Java hardware decoders can be delegated here. Native wrappers stay outside.
-    return new VideoDecoderFallback(fallback, new RecoverableVideoDecoder(preferred, normal, recovery));
+    VideoDecoder recoverable = preferred == normal
+        ? new RecoverableVideoDecoder(normal, null, recovery, original)
+        : new RecoverableVideoDecoder(preferred, normal, recovery);
+    // The JNI fallback must contain only a software decoder for this exact format.
+    return fallback == null ? recoverable : new VideoDecoderFallback(fallback, recoverable);
   }
 
 }

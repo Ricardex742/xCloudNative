@@ -134,6 +134,8 @@ internal class GameShortcutBar(
 
     private fun px(value: Int) = (value * dp).roundToInt()
 
+    // This listener only transfers focus. The widget itself performs the click.
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
     private fun button(label: String, click: () -> Unit) = DashboardTheme.button(activity, label, dp, click).apply {
         setOnTouchListener { view, event ->
             // Give the button focus before TextView can consume the first tap just to obtain it.

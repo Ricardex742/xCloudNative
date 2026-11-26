@@ -68,6 +68,8 @@ class FramePacedVideoSink(private val target: VideoSink,
     @Volatile private var dropped=0L
     @Volatile private var waitNs=0L
     @Volatile private var maxWaitNs=0L
+    @Volatile private var plannedWaitNs=0L
+    @Volatile private var maxDeadlineOverrunNs=0L
     private val task=Runnable { present() }
     override fun onFrame(frame: VideoFrame) {
         var old: VideoFrame?=null
@@ -86,21 +88,31 @@ class FramePacedVideoSink(private val target: VideoSink,
     private fun present() {
         val frame: VideoFrame
         val arrival: Long
+        val deadline: Long
         synchronized(lock) {
+            deadline=due ?: return
             due=null
             frame=pending ?: return;pending=null;arrival=pendingArrival
         }
         try {
             if(!closed) {
-                val waited=(scheduler.nowNs()-arrival).coerceAtLeast(0)
+                val now=scheduler.nowNs()
+                val waited=(now-arrival).coerceAtLeast(0)
+                plannedWaitNs+=(deadline-arrival).coerceAtLeast(0)
+                maxDeadlineOverrunNs=maxOf(maxDeadlineOverrunNs,now-deadline)
                 waitNs+=waited;maxWaitNs=maxOf(maxWaitNs,waited);delivered++
                 target.onFrame(frame)
             }
         } catch(error: Exception) { close();failed(error) }
         finally { frame.release() }
     }
-    fun diagnostics()=String.format(Locale.US,"Pacing: smooth | delivered=%d | replaced=%d | scheduled wait mean/max=%.2f/%.2f ms (not input-to-photon)",
-        delivered,dropped,if(delivered==0L) 0.0 else waitNs/1e6/delivered,maxWaitNs/1e6)
+    fun diagnostics(): String {
+        val count=delivered
+        return String.format(Locale.US,
+            "Pacing: smooth | delivered=%d | replaced=%d | planned_mean_ms=%.2f | wait_mean_max_ms=%.2f/%.2f | deadline_overrun_max_ms=%.2f",
+            count,dropped,if(count==0L) 0.0 else plannedWaitNs/1e6/count,
+            if(count==0L) 0.0 else waitNs/1e6/count,maxWaitNs/1e6,maxDeadlineOverrunNs/1e6)
+    }
     override fun close() {
         val old: VideoFrame?
         synchronized(lock) {
@@ -108,5 +120,38 @@ class FramePacedVideoSink(private val target: VideoSink,
             closed=true;scheduler.remove(task);due=null;old=pending;pending=null
         }
         old?.release();scheduler.close()
+    }
+}
+
+
+/** Cadence at EGL submission. Surface recreation starts a new interval series. */
+internal class EglSubmissionCadence {
+    private var previousNs = Long.MIN_VALUE
+    private var count = 0L
+    private var gapCount = 0L
+    private var totalGapNs = 0L
+    private var maxGapNs = 0L
+
+    @Synchronized fun observe(nowNs: Long) {
+        val previous = previousNs
+        if (previous != Long.MIN_VALUE && nowNs > previous) {
+            val gap = nowNs - previous
+            gapCount++
+            totalGapNs += gap
+            maxGapNs = maxOf(gap, maxGapNs)
+        }
+        previousNs = nowNs
+        count++
+    }
+
+    @Synchronized fun surfaceChanged() { previousNs = Long.MIN_VALUE }
+
+    private data class Snapshot(val submissions: Long, val intervals: Long, val totalNs: Long, val maxNs: Long)
+
+    fun diagnostics(): String {
+        val snapshot = synchronized(this) { Snapshot(count, gapCount, totalGapNs, maxGapNs) }
+        val gaps = if (snapshot.intervals == 0L) "n/d" else
+            String.format(Locale.US, "%.2f/%.2f", snapshot.totalNs / 1e6 / snapshot.intervals, snapshot.maxNs / 1e6)
+        return "VIDEO_EGL_CADENCE/submissions=${snapshot.submissions} gap_samples=${snapshot.intervals} gap_mean_max_ms=$gaps"
     }
 }

@@ -3,6 +3,13 @@ package com.xcloud.tclnative.renderer
 data class OutputMode(val id: Int, val width: Int, val height: Int, val hz: Float)
 
 object DisplayModePolicy {
+    /** Treat incomplete or conflicting firmware lists as a request to leave the system mode alone. */
+    internal fun playbackMode(current: OutputMode, supported: List<OutputMode>, fps: Int, tv4k: Boolean): Int? {
+        val valid = supported.filter { it.id > 0 && it.width > 0 && it.height > 0 && it.hz.isFinite() && it.hz > 0f }
+        if (current !in valid || valid.distinct().groupBy(OutputMode::id).any { (_, modes) -> modes.size != 1 }) return null
+        return (if (tv4k) preferred4k60(current, valid) else null) ?: preferredCadence(current, valid, fps)
+    }
+
     /** Match the stream cadence without changing the phone's physical resolution. */
     fun preferredCadence(current: OutputMode, supported: List<OutputMode>, fps: Int): Int? {
         if (fps <= 0) return null

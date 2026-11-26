@@ -12,6 +12,7 @@ import kotlinx.coroutines.yield
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONObject
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
@@ -75,5 +76,58 @@ class SavedXboxAccountsTest {
         credentials.bindAccount(credentials.snapshot().generation, "new-hash", "1")
         assertEquals(secondary, credentials.snapshot().token)
         assertEquals("Jogador um", credentials.accounts().single().name)
+    }
+
+    @Test fun anInvalidArchiveEntryDoesNotBlockIdentityOrAccountSwitching() = runBlocking {
+        val prefs = RuntimeEnvironment.getApplication()
+            .getSharedPreferences("xcloud_native_auth", Context.MODE_PRIVATE)
+        val store = store()
+        store.write(primary)
+        val saved = JSONObject()
+            .put("missing-client", JSONObject().put("ticket", "example-incomplete"))
+            .put("not-an-object", "example")
+            .put("secondary", JSONObject().put("ticket", secondary.ticket).put("refresh", secondary.refreshToken)
+                .put("expiry", secondary.expiresAtMs).put("client", secondary.clientId))
+        prefs.edit().putString("saved_accounts", saved.toString()).commit()
+        val credentials = AccountCredentials(store)
+        credentials.bindAccount(credentials.snapshot().generation, "one", "1", "Primary")
+        assertEquals(listOf("legacy", "secondary"), credentials.accounts().map { it.id })
+        assertFalse(credentials.activateAccount("missing-client"))
+        assertEquals(primary, credentials.snapshot().token)
+        assertTrue(credentials.activateAccount("secondary"))
+        assertEquals(secondary, AccountCredentials(store()).snapshot().token)
+        assertTrue(credentials.activateAccount("legacy"))
+        assertEquals(primary, credentials.snapshot().token)
+    }
+
+    @Test fun anUnreadableArchivePreservesActiveLoginAndCanBeReplacedOnAddingAnAccount() = runBlocking {
+        val prefs = RuntimeEnvironment.getApplication()
+            .getSharedPreferences("xcloud_native_auth", Context.MODE_PRIVATE)
+        val store = store()
+        store.write(primary)
+        prefs.edit().putString("saved_accounts", "{\"incomplete").commit()
+        val credentials = AccountCredentials(store)
+        assertEquals(listOf("legacy"), credentials.accounts().map { it.id })
+        assertEquals("{\"incomplete", prefs.getString("saved_accounts", null))
+        credentials.bindAccount(credentials.generation(), "hash", "1", "Principal")
+        assertEquals("{\"incomplete", prefs.getString("saved_accounts", null))
+        assertEquals("Principal", credentials.accounts().single().name)
+        credentials.addAccount(credentials.snapshot().generation, secondary)
+        assertTrue(credentials.activateAccount("legacy"))
+        assertEquals(primary, credentials.snapshot().token)
+    }
+    @Test fun lateAuthenticationRejectionCannotClearOrRewriteTheNewActiveAccount() = runBlocking {
+        val first = AccountCredentials(store())
+        val second = AccountCredentials(store())
+        first.replace(null) { primary }
+        val old = first.snapshot()
+        second.addAccount(old.generation, secondary)
+        assertFalse(first.clear(old.generation))
+        assertTrue(runCatching { first.saveRotation(old, primary.copy(refreshToken = "stale")) }
+            .exceptionOrNull() is com.xcloud.tclnative.auth.AuthenticationRequiredException)
+        assertEquals(secondary, first.snapshot().token)
+        assertEquals(2, first.accounts().size)
+        assertFalse(first.snapshot().toString().contains(secondary.ticket))
+        assertFalse(first.snapshot().toString().contains(secondary.refreshToken!!))
     }
 }

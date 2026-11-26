@@ -74,7 +74,8 @@ class XCloudSignalingClient(
     private val queueTimeoutMs: Long = 60 * 60_000,
     private val transferTokenProvider: suspend () -> String = { (session as? XCloudSession)?.transferToken.orEmpty() },
     private val renewCloudAuthorization: (suspend (XCloudSession) -> XCloudSession)? = null,
-    private val renewRemotePlayAuthorization: (suspend (RemotePlaySession) -> RemotePlaySession)? = null
+    private val renewRemotePlayAuthorization: (suspend (RemotePlaySession) -> RemotePlaySession)? = null,
+    private val dnsNetworkKey: (() -> String?)? = null
 ) {
     private data class SessionProfile(
         val baseUri: String, val region: String, val locale: String, val resolution: StreamResolution
@@ -113,7 +114,7 @@ class XCloudSignalingClient(
 
     fun resetStartupDiagnostics() = lastAttempt.startupTrace.reset()
     fun startupDiagnostics() = lastAttempt.startupTrace.diagnostics()
-    fun dnsDiagnostics() = "DNS/${lastAttempt.dns?.activeResolver ?: "SYSTEM"}"
+    fun dnsDiagnostics() = lastAttempt.dns?.diagnostics() ?: "DNS/SYSTEM"
     internal fun sessionTimeLimitSeconds(): Long? = active.get()?.timeLimitSeconds
     fun profileDiagnostics(): String {
         val profile = lastAttempt.profile
@@ -510,7 +511,7 @@ class XCloudSignalingClient(
         val profile = SessionProfile(selected?.baseUri ?: session.baseUri, region, options.normalized().locale, resolution)
         val dns = if (!remotePlay && options.dns == SessionDnsPreference.ADAPTIVE) {
             val host = CloudProtocol.sessionUrl(profile.baseUri, sessionRoot).host
-            CloudSessionDns(host, requestClient.dns)
+            CloudSessionDns(host, requestClient.dns, networkKey = dnsNetworkKey)
         } else null
         val attempt = Attempt(profile, dns)
         var owned: Allocation? = null

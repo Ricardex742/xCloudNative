@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"Inicia sesión en la página oficial con la misma cuenta de Xbox que usas en la aplicación."</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"Abrir página de compra"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"Tiempo restante de la sesión: {0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"Ajuste automático de pantalla: {0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"Detalles del juego"</string>
+    <string name="ui_ed017ee27ce19a31">"Pruebas de rendimiento"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"Estas pruebas se aplican a partir de la próxima sesión. El decodificador alternativo requiere H.264 en modo Adaptativo. La sincronización por fence requiere generación de fotogramas. El mando en reposo usa 60 Hz con el modo táctil desactivado. Sin análisis de audio, una ganancia superior al 100% requiere otra sesión."</string>
+    <string name="ui_cc53733aa7793208">"Decodificador H.264 alternativo"</string>
+    <string name="ui_05b5beea584b768c">"Sincronización por fence"</string>
+    <string name="ui_382512eae2b74f8f">"Frecuencia reducida para el mando en reposo"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"Omitir el análisis de audio con ganancia de hasta el 100%"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"La ganancia superior al 100% se aplicará en la próxima sesión."</string>
 </resources>

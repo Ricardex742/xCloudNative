@@ -6,6 +6,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AuxiliaryAudioInputTest {
+    @Test fun skippingPlaybackSamplesKeepsPeakProtectionForSessionsStartingWithAmplification() {
+        assertTrue(AudioSamplePolicy.keepPeakCallback(false, 100))
+        assertTrue(AudioSamplePolicy.keepPeakCallback(true, 125))
+        assertFalse(AudioSamplePolicy.keepPeakCallback(true, 100))
+        assertFalse(AudioSamplePolicy.keepPeakCallback(true, 50))
+        assertEquals(100, AudioSamplePolicy.liveGain(false, 175))
+        assertEquals(75, AudioSamplePolicy.liveGain(false, 75))
+        assertEquals(175, AudioSamplePolicy.liveGain(true, 175))
+    }
+
     @Test fun microphoneRequiresEveryConsentSessionAndForegroundCondition() {
         for(mask in 0..31) assertEquals(mask==31,MicrophonePolicy.canCapture(mask and 1!=0,mask and 2!=0,mask and 4!=0,mask and 8!=0,mask and 16!=0))
     }

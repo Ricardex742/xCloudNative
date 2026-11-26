@@ -117,7 +117,8 @@ internal class OfficialTouchSession(private var enabled: Boolean, private val pr
         return "TOUCH_LAYOUT/$status"
     }
 
-    fun noticeDiagnostics() = "TOUCH_LAYOUT_EVENTS/SHOW=$shows HIDE=$hides PATCH=$patches MANUAL=$manual"
+    fun noticeDiagnostics() = "TOUCH_LAYOUT_EVENTS/SHOW=$shows HIDE=$hides PATCH=$patches MANUAL=$manual " +
+        "MANIFEST_CRC=${bundle?.manifestCrc ?: "NONE"} REQUESTED=${TouchRouteTrace.label(layoutName)}"
 
     private fun patch(json: String) {
         if (bundle != null) applyPatch(json)

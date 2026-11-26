@@ -57,7 +57,7 @@ class MobileHudResponseUiTest {
             a.setContentView(view);layout(a.window.decorView,1440);layout(view)
             view.configure(TouchMode.VIRTUAL,game,store.read(game.titleId))
             assertFalse(store.read(game.titleId).aimAndFire)
-            val panel=GameHudPanel(a,game,store,{view.applyHud(it)},{},{},{})
+            val panel=GameHudPanel(a,game,store,{view.applyHud(it)},{},{},{},writeHud=::writeHudForTest)
             panel.show();choose("Mirar ao atirar:");choose("Ativado — mirar e atirar")
             assertTrue(GameHudStore(a).read(game.titleId).aimAndFire)
             assertTrue(view.hudDiagnostics().contains("mirar ao atirar ativado"))
@@ -86,13 +86,13 @@ class MobileHudResponseUiTest {
             val position=HudPlacement(.74f,.53f,1.1f,action=HudAction(HudBinding.RT))
             store.save(game.titleId,HudSettings(footballScheme=FootballScheme.ALTERNATE,placements=mapOf("through" to position)))
             view.configure(TouchMode.VIRTUAL,game,store.read(game.titleId))
-            GameHudPanel(a,game,store,{view.applyHud(it)},{},{},{}).show()
+            GameHudPanel(a,game,store,{view.applyHud(it)},{},{},{},writeHud=::writeHudForTest).show()
             choose("Esquema de futebol:");choose("Alternativo")
             val restored=GameHudStore(a).read(game.titleId)
             assertEquals(FootballScheme.ALTERNATE,restored.footballScheme)
             assertEquals(position.x,restored.placements.getValue("through").x,0f)
             (ShadowDialog.getLatestDialog() as ConsoleDialog).dismiss()
-            GameHudPanel(a,game,store,{view.applyHud(it)},{},{},{}).show();choose("Esquema de futebol:")
+            GameHudPanel(a,game,store,{view.applyHud(it)},{},{},{},writeHud=::writeHudForTest).show();choose("Esquema de futebol:")
             val scheme=ShadowDialog.getLatestDialog() as ConsoleDialog
             repeat(2) { shadowOf(Looper.getMainLooper()).idle();scheme.panel.measure(View.MeasureSpec.makeMeasureSpec(1050,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(648,View.MeasureSpec.AT_MOST));scheme.panel.layout(0,0,scheme.panel.measuredWidth,scheme.panel.measuredHeight) }
             assertTrue(all(scheme.body).filterIsInstance<TextView>().single { it.isClickable && it.text.contains("Alternativo") }.hasFocus())
@@ -108,7 +108,7 @@ class MobileHudResponseUiTest {
             assertTrue(view.hudDiagnostics().contains("Enfiada [through] → Y"))
             assertFalse(view.hudDiagnostics().contains("corrida por arrasto"))
             assertFalse(view.hudDiagnostics().contains("mirar ao atirar"))
-            GameHudPanel(a,game,store,{view.applyHud(it)},{},{},{}).show();choose("Restaurar HUD deste jogo")
+            GameHudPanel(a,game,store,{view.applyHud(it)},{},{},{},writeHud=::writeHudForTest).show();choose("Restaurar HUD deste jogo")
             assertEquals(FootballScheme.ALTERNATE,GameHudStore(a).read(game.titleId).footballScheme)
         } finally { view.releaseInputs();c.pause().stop().destroy() }
     }

@@ -58,6 +58,46 @@ class PlaybackTimelineTest {
         assertNull(snapshot.transports.last().codec)
     }
 
+    @Test fun reportsAttributeInjectedFailuresAndCleanupToTheirTransport() {
+        var now = 1_000L
+        val timeline = PlaybackTimeline(2, PlaybackOrigin.CATALOG) { now }
+        val tracker = SessionReportTracker("game", "device", "720p", 60).also { it.timeline = timeline }
+        tracker.begin(0, "network")
+        timeline.mark(0, PlaybackStage.PLAY_REQUEST)
+        timeline.mark(0, PlaybackStage.PROVISIONED, 1_100)
+        timeline.mark(0, PlaybackStage.RENDERER_READY, 1_020)
+        now = 1_150
+        tracker.recordInterruption(java.io.IOException("ICE: FAILED"), epoch = 0)
+        tracker.recordInterruption(java.io.IOException("private message"), epoch = 0)
+        now = 1_200
+        timeline.beginReconnect(1)
+        tracker.recordFailure(java.io.IOException("protected stale input"), epoch = 0)
+        val retired = PlaybackTimeline.Cleanup(PlaybackTimeline.CleanupStage.RTC, 17, true)
+        timeline.recordCleanup(0, listOf(retired))
+        timeline.mark(1, PlaybackStage.ANSWER_APPLIED)
+        now = 1_300
+        tracker.recordFailure(java.io.IOException("VIDEO_CODEC: private error"), epoch = 1)
+        val frozen = checkNotNull(tracker.finish(300, SessionEnd.FAILURE))
+        val final = PlaybackTimeline.Cleanup(PlaybackTimeline.CleanupStage.ALLOCATION, 4, false)
+        timeline.recordCleanup(null, listOf(final))
+
+        val report = checkNotNull(tracker.takeReport())
+        assertEquals(frozen.metrics, report.metrics)
+        assertEquals("VIDEO_CODEC/CODEC", report.failure?.code)
+        val snapshot = checkNotNull(report.timeline)
+        val failedIce = snapshot.transports[0].incidents.single()
+        assertEquals(150L, failedIce.atMs)
+        assertEquals(PlaybackStage.PROVISIONED, failedIce.lastStage)
+        assertEquals("TRANSPORT/ICE_FAILED", failedIce.failure.code)
+        assertEquals(listOf(retired), snapshot.transports[0].cleanup)
+        assertEquals(PlaybackStage.ANSWER_APPLIED, snapshot.transports[1].incidents.single().lastStage)
+        assertEquals(listOf(final), snapshot.cleanup)
+        assertEquals(snapshot, PlaybackTimeline.read(snapshot.json()))
+        assertTrue(snapshot.text().contains("RTC=17ms/FAILED"))
+        assertFalse(report.exportJson().toString().contains("private"))
+        assertNull(tracker.takeReport())
+    }
+
     @Test fun reportUsesOnlyValidRecentForegroundSamplesAndExportsNoFreeText() {
         val tracker = SessionReportTracker("personal title", "private device", "custom profile", 60)
         tracker.timeline = PlaybackTimeline(1, PlaybackOrigin.CATALOG) { 0 }

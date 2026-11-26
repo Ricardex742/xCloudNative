@@ -120,6 +120,10 @@ class TouchUiTest {
             view.installOfficialControls(OfficialTouchLayout("map", emptyList()))
             pointer(view, MotionEvent.ACTION_UP, 640f, 360f)
             assertEquals(listOf(1, 2), events.map { it.type })
+            val routes = view.officialRouteDiagnostics()
+            assertTrue(routes.contains("HIT,0,adventure,sword,A"))
+            assertTrue(routes.contains("UP,0"))
+            assertTrue(routes.contains("NATIVE,0"))
         } finally { activity.pause().stop().destroy() }
     }
     @Test fun phoneWithoutPressureSensorStillSendsAnActiveNativeFinger() {

@@ -11,6 +11,10 @@ on:
         description: Tag da versão, por exemplo v0.32.0
         required: true
         type: string
+      validated_apk_sha256:
+        description: SHA-256 retornado pela comparação física aprovada
+        required: true
+        type: string
       notes:
         description: Descreva somente as novidades desta versão
         required: true
@@ -36,6 +40,7 @@ jobs:
       BUILD_RUN: ${{ inputs.run_id }}
       RELEASE_TAG: ${{ inputs.tag }}
       RELEASE_NOTES: ${{ inputs.notes }}
+      VALIDATED_APK_SHA256: ${{ inputs.validated_apk_sha256 }}
     steps:
       - name: Verificar origem e resultado da compilação
         shell: bash
@@ -43,6 +48,7 @@ jobs:
           set -euo pipefail
           [[ "$BUILD_RUN" =~ ^[0-9]+$ ]]
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$VALIDATED_APK_SHA256" =~ ^[0-9a-f]{64}$ ]]
           gh api "repos/$GH_REPO/actions/runs/$BUILD_RUN" > "$RUNNER_TEMP/build-run.json"
           python3 - <<'PY'
           import json, os
@@ -56,25 +62,26 @@ jobs:
               output.write('BUILD_SHA=' + run['head_sha'] + '\n')
           PY
           gh run download "$BUILD_RUN" --repo "$GH_REPO" --name TCL-xCloud-App-Release-Android10 --dir "$RUNNER_TEMP/apk"
+          gh run download "$BUILD_RUN" --repo "$GH_REPO" --name release-validation --dir "$RUNNER_TEMP/evidence"
       - uses: actions/checkout@v5
         with:
           ref: ${{ env.BUILD_SHA }}
+          persist-credentials: false
       - name: Verificar APK e assinatura fixa
         shell: bash
         run: |
           set -euo pipefail
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;34.0.0'
           python3 scripts/verify_apk_signing.py "$RUNNER_TEMP/apk/app-release.apk" --require-nondebuggable
+          python3 scripts/release_validation.py publish --apk "$RUNNER_TEMP/apk/app-release.apk" \
+            --receipt "$RUNNER_TEMP/evidence/release-validation.json" --revision "$BUILD_SHA" --run-id "$BUILD_RUN" \
+            --tag "$RELEASE_TAG" --validated-sha256 "$VALIDATED_APK_SHA256"
           python3 - <<'PY'
-          import hashlib, json, os, shutil
+          import os, shutil
           from pathlib import Path
-          source = Path(os.environ['RUNNER_TEMP']) / 'apk'
-          apk = source / 'app-release.apk'
-          metadata = json.loads((source / 'app-release.apk.metadata.json').read_text())
+          apk = Path(os.environ['RUNNER_TEMP']) / 'apk/app-release.apk'
           version = os.environ['RELEASE_TAG'][1:]
-          assert metadata['versionName'].split('-')[0] == version
-          digest = hashlib.sha256(apk.read_bytes()).hexdigest()
-          assert digest == (source / 'app-release.apk.sha256').read_text().split()[0]
+          digest = os.environ['VALIDATED_APK_SHA256']
           assets = Path(os.environ['RUNNER_TEMP']) / 'release-assets'
           assets.mkdir()
           name = f'xCLOUD-{version}.apk'
@@ -91,6 +98,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          tag_ref=$(gh api "repos/$GH_REPO/git/matching-refs/tags/$RELEASE_TAG" |
+            jq -r --arg ref "refs/tags/$RELEASE_TAG" '.[] | select(.ref == $ref) | [.object.type, .object.sha] | @tsv')
+          if [[ -n "$tag_ref" ]]; then
+            read -r kind sha <<< "$tag_ref"
+            for hop in {1..8}; do
+              [[ "$kind" == tag ]] || break
+              tag_object=$(gh api "repos/$GH_REPO/git/tags/$sha" --jq '[.object.type, .object.sha] | @tsv')
+              read -r kind sha <<< "$tag_object"
+            done
+            [[ "$kind" == commit && "$sha" == "$BUILD_SHA" ]]
+          fi
           if gh release view "$RELEASE_TAG" --json targetCommitish --jq '.targetCommitish' > "$RUNNER_TEMP/release-target"; then
             test "$(cat "$RUNNER_TEMP/release-target")" = "$BUILD_SHA"
           else

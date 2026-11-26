@@ -161,13 +161,21 @@ class SessionReportTracker(private val game: String,private val device: String,p
     private var failure: SessionFailure?=null
     private var interruption: SessionFailure?=null
     private var interruptionDetails: String?=null
-    @Synchronized fun recordInterruption(error: Throwable,details: String?=null) {
-        if(!frozen && interruption==null && error !is kotlinx.coroutines.CancellationException) {
-            interruption=SessionFailure.from(error);interruptionDetails=details?.take(MAX_INTERRUPTION_DETAILS)
+    @Synchronized fun recordInterruption(error: Throwable, details: String? = null, epoch: Int? = null) {
+        if (frozen || error is kotlinx.coroutines.CancellationException) return
+        val issue = SessionFailure.from(error)
+        if (timeline?.recordIssue(epoch, PlaybackTimeline.IncidentKind.INTERRUPTION, issue) == false) return
+        if (interruption == null) {
+            interruption = issue
+            interruptionDetails = details?.take(MAX_INTERRUPTION_DETAILS)
         }
     }
-    @Synchronized fun recordFailure(error: Throwable) {
-        if(!frozen && failure==null && error !is kotlinx.coroutines.CancellationException) failure=SessionFailure.from(error)
+
+    @Synchronized fun recordFailure(error: Throwable, epoch: Int? = null) {
+        if (frozen || error is kotlinx.coroutines.CancellationException) return
+        val issue = SessionFailure.from(error)
+        if (timeline?.recordIssue(epoch, PlaybackTimeline.IncidentKind.FAILURE, issue) == false) return
+        if (failure == null) failure = issue
     }
     private class Aggregate(retainSamples: Boolean) {
         private val recent = if (retainSamples) DoubleArray(SamplePercentiles.WINDOW) else null
@@ -284,6 +292,12 @@ class SessionReportTracker(private val game: String,private val device: String,p
                 .takeIf { receivedFrames != null || decodedFrames != null || eglSubmissions != null })
         return report
     }
-    @Synchronized fun takeReport(): SessionReport? { val ready=report ?: return null; if(delivered) return null; delivered=true; return ready }
+    @Synchronized fun takeReport(): SessionReport? {
+        val ready = report ?: return null
+        if (delivered) return null
+        delivered = true
+        val latest = timeline?.snapshot() ?: return ready
+        return if (latest == ready.timeline) ready else ready.copy(timeline = latest)
+    }
     companion object { const val MAX_INTERRUPTION_DETAILS=1536 }
 }

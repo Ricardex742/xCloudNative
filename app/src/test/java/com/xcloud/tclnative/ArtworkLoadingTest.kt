@@ -11,6 +11,7 @@ import com.xcloud.tclnative.ui.dashboard.ArtworkBackend
 import com.xcloud.tclnative.ui.dashboard.ArtworkPolicy
 import com.xcloud.tclnative.ui.dashboard.ArtworkRequest
 import com.xcloud.tclnative.ui.dashboard.ArtworkImageDecoder
+import com.xcloud.tclnative.ui.dashboard.ArtworkSize
 import kotlinx.coroutines.*
 import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
@@ -36,6 +37,24 @@ import java.util.concurrent.CountDownLatch
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @LooperMode(LooperMode.Mode.PAUSED)
 class ArtworkLoadingTest {
+    @Test fun constrainedDecodeTargetsFinalDimensionsAndRetainsTransparency() {
+        val file = java.io.File.createTempFile("artwork", ".png")
+        val source = Bitmap.createBitmap(1024, 512, Bitmap.Config.ARGB_8888)
+        try {
+            source.eraseColor(Color.argb(108, 32, 96, 224))
+            file.outputStream().use { assertTrue(source.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+            val decoded = ArtworkImageDecoder.decode(file, ArtworkSize(300, 300), constrainedMemory = true)!!
+            try {
+                assertEquals(300, decoded.width)
+                assertEquals(150, decoded.height)
+                assertEquals(108, Color.alpha(decoded.getPixel(150, 75)))
+            } finally { decoded.recycle() }
+        } finally {
+            source.recycle()
+            file.delete()
+        }
+    }
+
     @Test fun gameplayTrimsTheDecodedCacheOnlyOnConstrainedDevices() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         val request = ArtworkRequest.create("https://art.example/cover.png", 32, 32)

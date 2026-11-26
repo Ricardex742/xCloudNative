@@ -52,6 +52,7 @@ internal class PosterLoader(context: Context, private val scope: CoroutineScope,
             if(previous.queued || previous.job?.isActive==true) { if(notifyPlaceholder) onReady(false); return }
         }
         bindings.remove(view)?.job?.cancel()
+        deliveries?.remove(view)
         val binding=Binding(request,onReady)
         bindings[view]=binding
         backend.cache.get(request)?.let {
@@ -100,7 +101,9 @@ internal class ArtworkBackend(context: Context,
                               private val client: OkHttpClient = OkHttpClient.Builder()
                                   .cache(Cache(File(context.cacheDir,"game_art"),64L*1024*1024))
                                   .callTimeout(12,TimeUnit.SECONDS).build(),
-                              private val decode: (File,ArtworkSize) -> Bitmap?=ArtworkImageDecoder::decode) : ComponentCallbacks2 {
+                              private val decode: (File,ArtworkSize) -> Bitmap? = { file, size ->
+                                  ArtworkImageDecoder.decode(file, size, policy.constrainedMemory)
+                              }) : ComponentCallbacks2 {
     private val application=context.applicationContext
     val cache=object : LruCache<ArtworkRequest,Bitmap>(policy.memoryCacheBytes) {
         override fun sizeOf(key: ArtworkRequest,value: Bitmap)=value.allocationByteCount

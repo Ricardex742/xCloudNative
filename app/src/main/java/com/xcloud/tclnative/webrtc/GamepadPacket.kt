@@ -70,7 +70,7 @@ object GamepadPacket {
         }
         return out.array()
     }
-    private fun virtualPhysicality(state: GamepadState): Int {
+    internal fun virtualPhysicality(state: GamepadState): Int {
         val buttons = state.buttons
         var mask = (buttons and 0x0f00) ushr 8
         mask = mask or ((buttons and 0x000c) shl 2) or ((buttons and 0xc000) ushr 8) or

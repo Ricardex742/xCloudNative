@@ -7,6 +7,11 @@ import com.xcloud.tclnative.settings.ImageTreatmentSettings
 data class TreatmentBudget(val image: ImageTreatmentSettings,val output: FsrOutput,val scaling: Boolean,
                            val maxOutputHeight: Int=2160) {
     data class Cut(val effective: TreatmentBudget,val stage: String)
+    fun underMemoryPressure() = copy(
+        image = image.copy(neural = 0, temporal = 0),
+        maxOutputHeight = if (scaling) minOf(maxOutputHeight, 1080) else maxOutputHeight
+    )
+
     fun reduce(outputHeight: Int): Cut? = when {
         image.temporal>0 -> Cut(copy(image=image.copy(temporal=0)),"temporal")
         scaling && outputHeight>1440 && maxOutputHeight>1440 -> Cut(copy(output=FsrOutput.QHD_1440,maxOutputHeight=1440),"output 1440p")

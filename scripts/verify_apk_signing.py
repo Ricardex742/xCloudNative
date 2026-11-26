@@ -30,10 +30,33 @@ def package_metadata(output, require_nondebuggable=False):
     return {"package": match[1], "versionCode": int(match[2]), "versionName": match[3], "debuggable": debuggable}
 
 
+def runtime_metadata(output, expected_abi=None):
+    lines = set(output.splitlines())
+    activity = "com.xcloud.tclnative.ui.MainActivity"
+    fields = ("sdkVersion:'24'", "targetSdkVersion:'34'")
+    for field in fields:
+        if field not in lines:
+            raise SigningError(f"Versão de Android ausente ou alterada no APK: {field}")
+    for prefix in ("launchable-activity", "leanback-launchable-activity"):
+        if not any(line.startswith(f"{prefix}: name='{activity}'") for line in lines):
+            raise SigningError(f"Launcher ausente no APK: {prefix}")
+    for feature in ("android.hardware.wifi", "android.hardware.touchscreen", "android.software.leanback"):
+        if not any(line.strip() == f"uses-feature-not-required: name='{feature}'" for line in lines):
+            raise SigningError(f"O APK deve manter este recurso opcional: {feature}")
+    abis = set(re.findall(r"'([^']+)'", next((line for line in lines if line.startswith("native-code:")), "")))
+    expected_abis = {expected_abi} if expected_abi else {"arm64-v8a", "armeabi-v7a", "x86", "x86_64"}
+    if not expected_abis <= abis:
+        raise SigningError("ABIs ausentes no APK: " + ", ".join(sorted(expected_abis - abis)))
+    if expected_abi and abis != expected_abis:
+        raise SigningError("O APK experimental deve incluir somente a ABI selecionada.")
+    return {"minSdk": 24, "targetSdk": 34, "abis": sorted(abis), "launcher": activity, "leanbackLauncher": activity}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("apk", type=Path)
     parser.add_argument("--require-nondebuggable", action="store_true")
+    parser.add_argument("--expected-abi", choices=("arm64-v8a", "armeabi-v7a", "x86", "x86_64"))
     args = parser.parse_args()
     sdk = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
     if not sdk:
@@ -48,9 +71,14 @@ def main():
         badging = subprocess.run([str(build_tools / "aapt"), "dump", "badging", str(args.apk)],
                                  capture_output=True, text=True, check=True)
         metadata = package_metadata(badging.stdout, require_nondebuggable=args.require_nondebuggable)
+        metadata.update(runtime_metadata(badging.stdout, args.expected_abi))
     except (SigningError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from None
-    metadata.update(signingCertificateSHA256=fingerprint, sha256=hashlib.sha256(args.apk.read_bytes()).hexdigest())
+    digest = hashlib.sha256()
+    with args.apk.open("rb") as apk:
+        for block in iter(lambda: apk.read(1024 * 1024), b""):
+            digest.update(block)
+    metadata.update(signingCertificateSHA256=fingerprint, sha256=digest.hexdigest())
     args.apk.with_suffix(args.apk.suffix + ".metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
     print(json.dumps(metadata, ensure_ascii=False))
 

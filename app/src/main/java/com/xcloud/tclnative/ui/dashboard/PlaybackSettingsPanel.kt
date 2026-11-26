@@ -103,6 +103,10 @@ class PlaybackSettingsPanel(
                     addMenuItem(UiText.text("Resolução: {0}",UiText.nested(value.forSession().resolution.label))) { chooseResolution() }
                     addMenuItem(UiText.text("Modo de vídeo: {0}",UiText.nested(value.videoMode.label))) { chooseVideo() }
                     addMenuItem(UiText.text("Proporção: {0}",UiText.nested(value.aspect.label))) { chooseAspect { showVideo() } }
+                    addMenuItem(UiText.text("Ajuste automático da tela: {0}", UiText.nested(
+                        if (value.matchDisplayMode) UiText.text("Ativado") else UiText.text("Desativado")))) {
+                        save(value, value.copy(matchDisplayMode = !value.matchDisplayMode)) { showVideo() }
+                    }
                     if(value.videoMode==VideoMode.COMPATIBILITY) {
                         body.addView(text(UiText.text("Compatibilidade está ativa e desativa os métodos e filtros experimentais. Mude o modo em Vídeo e transmissão para usá-los."),20,color=DashboardTheme.muted))
                     } else {
@@ -123,12 +127,35 @@ class PlaybackSettingsPanel(
                     addMenuItem(UiText.text("IPv4 / IPv6: {0}",UiText.nested(value.ipPreference.label))) { chooseNetwork() }
                     addMenuItem(UiText.text("Bypass de região: {0}",UiText.nested(RegionBypassStore(context).read().label))) { RegionBypassPanel.show(context) { showVideo() } }
                     addMenuItem(UiText.text("Avançado — métodos e filtros")) { showAdvancedImage { showVideo() } }
+                    addMenuItem(UiText.text("Testes de desempenho")) { showPerformanceTrials() }
                 }
             }
             addAction(UiText.text("Voltar")) { this@PlaybackSettingsPanel.show() }
             setOnCancelListener { this@PlaybackSettingsPanel.show() };show()
         }
     }
+    private fun showPerformanceTrials(): ConsoleDialog {
+        val value = store.read()
+        return ConsoleDialog(context, UiText.text("Testes de desempenho")).apply {
+            body.addView(text(UiText.text("Esses testes valem na próxima partida. O decoder alternativo exige H.264 no modo Adaptativo. A sincronização por fence exige geração de quadros. O controle neutro usa 60 Hz no modo sem toque. Sem análise de áudio, ganho acima de 100% exige iniciar outra partida."), 20, color = DashboardTheme.muted))
+            fun toggle(label: String, enabled: Boolean, next: PlaybackSettings) {
+                val state = if (enabled) UiText.text("Ativado") else UiText.text("Desativado")
+                addMenuItem("$label • $state") { save(value, next) { showPerformanceTrials() } }
+            }
+            toggle(UiText.text("Decoder H.264 alternativo"), value.tryAlternateDecoder,
+                value.copy(tryAlternateDecoder = !value.tryAlternateDecoder))
+            toggle(UiText.text("Sincronização por fence"), value.tryMotionFence,
+                value.copy(tryMotionFence = !value.tryMotionFence))
+            toggle(UiText.text("Cadência reduzida no controle neutro"), value.tryIdleGamepadCadence,
+                value.copy(tryIdleGamepadCadence = !value.tryIdleGamepadCadence))
+            toggle(UiText.text("Pular análise de áudio com ganho até 100%"), value.trySkipAudioSamples,
+                value.copy(trySkipAudioSamples = !value.trySkipAudioSamples))
+            addAction(UiText.text("Voltar")) { showVideo() }
+            setOnCancelListener { showVideo() }
+            show()
+        }
+    }
+
     fun showAppearance(onBack: (() -> Unit)?=null): ConsoleDialog {
         if(onBack!=null) appearanceBack=onBack
         val appearance=AppearanceSettingsStore(context)

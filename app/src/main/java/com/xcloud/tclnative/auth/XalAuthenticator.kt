@@ -141,10 +141,15 @@ class XalAuthenticator(
 
     fun saveRpsTicket(ticket: String) = saveTokens(ticket)
     fun getSavedRpsTicket(): String? = credentials.snapshot().token?.ticket
-    fun clearSession() {
-        credentials.clear()
+    fun clearSession() { clearSession(expectedGeneration = null) }
+
+    internal fun clearSession(expectedGeneration: Long?): Boolean {
+        if (!credentials.clear(expectedGeneration)) return false
         profileGrant = null
+        return true
     }
+
+    internal fun credentialGeneration() = credentials.generation()
     internal fun savedAccounts() = credentials.accounts()
     internal suspend fun activateAccount(id: String): Boolean = credentials.activateAccount(id).also {
         if (it) profileGrant = null

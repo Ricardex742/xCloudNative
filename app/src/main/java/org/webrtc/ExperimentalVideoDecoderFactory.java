@@ -14,10 +14,15 @@ public final class ExperimentalVideoDecoderFactory implements VideoDecoderFactor
   private final Consumer<String> status;
   public ExperimentalVideoDecoderFactory(EglBase.Context context,boolean lowLatency,DecoderRecoveryController recovery,
       Consumer<String> status,String mode,int width,int height) {
+    this(context, lowLatency, recovery, status, mode, width, height, null);
+  }
+
+  public ExperimentalVideoDecoderFactory(EglBase.Context context, boolean lowLatency,
+      DecoderRecoveryController recovery, Consumer<String> status, String mode, int width, int height, AvcDecoderTrial trial) {
     this.recovery=recovery;this.status=status;hardware=new HardwareVideoDecoderFactory(context);
     experimental=mode.equals("H264_HIGH_HW") || mode.equals("H265") || mode.equals("VP9") || mode.equals("AV1");
     base=new H264VideoDecoderFactory(context,lowLatency,recovery,status,mode.equals("H264_BASELINE"),
-        mode.equals("H264_MAIN") || experimental,width,height);
+        mode.equals("H264_MAIN") || experimental,width,height,trial);
     extras=new ArrayList<>();
     if(mode.equals("H264_HIGH_HW")) {
       HardwareCodecSupport.Probe high=HardwareCodecSupport.high(context,width,height,60,false);
@@ -63,6 +68,6 @@ public final class ExperimentalVideoDecoderFactory implements VideoDecoderFactor
     }
     if(!extra(codec) || hardware==null) return null;
     status.accept("Codec: "+codec.name+" hardware; realtime codec options not requested");
-    return new RecoverableVideoDecoder(() -> hardware.createDecoder(codec),() -> hardware.createDecoder(codec),recovery);
+    return new RecoverableVideoDecoder(() -> hardware.createDecoder(codec), null, recovery);
   }
 }

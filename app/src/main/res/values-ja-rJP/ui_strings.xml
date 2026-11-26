@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"アプリで使用中の Xbox アカウントで公式ページにサインインしてください。"</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"購入ページを開く"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"セッションの残り時間：{0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"画面の自動調整: {0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"ゲームの詳細"</string>
+    <string name="ui_ed017ee27ce19a31">"パフォーマンスの試験設定"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"これらの試験設定は次のセッションから適用されます。代替デコーダーにはアダプティブモードの H.264 が必要です。フェンス同期にはフレーム生成が必要です。タッチ無効時、入力のないコントローラーは 60 Hz で送信します。音声解析を省略した場合、100% を超えるゲインには新しいセッションが必要です。"</string>
+    <string name="ui_cc53733aa7793208">"代替 H.264 デコーダー"</string>
+    <string name="ui_05b5beea584b768c">"フェンス同期"</string>
+    <string name="ui_382512eae2b74f8f">"入力のないコントローラーの送信頻度を低減"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"ゲインが 100% 以下の場合に音声解析を省略"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"100% を超えるゲインは次のセッションで適用されます。"</string>
 </resources>

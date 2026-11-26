@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"Войдите на официальной странице с тем же аккаунтом Xbox, который используете в приложении."</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"Открыть страницу покупки"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"Оставшееся время сеанса: {0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"Автоматическая настройка экрана: {0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"Сведения об игре"</string>
+    <string name="ui_ed017ee27ce19a31">"Тесты производительности"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"Настройки действуют со следующего сеанса. Альтернативный декодер требует H.264 в адаптивном режиме. Синхронизация с fence требует генерации кадров. При выключенном сенсорном управлении геймпад без ввода отправляет данные с частотой 60 Гц. Без анализа звука для усиления выше 100% нужен новый сеанс."</string>
+    <string name="ui_cc53733aa7793208">"Альтернативный декодер H.264"</string>
+    <string name="ui_05b5beea584b768c">"Синхронизация с fence"</string>
+    <string name="ui_382512eae2b74f8f">"Сниженная частота отправки при отсутствии ввода"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"Пропустить анализ звука при усилении до 100%"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"Усиление выше 100% будет применено со следующего сеанса."</string>
 </resources>

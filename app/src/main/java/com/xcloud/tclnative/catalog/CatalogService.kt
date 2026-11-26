@@ -40,6 +40,20 @@ class CatalogService(
         var completed = 0
         var failed = false
         val chunks = games.filter { it.productId != null }.chunked(50)
+        suspend fun publishBatch(enriched: List<GameTitle>, finished: Boolean) = mutex.withLock {
+            val updates = enriched.associateBy { it.titleId }
+            // Keep metadata from other successful requests when a result only fills some fields.
+            val updated = current.map { old -> updates[old.titleId]?.withMetadataFallback(old) ?: old }
+            if (!finished && updated == current) return@withLock
+            current = updated
+            if (finished) {
+                completed++
+                failed = failed || enriched.any { it.posterUrl == null && it.tileUrl == null }
+            }
+            onBatch(current)
+            onProgress(Progress(current.count { it.posterUrl != null || it.tileUrl != null }, games.size,
+                finished && completed == chunks.size, failed))
+        }
         coroutineScope {
             chunks.map { batch -> async {
                 slots.withPermit {
@@ -52,6 +66,9 @@ class CatalogService(
                     catch (_: Exception) { /* Retry missing art using the older Game Pass provider. */ }
                     val missing = enriched.filter { it.posterUrl == null && it.tileUrl == null }
                     if (missing.isNotEmpty()) try {
+                        // Apply the completed response before the gate can suspend this fallback.
+                        publishBatch(enriched, finished = false)
+                        beforeRequest()
                         val url = "$baseUrl/v3/products".toHttpUrl().newBuilder().addQueryParameter("market", "BR")
                             .addQueryParameter("language", "pt-BR").addQueryParameter("hydration", "RemoteHighSapphire0").build()
                         val body = JSONObject().put("Products", JSONArray(missing.mapNotNull { it.productId })).toString()
@@ -62,16 +79,7 @@ class CatalogService(
                         enriched = merge(enriched, data)
                     } catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { }
-                    mutex.withLock {
-                        val updates = enriched.associateBy { it.titleId }
-                        // Do not overwrite valid cached art with an incomplete/missing response.
-                        current = current.map { old -> updates[old.titleId]?.withMetadataFallback(old) ?: old }
-                        failed = failed || enriched.any { it.posterUrl == null && it.tileUrl == null }
-                        completed++
-                        onBatch(current)
-                        onProgress(Progress(current.count { it.posterUrl != null || it.tileUrl != null }, games.size,
-                            completed == chunks.size, failed))
-                    }
+                    publishBatch(enriched, finished = true)
                 }
             } }.awaitAll()
         }
@@ -100,7 +108,10 @@ class CatalogService(
                 }
             } }.awaitAll()
         }
-        cache?.save(current)
+        if (cache != null) {
+            beforeRequest()
+            cache.save(current)
+        }
         onProgress(Progress(current.count { it.posterUrl != null || it.tileUrl != null }, games.size, true,
             failed || current.any { it.posterUrl == null && it.tileUrl == null }))
     }

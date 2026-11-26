@@ -105,9 +105,12 @@ object UiText {
 interface LocaleAwareView { fun refreshLanguage() }
 
 /** Keeps the message that produced a label; changing languages never translates arbitrary user text. */
+// Preserve native TextView styling under the app's Android Material theme.
+@android.annotation.SuppressLint("AppCompatCustomView")
 open class LocalizedTextView(context: Context): TextView(context) {
     private var translation: UiText.Message?=null
     private var refreshing=false
+    override fun performClick() = super.performClick()
     override fun onTouchEvent(event: MotionEvent) = dispatchPhoneTouch(event) { super.onTouchEvent(event) }
     override fun setText(value: CharSequence?,type: BufferType?) {
         if(!refreshing) translation=UiText.message(value) ?: translation?.takeIf { value?.toString()==text?.toString() }

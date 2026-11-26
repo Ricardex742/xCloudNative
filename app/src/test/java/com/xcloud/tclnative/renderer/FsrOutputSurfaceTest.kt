@@ -5,6 +5,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.View
 import com.xcloud.tclnative.settings.*
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import com.xcloud.tclnative.webrtc.StreamMetrics
 import org.robolectric.shadows.ShadowSystemClock
@@ -32,12 +33,17 @@ class FsrOutputSurfaceTest {
         assertFalse(submitted)
     }
 
-    @Test fun endingANativeSessionRetiresItsSurfaceBeforeChoosingAnotherUpscaler() {
+    @Test fun endingANativeSessionRetiresItsSurfaceBeforeChoosingAnotherUpscaler() = runBlocking {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val owner=AiPqSurfaceRenderer(controller.get());controller.get().setContentView(owner)
+        val uiThread = Thread.currentThread()
         val surface=object: OutputSurfaceViewRenderer(controller.get()) {
             var releases=0
-            override fun release() { releases++ }
+            override fun release() {
+                assertNotSame(uiThread, Thread.currentThread())
+                assertNull(parent)
+                releases++
+            }
         }
         owner.addView(surface)
         ReflectionHelpers.setField(owner,"renderer",surface)
@@ -51,6 +57,7 @@ class FsrOutputSurfaceTest {
             assertNull(ReflectionHelpers.getField<OutputSurfaceViewRenderer?>(owner,"renderer"))
             owner.clearSession();assertEquals(1,surface.releases)
         } finally { owner.release();controller.pause().stop().destroy() }
+        Unit
     }
     @Test fun actualWebRtcLayoutAndFrameCallbacksRetain4kBufferInside1080UiAndRestoreNativeScaling() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
@@ -139,7 +146,8 @@ class FsrOutputSurfaceTest {
         assertTrue(owner.diagnostics().contains("buffer solicitado: escala padrão"))
         assertEquals(FsrOutput.UHD_4K,ReflectionHelpers.getField<FsrOutput>(owner,"fsrOutput"))
         assertEquals(dimensions,owner.displayDimensions());assertEquals(.25f to .5f,owner.touchCoordinates(480f,540f))
-        owner.release();controller.pause().stop().destroy()
+        runBlocking { owner.release() }
+        controller.pause().stop().destroy()
     }
     @Test fun nativeBypassPausesTheGuardAndFilteringResumesWithANewWarmup() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
@@ -177,7 +185,8 @@ class FsrOutputSurfaceTest {
             ShadowSystemClock.advanceBy(Duration.ofSeconds(1))
         }
         assertTrue(owner.diagnostics().contains("scaling off (13.0 draws/s)"))
-        owner.release();controller.pause().stop().destroy()
+        runBlocking { owner.release() }
+        controller.pause().stop().destroy()
     }
     @Test fun changingFsrOutputKeepsTheActualVideoViewTouchSpaceAndClientMetadataInUiPixels() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()

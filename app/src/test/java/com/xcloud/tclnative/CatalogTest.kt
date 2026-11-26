@@ -13,6 +13,32 @@ import org.junit.Test
 import java.net.Proxy
 
 class CatalogTest {
+    @Test fun repeatedLookupsParseOnceAndASavePublishesTheNewRevision() {
+        val directory = kotlin.io.path.createTempDirectory("catalog-cache").toFile()
+        try {
+            val file = java.io.File(directory, "art.json")
+            val game = GameTitle("abc", "Live title", "store", "https://example.com/old.png", gamePass = true)
+            CatalogCache(file).save(listOf(game))
+            var reads = 0
+            val cache = CatalogCache(file) { reads++; it.readText() }
+            repeat(30) { assertEquals(game.posterUrl, cache.artwork(game.titleId)?.posterUrl) }
+            assertEquals(1, reads)
+            assertFalse(cache.artwork(game.titleId)!!.gamePass)
+            assertEquals(game, cache.restore(listOf(game)).single())
+            val updated = game.copy(posterUrl = "https://example.com/new.png")
+            cache.save(listOf(updated))
+            assertEquals(updated.posterUrl, cache.artwork(game.titleId)?.posterUrl)
+            assertEquals(1, reads)
+            assertEquals(updated.posterUrl, CatalogCache(file).artwork(game.titleId)?.posterUrl)
+            assertEquals(listOf(file.name), directory.list()!!.toList())
+            file.writeText("broken cache")
+            repeat(4) { assertEquals(listOf(game), cache.restore(listOf(game))) }
+            assertEquals(2, reads)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+
     @Test fun detailsUseTheBrazilianRatingAndOnlyCatalogScreenshots() {
         val details = StoreMetadata.gameDetails(JSONObject("""
             {"LocalizedProperties":[{"Language":"pt-BR","PublisherName":"Estúdio","ProductDescription":"Aventura.",

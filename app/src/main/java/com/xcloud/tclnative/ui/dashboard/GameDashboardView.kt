@@ -214,6 +214,7 @@ class GameDashboardView(
     private var failedHeaderArt: Pair<String,String>?=null
     private var coverVerticalPadding = 8f
     private var lastGeometry = 0L
+    private var measuredGeometry = 0L
     private var closed = false
     private val tabs = mutableListOf<TextView>()
     private val tabPlates = mutableListOf<FocusPlate>()
@@ -340,6 +341,8 @@ class GameDashboardView(
     private val footer = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
     private val metadataNote = label(17f, false).apply { setTextColor(DashboardTheme.muted) }
     private var resumeSession: (() -> Unit)? = null
+    // Let the native button complete the tap and emit its accessibility action.
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
     private val resumeSessionButton = DashboardTheme.button(context, UiText.text("Retomar sessão")) {
         resumeSession?.invoke()
     }.apply {
@@ -493,22 +496,29 @@ class GameDashboardView(
     }
     fun gameById(id: String): GameTitle? = games.firstOrNull { it.titleId == id }
     fun pauseArtwork() {
+        if (artworkPaused) return
         consoleBackdrop.setPresentationEnabled(false)
         consoleBackdrop.setArtwork(null)
         shortcutSkins.forEach { it.clear() }
         artworkPaused=true
         pendingCatalog=null; catalogFocus.cancel()
-        metadataJob?.cancel(); metadataJob=null; pendingMetadata=null
+        metadataJob?.cancel(); metadataJob=null
         headerArtJob?.cancel(); posters.pause()
     }
     fun resumeArtwork() {
         consoleBackdrop.setPresentationEnabled(true)
         artworkPaused=false
+        pendingMetadata?.let { games = it }
+        pendingMetadata = null
         officialGalleries.putAll(pendingGalleries); pendingGalleries.clear()
         refresh()
         posters.resume(); renderProfile()
         selectedCard?.let { loadHeaderArtwork(it) }
         adapter.notifyItemRangeChanged(0,adapter.itemCount,"artwork")
+    }
+
+    internal fun resumeArtworkIfPaused() {
+        if (artworkPaused) resumeArtwork()
     }
     fun setGamePassProducts(products: Set<String>?, resolvedTitles: Set<String> = emptySet()) {
         gamePassProducts = products
@@ -1195,7 +1205,10 @@ class GameDashboardView(
         dialog.setOnDismissListener {
             if (gameDetails === dialog) {
                 gameDetails = null
-                if (!closed && !artworkPaused) restoreFocus(refreshCatalog = false)
+                if (!closed && !artworkPaused) {
+                    val position = positions[card.key]
+                    if (position == null) restoreFocus(refreshCatalog = false) else focusCoverAt(position)
+                }
             }
         }
         dialog.show()
@@ -1267,6 +1280,19 @@ class GameDashboardView(
         val w = MeasureSpec.getSize(widthMeasureSpec)-paddingLeft-paddingRight; val h = MeasureSpec.getSize(heightMeasureSpec)-paddingTop-paddingBottom
         val geometry = (w.toLong() shl 32) or h.toLong()
         if (!closed && geometry != lastGeometry && w > 0 && h > 0) {
+            if (measuredGeometry != geometry) {
+                if (measuredGeometry != 0L && grid.hasFocus() && !isInTouchMode && catalogFocus.targetKey == null) {
+                    selectedCard?.key?.let { key ->
+                        val request = catalogFocus.beginLayout()
+                        grid.doOnNextLayout {
+                            if (!closed && catalogFocus.isCurrent(request) && (grid.hasFocus() || findFocus() == null)) {
+                                positions[key]?.let(::focusCoverNow)
+                            }
+                        }
+                    }
+                }
+                measuredGeometry = geometry
+            }
             lastGeometry = geometry; scale = w / 1280f; layoutGeometry(w, h)
             layoutBrowseTools()
             if (resumeSession != null) {
@@ -2291,6 +2317,7 @@ class GameDashboardView(
             else View.NO_ID
             card.setOnFocusChangeListener { _, focused ->
                 card.focused = focused
+                if (!focused) card.isPressed = false
                 if (focused) items.getOrNull(holder.bindingAdapterPosition)?.let(::updateSelected)
             }
             // Holders from the previous snapshot can still exist until the next layout.
@@ -2299,6 +2326,9 @@ class GameDashboardView(
                 items.getOrNull(holder.bindingAdapterPosition)?.let { current -> updateSelected(current); playCard(current) }
             }
             card.setOnLongClickListener { showCoverDetails(card) }
+            androidx.core.view.ViewCompat.replaceAccessibilityAction(card,
+                androidx.core.view.accessibility.AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_LONG_CLICK,
+                UiText.text("Detalhes do jogo")) { _, _ -> card.performLongClick() }
         }
         override fun onBindViewHolder(holder: CoverHolder, position: Int, payloads: MutableList<Any>) {
             when {
@@ -2316,6 +2346,7 @@ class GameDashboardView(
     }
     private class CoverHolder(val card: GameCard) : RecyclerView.ViewHolder(card)
     private inner class GameCard(context: Context) : FrameLayout(context) {
+        override fun performClick() = super.performClick()
         override fun onTouchEvent(event: MotionEvent) = dispatchPhoneTouch(event) { super.onTouchEvent(event) }
         private fun detailsKey(keyCode: Int) = keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
             keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER

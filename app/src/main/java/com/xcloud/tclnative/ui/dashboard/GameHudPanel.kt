@@ -4,7 +4,6 @@ import com.xcloud.tclnative.i18n.UiText
 
 import android.content.Context
 import android.widget.LinearLayout
-import android.widget.Toast
 import com.xcloud.tclnative.signaling.GameTitle
 import com.xcloud.tclnative.touch.*
 
@@ -13,7 +12,8 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
                    private val hide: () -> Unit,private val page: (HudPreset) -> Unit,
                    private val activate: (() -> Unit)?=null,private val nativeTouch: (() -> Unit)?=null,
                    private val officialTouch: (() -> Unit)?=null,private val editOfficial: (() -> Unit)? = null,
-                   private val back: () -> Unit={}) {
+                   private val back: () -> Unit={},
+                   private val writeHud: (() -> HudSettings, (HudSettings?) -> Unit) -> Unit) {
     fun show(): ConsoleDialog {
         val settings=store.read(game.titleId)
         val automatic=GameHud.automatic(game.titleId,game.name)
@@ -94,8 +94,16 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         return ConsoleDialogs.menu(context,"HUD • ${game.name}",actions,onBack=back)
     }
     private fun save(settings: HudSettings, resetPresets: Boolean = false) {
-        try { store.save(game.titleId,settings,resetPresets); changed(settings); show() }
-        catch(error: java.io.IOException) { Toast.makeText(context,error.message,Toast.LENGTH_LONG).show() }
+        persist {
+            store.save(game.titleId, settings, resetPresets)
+            settings
+        }
+    }
+    private fun persist(write: () -> HudSettings) {
+        writeHud(write) { settings ->
+            settings?.let(changed)
+            show()
+        }
     }
     private fun choosePreset() {
         val current=store.read(game.titleId)
@@ -106,12 +114,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         options.forEach { preset ->
             val label=preset?.label ?: UiText.text("Automático • {0}",UiText.nested(automatic.label))
             val row=dialog.addMenuItem(UiText.text("{0} {1}",UiText.nested(if(preset==current.preset) "✓" else "○"),UiText.nested(label))) {
-                try {
-                    changed(store.selectPreset(game.titleId, automatic, preset))
-                    show()
-                } catch(error: java.io.IOException) {
-                    Toast.makeText(context,error.message,Toast.LENGTH_LONG).show()
-                }
+                persist { store.selectPreset(game.titleId, automatic, preset) }
             }
             if(preset==current.preset) dialog.focusFirst(row)
         }

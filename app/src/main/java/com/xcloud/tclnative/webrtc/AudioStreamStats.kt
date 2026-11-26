@@ -5,11 +5,13 @@ import java.util.Locale
 
 /** Network/NetEq observations, not AudioTrack latency or a measurement of audiovisual sync. */
 data class AudioStreamMetrics(val codec: String? = null, val jitterMs: Double? = null,
-    val bufferMs: Double? = null, val targetMs: Double? = null, val lostPackets: Long? = null) {
+    val bufferMs: Double? = null, val targetMs: Double? = null, val lostPackets: Long? = null,
+    val concealedSamples: Long? = null, val discardedPackets: Long? = null) {
     fun diagnostics(): String {
         fun n(v: Double?) = v?.takeIf { it.isFinite() && it >= 0 }?.let { String.format(Locale.US, "%.2f", it) } ?: "n/d"
         return UiText.text("Áudio RTP (última amostra): {0} | jitter {1} ms | buffer WebRTC {2} ms | alvo {3} ms | perdas {4}",
             UiText.nested(codec ?: "n/d"), UiText.nested(n(jitterMs)), UiText.nested(n(bufferMs)), UiText.nested(n(targetMs)), UiText.nested(lostPackets ?: "n/d")) + "\n" +
+            "AUDIO_RTP_DELTA/concealed_samples=${concealedSamples ?: "n/d"} discarded_packets=${discardedPackets ?: "n/d"}\n" +
             UiText.text("O buffer de áudio WebRTC não mede o atraso dos alto-falantes nem o sincronismo completo.")
     }
 }
@@ -30,6 +32,7 @@ class AudioStreamStatsCollector {
         val codec = samples.firstOrNull { it.id == audio.values["codecId"] }?.values?.get("mimeType") as? String
         val lost = old?.number("packetsLost")?.let { before -> audio.number("packetsLost")?.let { (it-before).coerceAtLeast(0.0).toLong() } }
         return AudioStreamMetrics(codec?.substringAfter('/')?.take(40), audio.number("jitter")?.takeIf { it >= 0 }?.times(1000),
-            buffer("jitterBufferDelay"), buffer("jitterBufferTargetDelay"), lost)
+            buffer("jitterBufferDelay"), buffer("jitterBufferTargetDelay"), lost,
+            delta("concealedSamples")?.toLong(), delta("packetsDiscarded")?.toLong())
     }
 }

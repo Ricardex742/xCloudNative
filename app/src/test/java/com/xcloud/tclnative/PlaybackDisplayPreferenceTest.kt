@@ -37,6 +37,37 @@ class PlaybackDisplayPreferenceTest {
         assertNull(DisplayModePolicy.preferredCadence(phone90, listOf(phone60), 0))
     }
 
+    @Test fun televisionModesRequireAConsistentAdvertisementAndAllowFractionalHdmiCadence() {
+        val hd = OutputMode(1, 1920, 1080, 50f)
+        val hd60 = hd.copy(id = 2, hz = 59.94f)
+        val uhd = OutputMode(3, 3840, 2160, 59.94f)
+        assertEquals(3, DisplayModePolicy.playbackMode(hd, listOf(hd, hd60, uhd), 60, tv4k = true))
+        assertEquals(2, DisplayModePolicy.playbackMode(hd, listOf(hd, hd60, uhd), 60, tv4k = false))
+        assertNull(DisplayModePolicy.playbackMode(hd, listOf(hd60, uhd), 60, tv4k = true))
+        assertNull(DisplayModePolicy.playbackMode(hd, listOf(hd, hd60, uhd.copy(id = 2)), 60, tv4k = true))
+        assertNull(DisplayModePolicy.playbackMode(hd, listOf(hd, uhd.copy(id = 0), uhd.copy(hz = Float.NaN)), 60, tv4k = true))
+    }
+
+    @Test fun disappearingOutputRetiresTheCurrentRequestAndAllowsASecondPlayback() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            val window = controller.get().window
+            val display = window.decorView.display
+            window.attributes = window.attributes.apply { preferredDisplayModeId = 0; preferredRefreshRate = 90f }
+            val preference = PlaybackDisplayPreference(window)
+            repeat(2) {
+                val mode = OutputMode(42,display.mode.physicalWidth,display.mode.physicalHeight,59.94f)
+                preference.request(mode)
+                assertEquals(mode.id, window.attributes.preferredDisplayModeId)
+                val diagnostics = preference.diagnostics(display)
+                assertTrue(diagnostics,diagnostics.contains("DISPLAY_MODE/REQUESTED") && diagnostics.contains("matched=false"))
+                preference.validate(null)
+                assertEquals(0, window.attributes.preferredDisplayModeId)
+                assertEquals(90f, window.attributes.preferredRefreshRate, 0f)
+                assertTrue(preference.diagnostics(display).contains("DISPLAY_MODE/MODE_RETIRED"))
+            }
+        } finally { controller.pause().stop().destroy() }
+    }
     @Test fun replacementAndReleaseRestoreBothOriginalPreferencesAndKeepOtherWindowChanges() {
         val controller = Robolectric.buildActivity(Activity::class.java).setup()
         try {

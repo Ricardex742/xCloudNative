@@ -28,6 +28,22 @@ class AudioStreamStatsTest {
         assertEquals(AudioStreamMetrics(),collector.collect(emptyList()))
         assertNull(collector.collect(listOf(sample(5e6,200,1440.0,96000))).bufferMs)
     }
+    @Test fun netEqCountersAreSampleDeltasAndStayUnavailableAcrossResets() {
+        val collector=AudioStreamStatsCollector()
+        fun counters(at: Double, bytes: Long, concealed: Long, discarded: Long): RtcSample {
+            val frame = sample(at,bytes,0.0,0)
+            return frame.copy(values = frame.values + ("concealedSamples" to concealed) + ("packetsDiscarded" to discarded))
+        }
+        assertNull(collector.collect(listOf(counters(1e6,100,80,3))).concealedSamples)
+        val ongoing = collector.collect(listOf(counters(2e6,200,125,5)))
+        assertEquals(45L,ongoing.concealedSamples)
+        assertEquals(2L,ongoing.discardedPackets)
+        assertTrue(ongoing.diagnostics().contains("AUDIO_RTP_DELTA/concealed_samples=45 discarded_packets=2"))
+        val reset = collector.collect(listOf(counters(3e6,300,0,0)))
+        assertNull(reset.concealedSamples)
+        assertNull(reset.discardedPackets)
+        assertNull(collector.collect(listOf(sample(4e6,400,0.0,0))).concealedSamples)
+    }
     @Test fun absentOrInvalidAudioMetricsRemainUnavailableInsteadOfBeingReportedAsZero() {
         val collector=AudioStreamStatsCollector()
         val invalid=sample(1e6,100,Double.NaN,0).copy(values=mapOf("mediaType" to "audio","jitter" to -.5))

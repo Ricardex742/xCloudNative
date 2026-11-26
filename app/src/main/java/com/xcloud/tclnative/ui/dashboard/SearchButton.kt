@@ -14,7 +14,7 @@ import kotlin.math.min
 /** Vector magnifier with a larger transparent touch target than its visible plate. */
 internal class SearchButton(context: Context,search: () -> Unit): View(context) {
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
-    val phoneTarget: Boolean get()=resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK != android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+    val phoneTarget: Boolean get() = !BackgroundMotionPolicy.television(context)
     init {
         id=generateViewId(); contentDescription=UiText.text("Pesquisar jogos")
         isFocusable=true; isFocusableInTouchMode=true; isClickable=true
@@ -22,6 +22,7 @@ internal class SearchButton(context: Context,search: () -> Unit): View(context) 
         setOnClickListener { search() }
         setOnFocusChangeListener { _,_ -> invalidate() }
     }
+    override fun performClick() = super.performClick()
     override fun onTouchEvent(event: MotionEvent) = dispatchPhoneTouch(event) { super.onTouchEvent(event) }
     override fun drawableStateChanged() { super.drawableStateChanged(); invalidate() }
     override fun onDraw(canvas: Canvas) {

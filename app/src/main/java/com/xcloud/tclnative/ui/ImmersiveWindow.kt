@@ -15,9 +15,12 @@ import androidx.core.view.doOnAttach
 internal object ImmersiveWindow {
     fun inheritPlaybackDisplay(window: Window, playback: Window) {
         val display = playback.attributes
+        val output = window.decorView.display?.displayId
+        val playbackOutput = playback.decorView.display?.displayId
         window.attributes = window.attributes.apply {
-            preferredDisplayModeId = display.preferredDisplayModeId
-            preferredRefreshRate = display.preferredRefreshRate
+            val sameOutput = output == null || playbackOutput == null || output == playbackOutput
+            preferredDisplayModeId = if (sameOutput) display.preferredDisplayModeId else 0
+            preferredRefreshRate = if (sameOutput) display.preferredRefreshRate else 0f
             if (Build.VERSION.SDK_INT >= 30) preferMinimalPostProcessing = display.preferMinimalPostProcessing
             windowAnimations = 0
         }

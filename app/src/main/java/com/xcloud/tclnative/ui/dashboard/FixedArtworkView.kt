@@ -6,6 +6,8 @@ import android.graphics.drawable.Drawable
 import android.widget.ImageView
 
 /** These views have fixed parent-supplied bounds; changing a cover must not remeasure the entire grid. */
+// The app uses Android Material framework themes and native widget styling.
+@android.annotation.SuppressLint("AppCompatCustomView")
 internal class FixedArtworkView(context: Context): ImageView(context) {
     private var changingImage=false
     override fun setImageBitmap(bitmap: Bitmap?) {

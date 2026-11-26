@@ -16,7 +16,12 @@ public final class H264VideoDecoderFactory implements VideoDecoderFactory {
   public H264VideoDecoderFactory(EglBase.Context context, boolean lowLatency,
       DecoderRecoveryController recovery, Consumer<String> status, boolean baselineOnly,
       boolean requestMain,int width,int height) {
-    this(new LowLatencyDecoderFactory(context,lowLatency,recovery,status),baselineOnly,
+    this(context, lowLatency, recovery, status, baselineOnly, requestMain, width, height, null);
+  }
+
+  H264VideoDecoderFactory(EglBase.Context context, boolean lowLatency, DecoderRecoveryController recovery,
+      Consumer<String> status, boolean baselineOnly, boolean requestMain, int width, int height, AvcDecoderTrial trial) {
+    this(new LowLatencyDecoderFactory(context, lowLatency, recovery, status, trial, width, height), baselineOnly,
         requestMain && !baselineOnly ? H264MainSupport.inspect(context,width,height,60) : null);
   }
   H264VideoDecoderFactory(VideoDecoderFactory base, boolean baselineOnly) {

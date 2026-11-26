@@ -1,6 +1,7 @@
 name: Compilar APK Android 10 e TV
 
 on:
+  pull_request:
   push:
     branches: [ "main", "ci/apk-android10-3cc2595", "perf/decoder-display-latency-0.31" ]
   workflow_dispatch:
@@ -15,10 +16,42 @@ permissions:
   contents: read
 
 jobs:
+  validate:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      XCLOUD_MAVEN_CENTRAL_URL: https://maven-central.storage-download.googleapis.com/maven2
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Configurar Android SDK e Gradle
+        run: bash scripts/setup_ci_android.sh
+      - name: Verificar código, dependências e testes JVM
+        run: |
+          python3 -m unittest discover -s scripts/tests -v
+          python3 scripts/verify_translations.py
+          bash scripts/validate_android.sh
+      - name: Salvar relatório de lint e resultados dos testes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-pull-request-validation
+          path: |
+            app/build/reports/lint-audit-debug.*
+            app/build/test-results/testDebugUnitTest/
+
   build:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/ci/apk-android10-3cc2595' || github.ref == 'refs/heads/perf/decoder-display-latency-0.31'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    outputs:
+      artifact: ${{ steps.apk.outputs.artifact }}
     steps:
       - name: Copiar código do repositório
         uses: actions/checkout@v5
@@ -31,25 +64,9 @@ jobs:
 
       - name: Configurar Android SDK e Gradle
         shell: bash
-        run: |
-          set -euo pipefail
-          tool_root="$RUNNER_TEMP/apk-tools"
-          mkdir -p "$tool_root/android-sdk/cmdline-tools"
-          curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-16111833_latest.zip -o "$tool_root/android-tools.zip"
-          echo "e025545c62a8e64c7559119566a569fb1dec5f60  $tool_root/android-tools.zip" | sha1sum -c -
-          unzip -q "$tool_root/android-tools.zip" -d "$tool_root/android-sdk/cmdline-tools"
-          mv "$tool_root/android-sdk/cmdline-tools/cmdline-tools" "$tool_root/android-sdk/cmdline-tools/latest"
-          export ANDROID_HOME="$tool_root/android-sdk"
-          export ANDROID_SDK_ROOT="$ANDROID_HOME"
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_HOME" 'platform-tools' 'platforms;android-34' 'build-tools;34.0.0'
-          curl -fsSL https://downloads.gradle.org/distributions/gradle-8.7-bin.zip -o "$tool_root/gradle.zip"
-          echo "544c35d6bd849ae8a5ed0bcea39ba677dc40f49df7d1835561582da2009b961d  $tool_root/gradle.zip" | sha256sum -c -
-          unzip -q "$tool_root/gradle.zip" -d "$tool_root"
-          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
-          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
-          echo "$tool_root/gradle-8.7/bin" >> "$GITHUB_PATH"
+        run: bash scripts/setup_ci_android.sh
 
-      - name: Validar proteção da assinatura
+      - name: Validar os scripts de verificação
         shell: bash
         run: python3 -m unittest discover -s scripts/tests -v
 
@@ -86,30 +103,15 @@ jobs:
               ;;
             *) exit 1 ;;
           esac
-          gradle --no-daemon --max-workers=2 --stacktrace -Pkotlin.compiler.execution.strategy=in-process :app:testDebugUnitTest "$task" :app:lintDebug
-          python3 - <<'PYTEST'
-          from pathlib import Path
-          import os, xml.etree.ElementTree as E
-          suites = [E.parse(p).getroot() for p in Path('app/build/test-results/testDebugUnitTest').glob('TEST-*.xml')]
-          totals = {key: sum(int(s.get(key, 0)) for s in suites) for key in ('tests', 'failures', 'errors', 'skipped')}
-          assert totals['tests'] > 0 and totals['failures'] == 0 and totals['errors'] == 0 and totals['skipped'] == 0, totals
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
-              summary.write(f"Testes JVM: {totals}\n")
-          print(totals)
-          PYTEST
-          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --verbose "$apk"
+          bash scripts/validate_android.sh "$task"
           python3 scripts/verify_apk_signing.py "$apk" "${signing_options[@]}"
-          badging=$("$ANDROID_HOME/build-tools/34.0.0/aapt" dump badging "$apk")
-          printf '%s\n' "$badging" | grep -F "package: name='com.xcloud.tclnative'"
-          printf '%s\n' "$badging" | grep -Fx "sdkVersion:'24'"
-          printf '%s\n' "$badging" | grep -F "uses-feature-not-required: name='android.hardware.wifi'"
           sha256sum "$apk" | tee "$apk.sha256"
           printf 'path=%s\nartifact=%s\n' "$apk" "$artifact" >> "$GITHUB_OUTPUT"
           {
             echo "### APK $BUILD_TYPE gerado"
             echo "- Branch: $GITHUB_REF_NAME"
             echo '- Android mínimo: 7.0 (API 24), incluindo Android 10 (API 29).'
-            echo '- Assinatura e lint de APIs, permissões e receptores verificados.'
+            echo '- Assinatura, manifesto, arquiteturas, dependências selecionadas e lint verificados.'
             echo '- Testes JVM de autenticação, provisionamento e protocolo executados.'
             echo "- Baixe o artefato $artifact abaixo."
           } >> "$GITHUB_STEP_SUMMARY"
@@ -137,15 +139,20 @@ jobs:
           timeout --kill-after=10s 90s sudo apt-get "${apt_options[@]}" update -qq
           timeout --kill-after=10s 180s sudo apt-get "${apt_options[@]}" install -y --download-only --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri ffmpeg
           sudo apt-get "${apt_options[@]}" install -y --no-download --no-install-recommends libegl1 libegl-mesa0 libgl1-mesa-dri ffmpeg
-          python3 scripts/verify_image_filter.py
-          python3 scripts/verify_fsr1.py
-          python3 scripts/verify_image_treatment.py
-          python3 scripts/verify_reconstruction.py
-          python3 scripts/verify_image_lab.py
+          bash scripts/validate_release_graphics.sh "app/build/reports/release-graphics"
           cat app/build/reports/dashboard/image-filter-validation.txt >> "$GITHUB_STEP_SUMMARY"
           cat app/build/reports/dashboard/fsr1-validation.txt >> "$GITHUB_STEP_SUMMARY"
           cat app/build/reports/dashboard/image-treatment-validation.txt >> "$GITHUB_STEP_SUMMARY"
           cat app/build/reports/reconstruction/quality.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Vincular a validação à revisão e ao APK
+        if: steps.apk.outputs.artifact == 'TCL-xCloud-App-Release-Android10'
+        env:
+          APK_PATH: ${{ steps.apk.outputs.path }}
+        run: |
+          python3 scripts/release_validation.py build --apk "$APK_PATH" \
+            --revision "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" --graphics "app/build/reports/release-graphics" \
+            --output "$APK_PATH.build-evidence.json"
 
       - name: Salvar o APK gerado para download
         uses: actions/upload-artifact@v4
@@ -155,6 +162,8 @@ jobs:
             ${{ steps.apk.outputs.path }}
             ${{ steps.apk.outputs.path }}.sha256
             ${{ steps.apk.outputs.path }}.metadata.json
+            ${{ steps.apk.outputs.path }}.build-evidence.json
+          overwrite: true
           if-no-files-found: error
 
       - name: Salvar relatório de compatibilidade de APIs
@@ -162,11 +171,87 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-api-lint-results
+          overwrite: true
           path: |
-            app/build/reports/lint-results-debug.*
+            app/build/reports/release-graphics/
+            app/build/reports/lint-audit-debug.*
             app/build/test-results/testDebugUnitTest/
             app/build/reports/dashboard/
             app/build/reports/huds/
             app/build/reports/reconstruction/
             app/build/reports/image-lab/
             app/build/reports/themes/
+
+
+  smoke:
+    name: Abrir e retomar no Android API ${{ matrix.api }}
+    needs: build
+    if: needs.build.outputs.artifact == 'TCL-xCloud-App-Release-Android10'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 34]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: ${{ runner.temp }}/signed-apk
+      - name: Preparar ADB e KVM
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;34.0.0'
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-xcloud-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Instalar e abrir o APK sem conta Xbox
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: bash scripts/smoke_device.sh "$RUNNER_TEMP/signed-apk/app-release.apk" emulator-5554 phone --repeats 3 --report "$RUNNER_TEMP/android-smoke.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-smoke-api-${{ matrix.api }}
+          overwrite: true
+          path: ${{ runner.temp }}/android-smoke.json
+          if-no-files-found: error
+
+
+  release-validation:
+    name: Consolidar validação automatizada da release
+    needs: [build, smoke]
+    if: needs.build.outputs.artifact == 'TCL-xCloud-App-Release-Android10'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.build.outputs.artifact }}
+          path: ${{ runner.temp }}/signed-apk
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: android-smoke-api-*
+          path: ${{ runner.temp }}/smoke
+      - name: Conferir o mesmo APK nos dois emuladores
+        run: |
+          python3 scripts/release_validation.py emulator \
+            --build "$RUNNER_TEMP/signed-apk/app-release.apk.build-evidence.json" \
+            --revision "$GITHUB_SHA" --run-id "$GITHUB_RUN_ID" \
+            --report "$RUNNER_TEMP/smoke/android-smoke-api-29/android-smoke.json" \
+            --report "$RUNNER_TEMP/smoke/android-smoke-api-34/android-smoke.json" \
+            --output "$RUNNER_TEMP/release-validation.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-validation
+          overwrite: true
+          path: ${{ runner.temp }}/release-validation.json
+          if-no-files-found: error

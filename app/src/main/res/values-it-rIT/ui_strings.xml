@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"Accedi alla pagina ufficiale con lo stesso account Xbox che usi nell’app."</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"Apri pagina di acquisto"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"Tempo rimanente della sessione: {0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"Regolazione automatica dello schermo: {0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"Dettagli del gioco"</string>
+    <string name="ui_ed017ee27ce19a31">"Prove di prestazioni"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"Queste prove si applicano dalla prossima sessione. Il decoder alternativo richiede H.264 in modalità Adattiva. La sincronizzazione con fence richiede la generazione dei fotogrammi. Il controller inattivo usa 60 Hz con i comandi tattili disattivati. Senza analisi audio, un guadagno superiore al 100% richiede una nuova sessione."</string>
+    <string name="ui_cc53733aa7793208">"Decoder H.264 alternativo"</string>
+    <string name="ui_05b5beea584b768c">"Sincronizzazione con fence"</string>
+    <string name="ui_382512eae2b74f8f">"Frequenza ridotta per il controller inattivo"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"Salta l’analisi audio con guadagno fino al 100%"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"Il guadagno superiore al 100% si applicherà dalla prossima sessione."</string>
 </resources>

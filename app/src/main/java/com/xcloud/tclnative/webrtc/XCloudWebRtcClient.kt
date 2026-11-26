@@ -3,11 +3,14 @@ package com.xcloud.tclnative.webrtc
 import com.xcloud.tclnative.i18n.UiText
 
 import android.content.Context
+import android.util.Log
 import com.xcloud.tclnative.settings.VideoCodecMode
 import com.xcloud.tclnative.settings.IpPreference
 import com.xcloud.tclnative.settings.AudioPlaybackMode
 import com.xcloud.tclnative.touch.OfficialTouchNotice
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 import org.webrtc.*
 import org.webrtc.audio.JavaAudioDeviceModule
@@ -35,7 +38,10 @@ class XCloudWebRtcClient(
     remotePlay: Boolean = false,
     private val onTitleFocusChanged: (Boolean) -> Unit = {},
     private val onGameTimeChanged: (XboxGameTime) -> Unit = {},
-    private val onTouchLayoutChanged: (OfficialTouchNotice) -> Unit = {}
+    private val onTouchLayoutChanged: (OfficialTouchNotice) -> Unit = {},
+    private val avcTrial: AvcDecoderTrial? = null,
+    tryIdleGamepadCadence: Boolean = false,
+    trySkipAudioSamples: Boolean = false
 ) : StreamingPeer {
     private val appContext=context.applicationContext
     private val factory: PeerConnectionFactory
@@ -51,6 +57,7 @@ class XCloudWebRtcClient(
         activateCloudTitle = !remotePlay)
     private val channels = java.util.concurrent.ConcurrentHashMap<String, DataChannel>()
     private val closed = AtomicBoolean(false)
+    private val transportRelease = Mutex()
     private val serverEnded=java.util.concurrent.atomic.AtomicReference<XboxServerDisconnect?>(null)
     private val inputStarted = AtomicBoolean(false)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -74,20 +81,24 @@ class XCloudWebRtcClient(
     private val audioStatsCollector = AudioStreamStatsCollector()
     @Volatile private var audioMetrics = AudioStreamMetrics()
     private val statisticsLock = Any()
-    private var statsJob: Job? = null
+    private val statisticsSampler = RtcStatisticsSampler<RTCStatsReport>()
+    internal fun statisticsDiagnostics() = statisticsSampler.diagnostics()
     private val decoderRecovery = DecoderRecoveryController()
     private val controllerEventTiming=ControllerEventTiming()
     fun recordControllerEvent(eventUptimeMs: Long,arrivalUptimeMs: Long,historySize: Int,name: String?) =
         controllerEventTiming.record(eventUptimeMs,arrivalUptimeMs,historySize,name)
     private val decoderLatency = java.util.concurrent.atomic.AtomicReference(UiText.text("Codec LL: aguardando vídeo"))
+    private val idleGamepadTrial = tryIdleGamepadCadence && !compatibility && !remotePlay &&
+        !nativeTouch && !nativeKeyboardMouse
     private val effectiveCodec=if(compatibility) VideoCodecMode.H264_BASELINE else videoCodec
     private val codecTrace=CodecNegotiationTrace(effectiveCodec)
     private val decoderFactory: ExperimentalVideoDecoderFactory
-    fun codecDiagnostics(): String = codecTrace.diagnostics()+"\n"+UiText.text("Capacidade local do teste: {0}",UiText.nested(decoderFactory.diagnostics()))+UiText.text("\nBitrate máximo solicitado: ")+(if(maxBitrateKbps==0) UiText.text("Automático") else "${maxBitrateKbps/1000.0} Mbps")
+    fun codecDiagnostics(): String = codecTrace.diagnostics()+"\n"+UiText.text("Capacidade local do teste: {0}",UiText.nested(decoderFactory.diagnostics()))+UiText.text("\nBitrate máximo solicitado: ")+(if(maxBitrateKbps==0) UiText.text("Automático") else "${maxBitrateKbps/1000.0} Mbps") + "\n" + decoderRecovery.diagnostics() + (avcTrial?.let { "\n${it.diagnostics()}" } ?: "")
     private val networkRoutes=NetworkRouteMonitor(ipPreference)
     fun iceDiagnostics(): String = iceReports.joinToString("\n").ifBlank { UiText.text("ICE local: aguardando coleta") }+"\n"+networkRoutes.diagnostics()
     private val mainHandler=android.os.Handler(android.os.Looper.getMainLooper())
     private val audioDevice: JavaAudioDeviceModule
+    private val playbackSamples = AudioSamplePolicy.keepPeakCallback(trySkipAudioSamples && !compatibility, outputGain)
     private val peakGuard=AudioPeakGuard().apply { set(outputGain) }
     private var micSource: AudioSource?=null
     private var micTrack: AudioTrack?=null
@@ -101,13 +112,22 @@ class XCloudWebRtcClient(
     private var chatNegotiated=false
     private val audioLock=Any()
     private val audioTracks=mutableSetOf<AudioTrack>()
-    private var playbackSuppressed = false
+    @Volatile private var playbackSuppressed = false
     private val audioSession=GameAudioSession(context) { gain -> synchronized(audioLock) {
         if(!closed.get()) audioTracks.forEach { it.setVolume(playbackVolume(gain)) }
     } }
     fun currentInputMetrics(): InputMetrics = inputPump?.metrics ?: InputMetrics()
-    fun audioDiagnostics()=audioSession.diagnostics()+"\n"+AudioPlaybackPolicy.diagnostics(audioMode)+"\n"+audioMetrics.diagnostics()+UiText.text("\n{0}\n{1} • chatStream anunciado: {2} • áudio enviado: {3} B",UiText.nested(peakGuard.diagnostics()),UiText.nested(microphoneStatus),UiText.nested(chatSupported),UiText.nested(micBytes))
-    fun setOutputGain(percent: Int) { peakGuard.set(percent);applyAudioGain() }
+    fun audioDiagnostics()=audioSession.diagnostics()+"\n"+AudioPlaybackPolicy.diagnostics(audioMode)+"\n"+audioMetrics.diagnostics()+
+        "\nAUDIO_PCM/${if (playbackSamples) "CALLBACK" else "BYPASSED"}\n"+UiText.text("\n{0}\n{1} • chatStream anunciado: {2} • áudio enviado: {3} B",UiText.nested(peakGuard.diagnostics()),UiText.nested(microphoneStatus),UiText.nested(chatSupported),UiText.nested(micBytes))
+    /** Returns false when the selected gain can only be applied by the next audio module. */
+    fun setOutputGain(percent: Int): Boolean {
+        val effective = AudioSamplePolicy.liveGain(playbackSamples, percent)
+        if (peakGuard.requested != effective) {
+            peakGuard.set(effective)
+            applyAudioGain()
+        }
+        return effective == percent
+    }
     private fun playbackVolume(gain: Double = audioSession.gain) =
         if (playbackSuppressed) 0.0 else gain * peakGuard.effective
 
@@ -132,6 +152,13 @@ class XCloudWebRtcClient(
     fun canUseMicrophone()=microphoneAllowed && chatSupported && !closed.get()
     fun microphoneNegotiated()=chatNegotiated
     fun setAudioForeground(visible: Boolean) { microphoneForeground=visible;if(!visible) setMicrophoneMuted(true) }
+    internal fun silenceMicrophoneForTeardown() {
+        if (closed.get()) return
+        microphoneForeground = false
+        microphoneActive = false
+        audioDevice.setMicrophoneMute(true)
+    }
+
     fun setMicrophoneMuted(muted: Boolean) {
         if(closed.get()) return
         val allowed=MicrophonePolicy.canCapture(microphoneAllowed,chatSupported,chatNegotiated,microphoneForeground,
@@ -221,7 +248,11 @@ class XCloudWebRtcClient(
         else if(nativeKeyboardMouse) UiText.text("Input Xbox: mouse/teclado nativos, versão negociada {0}",UiText.nested(negotiatedInputVersion)) else UiText.text("Input Xbox: controle/HUD"))+"\n"+
         handshake.sessionMessages.diagnostics()+"\n"+handshake.gamepadSync.diagnostics()+"\n"+channelTrace.diagnostics()+"\n"+controllerEventTiming.diagnostics()+
         (if(nativeTouch) "\n${pendingTouch.diagnostics()}" else "")+"\n"+remoteInputTrace.diagnostics(negotiatedInputVersion)+"\n"+
-        UiText.text("Input sem interação: {0} pacotes de manutenção enviados; sem comandos de jogo",UiText.nested(inputPump?.metrics?.idleReportsSent ?: 0))+(if(nativeTouch) "\nTOUCH_SLOT_INIT/${inputPump?.metrics?.initialStateReportsSent ?: 0}" else "")
+        UiText.text("Input sem interação: {0} pacotes de manutenção enviados; sem comandos de jogo",UiText.nested(inputPump?.metrics?.idleReportsSent ?: 0)) +
+        "\nINPUT_EDGE/EXPIRED=${inputPump?.metrics?.expiredGamepadEdges ?: 0}" +
+        "\nINPUT_CADENCE/${if (idleGamepadTrial) "NEUTRAL_60" else "STANDARD"}; polls=${inputPump?.metrics?.polls ?: 0}; neutral=${inputPump?.metrics?.neutralGamepadReports ?: 0}" +
+        (if (nativeTouch) "\nTOUCH_SLOT_INIT/${inputPump?.metrics?.initialStateReportsSent ?: 0}\n" +
+            (inputPump?.officialTouchDiagnostics() ?: "TOUCH_HUD_CHANNEL/NONE") else "")
     fun latencyDiagnostics(): String = (if (lowLatencyVideo) "Playout solicitado: 0–40 ms" else "Playout: adaptativo") +
         " | " + (if (lowLatencyVideo) decoderLatency.get() else UiText.text("codec padrão")) +
         if(nativeTouch) UiText.text(" | Toque: {0}, {1}, {2} eventos enviados",UiText.nested(if(touchEnabled) UiText.text("ativo") else UiText.text("desativado")),UiText.nested(inputDimensions?.let { "${it.width}×${it.height}" } ?: UiText.text("aguardando metadata")),UiText.nested(inputPump?.metrics?.pointerEventsSent ?: 0)) else ""
@@ -231,12 +262,14 @@ class XCloudWebRtcClient(
             .setFieldTrials(VideoLatencyPolicy.fieldTrials(lowLatencyVideo))
             .setEnableInternalTracer(false).createInitializationOptions())
         decoderFactory=ExperimentalVideoDecoderFactory(eglBase.eglBaseContext,lowLatencyVideo,decoderRecovery,
-            { decoderLatency.set(it) },effectiveCodec.name,streamResolution.width,streamResolution.height)
+            { decoderLatency.set(it) },effectiveCodec.name,streamResolution.width,streamResolution.height,avcTrial)
         val audio=AudioPlaybackPolicy.configure(JavaAudioDeviceModule.builder(context.applicationContext), audioMode)
-            .setPlaybackSamplesReadyCallback { samples ->
-                if(!closed.get() && peakGuard.requested > 100 &&
-                    peakGuard.observe(samples.data,samples.audioFormat,android.os.SystemClock.elapsedRealtime()))
-                    mainHandler.post { applyAudioGain() }
+            .apply {
+                if (playbackSamples) setPlaybackSamplesReadyCallback { samples ->
+                    if(!closed.get() && peakGuard.requested > 100 && !playbackSuppressed && audioSession.gain > 0 &&
+                        peakGuard.observe(samples.data,samples.audioFormat,android.os.SystemClock.elapsedRealtime()))
+                        mainHandler.post { applyAudioGain() }
+                }
             }
             .setAudioRecordStateCallback(object: JavaAudioDeviceModule.AudioRecordStateCallback {
                 override fun onWebRtcAudioRecordStart() { if(microphoneActive) microphoneStatus=UiText.text("Microfone: captura iniciada") }
@@ -260,12 +293,17 @@ class XCloudWebRtcClient(
                 override fun onWebRtcAudioTrackError(message: String) { audioSession.error=UiText.text("reprodução: {0}",UiText.nested(message.take(180))) }
             }).createAudioDeviceModule()
         audioDevice=audio
-        audio.setMicrophoneMute(true);audio.setAudioRecordEnabled(false)
-        try { factory = PeerConnectionFactory.builder().setAudioDeviceModule(audio)
-            .setVideoDecoderFactory(decoderFactory)
-            .setVideoEncoderFactory(DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
-            .createPeerConnectionFactory()
-        } catch(error: Throwable) { audio.release();throw error }
+        try {
+            audio.setMicrophoneMute(true)
+            audio.setAudioRecordEnabled(false)
+            factory = PeerConnectionFactory.builder().setAudioDeviceModule(audio)
+                .setVideoDecoderFactory(decoderFactory)
+                .setVideoEncoderFactory(DefaultVideoEncoderFactory(eglBase.eglBaseContext, true, true))
+                .createPeerConnectionFactory()
+        } catch (error: Throwable) {
+            runCatching { audio.release() }.exceptionOrNull()?.takeIf { it !== error }?.let(error::addSuppressed)
+            throw error
+        }
     }
 
     private fun fail(message: String) {
@@ -277,8 +315,11 @@ class XCloudWebRtcClient(
 
     override suspend fun createOfferSdp(): Pair<String, List<IceCandidate>> = withTimeout(30_000) {
         check(!closed.get() && peerConnection == null)
-        // Final disposal and onDestroy also run on Main. Serialize retry disposal there too.
-        LocalIceOfferRetry.prepare(::createOfferAttempt,{ withContext(Dispatchers.Main.immediate) { closePeerTransport() } }) {
+        LocalIceOfferRetry.prepare(::createOfferAttempt, {
+            withContext(NonCancellable + Dispatchers.IO) {
+                transportRelease.withLock { if (!closed.get()) closePeerTransport() }
+            }
+        }) {
             onConnectionStateChanged("ICE: sem candidatos locais; refazendo a conexão uma vez (2/2), mantendo a sessão Xbox…")
         }
     }
@@ -432,6 +473,7 @@ class XCloudWebRtcClient(
     }
 
     private fun dispatch(messages: List<ChannelMessage>) {
+        if (closed.get()) return
         messages.forEach { message ->
             val channel = channels[message.channel]
             if (channel == null || !channel.send(DataChannel.Buffer(ByteBuffer.wrap(message.bytes), message.binary))) {
@@ -454,6 +496,7 @@ class XCloudWebRtcClient(
                 prioritize = { runCatching { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DISPLAY) }; Unit },
                 initialGamepads = gamepads.keys.toSet(), touch = pendingTouch, inputHz = if(compatibility) 60 else 250,
                 initialTouchDimensions = inputDimensions,desktop=desktopInput,idleReports=nativeTouch && negotiatedInputVersion==8,
+                tryIdleGamepadCadence=idleGamepadTrial,
                 initializeTouchSlot=nativeTouch && negotiatedInputVersion==8
             )
                 inputPump = pump
@@ -471,20 +514,35 @@ class XCloudWebRtcClient(
                     return@launch
                 }
             }
-            statsJob = scope.launch {
+            scope.launch {
+                var lastBackgroundSampleMs: Long? = null
                 while (isActive) {
-                    synchronized(statisticsLock) {
-                        if (!closed.get()) peerConnection?.getStats { report ->
-                            if (!closed.get()) {
-                                val samples = report.statsMap.values.map { RtcSample(it.id, it.type, it.timestampUs, it.members) }
-                                micBytes=report.statsMap.values.filter { it.type=="outbound-rtp" && (it.members["kind"]=="audio" || it.members["mediaType"]=="audio") }
-                                    .sumOf { (it.members["bytesSent"] as? Number)?.toLong() ?: 0L }
-                                networkRoutes.collect(samples)
-                                val metrics = statsCollector.collect(samples)
-                                audioMetrics = audioStatsCollector.collect(samples)
-                                if (!closed.get()) onStatistics(metrics, inputPump?.metrics ?: InputMetrics())
-                            }
+                    val now = android.os.SystemClock.elapsedRealtime()
+                    val last = lastBackgroundSampleMs
+                    val foreground = microphoneForeground
+                    if (!foreground && last != null && now - last < 4_000L) {
+                        delay(1000)
+                        continue
+                    }
+                    lastBackgroundSampleMs = if (foreground) null else now
+                    val epoch = peerGeneration.get()
+                    val report = statisticsSampler.sample { complete ->
+                        synchronized(statisticsLock) {
+                            val peer = peerConnection
+                            if (closed.get() || peer == null || epoch != peerGeneration.get()) false
+                            else { peer.getStats { complete(it) }; true }
                         }
+                    }
+                    if (report != null && !closed.get() && epoch == peerGeneration.get()) {
+                        val samples = report.statsMap.values.map { RtcSample(it.id, it.type, it.timestampUs, it.members) }
+                        micBytes = samples.sumOf {
+                            if (it.type == "outbound-rtp" && (it.values["kind"] ?: it.values["mediaType"]) == "audio")
+                                (it.values["bytesSent"] as? Number)?.toLong() ?: 0L else 0L
+                        }
+                        networkRoutes.collect(samples)
+                        val metrics = statsCollector.collect(samples)
+                        audioMetrics = audioStatsCollector.collect(samples)
+                        if (!closed.get() && epoch == peerGeneration.get()) onStatistics(metrics, inputPump?.metrics ?: InputMetrics())
                     }
                     delay(1000)
                 }
@@ -643,34 +701,60 @@ class XCloudWebRtcClient(
         done.await()
     }
 
-    fun close() {
-        if (!closed.compareAndSet(false, true)) return
-        handshake.gamepadSync.close()
-        synchronized(audioLock) { audioTracks.clear() }
-        mainHandler.removeCallbacksAndMessages(null)
-        audioDevice.setMicrophoneMute(true);audioDevice.setAudioRecordEnabled(false)
-        if(micTrack!=null) { setMicrophoneEncoding(false);audioDevice.requestStopRecording() }
-        micTrack?.setEnabled(false);microphoneActive=false
-        audioSession.close()
-        synchronized(pumpLock) { inputPump }?.close()
-        statsJob?.cancel()
-        scope.cancel()
-        synchronized(statisticsLock) { /* Wait for any getStats request to leave JNI before disposal. */ }
-        connected.cancel(); channelsReady.cancel()
-        closePeerTransport()
-        micTrack?.dispose();micTrack=null;micSource?.dispose();micSource=null
-        factory.dispose();audioDevice.release()
+    suspend fun close() = withContext(NonCancellable + Dispatchers.IO) {
+        transportRelease.withLock {
+            if (!closed.compareAndSet(false, true)) return@withLock
+            val cleanup = MediaCleanup()
+            handshake.gamepadSync.close()
+            mainHandler.removeCallbacksAndMessages(null)
+            val pump = synchronized(pumpLock) { inputPump.also { inputPump = null } }
+            pump?.requestStop()
+            connected.cancel(); channelsReady.cancel()
+            // The sender and any stats/sync work must leave JNI before disposing their channel.
+            cleanup.step("scope") { scope.coroutineContext.job.cancelAndJoin() }
+            cleanup.step("input") { pump?.close() }
+            cleanup.step("mute") { audioDevice.setMicrophoneMute(true) }
+            cleanup.step("recording") { audioDevice.setAudioRecordEnabled(false) }
+            if (micTrack != null) {
+                cleanup.step("audio-encoding") { setMicrophoneEncoding(false) }
+                cleanup.step("audio-stop") { audioDevice.requestStopRecording() }
+                cleanup.step("mic-disable") { micTrack?.setEnabled(false) }
+            }
+            microphoneActive = false
+            synchronized(audioLock) { audioTracks.clear() }
+            cleanup.step("audio-focus") { audioSession.close() }
+            cleanup.step("transport") { closePeerTransport() }
+            cleanup.step("mic-track") { micTrack?.dispose() }
+            cleanup.step("mic-source") { micSource?.dispose() }
+            micTrack = null; micSource = null; micSender = null
+            cleanup.step("factory") { factory.dispose() }
+            cleanup.step("audio-device") { audioDevice.release() }
+            Log.i("xCloudMedia", "RTC_RELEASE/ ${cleanup.diagnostics()}")
+            cleanup.throwIfFailed()
+        }
     }
 
     /** Invalidate callbacks before closing; old CLOSED/channel events cannot poison a retry. */
     private fun closePeerTransport() {
-        peerGeneration.incrementAndGet()
-        iceGathering?.close();iceGathering=null
-        channels.values.forEach { it.unregisterObserver(); it.close(); it.dispose() }
+        val peer = synchronized(statisticsLock) {
+            peerGeneration.incrementAndGet()
+            peerConnection.also { peerConnection = null }
+        }
+        val cleanup = MediaCleanup()
+        val gathering = iceGathering
+        iceGathering = null
+        cleanup.step("ice") { gathering?.close() }
+        val retired = channels.toMap()
         channels.clear()
-        peerConnection?.close()
-        peerConnection?.dispose()
-        peerConnection = null
+        retired.forEach { (name, channel) ->
+            cleanup.step("$name-observer") { channel.unregisterObserver() }
+            cleanup.step("$name-close") { channel.close() }
+            cleanup.step("$name-dispose") { channel.dispose() }
+        }
+        cleanup.step("peer-close") { peer?.close() }
+        cleanup.step("peer-dispose") { peer?.dispose() }
+        Log.i("xCloudMedia", "PEER_RELEASE/ ${cleanup.diagnostics()}")
+        cleanup.throwIfFailed()
     }
 
     private open class DescriptionObserver : SdpObserver {

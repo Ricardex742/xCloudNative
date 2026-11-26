@@ -73,7 +73,12 @@ data class PlaybackSettings(
     val audioMode: AudioPlaybackMode = AudioPlaybackMode.STANDARD,
     val imageLab: ImageLabSettings = ImageLabSettings(),
     val imageComparison: ImageComparison = ImageComparison.PROCESSED,
-    val gyroSource: GyroSource = GyroSource.DEVICE
+    val gyroSource: GyroSource = GyroSource.DEVICE,
+    val matchDisplayMode: Boolean = true,
+    val tryAlternateDecoder: Boolean = false,
+    val tryMotionFence: Boolean = false,
+    val tryIdleGamepadCadence: Boolean = false,
+    val trySkipAudioSamples: Boolean = false
 ) {
     fun effectiveImageComparison(): ImageComparison = when {
         imageComparison!=ImageComparison.PROCESSED -> imageComparison
@@ -86,7 +91,8 @@ data class PlaybackSettings(
             copy(resolution=StreamResolution.HD_720) else this
         return when(videoMode) {
             VideoMode.COMPATIBILITY -> selected.copy(imageTreatment=ImageTreatmentSettings(),
-                presentationPacing=PresentationPacing.OFF,fsr=FsrMode.OFF,imageLab=ImageLabSettings(),imageComparison=ImageComparison.PROCESSED)
+                presentationPacing=PresentationPacing.OFF,fsr=FsrMode.OFF,imageLab=ImageLabSettings(),imageComparison=ImageComparison.PROCESSED,
+                tryAlternateDecoder=false,tryMotionFence=false,tryIdleGamepadCadence=false,trySkipAudioSamples=false)
             VideoMode.LOW_LATENCY -> selected.copy(presentationPacing=PresentationPacing.OFF)
             else -> selected
         }
@@ -148,7 +154,12 @@ class PlaybackSettingsStore(context: Context,
                 ExperimentalFrameGeneration.entries.firstOrNull { it.name==prefs.getString("image_lab_frame_generation",null) } ?: ExperimentalFrameGeneration.OFF,
                 ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_lab_comparison",null) } ?: ImageComparison.PROCESSED,prefs.getBoolean("image_lab_neural",false)).bounded(),
             imageComparison=ImageComparison.entries.firstOrNull { it.name==prefs.getString("image_comparison_all",null) } ?: ImageComparison.PROCESSED,
-            gyroSource=GyroSource.entries.firstOrNull { it.name==prefs.getString("gyro_source",null) } ?: GyroSource.DEVICE)
+            gyroSource=GyroSource.entries.firstOrNull { it.name==prefs.getString("gyro_source",null) } ?: GyroSource.DEVICE,
+            matchDisplayMode=prefs.getBoolean("match_display_mode",true),
+            tryAlternateDecoder=prefs.getBoolean("try_alternate_decoder",false),
+            tryMotionFence=prefs.getBoolean("try_motion_fence",false),
+            tryIdleGamepadCadence=prefs.getBoolean("try_idle_gamepad_cadence",false),
+            trySkipAudioSamples=prefs.getBoolean("try_skip_audio_samples",false))
     }
     fun save(settings: PlaybackSettings) = synchronized(writes) { write(values(settings)) }
 
@@ -180,6 +191,11 @@ class PlaybackSettingsStore(context: Context,
         "low_latency_video" to settings.videoMode.lowLatency,
         "resolution" to settings.resolution.name,
         "native_upscaling" to settings.nativeUpscaling,
+        "match_display_mode" to settings.matchDisplayMode,
+        "try_alternate_decoder" to settings.tryAlternateDecoder,
+        "try_motion_fence" to settings.tryMotionFence,
+        "try_idle_gamepad_cadence" to settings.tryIdleGamepadCadence,
+        "try_skip_audio_samples" to settings.trySkipAudioSamples,
         "aspect" to settings.aspect.name,
         "local_coop" to settings.localCoOp,
         "rumble" to settings.rumble,

@@ -14,7 +14,7 @@ class StartupDiagnosticsStore(context: Context) {
     fun read(): Entry?=runCatching {
         val game=prefs.getString("game",null) ?: return null
         val text=prefs.getString("text",null)?.takeIf { it.isNotBlank() } ?: return null
-        val timeline = prefs.getString("timeline",null)?.takeIf { it.length <= 4096 }?.let {
+        val timeline = prefs.getString("timeline",null)?.takeIf { it.length <= PlaybackTimeline.MAX_JSON_CHARS }?.let {
             runCatching { PlaybackTimeline.read(JSONObject(it)) }.getOrNull()
         }
         Entry(game.take(256),text.take(8192),timeline)

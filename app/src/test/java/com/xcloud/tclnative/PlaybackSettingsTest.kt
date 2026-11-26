@@ -41,12 +41,56 @@ class PlaybackSettingsTest {
         prefs.edit().putString("video_mode","removed-mode").putString("resolution","unsupported").commit()
         assertEquals(chosen.copy(resolution=StreamResolution.HD_1080_HQ),PlaybackSettingsStore(context).read())
     }
+    @Test fun oldSettingsDefaultToAutomaticDisplayAndCanOptOutWithoutLosingOtherChoices() {
+        val context = RuntimeEnvironment.getApplication()
+        context.getSharedPreferences("stream_preferences", Context.MODE_PRIVATE).edit()
+            .putBoolean("low_latency_video", false).putBoolean("native_upscaling", true)
+            .putString("aspect", VideoAspect.RATIO_16_10.name).commit()
+        val store = PlaybackSettingsStore(context)
+        val before = store.read()
+        assertTrue(before.matchDisplayMode)
+        val edited = before.copy(matchDisplayMode = false)
+        assertEquals(edited, store.update(before, edited))
+        assertEquals(edited, PlaybackSettingsStore(context).read())
+        assertEquals(VideoMode.ADAPTIVE, edited.videoMode)
+        assertEquals(VideoAspect.RATIO_16_10, edited.aspect)
+        assertTrue(edited.nativeUpscaling)
+    }
+    @Test fun performanceTrialsAreOptInAndIgnoredByCompatibility() {
+        val store = PlaybackSettingsStore(RuntimeEnvironment.getApplication())
+        val base = store.read()
+        assertFalse(base.tryAlternateDecoder || base.tryMotionFence || base.tryIdleGamepadCadence || base.trySkipAudioSamples)
+        val trials = base.copy(tryAlternateDecoder = true, tryMotionFence = true,
+            tryIdleGamepadCadence = true, trySkipAudioSamples = true)
+        assertEquals(trials, store.update(base, trials))
+        assertEquals(trials, trials.forSession())
+        val compatible = trials.copy(videoMode = VideoMode.COMPATIBILITY).forSession()
+        assertFalse(compatible.tryAlternateDecoder || compatible.tryMotionFence || compatible.tryIdleGamepadCadence || compatible.trySkipAudioSamples)
+    }
+
     @Test fun layoutFitsSmallAndOversizedSourcesWithoutCroppingOrDependingOnHardwareScaling() {
         assertEquals(VideoViewport(1920,1080),VideoScalingPolicy.viewport(1920,1080,1280,720))
         assertEquals(VideoViewport(1280,720),VideoScalingPolicy.viewport(1280,720,1920,1080))
         assertEquals(VideoViewport(3840,2160),VideoScalingPolicy.viewport(3840,2160,1920,1080))
         assertEquals(VideoViewport(405,720),VideoScalingPolicy.viewport(1280,720,1080,1920))
         assertEquals(VideoViewport(1,1),VideoScalingPolicy.viewport(0,0,0,0))
+    }
+    @Test fun upgradingALegacyInstallPreservesExplicitSettingsEvenOnAConstrainedDevice() {
+        val context = RuntimeEnvironment.getApplication()
+        val policy = DevicePerformancePolicy(constrainedMemory = true)
+        assertEquals(StreamResolution.HD_720, PlaybackSettingsStore(context, policy).read().resolution)
+        context.getSharedPreferences("stream_preferences", Context.MODE_PRIVATE).edit()
+            .putString("touch_mode", "WEB_NATIVE")
+            .putString("resolution", StreamResolution.HD_1080_HQ.name)
+            .putString("video_codec", "HEVC")
+            .putString("fsr_mode", FsrMode.FSR1.name)
+            .commit()
+        val migrated = PlaybackSettingsStore(context, policy).read()
+        assertEquals(TouchMode.NATIVE, migrated.touchMode)
+        assertEquals(StreamResolution.HD_1080_HQ, migrated.resolution)
+        assertEquals(VideoCodecMode.H264, migrated.videoCodec)
+        assertEquals(FsrMode.FSR1, migrated.fsr)
+        assertEquals(migrated, PlaybackSettingsStore(context, policy).read())
     }
     @Test fun lightCodecPersistsAndRemovedExperimentalPreferencesMigrateToStandard() {
         val context=RuntimeEnvironment.getApplication()

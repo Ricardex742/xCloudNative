@@ -88,6 +88,26 @@ class DeviceInputPolicyTest {
         assertEquals(TouchMode.VIRTUAL,DeviceInputPolicy.resolve(phone,TouchMode.AUTO,standard))
         assertEquals(TouchMode.VIRTUAL,DeviceInputPolicy.resolve(phone,TouchMode.NATIVE,standard))
     }
+    @Test @Config(sdk=[25,28],qualifiers="land-finger")
+    fun televisionFeatureAlignsInputAndVideoPolicyButDependsOnLeanbackForHomeChannels() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        try {
+            val features = shadowOf(activity.packageManager)
+            features.setSystemFeature(PackageManager.FEATURE_TELEVISION,true)
+            features.setSystemFeature(PackageManager.FEATURE_TOUCHSCREEN,true)
+            installInputs(InputDevice.SOURCE_TOUCHSCREEN, InputDevice.SOURCE_DPAD)
+            val hardware = DevicePlatform.read(activity)
+            assertFalse(hardware.tvMode)
+            assertFalse(hardware.leanback)
+            assertTrue(hardware.television)
+            assertTrue(InputDeviceProfile.read(activity,hardware).television)
+            assertFalse(InputDeviceProfile.read(activity,hardware).touchDevice)
+            assertFalse(com.xcloud.tclnative.home.HomeShortcuts(activity).supportsChannel)
+            val search = com.xcloud.tclnative.ui.dashboard.SearchButton(activity) {}
+            assertFalse(search.phoneTarget)
+        } finally { controller.pause().stop().destroy() }
+    }
     @Test fun televisionNeverStartsTouchOrHudEvenIfItAdvertisesATouchscreen() {
         for(touch in listOf(false,true)) for(preference in TouchMode.entries) {
             assertEquals(TouchMode.OFF,DeviceInputPolicy.resolve(InputDeviceProfile(true,touch),preference,native))

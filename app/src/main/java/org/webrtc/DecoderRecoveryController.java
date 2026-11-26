@@ -6,12 +6,17 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class DecoderRecoveryController {
   public interface ResetRequest { void request(); }
   private final AtomicReference<ResetRequest> active = new AtomicReference<>();
+  private volatile String event = "NONE";
   void attach(ResetRequest request) { active.set(request); }
   void detach(ResetRequest request) { active.compareAndSet(request, null); }
   public boolean requestReset() {
     ResetRequest request = active.get();
     if (request == null) return false;
     request.request();
+    event = "AWAITING_KEYFRAME";
     return true;
   }
+
+  void record(String status) { event = status; }
+  public String diagnostics() { return "DECODER_RECOVERY/" + event; }
 }

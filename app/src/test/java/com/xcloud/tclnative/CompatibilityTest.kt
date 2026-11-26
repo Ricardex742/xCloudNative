@@ -8,6 +8,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CompatibilityTest {
+    @Test fun deferredCatalogWorkRequiresBothForegroundAndCatalogMode() = runBlocking {
+        val gate = CatalogWorkGate(foreground = false)
+        val ready = async(start = CoroutineStart.UNDISPATCHED) { gate.await() }
+        gate.pause()
+        gate.setForeground(true)
+        yield()
+        assertFalse(ready.isCompleted)
+        gate.setForeground(false)
+        gate.resume()
+        yield()
+        assertFalse(ready.isCompleted)
+        gate.setForeground(true)
+        withTimeout(1000) { ready.await() }
+    }
+
     @Test fun baselineIsPreferredForLightweightDecodingWithoutForgingProfiles() {
         val offered=listOf("640c1f","42e01f","4d001f")
         assertEquals(listOf("42e01f","4d001f","640c1f"),offered.sortedBy { CodecPreference.rank(it,true) })

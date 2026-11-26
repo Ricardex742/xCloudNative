@@ -24,6 +24,8 @@ internal val NetworkQuality.label: String get() = when (this) {
 }
 
 /** A touch shortcut that leaves controller focus with the game. */
+// The app uses Android Material framework themes and native widget styling.
+@android.annotation.SuppressLint("AppCompatCustomView")
 internal class NetworkIndicator(context: Context, onOpen: () -> Unit) : ImageButton(context) {
     private val density = resources.displayMetrics.density
     private val signal = NetworkSignalDrawable((24 * density).roundToInt())

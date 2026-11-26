@@ -11,6 +11,7 @@ import com.xcloud.tclnative.settings.*
 import com.xcloud.tclnative.signaling.*
 import com.xcloud.tclnative.ui.*
 import com.xcloud.tclnative.ui.dashboard.*
+import kotlinx.coroutines.runBlocking
 import org.junit.*
 import org.junit.Assert.*
 import org.junit.runner.RunWith
@@ -233,7 +234,7 @@ class ConsoleFidelityReviewTest {
                 } finally { menu.dismiss() }
             }
             assertEquals(2,opened)
-        } finally { home.close();queue.close();transition.close();video.release();c.pause().stop().destroy() }
+        } finally { home.close();queue.close();transition.close();runBlocking { video.release() };c.pause().stop().destroy() }
     }
     @Test @Config(sdk=[30]) fun fullscreenSearchAppliesKeyboardInsetsWithoutAddingThemToTheCutout() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()

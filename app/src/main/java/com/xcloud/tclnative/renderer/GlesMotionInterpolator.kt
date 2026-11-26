@@ -12,7 +12,7 @@ import java.util.Locale
 
 /** Original GLES implementation. Source pixels stay on GPU except a fixed 32x18 luma signature. */
 internal class GlesMotionInterpolator(context: Context,shared: EglBase.Context,private val handler: Handler,
-    private var protection: Int): MotionInterpolationBackend {
+    private var protection: Int, useFence: Boolean = false): MotionInterpolationBackend {
     private var egl: EglBase?=null
     private val frameDrawer=VideoFrameDrawer()
     private val copy=GlRectDrawer()
@@ -28,6 +28,9 @@ internal class GlesMotionInterpolator(context: Context,shared: EglBase.Context,p
     private val assets=context.applicationContext
     private var copyTimer: LabGpuTimer?=null
     private var flowTimer: LabGpuTimer?=null
+    private var fenceEnabled = useFence
+    private var fenceTimeouts = 0L
+    private var fenceFallback = false
     private val pixels=ByteBuffer.allocateDirect(32*18*4)
     private val luma=ByteArray(32*18)
     private var width=0;private var height=0;private var rotation=0
@@ -78,9 +81,8 @@ internal class GlesMotionInterpolator(context: Context,shared: EglBase.Context,p
             flow!!.draw(backward!!,width,height,mapOf("history_tex" to current!!.textureId,"source" to previous!!.textureId))
             midpoint!!.draw(slot.target!!,width,height,mapOf("source" to current!!.textureId,"history_tex" to previous!!.textureId,
                 "flow_forward" to forward!!.textureId,"flow_backward" to backward!!.textureId),protection)
-            // Finish the producer before another EGL context samples the output texture.
-            GLES20.glFinish();GlUtil.checkNoGLES2Error("motion interpolation handoff")
         }finally{flowTimer?.end()}
+        if (!producerReady()) return null
         slot.busy=true
         val buffer=TextureBufferImpl(width,height,VideoFrame.TextureBuffer.Type.RGB,slot.target!!.textureId,
             Matrix(),handler,yuv){
@@ -91,13 +93,42 @@ internal class GlesMotionInterpolator(context: Context,shared: EglBase.Context,p
         }
         return VideoFrame(buffer,0,timestampNs)
     }
+    /** Publish shared texture only after producer GPU work completes. A timeout drops this synthetic frame. */
+    private fun producerReady(): Boolean {
+        if (fenceEnabled) {
+            val fence = GLES30.glFenceSync(GLES30.GL_SYNC_GPU_COMMANDS_COMPLETE, 0)
+            if (fence != 0L) {
+                val result = try {
+                    GLES30.glClientWaitSync(fence, GLES30.GL_SYNC_FLUSH_COMMANDS_BIT, 1_000_000L)
+                } finally {
+                    GLES30.glDeleteSync(fence)
+                }
+                val error = GLES20.glGetError()
+                if (error == GLES20.GL_NO_ERROR) {
+                    when (result) {
+                        GLES30.GL_ALREADY_SIGNALED, GLES30.GL_CONDITION_SATISFIED -> return true
+                        GLES30.GL_TIMEOUT_EXPIRED -> {
+                            fenceTimeouts++
+                            return false
+                        }
+                    }
+                }
+            } else GLES20.glGetError()
+            fenceEnabled = false
+            fenceFallback = true
+        }
+        GLES20.glFinish()
+        GlUtil.checkNoGLES2Error("motion interpolation handoff")
+        return true
+    }
     override fun commit(){val old=previous;previous=current;current=old;valid=true}
     override fun updateProtection(value: Int){protection=value}
     override fun reset(){valid=false}
     override fun diagnostics()=String.format(Locale.US,
-        "GLES motion: %dx%d | flow=64x36 bidirectional | pool=%d/2 | GPU copy/flow+warp=%s/%s ms | buffers <=48 MiB | signature readback=32x18",
+        "GLES motion: %dx%d | flow=64x36 bidirectional | pool=%d/2 | GPU copy/flow+warp=%s/%s ms | buffers <=48 MiB | signature readback=32x18 | GPU_HANDOFF/%s; timeout=%d",
         width,height,slots.count {it.busy},copyTimer?.milliseconds()?.let {"%.2f".format(Locale.US,it)} ?: "n/a",
-        flowTimer?.milliseconds()?.let {"%.2f".format(Locale.US,it)} ?: "n/a")
+        flowTimer?.milliseconds()?.let {"%.2f".format(Locale.US,it)} ?: "n/a",
+        if (fenceEnabled) "FENCE" else if (fenceFallback) "FINISH_FALLBACK" else "FINISH", fenceTimeouts)
     override fun close(released: () -> Unit){
         if(this.released){released();return}
         if(closing)return

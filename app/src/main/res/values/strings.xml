@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">xCLOUD</string>
+    <string name="app_name" translatable="false">xCLOUD</string>
     <color name="brand_background">#101A13</color>
 </resources>

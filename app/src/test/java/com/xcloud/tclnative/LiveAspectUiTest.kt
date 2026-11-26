@@ -36,6 +36,53 @@ class LiveAspectUiTest {
         view.measure(View.MeasureSpec.makeMeasureSpec(1452,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(689,View.MeasureSpec.EXACTLY))
         view.layout(0,0,1452,689)
     }
+    @Test fun resizingTheTabletReleasesTwoTouchesWithoutChangingPhysicalControllerSlots() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val context = controller.get()
+        val renderer = AiPqSurfaceRenderer(context)
+        renderer.aspect = VideoAspect.ORIGINAL
+        val router = com.xcloud.tclnative.webrtc.ControllerRouter()
+        router.beginSession(enabled = true, touchPlayerOne = true)
+        assertEquals(1, router.slot(42))
+        router.update(1, com.xcloud.tclnative.webrtc.GamepadState(buttons = 16))
+        val pointers = mutableListOf<NativePointer>()
+        val touch = GameTouchView(context, router::virtual, {pointers.addAll(it)}, renderer::touchCoordinates,{})
+        fun send(action: Int, count: Int) {
+            val properties = Array(count) { index ->
+                MotionEvent.PointerProperties().apply { id=index; toolType=MotionEvent.TOOL_TYPE_FINGER }
+            }
+            val positions = Array(count) { index ->
+                MotionEvent.PointerCoords().apply { x=300f+index*250f; y=280f; pressure=1f; size=.1f }
+            }
+            val event = MotionEvent.obtain(1,2,action,count,properties,positions,0,0,1f,1f,0,0,
+                android.view.InputDevice.SOURCE_TOUCHSCREEN,0)
+            try { touch.onTouchEvent(event) } finally { event.recycle() }
+        }
+        fun resize(w: Int, h: Int) {
+            for (view in listOf(renderer,touch)) {
+                view.measure(View.MeasureSpec.makeMeasureSpec(w,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(h,View.MeasureSpec.EXACTLY))
+                view.layout(0,0,w,h)
+            }
+        }
+        try {
+            resize(1280,800)
+            touch.configure(TouchMode.NATIVE)
+            send(MotionEvent.ACTION_DOWN,1)
+            send(MotionEvent.ACTION_POINTER_DOWN or (1 shl MotionEvent.ACTION_POINTER_INDEX_SHIFT),2)
+            assertEquals(listOf(1,1),pointers.map { it.type })
+            resize(1001,669)
+            assertEquals(listOf(1,1,2,2),pointers.map { it.type })
+            assertEquals(pointers.take(2).map { it.x to it.y },pointers.takeLast(2).map { it.x to it.y })
+            assertEquals(1,router.slot(42))
+            assertEquals(16,router.combined(1).buttons)
+            send(MotionEvent.ACTION_DOWN,1)
+            assertEquals(renderer.touchCoordinates(300f,280f)!!.first,pointers.last().x,0f)
+        } finally {
+            touch.releaseInputs()
+            kotlinx.coroutines.runBlocking { renderer.release() }
+            controller.pause().stop().destroy()
+        }
+    }
     @Test fun gameMenuAppliesStretchAndZoomWithoutReconnectingAndReleasesContactsInTheOldSpace() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val context=controller.get()
@@ -91,7 +138,7 @@ class LiveAspectUiTest {
             assertEquals(.5f,renderer.touchCoordinates(726f,344.5f)!!.second,.00001f)
         } finally {
             (ShadowDialog.getLatestDialog() as? ConsoleDialog)?.dismiss()
-            touch.releaseInputs();renderer.release()
+            touch.releaseInputs();kotlinx.coroutines.runBlocking { renderer.release() }
             controller.pause().stop().destroy()
         }
     }

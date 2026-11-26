@@ -2,13 +2,17 @@ package com.xcloud.tclnative.renderer
 
 import com.xcloud.tclnative.i18n.UiText
 
+import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Color
+import android.os.Build
 import android.os.SystemClock
+import android.util.Log
 import android.view.Gravity
 import android.widget.FrameLayout
 import com.xcloud.tclnative.settings.VideoAspect
 import com.xcloud.tclnative.settings.DevicePerformancePolicy
+import com.xcloud.tclnative.settings.DevicePlatform
 import com.xcloud.tclnative.settings.FsrOutput
 import com.xcloud.tclnative.settings.FsrMode
 import com.xcloud.tclnative.settings.ImageTreatmentSettings
@@ -22,9 +26,21 @@ import org.webrtc.RendererCommon
 import org.webrtc.VideoTrack
 import org.webrtc.VideoSink
 import com.xcloud.tclnative.webrtc.StreamMetrics
+import com.xcloud.tclnative.webrtc.MediaCleanup
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicLong
 
-class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
+class AiPqSurfaceRenderer internal constructor(context: Context, private val platform: DevicePlatform) : FrameLayout(context) {
+    constructor(context: Context) : this(context, DevicePlatform.read(context))
+
+    internal var onOutputModesChanged: (() -> Unit)? = null
+    internal var onVideoAspectChanged: (() -> Unit)? = null
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val egl = lazy { EglBase.create() }
     val eglBase: EglBase get()=egl.value
@@ -36,8 +52,13 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private var watchingDisplay=false
     private val displayListener=object: android.hardware.display.DisplayManager.DisplayListener {
         override fun onDisplayAdded(id: Int) {}
-        override fun onDisplayRemoved(id: Int) {}
-        override fun onDisplayChanged(id: Int) { if(!released && fsrEnabled && display?.displayId==id) updateOutputBuffer() }
+        override fun onDisplayRemoved(id: Int) { onOutputModesChanged?.invoke() }
+        override fun onDisplayChanged(id: Int) {
+            if (!released && display?.displayId == id) {
+                updateVideoLayout()
+                onOutputModesChanged?.invoke()
+            }
+        }
     }
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
@@ -57,6 +78,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private fun stopWatchingDisplay() { if(watchingDisplay) { displayManager.unregisterDisplayListener(displayListener);watchingDisplay=false } }
     private var currentTrack: VideoTrack? = null
     private var renderer: OutputSurfaceViewRenderer? = null
+    private val rendererChanges = Mutex()
     private var aspectDrawer: AspectVideoDrawer? = null
     private var trackSink: VideoSink? = null
     private var pacedSink: FramePacedVideoSink?=null
@@ -67,6 +89,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     @Volatile private var generation = 0
     @Volatile private var lastDeliveryMs = AtomicLong(Long.MIN_VALUE)
     private val submittedToken = AtomicLong()
+    private var submissionCadence = EglSubmissionCadence()
     private val fsrDraws=AtomicLong()
     private val allDraws=AtomicLong()
     private val fsrPerformance=FsrPerformanceGuard()
@@ -79,16 +102,36 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             android.os.SystemClock.elapsedRealtime() - delivered < 2000)
     }
 
-    /** Keep the same remote track, peer connection, audio and Xbox allocation. UI thread only. */
-    fun rebuildSurface() {
-        if (released) return
+    /** Keep the same remote track, peer connection, audio and Xbox allocation. Called from Main. */
+    suspend fun rebuildSurface() = rendererChanges.withLock {
+        if (released) return@withLock
         val track = currentTrack
         val firstDelivery = trackFirstDelivery
-        replaceRenderer()
+        retireRenderer()
+        currentCoroutineContext().ensureActive()
+        createRenderer()
         if (track != null && firstDelivery != null) attachTrackNow(track, firstDelivery)
     }
     @Volatile private var released = false
     var minimalPostProcessingRequested = false
+    private var matchFrameRate = true
+
+    internal fun setFrameRateMatching(enabled: Boolean) {
+        if (matchFrameRate == enabled) return
+        matchFrameRate = enabled
+        renderer?.holder?.let(::applyFrameRateHint)
+    }
+
+    private fun applyFrameRateHint(holder: android.view.SurfaceHolder) {
+        frameRateHintRequested = false
+        if (Build.VERSION.SDK_INT < 30 || !holder.surface.isValid) return
+        val rate = if (!matchFrameRate) 0f else if (compatibility) 30f else 60f
+        val type = if (matchFrameRate) android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE
+            else android.view.Surface.FRAME_RATE_COMPATIBILITY_DEFAULT
+        val applied = runCatching { holder.surface.setFrameRate(rate, type) }.isSuccess
+        frameRateHintRequested = matchFrameRate && applied
+    }
+
     private var frameRateHintRequested = false
     private var videoWidth = 1920
     private var videoHeight = 1080
@@ -109,7 +152,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     }
     private fun requestedLabLevel()=when {
         !imageLab.hasImageEffects || compatibility -> 0
-        devicePolicy.constrainedMemory -> 1
+        constrainOptionalEffects -> 1
         imageLab.supersampling!=com.xcloud.tclnative.settings.ImageSupersampling.OFF -> 3
         imageLab.neural -> 2
         else -> 1
@@ -131,9 +174,14 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private var fsrFailure: String?=null
     private var requestedBuffer: VideoViewport?=null
     private var largeMobileSurface=false
+    private var constrainedTvSurface = false
+    private var systemMemoryPressure = false
+    private val constrainOptionalEffects get() = devicePolicy.constrainedMemory || systemMemoryPressure
+    private var totalRamMiB: Long? = null
     private var bufferVerification: Runnable?=null
     private val fsrEnabled get()=fsrRequested && treatmentBudget.scaling && !compatibility && fsrFailure==null
     var compatibility = false
+    var tryMotionFence = false
     fun setFsr(requested: Boolean,sharpness: Int,output: FsrOutput=FsrOutput.AUTO) {
         setFsr(if(requested) FsrMode.FSR1 else FsrMode.OFF,sharpness,output)
     }
@@ -157,11 +205,14 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         fsrPerformance.reset();applyTreatmentBudget()
     }
     private fun resetReconstructionController() {
-        reconstructionController.reset(reconstructionSettings.quality,devicePolicy.constrainedMemory)
+        reconstructionController.reset(reconstructionSettings.quality, constrainOptionalEffects)
     }
     private fun resetTreatmentBudget() {
         imageLabLevel=requestedLabLevel()
-        treatmentCuts.clear();treatmentBudget=TreatmentBudget(if(compatibility) ImageTreatmentSettings() else requestedTreatment,fsrOutput,fsrRequested)
+        treatmentCuts.clear()
+        val requested = TreatmentBudget(if (compatibility) ImageTreatmentSettings() else requestedTreatment, fsrOutput, fsrRequested)
+        treatmentBudget = if (systemMemoryPressure) requested.underMemoryPressure() else requested
+        if (treatmentBudget != requested) treatmentCuts.add("memory pressure")
         resetReconstructionController()
         fsrPerformance.reset();applyTreatmentBudget()
     }
@@ -170,14 +221,14 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             val effective=if(compatibility || treatmentFailure!=null) ImageTreatmentSettings() else treatmentBudget.image
             // Never accumulate generated pictures as new temporal source evidence.
             drawer.treatment=if(interpolationSession)effective.copy(temporal=0) else effective
-            drawer.motionTemporalAllowed=!devicePolicy.constrainedMemory
+            drawer.motionTemporalAllowed=!constrainOptionalEffects
             drawer.fsrEnabled=fsrEnabled && fsrMode==FsrMode.FSR1
             drawer.sgsrEnabled=fsrEnabled && fsrMode==FsrMode.SGSR1
             drawer.reconstructionLevel=if(fsrEnabled && fsrMode==FsrMode.RECONSTRUCTION) reconstructionController.level else 0
             drawer.reconstructionStrength=reconstructionSettings.strength
             drawer.imageComparison=reconstructionSettings.comparison.ordinal
             drawer.globalImageComparison=if(compatibility)0 else imageComparison.ordinal
-            drawer.imageLab=if(compatibility || treatmentFailure!=null) ImageLabSettings() else imageLab.forDevice(devicePolicy.constrainedMemory)
+            drawer.imageLab=if(compatibility || treatmentFailure!=null) ImageLabSettings() else imageLab.forDevice(constrainOptionalEffects)
             drawer.imageLabLevel=imageLabLevel
         }
     }
@@ -210,25 +261,25 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             updateVideoLayout()
         }
 
-    init { setBackgroundColor(Color.BLACK); keepScreenOn = true }
+    init { setBackgroundColor(Color.BLACK) }
 
     /** A new renderer has a new first-frame event for every session, including retries. */
     fun prepareForSession(expectedWidth: Int = 1920, expectedHeight: Int = 1080) {
-        check(!released)
+        check(!released && renderer == null && !rendererChanges.isLocked)
+        val activityManager = context.getSystemService(ActivityManager::class.java)
+        val memory = activityManager?.let { manager -> ActivityManager.MemoryInfo().also(manager::getMemoryInfo) }
+        systemMemoryPressure = memory?.lowMemory == true
+        totalRamMiB = memory?.totalMem?.takeIf { it > 0 }?.div(1024 * 1024)
         fsrFailure=null;treatmentFailure=null;resetTreatmentBudget()
         videoWidth = expectedWidth; videoHeight = expectedHeight
         submittedToken.set(0)
-        replaceRenderer()
+        createRenderer()
     }
-    private fun replaceRenderer() {
-        detachTrack()
+    private fun createRenderer() {
         cancelBufferVerification();requestedBuffer=null
         generation++
         fsrDraws.set(0);allDraws.set(0);fsrPerformance.reset()
         frameRateHintRequested = false
-        val previous=renderer
-        renderer=null;aspectDrawer=null
-        previous?.let { removeView(it);it.release() }
         val id = generation
         val drawer=AspectVideoDrawer(aspect.stretch,{ org.webrtc.Fsr1Drawer(context) },onFsrFailure={ reason ->
             post { if(!released && generation==id) fallbackFsr(reason) }
@@ -254,22 +305,30 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         try {
             val view=newView
             val firstSubmission = FirstSurfaceSubmission()
+            val cadence = EglSubmissionCadence().also { submissionCadence = it }
             view.onBufferFailure={ post { if(!released && generation==id) fallbackFsr("Surface recusou o tamanho solicitado") } }
             view.init(eglBase.eglBaseContext, object : RendererCommon.RendererEvents {
                 override fun onFirstFrameRendered() = Unit // WebRTC emits this on delivery, before EGL draws.
                 override fun onFrameResolutionChanged(width: Int, height: Int, rotation: Int) {
                     post { if (!released && generation == id) {
-                        videoWidth = if (rotation % 180 == 0) width else height
-                        videoHeight = if (rotation % 180 == 0) height else width
+                        val nextWidth = if (rotation % 180 == 0) width else height
+                        val nextHeight = if (rotation % 180 == 0) height else width
+                        if (videoWidth.toLong() * nextHeight != videoHeight.toLong() * nextWidth) {
+                            onVideoAspectChanged?.invoke()
+                        }
+                        videoWidth = nextWidth
+                        videoHeight = nextHeight
                         updateVideoLayout()
                     } }
                 }
             },EglBase.CONFIG_PLAIN,drawer)
             view.addFrameSubmissionListener {
                 if (!released && generation == id) {
+                    val submittedAtNs = SystemClock.elapsedRealtimeNanos()
+                    cadence.observe(submittedAtNs)
                     submittedToken.incrementAndGet()
                     firstSubmission.begin()?.let { epoch ->
-                        val submittedAt = SystemClock.elapsedRealtime()
+                        val submittedAt = submittedAtNs / 1_000_000
                         post {
                             if (!released && generation == id && firstSubmission.confirm(epoch, view.holder.surface.isValid)) {
                                 onFirstFrameSubmitted?.invoke(submittedAt)
@@ -282,24 +341,19 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             view.setEnableHardwareScaler(nativeUpscaling && !fsrEnabled)
             if(compatibility) view.setFpsReduction(30f) else view.disableFpsReduction()
             view.holder.addCallback(object : android.view.SurfaceHolder.Callback {
-                private fun frameRate(holder: android.view.SurfaceHolder) {
-                    if (!released && generation == id && android.os.Build.VERSION.SDK_INT >= 30 && holder.surface.isValid) {
-                        frameRateHintRequested = runCatching {
-                            holder.surface.setFrameRate(if(compatibility) 30f else 60f, android.view.Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
-                        }.isSuccess
-                    }
-                }
                 override fun surfaceCreated(holder: android.view.SurfaceHolder) {
                     firstSubmission.surfaceChanged()
-                    frameRate(holder)
+                    cadence.surfaceChanged()
+                    if (!released && generation == id) applyFrameRateHint(holder)
                     if(!released && generation==id) updateOutputBuffer()
                 }
                 override fun surfaceChanged(holder: android.view.SurfaceHolder, format: Int, width: Int, height: Int) {
-                    frameRate(holder)
+                    if (!released && generation == id) applyFrameRateHint(holder)
                     if(!released && generation==id) updateOutputBuffer()
                 }
                 override fun surfaceDestroyed(holder: android.view.SurfaceHolder) {
                     firstSubmission.surfaceChanged()
+                    cadence.surfaceChanged()
                     if (generation == id) { frameRateHintRequested = false;cancelBufferVerification() }
                 }
             })
@@ -335,21 +389,25 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
     private fun updateOutputBuffer() {
         val view=renderer ?: return
         val mode=display?.mode
-        val tv=(context.getSystemService(Context.UI_MODE_SERVICE) as android.app.UiModeManager).currentModeType==android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        val tv = platform.television
         val activity=context as? android.app.Activity
         val fullScreen=activity?.let { !it.isInMultiWindowMode && !it.isInPictureInPictureMode } ?: true
         val viewport=VideoScalingPolicy.viewport(width,height,videoWidth,videoHeight,aspect)
         largeMobileSurface = SurfaceMemoryBudget.applyLimit(width, height, tv)
-        val target=if(fsrEnabled) FsrOutputPolicy.target(treatmentBudget.output,width,height,viewport,
+        val constrained = constrainOptionalEffects
+        constrainedTvSurface = tv && (SurfaceMemoryBudget.applyLimit(width, height, tv, constrained) ||
+            (fullScreen && SurfaceMemoryBudget.applyLimit(mode?.physicalWidth ?: 0, mode?.physicalHeight ?: 0, tv, constrained)))
+        val upscaleTarget=if(fsrEnabled) FsrOutputPolicy.target(treatmentBudget.output,width,height,viewport,
             mode?.physicalWidth ?: 0,mode?.physicalHeight ?: 0,tv,fullScreen)?.let { selected ->
             val scale=(treatmentBudget.maxOutputHeight.toDouble()/minOf(selected.width,selected.height)).coerceAtMost(1.0)
             val limited = VideoViewport((selected.width*scale).toInt().coerceAtLeast(1),(selected.height*scale).toInt().coerceAtLeast(1))
-            if (largeMobileSurface) SurfaceMemoryBudget.cap(limited) else limited
+            if (largeMobileSurface || constrainedTvSurface) SurfaceMemoryBudget.cap(limited) else limited
         } else null
+        val target = upscaleTarget ?: viewport.takeIf { constrainedTvSurface }?.let(SurfaceMemoryBudget::cap)
         if(target!=requestedBuffer) { cancelBufferVerification();fsrPerformance.reset() }
         requestedBuffer=target
         view.setOutputBuffer(target)
-        view.setEnableHardwareScaler((nativeUpscaling || largeMobileSurface) && !fsrEnabled)
+        view.setEnableHardwareScaler((nativeUpscaling || largeMobileSurface || constrainedTvSurface) && !fsrEnabled)
         verifyOutputBuffer()
     }
     private fun cancelBufferVerification() { bufferVerification?.let(::removeCallbacks);bufferVerification=null }
@@ -429,18 +487,19 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
                 view.onFrame(frame)
             }
         }
-        val lab=imageLab.forDevice(devicePolicy.constrainedMemory)
+        val lab=imageLab.forDevice(constrainOptionalEffects)
         val requestedGeneration=lab.enabled && lab.frameGeneration==com.xcloud.tclnative.settings.ExperimentalFrameGeneration.AUTO_30_TO_60 &&
             lab.comparison==ImageComparison.PROCESSED && imageComparison==ImageComparison.PROCESSED && !compatibility
         val glVersion=(context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
         val power=context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
         val motion=if(requestedGeneration) {
             val scheduler=ImageLabGlScheduler()
-            MotionFrameSink(delivery,{GlesMotionInterpolator(context,eglBase.eglBaseContext,scheduler.handler,lab.protection.ordinal)},scheduler,
-                eligible=glVersion>=0x30000 && !devicePolicy.constrainedMemory && power?.isPowerSaveMode!=true)
+            val useFence = tryMotionFence
+            MotionFrameSink(delivery,{GlesMotionInterpolator(context,eglBase.eglBaseContext,scheduler.handler,lab.protection.ordinal,useFence=useFence)},scheduler,
+                eligible=glVersion>=0x30000 && !constrainOptionalEffects && power?.isPowerSaveMode!=true)
         }else null
         frameInterpolation=motion
-        interpolationSession=motion!=null && glVersion>=0x30000 && !devicePolicy.constrainedMemory && power?.isPowerSaveMode!=true
+        interpolationSession=motion!=null && glVersion>=0x30000 && !constrainOptionalEffects && power?.isPowerSaveMode!=true
         applyTreatmentBudget()
         val paced=if(motion==null && pacingMode==PresentationPacing.SMOOTH && !compatibility) FramePacedVideoSink(delivery,failed={ error ->
             post { if(generation==id && !released) onRenderError?.invoke(error) }
@@ -462,29 +521,52 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             trackFirstDelivery = firstDelivery
         } catch (e: Exception) { motion?.close();frameInterpolation=null;paced?.close();pacedSink=null;onRenderError?.invoke(e) }
     }
-    fun detachTrack() {
-        trackSink?.let { sink -> currentTrack?.removeSink(sink) }
-        frameInterpolation?.close();frameInterpolation=null
+    suspend fun detachTransportTrack() = rendererChanges.withLock { detachTrack() }
+
+    private fun detachTrack() {
+        val track = currentTrack
+        val sink = trackSink
+        val motion = frameInterpolation
+        val paced = pacedSink
+        frameInterpolation = null
+        pacedSink = null
         interpolationSession=false
-        pacedSink?.close();pacedSink=null
         trackSink = null
         currentTrack = null
         trackFirstDelivery = null
+        try {
+            if (sink != null) track?.removeSink(sink)
+        } finally {
+            try { motion?.close() } finally { paced?.close() }
+        }
     }
-    fun clearSession() {
-        if (released) return
-        generation++
+
+    suspend fun clearSession() = rendererChanges.withLock {
+        if (!released) clearSessionLocked()
+    }
+
+    private suspend fun clearSessionLocked() {
         cancelBufferVerification();fsrPerformance.reset()
         fsrRequested=false
         onFirstFrameSubmitted = null
         onRenderError = null
-        // An idle renderer must not receive output-buffer changes for the next session's settings.
-        // Always retire it, including the native path, before another upscaler is selected.
-        try { detachTrack() } finally {
-            val previous=renderer
-            renderer=null;aspectDrawer=null;requestedBuffer=null
-            previous?.let { removeView(it);it.release() }
+        retireRenderer()
+    }
+
+    private suspend fun retireRenderer() = withContext(NonCancellable) {
+        generation++
+        cancelBufferVerification()
+        val previous = renderer
+        renderer = null; aspectDrawer = null; requestedBuffer = null
+        val cleanup = MediaCleanup()
+        cleanup.step("detach") { detachTrack() }
+        if (previous != null) {
+            cleanup.step("egl-surface") { previous.retireEglSurface() }
+            cleanup.step("view") { removeView(previous) }
+            cleanup.step("egl") { withContext(Dispatchers.IO) { previous.release() } }
+            Log.i("xCloudMedia", "RENDERER_RELEASE/ ${cleanup.diagnostics()}")
         }
+        cleanup.throwIfFailed()
     }
     fun frameGenerationSummary(): String? {
         frameInterpolation?.let {
@@ -496,7 +578,7 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         if(!imageLab.enabled || imageLab.frameGeneration==com.xcloud.tclnative.settings.ExperimentalFrameGeneration.OFF) return null
         val gl=(context.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.deviceConfigurationInfo?.reqGlEsVersion ?: 0
         return FrameGenerationSnapshot(when {
-            compatibility || devicePolicy.constrainedMemory || gl<0x30000 -> FrameGenerationPhase.UNSUPPORTED
+            compatibility || constrainOptionalEffects || gl<0x30000 -> FrameGenerationPhase.UNSUPPORTED
             imageComparison!=ImageComparison.PROCESSED || imageLab.comparison!=ImageComparison.PROCESSED -> FrameGenerationPhase.COMPARISON
             else -> FrameGenerationPhase.NEXT_SESSION
         }).text()
@@ -511,13 +593,16 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
             aspectDrawer?.treatmentDiagnostics() ?: "Treatment: off","\n",
             if(fsrMode==FsrMode.RECONSTRUCTION) "Reconstruction requested=${reconstructionSettings.quality}; applied level=${if(fsrEnabled) reconstructionController.level else 0}; ${reconstructionController.decision}\n" else "",
             pacedSink?.diagnostics() ?: "Pacing: immediate","\n",
+            submissionCadence.diagnostics(),"\n",
             "Image lab requested=$imageLab | effective level=$imageLabLevel | constrainedMemory=${devicePolicy.constrainedMemory}\n",
             "Comparison=$imageComparison | temporal history suspended for interpolation=$interpolationSession\n",
             frameInterpolation?.diagnostics() ?: "Frame generation: off (applies on next session)")
     }
     fun memoryDiagnostics(): String =
-        "VIDEO_MEMORY/LARGE_MOBILE_SURFACE=$largeMobileSurface; " +
-            "HARDWARE_SCALER=${(nativeUpscaling || largeMobileSurface) && !fsrEnabled}; " +
+        "VIDEO_DEVICE/SDK=${Build.VERSION.SDK_INT}; RAM_MIB=${totalRamMiB ?: "n/d"}; FIRMWARE=${Build.DISPLAY.take(96)}\n" +
+            "VIDEO_MEMORY/LARGE_MOBILE_SURFACE=$largeMobileSurface; CONSTRAINED_TV_SURFACE=$constrainedTvSurface; " +
+            "SYSTEM_PRESSURE=$systemMemoryPressure; " +
+            "HARDWARE_SCALER=${(nativeUpscaling || largeMobileSurface || constrainedTvSurface) && !fsrEnabled}; " +
             "BUFFER_REQUEST=${requestedBuffer?.let { "${it.width}x${it.height}" } ?: "AUTO"}"
 
     /** Android exposes surface/display geometry, but no public API reports TCL AiPQ activation. */
@@ -540,13 +625,15 @@ class AiPqSurfaceRenderer(context: Context) : FrameLayout(context) {
         return UiText.join(UiText.text("Surface {0}x{1} → saída Android ",UiText.nested(surface?.width() ?: 0),UiText.nested(surface?.height() ?: 0)),(mode?.let { "${it.physicalWidth}x${it.physicalHeight}@${kotlin.math.round(it.refreshRate).toInt()}Hz" } ?: "n/d"))
     }
 
-    fun release() {
-        if (released) return
-        clearSession()
+    suspend fun release() = rendererChanges.withLock {
+        if (released) return@withLock
+        val cleanup = MediaCleanup()
+        cleanup.step("renderer") { clearSessionLocked() }
         released = true
         stopWatchingDisplay()
-        renderer?.release()
-        renderer = null
-        if(egl.isInitialized()) eglBase.release()
+        cleanup.step("shared-egl") {
+            if (egl.isInitialized()) withContext(NonCancellable + Dispatchers.IO) { eglBase.release() }
+        }
+        cleanup.throwIfFailed()
     }
 }

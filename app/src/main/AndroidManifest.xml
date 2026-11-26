@@ -51,7 +51,7 @@
 
         <activity
             android:name=".ui.MainActivity"
-            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|smallestScreenSize"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="userLandscape">

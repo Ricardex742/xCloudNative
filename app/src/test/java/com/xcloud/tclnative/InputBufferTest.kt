@@ -2,10 +2,35 @@ package com.xcloud.tclnative
 
 import com.xcloud.tclnative.webrtc.GamepadInputBuffer
 import com.xcloud.tclnative.webrtc.GamepadState
+import com.xcloud.tclnative.webrtc.InputMetrics
+import com.xcloud.tclnative.webrtc.RealtimeInputPump
 import org.junit.Assert.*
 import org.junit.Test
 
 class InputBufferTest {
+    @Test fun diagnosticSnapshotsAreThrottledWithoutSlowingPacketsAndFinalBytesAreAccurate() {
+        val clock = java.util.concurrent.atomic.AtomicLong()
+        val snapshots = java.util.IdentityHashMap<InputMetrics, Boolean>()
+        val offered = java.util.concurrent.CountDownLatch(50)
+        var sentBytes = 0L
+        lateinit var pump: RealtimeInputPump
+        pump = RealtimeInputPump({ 0 }, { packet ->
+            snapshots[pump.metrics] = true
+            sentBytes += packet.size
+            clock.addAndGet(4_000_000)
+            offered.countDown()
+            if (offered.count == 0L) pump.requestStop()
+            true
+        }, { fail("Unexpected send failure") }, clockNs = clock::get)
+        pump.start()
+        try {
+            assertTrue(offered.await(2, java.util.concurrent.TimeUnit.SECONDS))
+        } finally { pump.close() }
+        assertTrue(snapshots.size in 2..4)
+        assertEquals(50L * 38, sentBytes)
+        assertEquals(sentBytes, pump.metrics.sentBytes)
+    }
+
     @Test fun officialTapInNativeModeReleasesOnlyAfterItsQueuedPress() {
         val packets = java.util.concurrent.LinkedBlockingQueue<ByteArray>()
         val pump = com.xcloud.tclnative.webrtc.RealtimeInputPump({ 0 }, { packets.offer(it); true },
@@ -142,23 +167,87 @@ class InputBufferTest {
         assertEquals(0, input.next().buttons)
     }
 
-    @Test fun liveInputPumpDoesNotFloodABlockedChannelAndResumesWithTheCurrentState() {
+    @Test fun liveInputPumpDoesNotFloodABlockedChannelAndPreservesARecentTap() {
         val queued = java.util.concurrent.atomic.AtomicLong(com.xcloud.tclnative.webrtc.RealtimeInputPump.MAX_BUFFERED_BYTES)
+        val clock = java.util.concurrent.atomic.AtomicLong()
         val received = java.util.concurrent.LinkedBlockingQueue<ByteArray>()
-        val pump = com.xcloud.tclnative.webrtc.RealtimeInputPump({ queued.get() }, { received.offer(it); true }, { fail("Unexpected send failure") })
+        val pump = com.xcloud.tclnative.webrtc.RealtimeInputPump(
+            { queued.get() }, { received.offer(it); true }, { fail("Unexpected send failure") }, clockNs = clock::get)
         try {
-            pump.update(GamepadState(buttons = 16))
             pump.start()
             val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(2)
             while (pump.metrics.backpressureSkips == 0L && System.nanoTime() < deadline) Thread.sleep(1)
             assertTrue(pump.metrics.backpressureSkips > 0)
             assertTrue(received.isEmpty())
-            pump.update(GamepadState())
+            pump.update(GamepadState(buttons = 16), officialTouch = true)
+            pump.update(GamepadState(), officialTouch = true)
             queued.set(0)
-            val packet = received.poll(2, java.util.concurrent.TimeUnit.SECONDS)
-            assertNotNull(packet)
-            assertEquals(0, java.nio.ByteBuffer.wrap(packet).order(java.nio.ByteOrder.LITTLE_ENDIAN).getShort(16).toInt())
+            clock.set(4_000_000)
+            fun nextButtons(): Int {
+                val packet = received.poll(2, java.util.concurrent.TimeUnit.SECONDS)
+                assertNotNull(packet)
+                return java.nio.ByteBuffer.wrap(packet).order(java.nio.ByteOrder.LITTLE_ENDIAN).getShort(16).toInt()
+            }
+            assertEquals(16, nextButtons())
+            assertEquals(0, nextButtons())
         } finally { pump.close() }
+    }
+
+    @Test fun optionalIdleCadenceResumesImmediatelyForActiveGamepads() {
+        val clock = java.util.concurrent.atomic.AtomicLong()
+        val received = java.util.concurrent.LinkedBlockingQueue<ByteArray>()
+        val milliseconds = java.util.concurrent.TimeUnit.MILLISECONDS
+        val pump = com.xcloud.tclnative.webrtc.RealtimeInputPump(
+            { 0 }, { received.offer(it); true }, { fail("Unexpected send failure") },
+            clockNs = clock::get, tryIdleGamepadCadence = true)
+        fun buttons(): Int {
+            val packet = requireNotNull(received.poll(2_000, milliseconds))
+            return java.nio.ByteBuffer.wrap(packet).order(java.nio.ByteOrder.LITTLE_ENDIAN).getShort(16).toInt()
+        }
+        try {
+            pump.start()
+            assertEquals(0, buttons())
+            clock.set(4_000_000)
+            assertNull(received.poll(50, milliseconds))
+            pump.update(GamepadState(buttons = 16))
+            assertEquals(16, buttons())
+            clock.set(8_000_000)
+            assertEquals(16, buttons())
+            pump.update(GamepadState())
+            assertEquals(0, buttons())
+        } finally { pump.close() }
+        assertTrue(pump.metrics.neutralGamepadReports > 0)
+    }
+
+    @Test fun staleTapExpiresWithoutReplayingThePressOrLosingTheCurrentRelease() {
+        val input = GamepadInputBuffer()
+        input.update(GamepadState(buttons = 16), 0)
+        input.update(GamepadState(), 1_000_000)
+        assertEquals(0, input.next(120_000_000).buttons)
+        assertEquals(2L, input.expiredEdges)
+        assertFalse(input.hasEdges())
+    }
+
+    @Test fun pumpCloseWaitsForAnInFlightSendBeforeItsChannelCanBeDisposed() {
+        val sending = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val closed = java.util.concurrent.CountDownLatch(1)
+        val seconds = java.util.concurrent.TimeUnit.SECONDS
+        val pump = com.xcloud.tclnative.webrtc.RealtimeInputPump({ 0 }, {
+            sending.countDown()
+            release.await()
+            true
+        }, { fail("Unexpected send failure") })
+        pump.start()
+        try {
+            assertTrue(sending.await(2, seconds))
+            Thread { pump.close(); closed.countDown() }.start()
+            assertFalse(closed.await(350, java.util.concurrent.TimeUnit.MILLISECONDS))
+        } finally {
+            release.countDown()
+            pump.close()
+        }
+        assertTrue(closed.await(2, seconds))
     }
     @Test fun failedNativeSendTerminatesThePumpAndReportsFailure() {
         val failures = java.util.concurrent.atomic.AtomicInteger()

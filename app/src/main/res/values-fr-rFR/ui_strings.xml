@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"Connectez-vous à la page officielle avec le même compte Xbox que dans l’application."</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"Ouvrir la page d’achat"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"Temps de session restant : {0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"Réglage automatique de l’écran : {0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"Détails du jeu"</string>
+    <string name="ui_ed017ee27ce19a31">"Essais de performances"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"Ces essais prennent effet à la prochaine session. Le décodeur alternatif nécessite H.264 en mode Adaptatif. La synchronisation par fence nécessite la génération d’images. La manette au repos fonctionne à 60 Hz lorsque le tactile est désactivé. Sans analyse audio, un gain supérieur à 100% nécessite une nouvelle session."</string>
+    <string name="ui_cc53733aa7793208">"Décodeur H.264 alternatif"</string>
+    <string name="ui_05b5beea584b768c">"Synchronisation par fence"</string>
+    <string name="ui_382512eae2b74f8f">"Fréquence réduite pour la manette au repos"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"Ignorer l’analyse audio avec un gain de 100% maximum"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"Le gain supérieur à 100% sera appliqué à la prochaine session."</string>
 </resources>

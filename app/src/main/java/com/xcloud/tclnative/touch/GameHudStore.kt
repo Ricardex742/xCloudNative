@@ -5,12 +5,21 @@ import com.xcloud.tclnative.i18n.UiText
 import android.content.Context
 import com.xcloud.tclnative.catalog.GameLibrary
 import com.xcloud.tclnative.settings.TouchMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.json.JSONArray
 import java.util.Locale
 
 /** Each title owns its layout on this device, independently of refreshable login grants. */
 class GameHudStore(private val context: Context) {
+    private val writes = Mutex()
+
+    internal suspend fun <T> persist(write: () -> T): T =
+        writes.withLock { withContext(Dispatchers.IO) { write() } }
+
     private fun action(data: JSONArray?): HudAction? {
         if(data==null) return null
         val keys=(0 until minOf(data.length(),HudBinding.entries.size)).mapNotNull { index ->

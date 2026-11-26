@@ -8,6 +8,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class TreatmentBudgetTest {
+    @Test fun memoryPressureLimitsOptionalBuffersAndKeepsBaseImageControls() {
+        val requested = TreatmentBudget(
+            ImageTreatmentSettings(neural = 60, temporal = 50, deband = 35), FsrOutput.UHD_4K, true)
+        val limited = requested.underMemoryPressure()
+        assertEquals(1080, limited.maxOutputHeight)
+        assertEquals(requested.image.copy(neural = 0, temporal = 0), limited.image)
+        assertTrue(limited.scaling)
+        assertEquals(FsrOutput.UHD_4K, requested.output)
+        assertEquals(2160, requested.maxOutputHeight)
+    }
+
     @Test fun cutsAreProgressiveBoundedAndLeaveTheRequestedSettingsIntact() {
         val requested=ImageTreatmentSettings(ImageSharpening.RCAS_LUMA,100,100,100,100,50,100)
         var effective=TreatmentBudget(requested,FsrOutput.UHD_4K,true)

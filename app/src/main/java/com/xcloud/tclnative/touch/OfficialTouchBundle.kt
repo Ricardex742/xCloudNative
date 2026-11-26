@@ -19,7 +19,8 @@ internal class OfficialTouchBundle private constructor(
     private val layouts: Map<String, JSONObject>,
     private val defaultLayout: String,
     private val context: JSONObject,
-    private val iconsFromBundle: Map<String, Bitmap>
+    private val iconsFromBundle: Map<String, Bitmap>,
+    val manifestCrc: String
 ) {
     fun layoutId(name: String?): String = name?.lowercase(Locale.ROOT) ?: defaultLayout
 
@@ -245,7 +246,8 @@ internal class OfficialTouchBundle private constructor(
             val entries = zip.entries().asSequence().filterNot { it.isDirectory }.mapNotNull { entry ->
                 normalizedPath(entry.name)?.let { name -> name to entry }
             }.toMap()
-            val manifest = json(zip,entries["takxmanifest.json"]) ?: error("TOUCH_BUNDLE: no manifest")
+            val manifestEntry = entries["takxmanifest.json"]
+            val manifest = json(zip,manifestEntry) ?: error("TOUCH_BUNDLE: no manifest")
             val path = normalizedPath(manifest.optString("layouts", "layouts")) ?: error("TOUCH_BUNDLE: layouts")
             val folders = listOf(path, "$path/en", "$path/en-us", "$path/en/en-us", "$path/neutral") +
                 localeFolders(path,locale)
@@ -265,7 +267,8 @@ internal class OfficialTouchBundle private constructor(
             val context = json(zip,entries[contextPath]) ?: JSONObject()
             val assets = normalizedPath(manifest.optString("assets"))
             OfficialTouchBundle(layouts,default,context,
-                if (assets==null) emptyMap() else decodeImages(zip,entries,assets,locale))
+                if (assets==null) emptyMap() else decodeImages(zip,entries,assets,locale),
+                manifestEntry?.crc?.toString(16) ?: "NONE")
         }
 
         private fun localeFolders(root: String, locale: String): List<String> {

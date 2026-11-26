@@ -47,6 +47,11 @@ internal class GameBadgesView(context: Context) : FrameLayout(context) {
             }
         }
         if(geometryScale==scale && renderedTheme==DashboardTheme.palette.theme) return
+        if (renderedTheme != null) {
+            // Platform vectors keep a raster cache. Recreate the delegates when geometry or skin changes.
+            pass.setImageDrawable(CatalogMarkDrawable(resources,R.drawable.badge_game_pass_vector))
+            series.setImageDrawable(CatalogMarkDrawable(resources,R.drawable.badge_series_xs_vector))
+        }
         geometryScale=scale
         renderedTheme=DashboardTheme.palette.theme
         val scene=renderedTheme!!.scene

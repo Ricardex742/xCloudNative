@@ -1418,4 +1418,13 @@
     <string name="ui_fdd5e47d11e5c68a" formatted="false">"앱에서 사용하는 것과 동일한 Xbox 계정으로 공식 페이지에 로그인하세요."</string>
     <string name="ui_9663ecd7a2c0bdd6" formatted="false">"구매 페이지 열기"</string>
     <string name="ui_ad67e39384589ca1" formatted="false">"세션 남은 시간: {0}"</string>
+    <string name="ui_b0c73282f19cdcc5">"자동 디스플레이 조정: {0}"</string>
+    <string name="ui_7ff6c7b0cb7908a4">"게임 세부 정보"</string>
+    <string name="ui_ed017ee27ce19a31">"성능 시험 설정"</string>
+    <string name="ui_e5414ec81c4e4272" formatted="false">"이 설정은 다음 세션부터 적용됩니다. 대체 디코더에는 적응형 모드의 H.264가 필요합니다. 펜스 동기화에는 프레임 생성이 필요합니다. 터치가 꺼져 있으면 입력이 없는 컨트롤러는 60Hz로 전송합니다. 오디오 분석을 생략하면 100%가 넘는 게인은 새 세션이 필요합니다."</string>
+    <string name="ui_cc53733aa7793208">"대체 H.264 디코더"</string>
+    <string name="ui_05b5beea584b768c">"펜스 동기화"</string>
+    <string name="ui_382512eae2b74f8f">"입력이 없는 컨트롤러의 전송 빈도 낮추기"</string>
+    <string name="ui_3448385e4f13254d" formatted="false">"게인이 100% 이하이면 오디오 분석 생략"</string>
+    <string name="ui_77601fafb0b66e20" formatted="false">"100%가 넘는 게인은 다음 세션에 적용됩니다."</string>
 </resources>

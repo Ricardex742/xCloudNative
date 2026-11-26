@@ -52,6 +52,40 @@ class FramePacingTest {
         assertEquals(0,third.refs);assertTrue(clock.tasks.isEmpty());assertTrue(clock.closed)
         val after=Buffer();val f4=VideoFrame(after,0,40_000_000);sink.onFrame(f4);f4.release();assertEquals(0,after.refs)
     }
+    @Test fun immediateAndSmoothUseTheSameCadenceProbeWithIrregularDelivery() {
+        val clock = Clock()
+        val immediate = EglSubmissionCadence()
+        val smooth = EglSubmissionCadence()
+        val sink = FramePacedVideoSink(VideoSink { smooth.observe(clock.nowNs()) }, clock)
+        try {
+            listOf(0L, 24L, 26L, 48L, 65L, 91L, 96L, 119L).forEachIndexed { index, arrival ->
+                while (clock.nowNs() / 1_000_000 < arrival) clock.advance(1)
+                val frame = VideoFrame(Buffer(), 0, 1 + index * 16_666_667L)
+                immediate.observe(clock.nowNs())
+                sink.onFrame(frame)
+                frame.release()
+            }
+            repeat(20) { clock.advance(1) }
+            assertEquals("VIDEO_EGL_CADENCE/submissions=8 gap_samples=7 gap_mean_max_ms=17.00/26.00", immediate.diagnostics())
+            assertEquals("VIDEO_EGL_CADENCE/submissions=8 gap_samples=7 gap_mean_max_ms=17.86/24.00", smooth.diagnostics())
+            assertTrue(sink.diagnostics().contains("replaced=0"))
+            assertTrue(sink.diagnostics().contains("deadline_overrun_max_ms="))
+        } finally {
+            sink.close()
+        }
+    }
+
+    @Test fun replacingTheSurfaceDoesNotCountItsDowntimeAsAFrameGap() {
+        val cadence = EglSubmissionCadence()
+        cadence.observe(1)
+        assertTrue(cadence.diagnostics().endsWith("gap_mean_max_ms=n/d"))
+        cadence.observe(16_000_001)
+        cadence.surfaceChanged()
+        cadence.observe(900_000_001)
+        cadence.observe(920_000_001)
+        assertEquals("VIDEO_EGL_CADENCE/submissions=4 gap_samples=2 gap_mean_max_ms=18.00/20.00", cadence.diagnostics())
+    }
+
     @Test fun deliveryFailureReleasesOwnershipAndStopsTheScheduler() {
         val clock=Clock();var failures=0
         val sink=FramePacedVideoSink(VideoSink { throw IllegalStateException("closed renderer") },clock) { failures++ }

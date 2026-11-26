@@ -6,16 +6,17 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.Icon
 import android.media.tv.TvContract
 import android.net.Uri
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.xcloud.tclnative.R
+import com.xcloud.tclnative.settings.DevicePlatform
 import com.xcloud.tclnative.signaling.GameTitle
 
 /** Uses the launcher's supported APIs: pinned tiles, or the Android TV favorites channel. */
@@ -23,9 +24,9 @@ class HomeShortcuts(private val context: Context) {
     private val prefs = context.getSharedPreferences("home_shortcuts", Context.MODE_PRIVATE)
     val enabled: Boolean get() = prefs.getBoolean("favorites_enabled", false)
     val supportsChannel: Boolean get() = Build.VERSION.SDK_INT >= 26 &&
-        context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        DevicePlatform.read(context).leanback
     val supportsPin: Boolean get() = Build.VERSION.SDK_INT >= 26 &&
-        context.getSystemService(ShortcutManager::class.java)?.isRequestPinShortcutSupported == true
+        runCatching { context.getSystemService(ShortcutManager::class.java)?.isRequestPinShortcutSupported == true }.getOrDefault(false)
 
     fun enable(value: Boolean) { check(prefs.edit().putBoolean("favorites_enabled", value).commit()) }
 
@@ -74,14 +75,19 @@ class HomeShortcuts(private val context: Context) {
                 put(TvContract.Channels.COLUMN_DISPLAY_NAME, "Favoritos xCLOUD")
                 put(TvContract.Channels.COLUMN_INTERNAL_PROVIDER_ID, CHANNEL_KEY)
                 put(TvContract.Channels.COLUMN_APP_LINK_INTENT_URI,
-                    context.packageManager.getLaunchIntentForPackage(context.packageName)?.toUri(Intent.URI_INTENT_SCHEME))
+                    (context.packageManager.getLeanbackLaunchIntentForPackage(context.packageName)
+                        ?: context.packageManager.getLaunchIntentForPackage(context.packageName))?.toUri(Intent.URI_INTENT_SCHEME))
             }
-            channel = resolver.insert(TvContract.Channels.CONTENT_URI, values)?.let(ContentUris::parseId)
+            val created = resolver.insert(TvContract.Channels.CONTENT_URI, values)?.let(ContentUris::parseId)
                 ?: throw java.io.IOException(UiText.text("A TV não criou o canal de favoritos."))
-            // A channel logo is required by Android TV launchers before browsing is enabled.
-            resolver.openOutputStream(TvContract.buildChannelLogoUri(channel!!))?.use { output ->
-                context.resources.openRawResource(R.drawable.brand_logo).use { it.copyTo(output) }
+            try {
+                writeChannelLogo(created)
+            } catch (error: Exception) {
+                runCatching { resolver.delete(TvContract.buildChannelUri(created), null, null) }
+                    .exceptionOrNull()?.let(error::addSuppressed)
+                throw error
             }
+            channel = created
         }
         val channelId = channel!!
         val existing = mutableMapOf<String, Long>()
@@ -97,6 +103,26 @@ class HomeShortcuts(private val context: Context) {
         }
         existing.values.forEach { resolver.delete(TvContract.buildPreviewProgramUri(it), null, null) }
         return channelId
+    }
+
+    @RequiresApi(26)
+    private fun writeChannelLogo(channel: Long) {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeResource(context.resources, R.drawable.brand_logo, bounds)
+        val sample = BitmapFactory.Options().apply {
+            inSampleSize = Integer.highestOneBit((maxOf(bounds.outWidth, bounds.outHeight) / 256).coerceAtLeast(1))
+        }
+        val logo = BitmapFactory.decodeResource(context.resources, R.drawable.brand_logo, sample)
+            ?: throw java.io.IOException("TV channel logo unavailable")
+        try {
+            val stream = context.contentResolver.openOutputStream(TvContract.buildChannelLogoUri(channel))
+                ?: throw java.io.IOException("TV channel logo stream unavailable")
+            stream.use { output ->
+                if (!logo.compress(Bitmap.CompressFormat.PNG, 100, output)) throw java.io.IOException("TV channel logo write failed")
+            }
+        } finally {
+            logo.recycle()
+        }
     }
 
     companion object {

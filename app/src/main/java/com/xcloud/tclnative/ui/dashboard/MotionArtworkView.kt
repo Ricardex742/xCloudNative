@@ -13,6 +13,8 @@ import android.widget.ImageView
 import com.xcloud.tclnative.settings.*
 
 /** One animated gallery preview; thumbnails do not each start a timer. */
+// The app uses Android Material framework themes and native widget styling.
+@android.annotation.SuppressLint("AppCompatCustomView")
 internal class MotionArtworkView(context: Context): ImageView(context) {
     private var attached=false;private var focused=false;private var aggregated=true;private var closed=false
     private var presented=true

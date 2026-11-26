@@ -56,7 +56,7 @@ class TestShortcutActivity: MainActivity() {
 class ShortcutStartupTest {
     private fun all(v: View): List<View> = listOf(v)+if(v is ViewGroup) (0 until v.childCount).flatMap { all(v.getChildAt(it)) } else emptyList()
     private fun root(a: Activity)=a.findViewById<View>(android.R.id.content)
-    private fun playback(activity: Activity): PlaybackCoordinator =
+    private fun playback(activity: Activity): PlaybackCoordinator<*, *> =
         org.robolectric.util.ReflectionHelpers.getField(activity, "playback")
     private fun stopNativeTransportBeforeItStarts(activity: Activity) {
         // This integration test covers real auth/catalog/queue wiring, not JNI/WebRTC gameplay.

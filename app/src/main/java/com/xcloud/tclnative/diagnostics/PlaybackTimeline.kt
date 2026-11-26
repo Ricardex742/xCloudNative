@@ -26,25 +26,47 @@ class PlaybackTimeline internal constructor(
         }
     }
 
+    enum class IncidentKind { INTERRUPTION, FAILURE }
+    enum class CleanupStage { TRACK, RENDERER, RTC, ALLOCATION }
+
+    data class Incident(val kind: IncidentKind, val atMs: Long, val lastStage: PlaybackStage?, val failure: SessionFailure) {
+        fun json() = JSONObject().put("kind", kind.name).put("at", atMs)
+            .put("lastStage", lastStage?.name).put("failure", failure.json())
+    }
+
+    data class Cleanup(val stage: CleanupStage, val durationMs: Long, val failed: Boolean) {
+        fun json() = JSONObject().put("stage", stage.name).put("duration", durationMs).put("failed", failed)
+    }
+
     data class Transport(
         val epoch: Int,
         val startedAtMs: Long,
         val stages: Map<PlaybackStage, Long>,
         val codec: Codec?,
         val width: Int?,
-        val height: Int?
+        val height: Int?,
+        val incidents: List<Incident> = emptyList(),
+        val cleanup: List<Cleanup> = emptyList()
     )
 
-    data class Snapshot(val generation: Int, val origin: PlaybackOrigin, val transports: List<Transport>) {
+    data class Snapshot(
+        val generation: Int,
+        val origin: PlaybackOrigin,
+        val transports: List<Transport>,
+        val cleanup: List<Cleanup> = emptyList()
+    ) {
         fun json(): JSONObject = JSONObject()
             .put("schema", 1).put("clock", "elapsedRealtime").put("unit", "ms")
             .put("generation", generation).put("origin", origin.name)
+            .put("cleanup", JSONArray(cleanup.map(Cleanup::json)))
             .put("transports", JSONArray().apply {
                 transports.forEach { transport ->
                     put(JSONObject().put("epoch", transport.epoch).put("startedAt", transport.startedAtMs)
                         .put("stages", JSONObject().apply {
                             transport.stages.forEach { (stage, time) -> put(stage.name, time) }
-                        }).put("codec", transport.codec?.name).put("width", transport.width).put("height", transport.height))
+                        }).put("codec", transport.codec?.name).put("width", transport.width).put("height", transport.height)
+                        .put("incidents", JSONArray(transport.incidents.map(Incident::json)))
+                        .put("cleanup", JSONArray(transport.cleanup.map(Cleanup::json))))
                 }
             })
 
@@ -58,6 +80,22 @@ class PlaybackTimeline internal constructor(
                 transport.stages.entries.sortedBy { it.value }.forEach { (stage, time) ->
                     append("\n").append(stage.name).append(" +").append(time)
                 }
+                transport.incidents.forEach { entry ->
+                    append("\n").append(entry.kind.name).append(" +").append(entry.atMs).append(' ')
+                        .append(entry.failure.code)
+                    entry.lastStage?.let { append(" after ").append(it.name) }
+                }
+                appendCleanup("TRANSPORT_CLEANUP", transport.cleanup)
+            }
+            appendCleanup("SESSION_CLEANUP", cleanup)
+        }
+
+        private fun StringBuilder.appendCleanup(label: String, steps: List<Cleanup>) {
+            if (steps.isEmpty()) return
+            append('\n').append(label)
+            steps.forEach {
+                append(' ').append(it.stage.name).append('=').append(it.durationMs).append("ms")
+                if (it.failed) append("/FAILED")
             }
         }
     }
@@ -67,13 +105,16 @@ class PlaybackTimeline internal constructor(
         var codec: Codec? = null
         var width: Int? = null
         var height: Int? = null
-        fun snapshot() = Transport(epoch, startedAtMs, stages.toMap(), codec, width, height)
+        val incidents = linkedMapOf<IncidentKind, Incident>()
+        var cleanup = emptyList<Cleanup>()
+        fun snapshot() = Transport(epoch, startedAtMs, stages.toMap(), codec, width, height, incidents.values.toList(), cleanup)
     }
 
     private val start = clockMs()
     private val initial = Recording(0, 0)
     private val reconnects = ArrayDeque<Recording>(RECENT_TRANSPORTS)
     private var current = initial
+    private var sessionCleanup = emptyList<Cleanup>()
 
     @Synchronized fun beginReconnect(epoch: Int) {
         if (epoch <= current.epoch) return
@@ -98,10 +139,59 @@ class PlaybackTimeline internal constructor(
         }
     }
 
-    @Synchronized fun snapshot() = Snapshot(generation, origin, listOf(initial.snapshot()) + reconnects.map { it.snapshot() })
+    @Synchronized
+    internal fun recordIssue(epoch: Int?, kind: IncidentKind, failure: SessionFailure): Boolean {
+        if (epoch != null && epoch != current.epoch) return false
+        if (kind !in current.incidents) {
+            val elapsed = (clockMs() - start).coerceAtLeast(current.startedAtMs)
+            val lastAt = current.stages.values.filter { it <= elapsed }.maxOrNull()
+            val lastStage = current.stages.entries.lastOrNull { it.value == lastAt }?.key
+            current.incidents[kind] = Incident(kind, elapsed, lastStage, failure)
+        }
+        return true
+    }
+
+    @Synchronized
+    internal fun recordCleanup(epoch: Int?, steps: List<Cleanup>) {
+        val bounded = steps.distinctBy { it.stage }.take(CleanupStage.entries.size)
+        if (epoch == null) {
+            sessionCleanup = bounded
+        } else {
+            val transport = if (epoch == 0) initial else reconnects.firstOrNull { it.epoch == epoch }
+            transport?.cleanup = bounded
+        }
+    }
+
+    @Synchronized fun snapshot() = Snapshot(
+        generation, origin, listOf(initial.snapshot()) + reconnects.map { it.snapshot() }, sessionCleanup
+    )
 
     companion object {
+        internal const val MAX_JSON_CHARS = 16_384
         private const val RECENT_TRANSPORTS = 3
+
+        private fun readCleanup(array: JSONArray?): List<Cleanup> {
+            if (array == null || array.length() > CleanupStage.entries.size) return emptyList()
+            return (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val stage = CleanupStage.entries.firstOrNull { it.name == item.optString("stage") } ?: return@mapNotNull null
+                val duration = item.optLong("duration", -1).takeIf { it >= 0 } ?: return@mapNotNull null
+                if (item.opt("failed") !is Boolean) return@mapNotNull null
+                Cleanup(stage, duration, item.optBoolean("failed"))
+            }.distinctBy { it.stage }
+        }
+
+        private fun readIncidents(array: JSONArray?, started: Long): List<Incident> {
+            if (array == null || array.length() > IncidentKind.entries.size) return emptyList()
+            return (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val kind = IncidentKind.entries.firstOrNull { it.name == item.optString("kind") } ?: return@mapNotNull null
+                val at = item.optLong("at", -1).takeIf { it >= started } ?: return@mapNotNull null
+                val stage = PlaybackStage.entries.firstOrNull { it.name == item.optString("lastStage") }
+                val failure = SessionFailure.read(item.optJSONObject("failure")) ?: return@mapNotNull null
+                Incident(kind, at, stage, failure)
+            }.distinctBy { it.kind }
+        }
         private fun validDimension(value: Int?) = value?.takeIf { it in 1..16_384 }
 
         fun read(json: JSONObject?): Snapshot? {
@@ -119,9 +209,10 @@ class PlaybackTimeline internal constructor(
                     stages?.optLong(stage.name, -1)?.takeIf { it >= started }?.let { stage to it }
                 }.toMap()
                 Transport(epoch, started, marks, Codec.entries.firstOrNull { it.name == item.optString("codec") },
-                    validDimension(item.optInt("width")), validDimension(item.optInt("height")))
+                    validDimension(item.optInt("width")), validDimension(item.optInt("height")),
+                    readIncidents(item.optJSONArray("incidents"), started), readCleanup(item.optJSONArray("cleanup")))
             }
-            return Snapshot(generation, origin, transports).takeIf { transports.firstOrNull()?.epoch == 0 }
+            return Snapshot(generation, origin, transports, readCleanup(json.optJSONArray("cleanup"))).takeIf { transports.firstOrNull()?.epoch == 0 }
         }
     }
 }

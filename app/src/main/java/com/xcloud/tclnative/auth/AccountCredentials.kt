@@ -11,13 +11,20 @@ internal class AccountCredentials(private val store: OAuthTokenStore) {
     private class State {
         var generation = 0L
         var rotation = Mutex()
+        fun advance(): Long {
+            rotation = Mutex()
+            return ++generation
+        }
     }
 
     private companion object {
         val states = WeakHashMap<Any, State>()
     }
 
+    private val saved = store as? SavedAccountStore
     private val state = synchronized(states) { states.getOrPut(store.coordinationKey) { State() } }
+
+    fun generation() = synchronized(state) { state.generation }
 
     fun snapshot(): Snapshot = synchronized(state) { Snapshot(state.generation, store.read()) }
 
@@ -29,34 +36,31 @@ internal class AccountCredentials(private val store: OAuthTokenStore) {
         requireCurrent(expectedGeneration)
         val replacement = token(store.read())
         store.write(replacement)
-        state.rotation = Mutex()
-        Snapshot(++state.generation, replacement)
+        Snapshot(state.advance(), replacement)
     }
 
-    fun clear() = synchronized(state) {
+    fun clear(expectedGeneration: Long? = null): Boolean = synchronized(state) {
+        if (expectedGeneration != null && expectedGeneration != state.generation) return@synchronized false
         store.clear()
-        state.rotation = Mutex()
-        state.generation += 1
+        state.advance()
+        true
     }
 
-    fun accounts(): List<SavedXboxAccount> = synchronized(state) { (store as? PreferencesTokenStore)?.accounts().orEmpty() }
+    fun accounts(): List<SavedXboxAccount> = synchronized(state) { saved?.accounts().orEmpty() }
 
-    suspend fun addAccount(generation: Long, token: OAuthToken) = rotate(generation) { current ->
+    suspend fun addAccount(generation: Long, token: OAuthToken): Unit = rotate(generation) { current ->
         synchronized(state) {
             requireCurrent(current.generation)
-            val saved = store as? PreferencesTokenStore
             if (saved != null) saved.addAndActivate(token) else store.write(token)
-            state.rotation = Mutex()
-            state.generation += 1
+            state.advance()
         }
     }
 
     suspend fun activateAccount(id: String): Boolean = rotate(null) { current ->
         synchronized(state) {
             requireCurrent(current.generation)
-            if ((store as? PreferencesTokenStore)?.activate(id) != true) false else {
-                state.rotation = Mutex()
-                state.generation++
+            if (saved?.activate(id) != true) false else {
+                state.advance()
                 true
             }
         }
@@ -64,7 +68,7 @@ internal class AccountCredentials(private val store: OAuthTokenStore) {
 
     fun bindAccount(generation: Long?, hash: String, xuid: String?, gamertag: String? = null) = synchronized(state) {
         requireCurrent(generation)
-        (store as? PreferencesTokenStore)?.bindIdentity(hash, xuid, gamertag)
+        saved?.bindIdentity(hash, xuid, gamertag)
     }
 
     suspend fun <T> rotate(generation: Long?, action: suspend (Snapshot) -> T): T {
