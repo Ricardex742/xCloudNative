@@ -6,7 +6,7 @@ import android.graphics.drawable.Drawable
 import kotlin.math.cos
 import kotlin.math.sin
 
-internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,GYROSCOPE,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID,CHEVRON_LEFT,CHEVRON_DOWN,FILTER,MORE,EXIT,SHORTCUT,TROPHY }
+internal enum class ConsoleGlyph { HOME,FAVORITE,GAME_PASS,PURCHASED,RECENT,LIBRARY,SEARCH,SETTINGS,DISPLAY,IMAGE,PALETTE,NETWORK,CONTROLLER,GYROSCOPE,AUDIO,DIAGNOSTICS,ACCOUNT,XBOX,CLOUD,GRID,CHEVRON_LEFT,CHEVRON_DOWN,FILTER,MORE,EXIT,SHORTCUT,TROPHY,TOUCH,SLIDERS,LANGUAGE,LOCATION,SPEED,REFRESH,KEYBOARD,MICROPHONE,VIDEO }
 
 internal class ConsoleIconDrawable(private val glyph: ConsoleGlyph,private val size: Int,private val colors: android.content.res.ColorStateList): Drawable() {
     private val icons=ConsoleIcons()
@@ -117,6 +117,45 @@ internal class ConsoleIcons {
             ConsoleGlyph.PALETTE -> { rect.set(2f,2f,22f,22f);c.drawOval(rect,p);c.drawCircle(8f,7f,1f,p);c.drawCircle(15f,7f,1f,p);c.drawCircle(18f,13f,1f,p);c.drawCircle(7f,14f,1f,p);c.drawCircle(12f,18f,2f,p) }
             ConsoleGlyph.NETWORK -> { c.drawCircle(12f,5f,3f,p);c.drawRect(1f,17f,7f,23f,p);c.drawRect(17f,17f,23f,23f,p);c.drawLine(12f,8f,12f,13f,p);c.drawLine(4f,13f,20f,13f,p);c.drawLine(4f,13f,4f,17f,p);c.drawLine(20f,13f,20f,17f,p) }
             ConsoleGlyph.CONTROLLER -> { path.moveTo(6f,5f);path.lineTo(18f,5f);path.cubicTo(23f,7f,25f,21f,20f,20f);path.lineTo(16f,16f);path.lineTo(8f,16f);path.cubicTo(1f,24f,0f,18f,2f,11f);path.quadTo(3f,5f,6f,5f);c.drawPath(path,p);c.drawLine(5f,9f,5f,14f,p);c.drawLine(3f,11.5f,7f,11.5f,p);c.drawCircle(18f,10f,1f,p);c.drawCircle(20f,13f,1f,p) }
+            ConsoleGlyph.TOUCH -> {
+                c.drawArc(4f,1.5f,15f,12.5f,190f,160f,false,p)
+                path.moveTo(8f,15f);path.lineTo(8f,7f);path.quadTo(8f,4f,10f,4f);path.quadTo(12f,4f,12f,7f)
+                path.lineTo(12f,11f);path.lineTo(18f,12f);path.quadTo(21f,13f,20f,17f)
+                path.lineTo(19f,22f);path.lineTo(10f,22f);path.lineTo(5f,16f);path.quadTo(4f,12f,8f,15f);path.close()
+                c.drawPath(path,p)
+            }
+            ConsoleGlyph.SLIDERS -> {
+                c.drawLine(5f,3f,5f,21f,p);c.drawLine(12f,3f,12f,21f,p);c.drawLine(19f,3f,19f,21f,p)
+                c.drawLine(2f,9f,8f,9f,p);c.drawLine(9f,15f,15f,15f,p);c.drawLine(16f,7f,22f,7f,p)
+            }
+            ConsoleGlyph.LANGUAGE -> {
+                c.drawCircle(12f,12f,9.5f,p);c.drawOval(7.5f,2.5f,16.5f,21.5f,p);c.drawLine(2.5f,12f,21.5f,12f,p)
+            }
+            ConsoleGlyph.LOCATION -> {
+                path.moveTo(12f,22f);path.cubicTo(8f,17f,4f,13f,4f,9.5f);path.cubicTo(4f,0f,20f,0f,20f,9.5f)
+                path.cubicTo(20f,13f,16f,17f,12f,22f);path.close();c.drawPath(path,p);c.drawCircle(12f,9f,2.5f,p)
+            }
+            ConsoleGlyph.SPEED -> {
+                c.drawArc(2.5f,5f,21.5f,24f,180f,180f,false,p);c.drawLine(12f,14f,17f,9f,p)
+                c.drawCircle(12f,14f,1f,p);c.drawLine(4f,19f,20f,19f,p)
+            }
+            ConsoleGlyph.REFRESH -> {
+                c.drawArc(3f,3f,21f,21f,-145f,285f,false,p)
+                path.moveTo(21f,3f);path.lineTo(21f,9f);path.lineTo(15f,9f);c.drawPath(path,p)
+            }
+            ConsoleGlyph.KEYBOARD -> {
+                rect.set(1.5f,5f,22.5f,19f);c.drawRoundRect(rect,2f,2f,p)
+                for(column in 5..19 step 3) { c.drawPoint(column.toFloat(),9f,p);c.drawPoint(column.toFloat(),12f,p) }
+                c.drawLine(8f,15.5f,16f,15.5f,p)
+            }
+            ConsoleGlyph.MICROPHONE -> {
+                rect.set(9f,2f,15f,15f);c.drawRoundRect(rect,3f,3f,p)
+                c.drawArc(5.5f,6f,18.5f,19f,0f,180f,false,p);c.drawLine(12f,19f,12f,22f,p);c.drawLine(8f,22f,16f,22f,p)
+            }
+            ConsoleGlyph.VIDEO -> {
+                rect.set(2f,4f,22f,20f);c.drawRoundRect(rect,2f,2f,p)
+                path.moveTo(10f,8f);path.lineTo(16f,12f);path.lineTo(10f,16f);path.close();c.drawPath(path,p)
+            }
             ConsoleGlyph.GYROSCOPE -> {
                 c.drawCircle(12f,12f,9.5f,p)
                 val tilt=c.save();c.rotate(-35f,12f,12f)

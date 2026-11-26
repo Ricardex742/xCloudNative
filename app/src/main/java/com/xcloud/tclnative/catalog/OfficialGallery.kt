@@ -48,7 +48,9 @@ data class OfficialGallery(
 /** A browse card may have no launch binding yet; a Store product never fabricates a titleId. */
 data class CatalogCard(val game: GameTitle? = null, val product: GalleryProduct? = null,
                        val gamePass: Boolean = game?.gamePass == true, val nativeIdentity: Boolean = false,
-                       val purchased: Boolean = false) {
+                       val purchased: Boolean = false, val touchCompatible: Boolean = game?.let {
+                           it.offersOfficialTouch() || com.xcloud.tclnative.settings.DeviceInputPolicy.supportsNativeTouch(it)
+                       } == true) {
     init { require(game != null || product != null);require(!nativeIdentity || game!=null) }
     // A native row keeps its identity when official names/art arrive; gallery editions keep product IDs.
     val key = if(nativeIdentity) "title:${game!!.titleId}" else product?.let { "product:${it.productId}" } ?: "title:${game!!.titleId}"

@@ -16,7 +16,7 @@ class UsbControllerPanel(private val context: Context,private val port: UsbContr
     private val androidSnapshot: () -> AndroidControllerMonitor.Snapshot=AndroidControllerMonitor::snapshot,
     private val profiles: ((() -> Unit) -> Unit)?=null) {
     fun show(back: () -> Unit): ConsoleDialog {
-        val dialog=ConsoleDialog(context,UiText.text("USB direto e teste de comandos"))
+        val dialog=settingsPanel(context,UiText.text("USB direto e teste de comandos"),ConsoleGlyph.CONTROLLER)
         dialog.body.addView(dialog.text(UiText.text("Modo opcional e experimental para Xbox 360/XInput. Começa desativado ao abrir o app. Autorize o receptor usando o controle remoto ou o toque."),18))
         val status=dialog.text("",22,true)
         val details=dialog.text("",17).apply { typeface=android.graphics.Typeface.MONOSPACE }
@@ -52,9 +52,9 @@ class UsbControllerPanel(private val context: Context,private val port: UsbContr
         if(items.isEmpty()) {
             ConsoleDialogs.message(context,UiText.text("Controle USB"),UiText.text("Nenhum receptor Xbox 360/XInput compatível foi encontrado. DInput, HID e Xbox One usam outros protocolos."));return
         }
-        ConsoleDialogs.menu(context,UiText.text("Escolher receptor USB"),items.map { candidate ->
+        settingsMenu(context,UiText.text("Escolher receptor USB"),ConsoleGlyph.CONTROLLER,items.map { candidate ->
             ConsoleAction(candidate.label) { activate(candidate,exclusive) }
-        })
+        }) {}
     }
     private fun confirmExclusive(back: () -> Unit) {
         ConsoleDialogs.message(context,UiText.text("Captura exclusiva — experimental"),

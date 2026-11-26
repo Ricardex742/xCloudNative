@@ -11,6 +11,8 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.xcloud.tclnative.catalog.*
 import com.xcloud.tclnative.signaling.GameTitle
+import com.xcloud.tclnative.ui.dashboard.CoverMark
+import com.xcloud.tclnative.ui.dashboard.CoverMarkerView
 import com.xcloud.tclnative.ui.dashboard.GameDashboardView
 import org.json.JSONArray
 import org.junit.Assert.*
@@ -49,6 +51,39 @@ class OfficialGalleryUiTest {
             shadowOf(Looper.getMainLooper()).idle();Thread.sleep(1)
         }
         assertEquals("Catalog processing did not start",0L,latch.count)
+    }
+
+    @Test fun coverTouchBadgeUpdatesWhenTheOfficialCollectionArrives() {
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        val activity = controller.get()
+        val game = GameTitle("game", "Jogo com toque", productId="AAAAAAAAAAAA")
+        val other = GameTitle("other", "Somente controle", productId="BBBBBBBBBBBB")
+        val view = GameDashboardView(activity,GameLibrary(activity,"touch-badges"),{},{},{},{})
+        try {
+            activity.setContentView(view)
+            view.setGames(listOf(game,other))
+            view.selectTab(LibraryTab.ALL)
+            layout(view)
+            val grid = all(view).filterIsInstance<RecyclerView>().single()
+            fun marker(index: Int = 0) = all(grid.getChildAt(index)).filterIsInstance<CoverMarkerView>().single { it.mark == CoverMark.TOUCH }
+            assertEquals(View.GONE,marker().visibility)
+            view.setOfficialGallery(OfficialGalleryKind.TOUCH,OfficialGallery(OfficialGalleryKind.TOUCH,
+                listOf(GalleryProduct(requireNotNull(game.productId),game.name))))
+            layout(view)
+            assertEquals(View.VISIBLE,marker().visibility)
+            assertEquals(View.GONE,marker(1).visibility)
+            assertTrue(marker().width > 0)
+            assertTrue(grid.getChildAt(0).contentDescription.endsWith("Jogar com toque"))
+            val preview = Bitmap.createBitmap(view.width,view.height,Bitmap.Config.ARGB_8888)
+            view.draw(Canvas(preview))
+            val directory = File("build/reports/dashboard").apply { mkdirs() }
+            val output = File(directory,"cover-touch-badge.png")
+            output.outputStream().use { preview.compress(Bitmap.CompressFormat.PNG,100,it) }
+            preview.recycle()
+            view.setOfficialGallery(OfficialGalleryKind.TOUCH,null)
+            layout(view)
+            assertEquals(View.GONE,marker().visibility)
+        } finally { view.close();controller.pause().stop().destroy() }
     }
 
     @Test fun largeGalleryWorkLeavesMainFreeAndRapidTabAndSearchChangesOnlyDisplayTheLatestRequest() {

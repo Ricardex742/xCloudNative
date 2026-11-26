@@ -7,6 +7,31 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CatalogPresentationEngineTest {
+    @Test fun touchBadgeUsesConfirmedSupportAcrossCatalogs() {
+        val listed = GalleryProduct("AAAAAAAAAAAA", "Toque oficial")
+        val standard = GalleryProduct("BBBBBBBBBBBB", "Controle comum")
+        val touch = OfficialGallery(OfficialGalleryKind.TOUCH, listOf(listed))
+        val purchase = OfficialGallery(OfficialGalleryKind.PURCHASED, listOf(listed, standard))
+        val pass = OfficialGallery(OfficialGalleryKind.GAME_PASS, listOf(listed, standard))
+        val titles = listOf(GameTitle("b", "Controle comum", standard.productId, supportedInputTypes = setOf("Controller")),
+            GameTitle("c", "Toque nativo", supportedInputTypes = setOf("NativeTouch")),
+            GameTitle("d", "Layout oficial", touchBundleIds = listOf("bundle")))
+        val input = CatalogInput(titles, listOf(touch, purchase, pass).associateBy { it.kind }, emptyMap(), null,
+            emptySet(), LibraryTab.ALL, emptySet(), null, null, "")
+        val engine = CatalogPresentationEngine()
+        val cards = engine.build(input).cards.associateBy { it.name }
+        assertTrue(cards.getValue("Toque oficial").touchCompatible)
+        assertTrue(cards.getValue("Toque nativo").touchCompatible)
+        assertTrue(cards.getValue("Layout oficial").touchCompatible)
+        assertFalse(cards.getValue("Controle comum").touchCompatible)
+        for(tab in listOf(LibraryTab.PURCHASED, LibraryTab.GAME_PASS)) {
+            assertEquals(listOf("Toque oficial"), engine.build(input.copy(tab = tab)).cards.filter { it.touchCompatible }.map { it.name })
+        }
+        val unavailable = engine.build(input.copy(galleries = input.galleries - OfficialGalleryKind.TOUCH))
+        assertFalse(unavailable.cards.first { it.name == "Toque oficial" }.touchCompatible)
+        assertTrue(unavailable.cards.first { it.name == "Toque nativo" }.touchCompatible)
+    }
+
     @Test fun freeAccountUsesUserAccessAndPaidClaimsKeepTheirPriority() {
         val freeGame = GameTitle("free", "Free game", freeToPlay = true, programs = listOf("F2P"))
         val input = CatalogInput(listOf(freeGame), emptyMap(), emptyMap(), null, emptySet(),

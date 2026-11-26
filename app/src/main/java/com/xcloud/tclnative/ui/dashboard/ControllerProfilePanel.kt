@@ -15,8 +15,8 @@ class ControllerProfilePanel(private val context: Context,private val store: Con
         val devices=InputDevice.getDeviceIds().map(InputDevice::getDevice).filterNotNull().filter(UsbControllerRumble::isGamepad).filterNot { hiddenAndroid(it.id) }
         if(devices.isEmpty() && usbSources().isEmpty()) return ConsoleDialogs.message(context,UiText.text("Perfis de controle"),UiText.text("Conecte um controle e pressione um botão para o Android identificá-lo."),
             listOf(ConsoleAction(UiText.text("Voltar"),back)),onCancel=back)
-        return ConsoleDialogs.menu(context,UiText.text("Perfis de controle"),devices.map { device -> ConsoleAction(device.name) { edit(device,back) } }+
-            usbSources().map { source -> ConsoleAction(source.name+" • USB") { edit(source.name,source.profileKey,back) } },onBack=back)
+        return settingsMenu(context,UiText.text("Perfis de controle"),ConsoleGlyph.CONTROLLER,devices.map { device -> ConsoleAction(device.name) { edit(device,back) } }+
+            usbSources().map { source -> ConsoleAction(source.name+" • USB") { edit(source.name,source.profileKey,back) } },back=back)
     }
     fun edit(device: InputDevice,back: () -> Unit): ConsoleDialog {
         return edit(device.name,store.key(device),back)
@@ -25,13 +25,13 @@ class ControllerProfilePanel(private val context: Context,private val store: Con
         val value=store.read(key)
         fun save(profile: ControllerProfile) { store.save(key,profile);changed();edit(name,key,back) }
         fun choices(title: String,values: List<Pair<String,Boolean>>,apply: (Int)->Unit) {
-            ConsoleDialog(context,title).apply {
+            settingsPanel(context,title,ConsoleGlyph.SLIDERS).apply {
                 values.forEachIndexed { i,(label,selected) -> val row=addMenuItem(UiText.text("{0}  {1}",UiText.nested(if(selected) "✓" else "○"),UiText.nested(label))) { apply(i) };if(selected) focusFirst(row) }
                 addAction(UiText.text("Voltar")) { edit(name,key,back) };setOnCancelListener { edit(name,key,back) };show()
             }
         }
         val deadzones=listOf(0,2,5,10,15,20,30,40);val sensitivity=listOf(25,50,75,100,125,150,175,200)
-        return ConsoleDialogs.menu(context,UiText.text("Ajustar {0}",UiText.nested(name)),listOf(
+        return settingsMenu(context,UiText.text("Ajustar {0}",UiText.nested(name)),ConsoleGlyph.CONTROLLER,listOf(
             ConsoleAction(UiText.text("Zona morta esquerda: {0}%",UiText.nested(value.leftDeadzone))) { choices(UiText.text("Zona morta esquerda"),deadzones.map { "$it%" to (it==value.leftDeadzone) }) { save(value.copy(leftDeadzone=deadzones[it])) } },
             ConsoleAction(UiText.text("Zona morta direita: {0}%",UiText.nested(value.rightDeadzone))) { choices(UiText.text("Zona morta direita"),deadzones.map { "$it%" to (it==value.rightDeadzone) }) { save(value.copy(rightDeadzone=deadzones[it])) } },
             ConsoleAction(UiText.text("Sensibilidade esquerda: {0}%",UiText.nested(value.leftSensitivity))) { choices(UiText.text("Sensibilidade esquerda"),sensitivity.map { "$it%" to (it==value.leftSensitivity) }) { save(value.copy(leftSensitivity=sensitivity[it])) } },
@@ -42,17 +42,17 @@ class ControllerProfilePanel(private val context: Context,private val store: Con
             ConsoleAction(UiText.text("Zona morta dos gatilhos: {0}%",UiText.nested(value.triggerDeadzone))) { choices(UiText.text("Gatilhos"),deadzones.map { "$it%" to (it==value.triggerDeadzone) }) { save(value.copy(triggerDeadzone=deadzones[it])) } },
             ConsoleAction(UiText.text("Trocar LT e RT: {0}",UiText.nested(if(value.swapTriggers) UiText.text("Sim") else UiText.text("Não")))) { save(value.copy(swapTriggers=!value.swapTriggers)) },
             ConsoleAction(UiText.text("Remapear botões")) {
-                ConsoleDialogs.menu(context,UiText.text("Remapear — Menu + View reservado"),BUTTONS.map { (source,label) ->
+                settingsMenu(context,UiText.text("Remapear — Menu + View reservado"),ConsoleGlyph.CONTROLLER,BUTTONS.map { (source,label) ->
                     ConsoleAction(UiText.text("{0} → {1}",UiText.nested(label),UiText.nested(BUTTONS[value.mapping[source] ?: source] ?: UiText.text("Desativado")))) {
                         val targets=listOf(0 to UiText.text("Desativado"))+BUTTONS.toList()
                         choices(UiText.text("Destino de {0}",UiText.nested(label)),targets.map { it.second to (it.first==(value.mapping[source] ?: source)) }) {
                             save(value.copy(mapping=value.mapping+(source to targets[it].first)))
                         }
                     }
-                },onBack={ edit(name,key,back) })
+                },back={ edit(name,key,back) })
             },
             ConsoleAction(UiText.text("Restaurar este controle")) { store.reset(key);changed();edit(name,key,back) }
-        ),onBack={ show(back) })
+        ),back={ show(back) })
     }
     companion object {
         val BUTTONS=linkedMapOf(2 to "Xbox",4 to "Menu",8 to "View",16 to "A",32 to "B",64 to "X",128 to "Y",

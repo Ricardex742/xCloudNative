@@ -10,6 +10,13 @@ import com.xcloud.tclnative.settings.SessionOptionsStore
 import com.xcloud.tclnative.settings.SessionOptionField
 import android.widget.LinearLayout
 
+private val SessionOptionField.icon: ConsoleGlyph get() = when (this) {
+    SessionOptionField.BITRATE -> ConsoleGlyph.SPEED
+    SessionOptionField.REGION -> ConsoleGlyph.LOCATION
+    SessionOptionField.LOCALE -> ConsoleGlyph.LANGUAGE
+    SessionOptionField.DNS -> ConsoleGlyph.NETWORK
+}
+
 class SessionOptionsPanel(private val context: Context,private val store: SessionOptionsStore,
     private val regions: List<CloudRegion>,private val gameId: String?=null,private val gameName: String?=null,
     private val back: () -> Unit) {
@@ -21,7 +28,7 @@ class SessionOptionsPanel(private val context: Context,private val store: Sessio
 
         internal fun liveBitrate(context: Context,current: Int,back: () -> Unit,reload: (Int) -> Unit): ConsoleDialog {
             val notice=UiText.text("Alterar o bitrate recarrega a transmissão da partida atual. O Xbox decide o bitrate recebido.")
-            return ConsoleDialog(context,UiText.text("Bitrate máximo")).apply {
+            return settingsPanel(context,UiText.text("Bitrate máximo"),ConsoleGlyph.SPEED).apply {
                 body.addView(text(notice,20,color=DashboardTheme.muted))
                 bitrateOptions.forEach { value ->
                     val row=addMenuItem(UiText.text("{0}  {1}",UiText.nested(if(value==current) "✓" else "○"),UiText.nested(bitrateLabel(value)))) {
@@ -36,7 +43,7 @@ class SessionOptionsPanel(private val context: Context,private val store: Sessio
             }
         }
     }
-    fun show(): ConsoleDialog = ConsoleDialog(context,UiText.text("Opções das partidas"),ConsolePanelPurpose.SETTINGS_LIST).apply {
+    fun show(): ConsoleDialog = settingsPanel(context,UiText.text("Opções das partidas"),ConsoleGlyph.NETWORK,ConsolePanelPurpose.SETTINGS_LIST).apply {
         appendTo(this) { this@SessionOptionsPanel.show() }
         addAction(UiText.text("Voltar"),back);setOnCancelListener { back() };show()
     }
@@ -54,23 +61,24 @@ class SessionOptionsPanel(private val context: Context,private val store: Sessio
                 val button=dialog.keyButton(UiText.join(if(id==game) "✓ " else "",label)) {
                     selectedGame=id;dialog.dismiss();onReturn()
                 }.apply { isSelected=id==game;minimumHeight=dialog.touchSize() }
+                dialog.setIcon(button,if(id==null) ConsoleGlyph.SETTINGS else ConsoleGlyph.CONTROLLER,19)
                 scopes.addView(button,LinearLayout.LayoutParams(0,-2,1f).apply { marginEnd=dialog.px(6) })
             }
             dialog.body.addView(scopes)
         }
         fun source(field: SessionOptionField)=if(game==null) "" else UiText.join(" • ",
             if(store.hasOverride(game,field)) UiText.text("Personalizado") else UiText.text("Usando o padrão"))
-        dialog.addMenuItem(UiText.join(UiText.text("Bitrate máximo: {0}",UiText.nested(if(value.maxBitrateKbps==0) UiText.text("Automático") else "${value.maxBitrateKbps/1000.0} Mbps")),source(SessionOptionField.BITRATE))) { bitrate() }
-        dialog.addMenuItem(UiText.join(UiText.text("Região: {0}",UiText.nested(value.region.ifBlank { UiText.text("Automático") })),source(SessionOptionField.REGION))) { region() }
-        dialog.addMenuItem(UiText.join(UiText.text("Idioma do jogo: {0}",UiText.nested(SessionOptions.LOCALES[value.locale])),source(SessionOptionField.LOCALE))) { locale() }
-        dialog.addMenuItem(UiText.join(UiText.text("DNS: {0}", UiText.nested(value.dns.label)), source(SessionOptionField.DNS))) { dns() }
-        if(game!=null && store.hasOverride(game)) dialog.addMenuItem(UiText.text("Usar o padrão das partidas")) { store.reset(game);onReturn() }
+        dialog.addMenuItem(SessionOptionField.BITRATE.icon,UiText.join(UiText.text("Bitrate máximo: {0}",UiText.nested(if(value.maxBitrateKbps==0) UiText.text("Automático") else "${value.maxBitrateKbps/1000.0} Mbps")),source(SessionOptionField.BITRATE))) { bitrate() }
+        dialog.addMenuItem(SessionOptionField.REGION.icon,UiText.join(UiText.text("Região: {0}",UiText.nested(value.region.ifBlank { UiText.text("Automático") })),source(SessionOptionField.REGION))) { region() }
+        dialog.addMenuItem(SessionOptionField.LOCALE.icon,UiText.join(UiText.text("Idioma do jogo: {0}",UiText.nested(SessionOptions.LOCALES[value.locale])),source(SessionOptionField.LOCALE))) { locale() }
+        dialog.addMenuItem(SessionOptionField.DNS.icon,UiText.join(UiText.text("DNS: {0}", UiText.nested(value.dns.label)), source(SessionOptionField.DNS))) { dns() }
+        if(game!=null && store.hasOverride(game)) dialog.addMenuItem(ConsoleGlyph.REFRESH,UiText.text("Usar o padrão das partidas")) { store.reset(game);onReturn() }
     }
     private fun choices(title: String,description: String,rows: List<Pair<String,Boolean>>,field: SessionOptionField,select: (Int)->Unit): ConsoleDialog =
-        ConsoleDialog(context,title,ConsolePanelPurpose.SETTINGS_LIST).apply {
+        settingsPanel(context,title,field.icon,ConsolePanelPurpose.SETTINGS_LIST).apply {
             body.addView(text(description,20,color=DashboardTheme.muted))
             selectedGame?.let { game ->
-                addMenuItem(UiText.text("Usar o padrão das partidas")) { store.inherit(game,field);returnTo() }
+                addMenuItem(ConsoleGlyph.REFRESH,UiText.text("Usar o padrão das partidas")) { store.inherit(game,field);returnTo() }
             }
             rows.forEachIndexed { index,(label,selected) ->
                 val row=addMenuItem(UiText.text("{0}  {1}",UiText.nested(if(selected) "✓" else "○"),UiText.nested(label))) { select(index);returnTo() }

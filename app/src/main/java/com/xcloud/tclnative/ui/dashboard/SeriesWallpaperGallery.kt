@@ -300,7 +300,7 @@ internal class SeriesWallpaperGallery(private val context: Context,items: List<S
     }
     private fun chooseEffect() {
         val original=if(previewed.official) previewed else RecreatedXboxBackgrounds.originalArtwork(previewed) ?: return
-        val effectDialog=ConsoleDialog(context,UiText.text("Efeito da recriação"))
+        val effectDialog=settingsPanel(context,UiText.text("Efeito da recriação"),ConsoleGlyph.SLIDERS)
         ArtAnimationEffect.entries.forEach { effect ->
             effectDialog.addMenuItem(effect.label) {
                 RecreatedXboxBackgrounds.animatedArtwork(original,effect)?.let(::showPreview)

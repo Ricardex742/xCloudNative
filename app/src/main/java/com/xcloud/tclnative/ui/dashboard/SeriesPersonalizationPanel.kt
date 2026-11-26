@@ -9,7 +9,7 @@ internal class SeriesPersonalizationPanel(private val context: Context,
     private val store=SeriesPersonalizationStore(context)
     fun show(): ConsoleDialog {
         val value=store.read()
-        return ConsoleDialogs.menu(context,UiText.text("Personalizar Series X|S"),listOf(
+        return settingsMenu(context,UiText.text("Personalizar Series X|S"),ConsoleGlyph.PALETTE,listOf(
             ConsoleAction(UiText.text("Galeria de fundos")) { gallery() },
             ConsoleAction(UiText.text("Fundo: {0}",UiText.nested(if(!value.gallery) UiText.text("Arte do jogo selecionado")
                 else if(store.shuffle()!=WallpaperShuffle.OFF) store.category().label else store.selected().label))) { chooseSource() },
@@ -17,10 +17,10 @@ internal class SeriesPersonalizationPanel(private val context: Context,
             ConsoleAction(UiText.text("Guia: {0}",UiText.nested(value.guide.label))) { chooseGuide() },
             ConsoleAction(UiText.text("Biblioteca completa: {0}",UiText.nested(if(value.libraryGrid) UiText.text("Grade") else UiText.text("Faixa horizontal — padrão")))) { chooseGrid() },
             ConsoleAction(UiText.text("Selos nas capas")) { badges() }
-        ),back)
+        ),back=back)
     }
     fun gallery(): ConsoleDialog = SeriesWallpaperGallery(context,backgrounds(),back={ show() }).show()
-    private fun choices(title: String,entries: List<Pair<String,Boolean>>,choose: (Int) -> Unit)=ConsoleDialog(context,title).apply {
+    private fun choices(title: String,entries: List<Pair<String,Boolean>>,choose: (Int) -> Unit)=settingsPanel(context,title,ConsoleGlyph.PALETTE).apply {
         entries.forEachIndexed { i,(label,selected) ->
             val row=addMenuItem(UiText.text("{0}  {1}",UiText.nested(if(selected) "✓" else "○"),UiText.nested(label))) { choose(i) }
             if(selected) focusFirst(row)
@@ -40,14 +40,14 @@ internal class SeriesPersonalizationPanel(private val context: Context,
     }
     private fun badges(): ConsoleDialog {
         val value=store.read()
-        return ConsoleDialogs.menu(context,UiText.text("Selos nas capas"),listOf(
+        return settingsMenu(context,UiText.text("Selos nas capas"),ConsoleGlyph.IMAGE,listOf(
             ConsoleAction(UiText.text("Game Pass: {0}",UiText.nested(if(value.gamePassBadge) UiText.text("Ativado") else UiText.text("Desativado")))) {
                 store.save(store.read().copy(gamePassBadge=!value.gamePassBadge));badges()
             },
             ConsoleAction(UiText.text("Series X|S: {0}",UiText.nested(if(value.seriesBadge) UiText.text("Ativado") else UiText.text("Desativado")))) {
                 store.save(store.read().copy(seriesBadge=!value.seriesBadge));badges()
             }
-        ),::show)
+        ),back=::show)
     }
     private fun chooseShuffle(): ConsoleDialog=choices(UiText.text("Troca automática de fundos"),WallpaperShuffle.entries.map {
         it.label to ((if(store.read().gallery) store.shuffle() else WallpaperShuffle.OFF)==it)
@@ -60,7 +60,7 @@ internal class SeriesPersonalizationPanel(private val context: Context,
         val official=OfficialXboxWallpapers.read(context)
         val animated=official.mapNotNull { RecreatedXboxBackgrounds.animatedArtwork(it) }
         val all=(SeriesWallpaper.builtIns+RecreatedXboxBackgrounds.wallpapers(context)+animated+official+backgrounds()+store.favorites()).distinctBy { it.id }
-        return ConsoleDialog(context,UiText.text("Coleção para troca automática")).apply {
+        return settingsPanel(context,UiText.text("Coleção para troca automática"),ConsoleGlyph.IMAGE).apply {
             body.addView(text(UiText.text("Escolha uma coleção com pelo menos dois fundos. A troca pausa durante a partida e é atualizada ao voltar ao menu."),19,color=DashboardTheme.muted))
             WallpaperCategory.entries.forEach { category ->
                 val pool=(when(category) {

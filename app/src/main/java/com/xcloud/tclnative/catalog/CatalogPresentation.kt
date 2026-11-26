@@ -92,8 +92,10 @@ internal class CatalogPresentationEngine {
             .mapTo(hashSetOf()) { it.productId }
         fun inTouchGallery(card: CatalogCard): Boolean = card.product?.productId in touchProducts ||
             card.game?.productId?.let(GamePassCatalog::productKey) in touchProducts
+        private fun addTouchBadge(card: CatalogCard): CatalogCard =
+            if (!card.touchCompatible && inTouchGallery(card)) card.copy(touchCompatible = true) else card
         private val galleries=source.galleries.mapNotNull { (kind,gallery) -> gallery?.let {
-            val cards = OfficialGalleryCards.matching(it,index,source.bindings,membership,"")
+            val cards = OfficialGalleryCards.matching(it,index,source.bindings,membership,"").map(::addTouchBadge)
             kind to if (kind == OfficialGalleryKind.PURCHASED) sortByEnglishTitle(cards) else cards.toList()
         } }.toMap()
         val purchaseProducts = galleries[OfficialGalleryKind.PURCHASED].orEmpty()
@@ -105,7 +107,7 @@ internal class CatalogPresentationEngine {
             val direct=game.productId?.let { byProduct[GamePassCatalog.productKey(it)] }
                 ?.takeIf { it.game?.titleId?.equals(game.titleId,true)==true }
             val alias=direct ?: byTitle[GamePassCatalog.productKey(game.titleId)]?.singleOrNull()
-            game.titleId to CatalogCard(game,alias?.product,alias?.gamePass ?: game.gamePass,nativeIdentity=true)
+            game.titleId to addTouchBadge(CatalogCard(game,alias?.product,alias?.gamePass ?: game.gamePass,nativeIdentity=true))
         }
         private val allCards = run {
             val selected=GameLibrary.select(games,LibraryTab.ALL,emptySet(),emptyMap(),products?.toList(),null).map { native.getValue(it.titleId) }

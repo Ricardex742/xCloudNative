@@ -10,7 +10,7 @@ object LanguageMenu {
         val store=AppLanguageStore(context)
         val selected=store.read()
         val host=context
-        return ConsoleDialog(context,UiText.text("Idioma do aplicativo")).apply {
+        return settingsPanel(context,UiText.text("Idioma do aplicativo"),ConsoleGlyph.LANGUAGE).apply {
             body.addView(text(UiText.text("Escolha o idioma dos menus. A mudança é imediata e fica salva neste aparelho. O idioma dos jogos é definido separadamente nas opções da sessão."),20,color=DashboardTheme.muted))
             AppLanguage.entries.forEach { language ->
                 val row=addMenuItem("${if(language==selected) "✓" else "○"}  ${language.nativeName}") {

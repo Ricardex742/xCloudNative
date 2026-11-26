@@ -9,7 +9,7 @@ class StatisticsSettingsPanel(private val context: Context,private val store: St
                               private val changed: () -> Unit={},private val back: () -> Unit={}) {
     fun show(): ConsoleDialog {
         val value=store.read()
-        return ConsoleDialogs.menu(context,UiText.text("Estatísticas durante a partida"),listOf(
+        return settingsMenu(context,UiText.text("Estatísticas durante a partida"),ConsoleGlyph.DIAGNOSTICS,listOf(
             ConsoleAction(UiText.text("Modo: {0}",UiText.nested(mode(value.detailed)))) {
                 choose(UiText.text("Modo das estatísticas"),listOf(mode(false),mode(true)),if(value.detailed) 1 else 0) { save(value.copy(detailed=it==1)) }
             },
@@ -26,12 +26,12 @@ class StatisticsSettingsPanel(private val context: Context,private val store: St
                 choose(UiText.text("Opacidade do fundo"),levels.map { "$it%" },levels.indexOf(value.background)) { save(value.copy(background=levels[it])) }
             },
             ConsoleAction(UiText.text("Restaurar padrão")) { save(StatisticsSettings());show() }
-        ),back)
+        ),back=back)
     }
     private fun mode(detailed: Boolean)=if(detailed) UiText.text("Completo") else UiText.text("Personalizado")
     private fun save(value: StatisticsSettings) { store.save(value);changed() }
     private fun choose(title: String,labels: List<String>,selected: Int,choose: (Int) -> Unit) {
-        ConsoleDialog(context,title,ConsolePanelPurpose.SETTINGS_LIST).apply {
+        settingsPanel(context,title,ConsoleGlyph.DIAGNOSTICS,ConsolePanelPurpose.SETTINGS_LIST).apply {
             labels.forEachIndexed { i,label ->
                 val row=addMenuItem(UiText.text("{0}  {1}",UiText.nested(if(i==selected) "✓" else "○"),UiText.nested(label))) { choose(i);this@StatisticsSettingsPanel.show() }
                 if(i==selected) focusFirst(row)
@@ -40,7 +40,7 @@ class StatisticsSettingsPanel(private val context: Context,private val store: St
             setOnCancelListener { this@StatisticsSettingsPanel.show() };show()
         }
     }
-    private fun fields(): ConsoleDialog=ConsoleDialog(context,UiText.text("Escolher indicadores"),ConsolePanelPurpose.SETTINGS_LIST).apply {
+    private fun fields(): ConsoleDialog=settingsPanel(context,UiText.text("Escolher indicadores"),ConsoleGlyph.DIAGNOSTICS,ConsolePanelPurpose.SETTINGS_LIST).apply {
         body.addView(text(UiText.text("As escolhas valem no modo Personalizado e ficam salvas. Cada partida começa com as estatísticas ocultas. INFO/F10 ou o menu da partida ligam e desligam o painel."),18,color=DashboardTheme.muted))
         body.addView(text(UiText.text("FPS mede o vídeo decodificado; ping é o RTT da conexão. O agendador mede somente o envio de comandos."),17,color=DashboardTheme.muted))
         body.addView(text(UiText.text("O saldo de nuvem é consultado a cada cinco minutos enquanto as estatísticas estão visíveis."),17,color=DashboardTheme.muted))

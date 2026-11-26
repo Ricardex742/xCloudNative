@@ -131,13 +131,33 @@ class QuickSettingsNavigationTest {
         assertTrue(scroll.scrollY>0)
         assertEquals(tabY,IntArray(2).apply(video::getLocationInWindow)[1])
         assertTrue(all(settings.body).filterIsInstance<TextView>().filter { it.isClickable }.all {
-            it.isFocusable && !it.isFocusableInTouchMode
+            it.isFocusable && !it.isFocusableInTouchMode && it.compoundDrawablesRelative[0] != null
         })
         settings.panel.findViewWithTag<TextView>("settings-section-controls").performClick()
         assertSame(settings,latest())
         assertEquals(0,scroll.scrollY)
         assertTrue(all(settings.body).any { it is TextView && it.text.startsWith("Jogar com toque") })
         capture(settings,"settings-fixed-categories")
+    }
+    @Test fun advancedAppearanceAndSessionOptionsHaveIconsOnTheirRowsAndChoices() {
+        val session = SessionOptionsStore(activity,"settings-icons")
+        val scoped = SessionOptionsPanel(activity,session,emptyList(),"game","Demo") {}
+        val panel = PlaybackSettingsPanel(activity,PlaybackSettingsStore(activity),{},{},{},{},sessionPanel=scoped)
+        fun check(dialog: ConsoleDialog, preview: String) {
+            val rows = all(dialog.body).filterIsInstance<TextView>().filter { it.isClickable }
+            assertTrue(rows.isNotEmpty())
+            assertTrue(rows.all { it.compoundDrawablesRelative[0] != null })
+            capture(dialog,preview)
+        }
+        click(panel.showVideo(),"Ajustes avançados")
+        check(latest(),"advanced-settings-icons")
+        click(latest(),"Codec:")
+        check(latest(),"codec-settings-icons")
+        click(panel.showAppearance(),"Tema do aplicativo:")
+        check(latest(),"theme-settings-icons")
+        check(scoped.show(),"session-settings-icons")
+        click(latest(),"Região:")
+        check(latest(),"region-settings-icons")
     }
     @Test fun longStatisticsShortcutOpensCustomizationWithoutTogglingAndMediaVolumeIsExplicit() {
         var customizations=0;var toggles=0;var updates=0

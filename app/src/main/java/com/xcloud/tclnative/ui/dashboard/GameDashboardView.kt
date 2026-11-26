@@ -2383,7 +2383,8 @@ class GameDashboardView(
         private val reflectionSrc=Rect()
         private val reflectionDst=RectF()
         private val favorite = CoverMarkerView(context)
-        private val purchase = CoverMarkerView(context, purchase = true)
+        private val purchase = CoverMarkerView(context, CoverMark.PURCHASE)
+        private val touchBadge = CoverMarkerView(context, CoverMark.TOUCH)
         var focused = false
             set(value) {
                 field=value
@@ -2405,7 +2406,7 @@ class GameDashboardView(
             cover.addView(fallback, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
             cover.addView(image, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
             cover.addView(badges)
-            cover.addView(purchase)
+            cover.addView(purchase);cover.addView(touchBadge)
             addView(cover);addView(rowBadges);addView(caption); addView(favorite)
         }
         fun bind(game: CatalogCard) {
@@ -2569,15 +2570,40 @@ class GameDashboardView(
         }
         fun bindFavorite(game: CatalogCard) {
             val starred=game.game?.let { library.isFavorite(it.titleId) } == true
+            val list = designScene == ConsoleScene.XBOX_360 || designScene == ConsoleScene.XBOX_ORIGINAL
             contentDescription = game.name + (if(starred) UiText.text(", favorito") else "") +
-                (if(game.purchased) UiText.text(", comprado") else "")
+                (if(game.purchased) UiText.text(", comprado") else "") +
+                (if(game.touchCompatible) ", ${UiText.text("Jogar com toque")}" else "")
             favorite.visibility=if(starred) View.VISIBLE else View.GONE
             purchase.visibility = if (game.purchased) View.VISIBLE else View.GONE
+            touchBadge.visibility = if (game.touchCompatible) View.VISIBLE else View.GONE
+            if (game.touchCompatible) {
+                touchBadge.refresh()
+                cover.bringChildToFront(touchBadge)
+                val markerScale = if (cardHorizontal) carouselScale else scale
+                val side = (24 * markerScale).roundToInt().coerceAtLeast(1)
+                val inset = (5 * markerScale).roundToInt()
+                val captionOverCover = designScene == ConsoleScene.XBOX_360_METRO ||
+                    (designScene == ConsoleScene.XBOX_SERIES && !seriesGrid)
+                val corner = when {
+                    captionOverCover -> Gravity.BOTTOM or Gravity.END
+                    list -> Gravity.BOTTOM or Gravity.START
+                    else -> Gravity.TOP or Gravity.START
+                }
+                touchBadge.layoutParams = LayoutParams(side, side, corner).apply {
+                    if (captionOverCover) {
+                        bottomMargin = (47 * markerScale).roundToInt()
+                        marginEnd = inset
+                    } else {
+                        if (list) bottomMargin = inset else topMargin = inset
+                        marginStart = inset
+                    }
+                }
+            }
             if (game.purchased) {
                 purchase.refresh()
                 cover.bringChildToFront(purchase)
                 val side = (22 * scale).roundToInt().coerceAtLeast(1)
-                val list = designScene == ConsoleScene.XBOX_360 || designScene == ConsoleScene.XBOX_ORIGINAL
                 purchase.layoutParams = LayoutParams(side, side, Gravity.TOP or Gravity.END).apply {
                     topMargin = (4 * scale).roundToInt()
                     marginEnd = ((if (starred && !list) 33 else 4) * scale).roundToInt()

@@ -8,8 +8,10 @@ import com.xcloud.tclnative.settings.UiTheme
 import kotlin.math.cos
 import kotlin.math.sin
 
+internal enum class CoverMark { FAVORITE, PURCHASE, TOUCH }
+
 /** Resolution-independent marker whose finish follows the dashboard theme. */
-internal class CoverMarkerView(context: Context, private val purchase: Boolean = false): View(context) {
+internal class CoverMarkerView(context: Context, internal val mark: CoverMark = CoverMark.FAVORITE): View(context) {
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
     private val star=Path().apply {
         repeat(10) { i ->
@@ -20,6 +22,7 @@ internal class CoverMarkerView(context: Context, private val purchase: Boolean =
         };close()
     }
     private val check = Path().apply { moveTo(6f, 12f); lineTo(10f, 16f); lineTo(18f, 8f) }
+    private val icons by lazy(::ConsoleIcons)
     private var theme: UiTheme?=null
     private var scene=ConsoleScene.NONE
     private var top=0;private var bottom=0;private var ink=0;private var rim=0
@@ -67,7 +70,9 @@ internal class CoverMarkerView(context: Context, private val purchase: Boolean =
         canvas.drawRoundRect(.5f,.5f,23.5f,23.5f,radius,radius,paint)
         paint.shader=null
         if(rim!=Color.TRANSPARENT) { paint.color=rim;paint.style=Paint.Style.STROKE;paint.strokeWidth=.8f;canvas.drawRoundRect(.5f,.5f,23.5f,23.5f,radius,radius,paint) }
-        if (purchase) {
+        if (mark == CoverMark.TOUCH) {
+            icons.draw(canvas, ConsoleGlyph.TOUCH, 2f, 2f, 20f, if (scene == ConsoleScene.XBOX_360) ink else Color.WHITE)
+        } else if (mark == CoverMark.PURCHASE) {
             paint.color = if (scene == ConsoleScene.XBOX_360) ink else Color.WHITE
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2.7f

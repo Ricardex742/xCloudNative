@@ -11,7 +11,7 @@ object RegionBypassPanel {
     fun show(context: Context, back: () -> Unit): ConsoleDialog {
         val store = RegionBypassStore(context)
         val selected = store.read()
-        return ConsoleDialog(context, UiText.text("Bypass de região — experimental")).apply {
+        return settingsPanel(context, UiText.text("Bypass de região — experimental"),ConsoleGlyph.LOCATION).apply {
             body.addView(text(UiText.text("Tenta acessar o xCloud usando um país de referência no login. Não é VPN e não altera seu IP real. O Xbox pode recusar o pedido. A mudança vale ao reconectar a conta ou reabrir o app; seu login salvo é preservado."), 20, color = DashboardTheme.muted),
                 LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = px(12) })
             RegionBypass.entries.forEach { mode ->

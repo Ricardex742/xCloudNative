@@ -37,7 +37,25 @@ import com.xcloud.tclnative.settings.SeriesPersonalizationStore
 import java.util.Locale
 import kotlin.math.roundToInt
 
-data class ConsoleAction(val label: String, val action: () -> Unit) { var longAction: (() -> Unit)?=null }
+data class ConsoleAction(val label: String, val action: () -> Unit) {
+    var longAction: (() -> Unit)?=null
+    internal var settingsGlyph: ConsoleGlyph? = null
+}
+internal fun settingAction(glyph: ConsoleGlyph, label: String, action: () -> Unit) =
+    ConsoleAction(label, action).also { it.settingsGlyph = glyph }
+
+internal fun settingsPanel(context: Context, title: String, glyph: ConsoleGlyph,
+                           purpose: ConsolePanelPurpose = ConsolePanelPurpose.GENERAL) =
+    ConsoleDialog(context, title, purpose).apply { useSettingsIcon(glyph) }
+
+internal fun settingsMenu(context: Context, title: String, glyph: ConsoleGlyph, rows: List<ConsoleAction>,
+                          purpose: ConsolePanelPurpose = ConsolePanelPurpose.GENERAL,
+                          back: () -> Unit): ConsoleDialog = settingsPanel(context, title, glyph, purpose).apply {
+    rows.forEach { addSettingsAction(it) }
+    addAction(UiText.text("Voltar"), back)
+    setOnCancelListener { back() }
+    show()
+}
 enum class ConsolePanelPurpose { GENERAL, SEARCH, SETTINGS_HOME, SETTINGS_LIST, GUIDE, CONTROL_CENTER, PROFILE, GAME_SESSION, NETWORK_STATS, REMOTE_PLAY, GAME_DETAILS }
 
 /** Shared native panels for search, account menus and messages. No platform alert buttons/rows. */
@@ -51,6 +69,8 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     private val remotePlayPage=purpose==ConsolePanelPurpose.REMOTE_PLAY
     private val gameDetails=purpose==ConsolePanelPurpose.GAME_DETAILS
     private val settingsList=purpose==ConsolePanelPurpose.SETTINGS_LIST
+    private var settingsHeading: TextView? = null
+    private var settingsGlyph: ConsoleGlyph? = null
     internal val gameDetailsStyle by lazy { GameDetailsStyle(DashboardTheme.palette) }
     private val playingBehindPanel get() = (activity as? MainActivity)?.hasPlaybackBehindPanels() == true
     private val edgeToEdge get() = fullScreen || compactNetwork || playingBehindPanel
@@ -203,10 +223,11 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             headingContent.addView(text(heading,24),LinearLayout.LayoutParams(-1,-2).apply { if(!sessionSidebar) bottomMargin=px(14) })
             if(purpose==ConsolePanelPurpose.GUIDE) panel.minimumHeight=(screenHeight*.88f).roundToInt()
         } else if(settingsList) {
-            headingContent.addView(text(heading,30,true).apply { gravity=Gravity.CENTER_VERTICAL;minHeight=touchSize() },
+            headingContent.addView(text(heading,30,true).apply { gravity=Gravity.CENTER_VERTICAL;minHeight=touchSize() }
+                .also { settingsHeading = it },
                 LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(9) })
         } else if(skin.scene.playStation) {
-            headingContent.addView(text(heading,34),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(22) })
+            headingContent.addView(text(heading,34).also { settingsHeading = it },LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(22) })
         } else if(purpose==ConsolePanelPurpose.GUIDE) {
             val brand=ConsoleBrandView(context)
             headingContent.addView(brand,LinearLayout.LayoutParams(px(176),px(42)))
@@ -221,14 +242,15 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             val icon=object: View(context) {
                 private val icons=ConsoleIcons()
                 override fun onDraw(canvas: android.graphics.Canvas) {
-                    icons.draw(canvas,if(purpose==ConsolePanelPurpose.SEARCH) ConsoleGlyph.SEARCH else ConsoleGlyph.SETTINGS,0f,0f,minOf(width,height).toFloat(),skin.ink)
+                    val glyph = settingsGlyph ?: if(purpose==ConsolePanelPurpose.SEARCH) ConsoleGlyph.SEARCH else ConsoleGlyph.SETTINGS
+                    icons.draw(canvas,glyph,0f,0f,minOf(width,height).toFloat(),skin.ink)
                 }
             }
             header.addView(icon,LinearLayout.LayoutParams(px(32),px(32)))
             headingContent.addView(header,LinearLayout.LayoutParams(-1,px(94)).apply { bottomMargin=px(14) })
         } else {
             headingContent.addView(text("xCLOUD", 16, true, DashboardTheme.accent), LinearLayout.LayoutParams(-1, -2))
-            headingContent.addView(text(heading, 35, true), LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(5); bottomMargin=px(23) })
+            headingContent.addView(text(heading, 35, true).also { settingsHeading = it }, LinearLayout.LayoutParams(-1, -2).apply { topMargin=px(5); bottomMargin=px(23) })
         }
         val header=LinearLayout(context).apply {
             orientation=LinearLayout.HORIZONTAL
@@ -307,8 +329,23 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
     }
     fun touchSize()=(48*context.resources.displayMetrics.density).roundToInt()
     fun addSection(label: String) {
-        body.addView(text(label,20,true,DashboardTheme.accent),LinearLayout.LayoutParams(-1,-2).apply { topMargin=px(14);bottomMargin=px(9) })
+        val section = text(label,20,true,DashboardTheme.accent)
+        settingsGlyph?.let { setIcon(section, it, 19) }
+        body.addView(section,LinearLayout.LayoutParams(-1,-2).apply { topMargin=px(14);bottomMargin=px(9) })
     }
+    internal fun useSettingsIcon(glyph: ConsoleGlyph) {
+        settingsGlyph = glyph
+        settingsHeading?.let { setIcon(it, glyph, 28) }
+    }
+
+    internal fun setIcon(view: TextView, glyph: ConsoleGlyph, size: Int = 23, above: Boolean = false) {
+        val icon = ConsoleIconDrawable(glyph, px(size).coerceAtLeast(1), view.textColors)
+        view.compoundDrawablePadding = px(if (above) 4 else 10)
+        if (above) view.setCompoundDrawablesRelativeWithIntrinsicBounds(null, icon, null, null)
+        else view.setCompoundDrawablesRelativeWithIntrinsicBounds(icon, null, null, null)
+    }
+
+    internal fun addSettingsAction(action: ConsoleAction) = addMenuItem(action.settingsGlyph ?: settingsGlyph, action.label, action.action)
     internal fun setSettingsNavigation(navigation: View) {
         panel.addView(navigation,panel.indexOfChild(scroll),LinearLayout.LayoutParams(-1,-2).apply { bottomMargin=px(8) })
     }
@@ -323,7 +360,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         scroll.scrollTo(0,0)
     }
 
-    internal fun addSetting(label: String, summary: String, action: () -> Unit): TextView = addMenuItem(label,action).apply {
+    internal fun addSetting(label: String, summary: String, glyph: ConsoleGlyph? = settingsGlyph, action: () -> Unit): TextView = addMenuItem(glyph,label,action).apply {
         text=android.text.SpannableString("$label\n$summary").apply {
             setSpan(android.text.style.RelativeSizeSpan(.78f),label.length+1,length,android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
@@ -442,7 +479,9 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
         if(phone) ConsoleHitTargets.install(actions,(0 until actions.childCount).map { actions.getChildAt(it) })
         return button
     }
-    fun addMenuItem(label: String, action: () -> Unit): TextView {
+    fun addMenuItem(label: String, action: () -> Unit): TextView = addMenuItem(settingsGlyph, label, action)
+
+    internal fun addMenuItem(glyph: ConsoleGlyph?, label: String, action: () -> Unit): TextView {
         val tile=skin.enabled && purpose==ConsolePanelPurpose.SETTINGS_HOME && skin.columns>1
         val stableLabel=label.substringBefore(":")
         val item = DashboardTheme.button(context, label, scale) {
@@ -484,6 +523,7 @@ class ConsoleDialog(context: Context, private val heading: String,private val pu
             if(android.os.Build.VERSION.SDK_INT>=26) item.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE)
             item.setTextSize(TypedValue.COMPLEX_UNIT_PX,23*scale)
         }
+        glyph?.let { setIcon(item, it) }
         if(stableLabel==focusKey) returningFocus=item
         menuItems++
         if(phone) ConsoleHitTargets.install(body,(0 until body.childCount).map { body.getChildAt(it) }.filter { it.isClickable })

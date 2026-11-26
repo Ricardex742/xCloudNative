@@ -29,7 +29,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         editOfficial?.let { actions.add(0, ConsoleAction(UiText.text("Editar HUD oficial"), it)) }
         officialTouch?.let { actions.add(0,ConsoleAction(UiText.text("Usar controles oficiais do Xbox"),it)) }
         actions+=ConsoleAction(UiText.text("Ocultar automaticamente: {0}",UiText.nested(settings.autoHide.label))) {
-            val dialog=ConsoleDialog(context,UiText.text("Ocultação automática do controle virtual"))
+            val dialog=settingsPanel(context,UiText.text("Ocultação automática do controle virtual"),ConsoleGlyph.TOUCH)
             dialog.body.addView(dialog.text(UiText.text("O menu permanece visível. Toque uma vez para mostrar os controles novamente. Um botão segurado continua ativo até você soltar."),20,color=DashboardTheme.muted))
             HudAutoHide.entries.forEach { choice ->
                 val row=dialog.addMenuItem("${if(choice==settings.autoHide) "✓" else "○"} ${choice.label}") { save(settings.copy(autoHide=choice)) }
@@ -51,7 +51,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
                 save(settings.copy(codDpad=!settings.codDpad))
             }
             actions+=ConsoleAction(UiText.text("Mirar ao atirar: {0}",UiText.nested(if(settings.aimAndFire) UiText.text("Ativado") else UiText.text("Desativado")))) {
-                val dialog=ConsoleDialog(context,UiText.text("Mirar ao atirar"))
+                val dialog=settingsPanel(context,UiText.text("Mirar ao atirar"),ConsoleGlyph.TOUCH)
                 dialog.body.addView(dialog.text(UiText.text("Ativado combina mira e disparo nos dois botões Atirar. Desativado mantém o disparo separado da mira. Aplicar restaura as ações desses botões e mantém suas posições."),20,color=DashboardTheme.muted))
                 listOf(false,true).forEach { enabled ->
                     val row=dialog.addMenuItem(UiText.text("{0} {1}",UiText.nested(if(enabled==settings.aimAndFire) "✓" else "○"),UiText.nested(if(enabled) UiText.text("Ativado — mirar e atirar") else UiText.text("Desativado — somente atirar")))) { save(settings.withAimAndFire(enabled)) }
@@ -60,7 +60,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
                 dialog.addAction(UiText.text("Voltar")) { show() };dialog.setOnCancelListener { show() };dialog.show()
             }
             actions+=ConsoleAction(UiText.text("Arrastar analógico para correr: {0}",UiText.nested(if(settings.sprintGesture) UiText.text("Ativado") else UiText.text("Desativado")))) {
-                val dialog=ConsoleDialog(context,UiText.text("Corrida pelo analógico"))
+                val dialog=settingsPanel(context,UiText.text("Corrida pelo analógico"),ConsoleGlyph.TOUCH)
                 dialog.body.addView(dialog.text(UiText.text("Arraste o analógico de movimento para cima, na direção de Correr, além da borda do analógico. Recuar solta o comando de corrida; soltar o dedo também zera o movimento. As opções do jogo definem o comportamento da corrida. O botão Correr também funciona por toque."),20,color=DashboardTheme.muted))
                 listOf(false,true).forEach { enabled ->
                     val row=dialog.addMenuItem(UiText.text("{0} {1}",UiText.nested(if(enabled==settings.sprintGesture) "✓" else "○"),UiText.nested(if(enabled) UiText.text("Ativado") else UiText.text("Desativado")))) { save(settings.copy(sprintGesture=enabled)) }
@@ -71,7 +71,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         }
         if(effective.football) {
             actions+=ConsoleAction(UiText.text("Esquema de futebol: {0}",UiText.nested(settings.footballScheme.label))) {
-                val dialog=ConsoleDialog(context,UiText.text("Esquema de controle do futebol"))
+                val dialog=settingsPanel(context,UiText.text("Esquema de controle do futebol"),ConsoleGlyph.TOUCH)
                 dialog.body.addView(dialog.text(UiText.text("Escolha o mesmo esquema usado dentro do jogo. Aplicar restaura as ações e os gestos dos botões de futebol, mantendo as posições e os tamanhos personalizados."),20,color=DashboardTheme.muted))
                 FootballScheme.entries.forEach { scheme ->
                     val row=dialog.addMenuItem(UiText.text("{0} {1}",UiText.nested(if(scheme==settings.footballScheme) "✓" else "○"),UiText.nested(scheme.label))) { save(settings.withFootballScheme(scheme)) }
@@ -91,7 +91,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
                 listOf(ConsoleAction(UiText.text("Voltar")) { show() }),onCancel={ show() })
         }
         if(activate==null) actions+=ConsoleAction(UiText.text("Usar apenas controle nesta partida"),hide)
-        return ConsoleDialogs.menu(context,"HUD • ${game.name}",actions,onBack=back)
+        return settingsMenu(context,"HUD • ${game.name}",ConsoleGlyph.TOUCH,actions,back=back)
     }
     private fun save(settings: HudSettings, resetPresets: Boolean = false) {
         persist {
@@ -109,7 +109,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         val current=store.read(game.titleId)
         val automatic=GameHud.automatic(game.titleId,game.name)
         val options=listOf<HudPreset?>(null)+HudPreset.entries.filter { it.family==it }
-        val dialog=ConsoleDialog(context,UiText.text("Layout dos controles"))
+        val dialog=settingsPanel(context,UiText.text("Layout dos controles"),ConsoleGlyph.TOUCH)
         dialog.body.addView(dialog.text(UiText.text("Os comandos usam o mapeamento padrão de controle Xbox. Você pode ajustar cada ação no editor e nas configurações do jogo."),20,color=DashboardTheme.muted),LinearLayout.LayoutParams(-1,-2))
         options.forEach { preset ->
             val label=preset?.label ?: UiText.text("Automático • {0}",UiText.nested(automatic.label))
@@ -121,7 +121,7 @@ class GameHudPanel(private val context: Context,private val game: GameTitle,priv
         dialog.addAction(UiText.text("Voltar")) { show() }; dialog.setOnCancelListener { show() }; dialog.show()
     }
     private fun chooseValue(title: String,values: List<Int>,current: Int,description: String?=null,select: (Int) -> Unit) {
-        val dialog=ConsoleDialog(context,title)
+        val dialog=settingsPanel(context,title,ConsoleGlyph.SLIDERS)
         description?.let { dialog.body.addView(dialog.text(it,20,color=DashboardTheme.muted)) }
         values.forEach { value ->
             val row=dialog.addMenuItem("${if(value==current) "✓" else "○"} $value%") { select(value) }
