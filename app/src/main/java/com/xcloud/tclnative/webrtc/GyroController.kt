@@ -10,6 +10,7 @@ import android.hardware.SensorManager
 import android.os.Build
 import android.view.InputDevice
 import android.view.Surface
+import androidx.annotation.RequiresApi
 import com.xcloud.tclnative.settings.GyroMode
 import com.xcloud.tclnative.settings.GyroSource
 import kotlin.math.hypot
@@ -41,6 +42,7 @@ object GyroAim {
 }
 
 /** Some Android drivers expose buttons and their IMU as two InputDevices. */
+@RequiresApi(Build.VERSION_CODES.S)
 internal fun controllerMotionNodes(devices: List<InputDevice>, controllerId: Int?): List<InputDevice> {
     val physical = devices.filterNot { it.isVirtual }
     val gamepads = physical.filter { AndroidGamepadPolicy.supportsGamepad(it.sources) }
