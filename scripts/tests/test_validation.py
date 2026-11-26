@@ -45,6 +45,24 @@ class LintBaselineTest(unittest.TestCase):
         self.assertFalse(self.lint([("Fatal", "app/src/a.kt")], write=True))
         self.assertFalse(self.baseline.exists())
 
+    def test_maven_version_suggestions_do_not_hide_other_dependency_issues(self):
+        self.assertTrue(self.lint([], write=True))
+        suggestion = "A newer version of androidx.appcompat:appcompat than 1.6.1 is available: 1.7.1"
+        for severity, message, expected in (
+            ("Warning", suggestion, True),
+            ("Warning", "Dependency requires a newer compile SDK", False),
+            ("Error", suggestion, False),
+        ):
+            with self.subTest(severity=severity, message=message):
+                self.report.write_text(
+                    '<issues format="6" by="lint 8.5.2">'
+                    f'<issue id="GradleDependency" severity="{severity}" message="{message}">'
+                    '<location file="app/build.gradle.kts"/></issue></issues>',
+                    encoding="utf-8",
+                )
+                with contextlib.redirect_stderr(io.StringIO()), contextlib.redirect_stdout(io.StringIO()):
+                    self.assertEqual(expected, check(self.report, self.baseline, self.root))
+
 
 class AndroidContractTest(unittest.TestCase):
     def test_apk_contract_checks_both_launchers_and_packaged_abis(self):

@@ -10,6 +10,10 @@ from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parent.parent
 BASELINE = ROOT / "app/lint-warning-baseline.json"
+VERSION_SUGGESTION = re.compile(
+    r"A newer version of [\w.\-]+:[\w.\-]+ than [\w.\-]+ is available: [\w.\-]+"
+    r"(?:\. \(There is also a newer version of [\w.]+ available, if upgrading to [\w.\-]+ is difficult: [\w.\-]+\))?"
+)
 
 
 def read_report(report, root):
@@ -35,6 +39,9 @@ def read_report(report, root):
         else:
             location_name = "<global>"
         if severity == "Warning":
+            # Version suggestions depend on Maven's current metadata. The raw report retains them.
+            if rule == "GradleDependency" and VERSION_SUGGESTION.fullmatch(issue.get("message", "")):
+                continue
             warnings[f"{rule} {location_name}"] += 1
         elif severity in {"Error", "Fatal"}:
             errors[f"{rule} {location_name}"] += 1
