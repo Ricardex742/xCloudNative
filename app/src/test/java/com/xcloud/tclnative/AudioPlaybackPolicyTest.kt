@@ -64,6 +64,7 @@ class AudioPlaybackPolicyTest {
     @Test fun audioMenuSelectsTheProfileForTheNextSessionAndLeavesTheOtherSettingsAlone() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup();val a=controller.get()
         try {
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
             val store=PlaybackSettingsStore(a);val before=store.read();var changed: PlaybackSettings?=null
             val panel=PlaybackSettingsPanel(a,store,{changed=it},{},{},{})
             val audio=panel.showAudio()

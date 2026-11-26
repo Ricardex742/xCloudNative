@@ -220,6 +220,7 @@ class SessionToolsUiTest {
     @Test fun eachIndicatorCanBeChosenWithoutLeavingTheDialogAndAtLeastOneStaysEnabled() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView)
         try {
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
             val store=StatisticsSettingsStore(a);var changes=0
             val panel=StatisticsSettingsPanel(a,store,{changes++})
             val home=panel.show();capture(home,"statistics-settings")

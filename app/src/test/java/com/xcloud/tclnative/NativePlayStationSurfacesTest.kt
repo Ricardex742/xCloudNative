@@ -183,7 +183,7 @@ class NativePlayStationSurfacesTest {
             }
         } finally { c.pause().stop().destroy() }
     }
-    @Test fun sixSettingsCategoriesAndDeepPanelsRemainNativeAcrossAllInterfaceLanguages() {
+    @Test fun settingsTabsAndDeepPanelsRemainNativeAcrossAllInterfaceLanguages() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get();a.setContentView(FrameLayout(a));layout(a.window.decorView)
         try {
             val store=PlaybackSettingsStore(a);val original=store.read()
@@ -191,8 +191,9 @@ class NativePlayStationSurfacesTest {
                 UiText.apply(a,language);DashboardTheme.apply(a,theme)
                 val panel=PlaybackSettingsPanel(a,store,{fail("Presentation must not alter playback")},{},{},{})
                 val root=panel.show();layout(root.panel,1100,648)
-                val categories=all(root.body).filterIsInstance<TextView>().filter { it.isClickable }
-                assertEquals(6,categories.size)
+                val categories=all(root.panel).filterIsInstance<TextView>().filter { it.tag?.toString()?.startsWith("settings-section-")==true }
+                assertEquals(5,categories.size)
+                assertEquals(3,all(root.body).count { it is TextView && it.isClickable })
                 assertFalse(all(root.panel).any { it is android.webkit.WebView })
                 assertTrue(categories.all { it.width>0 && it.height>=48*a.resources.displayMetrics.density })
                 capture(root.panel,"${theme.name.lowercase()}-${language.name.lowercase()}-settings")

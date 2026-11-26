@@ -93,10 +93,14 @@ class ConsoleFidelityReviewTest {
                         val d=open();try {
                             layout(d.panel,if(theme.scene.playStation) w else (w*.9f).toInt(),h,false);capture(d.panel,"${theme.name}-$h-$name");assertImmersive(d.window!!)
                             if(theme.scene.playStation && name=="settings") {
-                                val categories=all(d.body).filterIsInstance<TextView>().filter { it.isClickable }
-                                assertEquals(6,categories.size)
-                                val viewport=d.body.parent as ScrollView
+                                val categories=all(d.panel).filterIsInstance<TextView>().filter { it.tag?.toString()?.startsWith("settings-section-")==true }
+                                assertEquals(5,categories.size)
                                 for(item in categories) {
+                                    val bounds=Rect(0,0,item.width,item.height);d.panel.offsetDescendantRectToMyCoords(item,bounds)
+                                    assertTrue("Setting category clipped: ${item.text}",Rect(0,0,d.panel.width,d.panel.height).contains(bounds))
+                                }
+                                val viewport=d.body.parent as ScrollView
+                                for(item in all(d.body).filterIsInstance<TextView>().filter { it.isClickable }) {
                                     val bounds=Rect(0,0,item.width,item.height);viewport.offsetDescendantRectToMyCoords(item,bounds)
                                     assertTrue("Setting category clipped: ${item.text}",Rect(0,0,viewport.width,viewport.height).contains(bounds))
                                 }
