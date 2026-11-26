@@ -38,12 +38,7 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: |
-            if ! bash scripts/smoke_device.sh "$RUNNER_TEMP/signed-apk/app-release.apk" emulator-5554 phone --repeats 3 --report "$RUNNER_TEMP/android-smoke.json"; then
-              adb -s emulator-5554 logcat -b crash -d -t 120
-              adb -s emulator-5554 dumpsys activity activities | grep -E 'ResumedActivity|topResumedActivity|com\.xcloud\.tclnative' | head -30 || true
-              exit 1
-            fi
+          script: bash scripts/smoke_device.sh "$RUNNER_TEMP/signed-apk/app-release.apk" emulator-5554 phone --repeats 3 --report "$RUNNER_TEMP/android-smoke.json" || { adb -s emulator-5554 logcat -b crash -d -t 120; adb -s emulator-5554 dumpsys activity activities | grep -E 'ResumedActivity|com\.xcloud\.tclnative' | head -30; exit 1; }
       - uses: actions/upload-artifact@v4
         with:
           name: android-smoke-api-${{ matrix.api }}
