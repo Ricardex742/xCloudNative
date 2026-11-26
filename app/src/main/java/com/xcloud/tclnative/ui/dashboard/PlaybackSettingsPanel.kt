@@ -132,7 +132,7 @@ class PlaybackSettingsPanel(
             val tab=dialog.keyButton(label) { select(page) }.apply {
                 tag="settings-section-${page.name.lowercase(java.util.Locale.ROOT)}"
                 minHeight=dialog.touchSize()
-                setPadding(dialog.px(4),0,dialog.px(4),0)
+                setPadding(dialog.px(4),dialog.px(6),dialog.px(4),dialog.px(3))
                 setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX,dialog.px(19).toFloat())
                 maxLines=2
                 settingsIcon(dialog, glyph, above = true)

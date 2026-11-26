@@ -233,7 +233,7 @@ class PlayStationPhoneReviewTest {
                     root.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
                     assertTrue(root.isShowing);assertTrue(controls.isSelected)
                     measure(root.panel,root.panel.width,p.ch,false)
-                    val gyro=all(root.body).filterIsInstance<TextView>().single { it.isClickable && it.text.toString()=="Giroscópio" }
+                    val gyro=all(root.body).filterIsInstance<TextView>().single { it.isClickable && it.text.toString()=="Giroscópio: Desativado" }
                     assertTrue(gyro.requestFocus())
                     root.dispatchKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_BUTTON_A))
                     val child=org.robolectric.shadows.ShadowDialog.getLatestDialog() as ConsoleDialog
