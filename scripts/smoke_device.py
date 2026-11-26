@@ -18,9 +18,10 @@ def value(pattern, output):
     return int(match[1]) if match else None
 
 
-def launch_metrics(output):
+def launch_metrics(output, phase="abertura"):
     if "Status: ok" not in output.splitlines():
-        raise RuntimeError("O Activity Manager não confirmou a abertura do aplicativo.")
+        answer = output.strip() or "Sem saída do comando."
+        raise RuntimeError(f"O Activity Manager não confirmou {phase}. Resposta de `am start -W`:\n{answer}")
     return {label: value(rf"^{field}:\s*([0-9]+)$", output)
             for label, field in (("totalMs", "TotalTime"), ("waitMs", "WaitTime"))}
 
@@ -54,11 +55,12 @@ def main():
 
     adb = str(Path(sdk) / "platform-tools/adb")
 
-    def command(*params, timeout=60, required=True):
+    def command(*params, timeout=60, required=True, include_stderr=False):
         result = subprocess.run([adb, "-s", args.serial, *params], capture_output=True, text=True, timeout=timeout)
         if required and result.returncode:
-            raise RuntimeError(f"ADB falhou ao executar {params[0]} ({result.returncode}).")
-        return result.stdout
+            output = "\n".join(filter(None, (result.stdout.strip(), result.stderr.strip())))
+            raise RuntimeError(f"ADB falhou ao executar {params[0]} ({result.returncode}).\n{output}")
+        return result.stdout + "\n" + result.stderr if include_stderr else result.stdout
 
     def wait_for_visibility(expected):
         deadline = time.monotonic() + 15
@@ -88,23 +90,27 @@ def main():
         if "Success" not in command("install", "-r", str(args.apk), timeout=180).splitlines():
             raise RuntimeError("O Android não confirmou a instalação do APK.")
         suffix = "LEANBACK_LAUNCHER" if args.form_factor == "tv" else "LAUNCHER"
-        intent = ("-a", "android.intent.action.MAIN", "-c", "android.intent.category." + suffix, "-p", PACKAGE)
-        resolved = command("shell", "cmd", "package", "resolve-activity", "--brief", *intent)
+        intent = ("-a", "android.intent.action.MAIN", "-c", "android.intent.category." + suffix)
+        resolved = command("shell", "cmd", "package", "resolve-activity", "--brief", *intent, "-p", PACKAGE)
         if ACTIVITY not in resolved.splitlines():
             raise RuntimeError("O launcher não resolveu a Activity esperada.")
+        # A force-stopped package can be excluded from implicit intent resolution.
+        launch_intent = (*intent, "-n", ACTIVITY)
 
         api = command("shell", "getprop", "ro.build.version.sdk").strip()
         abi = command("shell", "getprop", "ro.product.cpu.abi").strip()
         samples = []
-        for _ in range(args.repeats):
+        for sample in range(1, args.repeats + 1):
             command("shell", "am", "force-stop", PACKAGE)
-            cold = launch_metrics(command("shell", "am", "start", "-W", *intent))
+            cold = launch_metrics(command("shell", "am", "start", "-W", *launch_intent, include_stderr=True),
+                                  f"a abertura a frio da repetição {sample}")
             wait_for_visibility(True)
             pid = process_id()
             pss = total_pss(command("shell", "dumpsys", "meminfo", PACKAGE, required=False))
             command("shell", "input", "keyevent", "KEYCODE_HOME")
             wait_for_visibility(False)
-            resumed = launch_metrics(command("shell", "am", "start", "-W", *intent))
+            resumed = launch_metrics(command("shell", "am", "start", "-W", *launch_intent, include_stderr=True),
+                                     f"a retomada da repetição {sample}")
             wait_for_visibility(True)
             if process_id() != pid:
                 raise RuntimeError("O processo mudou entre a abertura e o retorno ao aplicativo.")

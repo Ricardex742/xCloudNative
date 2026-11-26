@@ -90,8 +90,8 @@ class AndroidContractTest(unittest.TestCase):
     def test_measures_only_fields_reported_by_android(self):
         self.assertEqual({"totalMs": 44, "waitMs": 51}, launch_metrics("Status: ok\nTotalTime: 44\nWaitTime: 51\n"))
         self.assertEqual({"totalMs": None, "waitMs": 2}, launch_metrics("Status: ok\nWaitTime: 2\n"))
-        with self.assertRaises(RuntimeError):
-            launch_metrics("Status: timeout")
+        with self.assertRaisesRegex(RuntimeError, r"(?s)retomada da repetição 2.*Status: timeout"):
+            launch_metrics("Status: timeout", "a retomada da repetição 2")
         self.assertEqual(150_000, total_pss("TOTAL PSS: 150000  TOTAL RSS: 330000"))
         self.assertEqual(90_000, total_pss("     TOTAL      90000     30000     50000"))
         self.assertIsNone(total_pss("** No process found"))
@@ -129,6 +129,8 @@ class AndroidContractTest(unittest.TestCase):
                         visible = False
                         stdout = ""
                     case ("shell", "am", "start"):
+                        self.assertEqual(["-W", "-a", "android.intent.action.MAIN", "-c",
+                                          "android.intent.category.LAUNCHER", "-n", ACTIVITY], argv[6:])
                         visible = True
                         launches += 1
                         stdout = "Status: ok\n"
@@ -142,7 +144,7 @@ class AndroidContractTest(unittest.TestCase):
                         stdout = "MemTotal: 2000000 kB\n"
                     case other:
                         raise AssertionError(other)
-                return subprocess.CompletedProcess(argv, 0, stdout=stdout)
+                return subprocess.CompletedProcess(argv, 0, stdout=stdout, stderr="")
 
             args = ["smoke_device.py", str(apk), "phone-serial", "phone", "--report", str(report)]
             stderr = io.StringIO()
