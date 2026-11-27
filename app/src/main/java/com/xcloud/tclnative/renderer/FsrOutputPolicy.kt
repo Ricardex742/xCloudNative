@@ -21,9 +21,8 @@ object FsrOutputPolicy {
         }
         val width=viewport.width*scale
         val height=viewport.height*scale
-        val automaticTv=output==FsrOutput.AUTO && isTv
-        val longCap=when { automaticTv -> 1920.0;output==FsrOutput.QHD_1440 -> 2560.0;else -> 3840.0 }
-        val shortCap=when { automaticTv -> 1080.0;output==FsrOutput.QHD_1440 -> 1440.0;else -> 2160.0 }
+        val longCap=when(output) { FsrOutput.AUTO -> 1920.0;FsrOutput.QHD_1440 -> 2560.0;FsrOutput.UHD_4K -> 3840.0 }
+        val shortCap=when(output) { FsrOutput.AUTO -> 1080.0;FsrOutput.QHD_1440 -> 1440.0;FsrOutput.UHD_4K -> 2160.0 }
         val cap=min(1.0,min(longCap/max(width,height),shortCap/min(width,height)))
         return VideoViewport((width*cap).roundToInt().coerceAtLeast(1),(height*cap).roundToInt().coerceAtLeast(1))
     }

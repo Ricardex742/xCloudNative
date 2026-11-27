@@ -849,7 +849,7 @@
     <string name="ui_9b01d2edc42e9906" formatted="false">"Adaptiv RCAS – Leuchtdichte"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM – Leuchtdichte"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"Sanft – experimentell"</string>
-    <string name="ui_51ebe1789bd20746" formatted="false">"Die Ausgabeauflösung wird lokal eingestellt und ändert den empfangenen Stream nicht. Automatisch bevorzugt eine flüssige Wiedergabe und begrenzt die Ausgabe auf Fernsehern auf 1080p. Aktivieren Sie dafür einen Skalierer. Die Optionen erhalten das Seitenverhältnis und berücksichtigen die physische Bildschirmausgabe. Der Schutz reduziert die Ausgabe, wenn das Rendering nicht mit den empfangenen Bildern Schritt hält. 1440p und 4K garantieren keine 60 FPS."</string>
+    <string name="ui_c905c7efd3f7b201" formatted="false">"Die Auflösung des empfangenen Videos bleibt erhalten. Der Automatikmodus begrenzt die FSR-Ausgabe auf 1080p. Seitenverhältnis und Bildschirmgrenzen bleiben gewahrt. Bei ruckelnder Wiedergabe kann der Schutz die Ausgabeauflösung senken. 1440p und 4K erfordern mehr Rechenleistung."</string>
     <string name="ui_8555935b67caf434" formatted="false">"Experimentelle Verarbeitung für ein klareres Videobild, auch bei 1080p ohne Vergrößerung. Xbox-Auflösung und Bitrate bleiben unverändert. Beginnen Sie mit automatischer Qualität, 50% Stärke und automatischer Ausgabe. Andere optionale Filter behalten Ihre Einstellungen."</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"Mit automatischer Ausgabe aktivieren"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"Verarbeitungsqualität: {0}"</string>
@@ -1417,7 +1417,7 @@
     <string name="ui_f5302f0a194c88ed" formatted="false">"Erweitertes Netzwerk"</string>
     <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR verbessert Details und skaliert das Video. Die automatische Qualität passt die Verarbeitung an die Bildrate an."</string>
     <string name="ui_fa567f5d8fcb4e4e" formatted="false">"Original behält das empfangene Bild und die Farbkorrekturen bei. Leicht erhöht die Schärfe. FSR kombiniert Skalierung, Details und Bildstabilität."</string>
-    <string name="ui_2d8784beab54c16f" formatted="false">"Passt die Schärfe und bei FSR Details und Bildstabilität an. Bei 0 % kann FSR weiterhin skalieren."</string>
+    <string name="ui_b56d31233977bc41" formatted="false">"Regelt die Schärfe und bei FSR die Details und Bildstabilität. Bei 0 % verwendet das FSR-Profil die Standardskalierung."</string>
     <string name="ui_7d36b1c8e07efdf2" formatted="false">"Detailstärke: {0} %"</string>
     <string name="ui_a3eb48b566c209fc" formatted="false">"Standard verwendet die Skalierung des Geräts. FSR skaliert das Video und verbessert die Details."</string>
     <string name="ui_f9fd64861bd35c21" formatted="false">"Auto beginnt leicht und erhöht die Qualität bei flüssiger Wiedergabe. Bei wenig Speicher hat die Skalierung Vorrang."</string>

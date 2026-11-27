@@ -44,6 +44,17 @@ class FsrRenderingTest {
         assertArrayEquals(identity,fsr.matrix,0f)
         drawer.release();assertTrue(fsr.released);assertTrue(base.released)
     }
+    @Test fun adaptiveSharpeningAloneUsesTheFsrDrawerWithoutAnImageTreatmentPipeline() {
+        val fsr=Upscaler()
+        val drawer=AspectVideoDrawer(false,{fsr},Ordinary(),treatmentFactory={ error("No separate filter needed") }).apply {
+            fsrEnabled=true;fsrSharpness=25
+            treatment=com.xcloud.tclnative.settings.ImageTreatmentSettings(sharpening=com.xcloud.tclnative.settings.ImageSharpening.RCAS_LUMA)
+        }
+        drawer.drawRgb(1,identity,1280,720,0,0,1920,1080)
+        assertEquals(1,fsr.calls)
+        assertEquals(25,fsr.sharpness)
+        drawer.release()
+    }
     @Test fun failedFsrDrawFallsBackForEveryInputTypeWithoutChangingTheTextureTransform() {
         val base=Ordinary();val fsr=Upscaler(false)
         val drawer=AspectVideoDrawer(false,{fsr},base).apply { fsrEnabled=true }

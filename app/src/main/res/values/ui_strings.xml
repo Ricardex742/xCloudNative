@@ -849,7 +849,7 @@
     <string name="ui_9b01d2edc42e9906" formatted="false">"RCAS adaptativo — luminância"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — luminância"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"Suave — experimental"</string>
-    <string name="ui_51ebe1789bd20746" formatted="false">"A saída é local e não altera o stream recebido. Automático prioriza a fluidez e limita TVs a 1080p. Ative um escalador para usar esta opção. As escolhas preservam a proporção e respeitam a saída física. A proteção reduz a saída se os desenhos não acompanharem os quadros recebidos. 1440p e 4K não garantem 60 FPS."</string>
+    <string name="ui_c905c7efd3f7b201" formatted="false">"A resolução do vídeo recebido é mantida. O modo Automático limita a saída do FSR a 1080p. A proporção e os limites da tela são respeitados. A proteção pode reduzir a saída se a imagem perder fluidez. 1440p e 4K exigem mais processamento."</string>
     <string name="ui_8555935b67caf434" formatted="false">"Modo experimental para limpar e definir o vídeo, inclusive em 1080p sem ampliação. Não muda a resolução ou o bitrate do Xbox. Comece em Automático, intensidade 50% e saída automática. Outros filtros opcionais continuam respeitando suas escolhas."</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"Ativar com saída automática"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"Qualidade do processamento: {0}"</string>
@@ -1418,7 +1418,7 @@
     <string name="ui_f5302f0a194c88ed" formatted="false">"Rede avançada"</string>
     <string name="ui_27cb9f45cd2600fa" formatted="false">"O FSR melhora detalhes e amplia o vídeo para a tela. A qualidade automática ajusta o processamento à fluidez da partida."</string>
     <string name="ui_fa567f5d8fcb4e4e" formatted="false">"Original mantém a imagem recebida e os ajustes de cor. Leve acrescenta nitidez. FSR combina ampliação, realce de detalhes e estabilidade entre quadros."</string>
-    <string name="ui_2d8784beab54c16f" formatted="false">"Ajusta a nitidez e, no FSR, os detalhes e a estabilidade da imagem. Em 0%, o FSR ainda pode ampliar o vídeo."</string>
+    <string name="ui_b56d31233977bc41" formatted="false">"Ajusta a nitidez e, no FSR, os detalhes e a estabilidade da imagem. Em 0%, o perfil FSR usa a escala padrão."</string>
     <string name="ui_7d36b1c8e07efdf2" formatted="false">"Intensidade dos detalhes: {0}%"</string>
     <string name="ui_a3eb48b566c209fc" formatted="false">"Padrão usa a escala do aparelho. O FSR amplia o vídeo e melhora os detalhes na tela."</string>
     <string name="ui_f9fd64861bd35c21" formatted="false">"Automático começa leve e aumenta a qualidade enquanto a partida estiver fluida. Em aparelhos com pouca memória, o FSR prioriza a ampliação."</string>

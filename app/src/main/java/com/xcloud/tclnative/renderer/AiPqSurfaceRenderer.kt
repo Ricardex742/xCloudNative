@@ -454,11 +454,13 @@ class AiPqSurfaceRenderer internal constructor(context: Context, private val pla
             if(imageLabLevel==0)frameInterpolation?.setEnabled(false,FrameGenerationPhase.PROTECTED)
             applyTreatmentBudget();fsrPerformance.reset();return
         }
-        if(fsrDetailLevel>0 && reconstructionController.reduce()) {
+        val outputHeight = requestedBuffer?.let { minOf(it.width,it.height) } ?: minOf(width,height)
+        val temporalCut = if (!interpolationSession && treatmentBudget.image.temporal > 0) treatmentBudget.reduce(outputHeight) else null
+        if(temporalCut==null && fsrDetailLevel>0 && reconstructionController.reduce()) {
             treatmentCuts.add("FSR detail level ${reconstructionController.level} ($rate draws/s)")
             applyTreatmentBudget();fsrPerformance.reset();return
         }
-        val cut=treatmentBudget.reduce(requestedBuffer?.let { minOf(it.width,it.height) } ?: minOf(width,height))
+        val cut=temporalCut ?: treatmentBudget.reduce(outputHeight)
         if(cut!=null) {
             treatmentBudget=cut.effective;treatmentCuts.add("${cut.stage} ($rate draws/s)")
             applyTreatmentBudget();updateOutputBuffer();fsrPerformance.reset()

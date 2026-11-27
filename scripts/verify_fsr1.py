@@ -338,10 +338,15 @@ def compare_direct(kind,source,target,data,iw,ih,cw,ch,matrix):
                 enlarged=draw(app_easu,prepared,cw,ch,ow,oh,keep_texture=True)
                 expected=draw(app_rcas,enlarged,ow,oh,ow,oh,strength=strength,origin=origin)
                 delete_textures(1,C.byref(enlarged))
-                enlarged=draw(direct_programs[kind]["easu"],source,cw,ch,ow,oh,keep_texture=True,
-                              source_target=target,source_matrix=matrix)
-                actual=draw(app_rcas,enlarged,ow,oh,ow,oh,strength=strength,origin=origin)
-                delete_textures(1,C.byref(enlarged))
+                if strength==0.:
+                    assert draw(app_easu,prepared,cw,ch,ow,oh,origin=origin)==expected
+                    actual=draw(direct_programs[kind]["easu"],source,cw,ch,ow,oh,origin=origin,
+                                source_target=target,source_matrix=matrix)
+                else:
+                    enlarged=draw(direct_programs[kind]["easu"],source,cw,ch,ow,oh,keep_texture=True,
+                                  source_target=target,source_matrix=matrix)
+                    actual=draw(app_rcas,enlarged,ow,oh,ow,oh,strength=strength,origin=origin)
+                    delete_textures(1,C.byref(enlarged))
             error=max(abs(a-b) for a,b in zip(actual,expected))
             # The removed RGBA8 preparation rounded cropped/interpolated colors;
             # direct sampling intentionally avoids that quantization, within 6/255 here.
@@ -352,8 +357,14 @@ def compare_direct(kind,source,target,data,iw,ih,cw,ch,matrix):
     return max(errors)
 
 
-direct_programs={kind:{stage:program((generated/f"fsr1-direct-{kind}-{stage}.frag").read_text())
-                       for stage in ("easu","rcas")} for kind in ("rgb","oes")}
+direct_programs={}
+for kind in ("rgb","oes"):
+    direct_programs[kind]={}
+    for stage in ("easu","rcas"):
+        path=generated/f"fsr1-direct-{kind}-{stage}.frag"
+        source=path.read_text()
+        assert source.endswith((assets/f"{stage}.frag").read_text()),f"Run FsrCopyShaderTest to refresh {path.name}"
+        direct_programs[kind][stage]=program(source)
 direct_checks=[]
 identity=transforms[0][0]
 matrices=[(m,cw,ch) for m,cw,ch,_ in transforms]+[

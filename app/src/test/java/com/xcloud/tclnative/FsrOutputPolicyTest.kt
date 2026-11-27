@@ -43,4 +43,9 @@ class FsrOutputPolicyTest {
         assertEquals(VideoViewport(2160,3840),tv(FsrOutput.UHD_4K,w=1080,h=1920))
         assertEquals(VideoViewport(3840,2160),tv(FsrOutput.UHD_4K,pw=7680,ph=4320))
     }
+    @Test fun automaticOnQhdPhoneLimitsFsrWorkWithoutChangingExplicitQhd() {
+        val window=VideoViewport(2560,1440)
+        assertEquals(VideoViewport(1920,1080),FsrOutputPolicy.target(FsrOutput.AUTO,2560,1440,window,1440,2560,false))
+        assertEquals(window,FsrOutputPolicy.target(FsrOutput.QHD_1440,2560,1440,window,1440,2560,false))
+    }
 }

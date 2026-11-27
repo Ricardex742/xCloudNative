@@ -150,6 +150,24 @@ class FsrOutputSurfaceTest {
         runBlocking { owner.release() }
         controller.pause().stop().destroy()
     }
+    @Test fun slowFsrCutsTemporalHistoryBeforeDetailRestoration() = runBlocking {
+        val controller=Robolectric.buildActivity(Activity::class.java).setup()
+        val owner=AiPqSurfaceRenderer(controller.get())
+        try {
+            owner.setFsr(true,25)
+            owner.setImageTreatment(ImageTreatmentSettings(temporal=25))
+            val draws=ReflectionHelpers.getField<AtomicLong>(owner,"allDraws")
+            val sample=StreamMetrics(receivedVideoBytes=500000,packetLossPercent=0.0,intervalSeconds=1.0,receivedFrames=60)
+            repeat(8) { second ->
+                draws.set((second+1L)*13)
+                owner.observeFsrPerformance(android.os.SystemClock.elapsedRealtime(),sample,true)
+                ShadowSystemClock.advanceBy(Duration.ofSeconds(1))
+            }
+            assertTrue(owner.diagnostics().contains("Cuts: temporal (13.0 draws/s)"))
+            assertTrue(owner.diagnostics().contains("applied level=1"))
+        } finally { owner.release();controller.pause().stop().destroy() }
+        Unit
+    }
     @Test fun nativeBypassPausesTheGuardAndFilteringResumesWithANewWarmup() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val owner=AiPqSurfaceRenderer(controller.get());owner.layout(0,0,1920,1080);owner.setFsr(true,0,FsrOutput.AUTO)

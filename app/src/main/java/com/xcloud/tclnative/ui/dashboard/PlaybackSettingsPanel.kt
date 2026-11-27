@@ -350,7 +350,7 @@ class PlaybackSettingsPanel(
     }
     private fun chooseImageIntensity(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
         enter(SettingsPage.UPSCALING);val value=store.read();val levels=listOf(0,25,50,75,100)
-        return choices(UiText.text("Intensidade"),UiText.text("Ajusta a nitidez e, no FSR, os detalhes e a estabilidade da imagem. Em 0%, o FSR ainda pode ampliar o vídeo."),
+        return choices(UiText.text("Intensidade"),UiText.text("Ajusta a nitidez e, no FSR, os detalhes e a estabilidade da imagem. Em 0%, o perfil FSR usa a escala padrão."),
             levels.map {"$it%" to (it==ImageProfiles.intensity(value))},onReturn) {save(value,ImageProfiles.withIntensity(value,levels[it]),onReturn)}
     }
     private fun chooseGlobalComparison(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
@@ -560,7 +560,7 @@ class PlaybackSettingsPanel(
     fun chooseFsrOutput(): ConsoleDialog {
         enter(SettingsPage.IMAGE_ADVANCED)
         val current=store.read()
-        return choices(UiText.text("Saída do escalador"),UiText.text("A saída é local e não altera o stream recebido. Automático prioriza a fluidez e limita TVs a 1080p. Ative um escalador para usar esta opção. As escolhas preservam a proporção e respeitam a saída física. A proteção reduz a saída se os desenhos não acompanharem os quadros recebidos. 1440p e 4K não garantem 60 FPS."),
+        return choices(UiText.text("Saída do escalador"),UiText.text("A resolução do vídeo recebido é mantida. O modo Automático limita a saída do FSR a 1080p. A proporção e os limites da tela são respeitados. A proteção pode reduzir a saída se a imagem perder fluidez. 1440p e 4K exigem mais processamento."),
             FsrOutput.entries.map { it.label to (it==current.fsrOutput) }) { save(current,current.copy(fsrOutput=FsrOutput.entries[it])) }
     }
     fun chooseAspect(onBack: () -> Unit = { showImage() }): ConsoleDialog {

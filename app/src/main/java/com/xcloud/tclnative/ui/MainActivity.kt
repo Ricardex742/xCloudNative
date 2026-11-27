@@ -1304,26 +1304,25 @@ open class MainActivity : Activity() {
             touchView.releaseInputs()
             surfaceRenderer.aspect=settings.aspect
         }
-        surfaceRenderer.setImageAdjustments(settings.sharpness,settings.saturation,settings.brightness,settings.contrast)
-        surfaceRenderer.setImageTreatment(settings.imageTreatment)
-        surfaceRenderer.setReconstruction(settings.reconstruction)
-        surfaceRenderer.setImageLab(settings.imageLab)
-        surfaceRenderer.setImageComparison(settings.effectiveImageComparison())
-        surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
+        applyImageProcessing(settings)
+    }
+    private fun applyImageProcessing(settings: PlaybackSettings) {
+        val image = ImageProfiles.forRendering(settings)
+        surfaceRenderer.setImageAdjustments(image.sharpness,image.saturation,image.brightness,image.contrast)
+        surfaceRenderer.setImageTreatment(image.imageTreatment)
+        surfaceRenderer.setReconstruction(image.reconstruction)
+        surfaceRenderer.setImageLab(image.imageLab)
+        surfaceRenderer.setImageComparison(image.effectiveImageComparison())
+        surfaceRenderer.setFsr(image.fsr,image.fsrSharpness,image.fsrOutput)
     }
     protected open fun prepareSessionRenderer(settings: PlaybackSettings): org.webrtc.EglBase {
         com.xcloud.tclnative.ui.dashboard.ArtworkBackend.get(this).trimForPlayback()
         surfaceRenderer.compatibility=settings.videoMode==VideoMode.COMPATIBILITY
-        surfaceRenderer.setFsr(settings.fsr,settings.fsrSharpness,settings.fsrOutput)
-        surfaceRenderer.setImageTreatment(settings.imageTreatment)
-        surfaceRenderer.setReconstruction(settings.reconstruction)
-        surfaceRenderer.setImageLab(settings.imageLab)
-        surfaceRenderer.setImageComparison(settings.effectiveImageComparison())
+        applyImageProcessing(settings)
         surfaceRenderer.setPresentationPacing(settings.presentationPacing)
         surfaceRenderer.tryMotionFence = settings.tryMotionFence
         surfaceRenderer.nativeUpscaling=settings.nativeUpscaling
         surfaceRenderer.aspect=settings.aspect
-        surfaceRenderer.setImageAdjustments(settings.sharpness,settings.saturation,settings.brightness,settings.contrast)
         surfaceRenderer.minimalPostProcessingRequested=settings.videoMode.lowLatency && Build.VERSION.SDK_INT>=30
         surfaceRenderer.prepareForSession(settings.resolution.width,settings.resolution.height)
         return surfaceRenderer.eglBase

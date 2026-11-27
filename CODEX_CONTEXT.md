@@ -571,3 +571,10 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - As seções, subseções e seletores das configurações nativas usam os ícones de `ConsoleDialogs`. Os controles mantêm o texto, os estados de foco e a rolagem. Ajustes avançados, aparência, temas e opções das partidas compartilham esse padrão.
 - As capas mostram o selo de toque quando o título anuncia toque nativo ou um layout oficial, ou quando o produto consta na coleção oficial Jogar com toque. O selo acompanha a atualização assíncrona do catálogo e é anunciado na descrição de acessibilidade da capa. A posição varia com a disposição da capa para deixar visíveis as outras marcas.
 - A revisão final passou em 101 testes JVM/Robolectric de catálogo, foco, rolagem e navegação das configurações. O lint ampliado ficou sem erros e dentro do baseline, e as 15 opções de idioma passaram na verificação. A validação em aparelho real segue pendente.
+
+## Fluidez do FSR
+
+- O perfil AMD FSR usa a escala padrão com intensidade geral de 0%. A decisão é aplicada na preparação, na retomada e nas mudanças ao vivo, preservando o perfil e os ajustes de cor salvos. Ele volta a processar ao subir a intensidade.
+- Na configuração avançada, o FSR pode ampliar com nitidez zerada. Com cores padrão e sem dithering, EASU desenha diretamente no destino. A textura intermediária e a passagem de acabamento só são necessárias quando há acabamento ativo. O modo Automático limita a saída do escalador a 1920×1080, respeitando a proporção. A resolução solicitada ao Xbox é independente da saída local.
+- Durante uma queda sustentada na cadência, a proteção suspende primeiro o histórico temporal quando ele está em uso, antes de reduzir os níveis de restauração do FSR. As reduções valem somente para a sessão.
+- Passaram 87 testes JVM/Robolectric relacionados e seis suítes gráficas em Mesa, com 344 verificações de FSR. O lint ampliado ficou sem erros e dentro do baseline. As 15 opções de idioma passaram na verificação. A cadência em aparelhos reais segue pendente.

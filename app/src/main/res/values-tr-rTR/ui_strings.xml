@@ -849,7 +849,7 @@
     <string name="ui_9b01d2edc42e9906" formatted="false">"Uyarlanabilir RCAS — parlaklık"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — parlaklık"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"Pürüzsüz — deneysel"</string>
-    <string name="ui_51ebe1789bd20746" formatted="false">"Çıkış çözünürlüğü yerel olarak işlenir ve alınan yayını değiştirmez. Otomatik mod akıcılığı önceliklendirir ve TV çıkışını 1080p ile sınırlar. Bu seçeneği kullanmak için bir ölçekleyici etkinleştirin. Seçenekler en boy oranını korur ve ekranın fiziksel çıkışına uyar. İşleme gelen karelere yetişemezse koruma çıkışı düşürür. 1440p ve 4K, 60 FPS garantisi vermez."</string>
+    <string name="ui_c905c7efd3f7b201" formatted="false">"Alınan videonun çözünürlüğü korunur. Otomatik mod, FSR çıkışını 1080p ile sınırlar. En boy oranı ve ekran sınırları korunur. Görüntü akıcılığı düşerse koruma çıkış çözünürlüğünü azaltabilir. 1440p ve 4K daha fazla işlem gerektirir."</string>
     <string name="ui_8555935b67caf434" formatted="false">"1080p görüntüyü büyütmeden de temizleyip ayrıntıları geliştiren deneysel işleme. Xbox çözünürlüğünü veya bit hızını değiştirmez. Otomatik kalite, %50 güç ve otomatik çıkışla başlayın. Diğer isteğe bağlı filtrelerin mevcut ayarları korunur."</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"Otomatik çıkışla etkinleştir"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"İşleme kalitesi: {0}"</string>
@@ -1417,7 +1417,7 @@
     <string name="ui_f5302f0a194c88ed" formatted="false">"Gelişmiş ağ"</string>
     <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR ayrıntıları iyileştirir ve videoyu büyütür. Otomatik kalite, işlemeyi akıcılığa göre ayarlar."</string>
     <string name="ui_fa567f5d8fcb4e4e" formatted="false">"Orijinal gelen görüntüyü ve renk ayarlarını korur. Hafif mod keskinlik ekler. FSR büyütme, ayrıntı ve kare kararlılığını birleştirir."</string>
-    <string name="ui_2d8784beab54c16f" formatted="false">"Keskinliği, FSR ayrıntılarını ve kararlılığını ayarlar. %0 iken FSR videoyu büyütmeye devam edebilir."</string>
+    <string name="ui_b56d31233977bc41" formatted="false">"Keskinliği ve FSR için görüntü ayrıntılarını ve kararlılığını ayarlar. %0 değerinde FSR profili standart ölçeklemeyi kullanır."</string>
     <string name="ui_7d36b1c8e07efdf2" formatted="false">"Ayrıntı gücü: %{0}"</string>
     <string name="ui_a3eb48b566c209fc" formatted="false">"Varsayılan, cihazın ölçeklemesini kullanır. FSR videoyu büyütür ve ayrıntıları iyileştirir."</string>
     <string name="ui_f9fd64861bd35c21" formatted="false">"Otomatik hafif başlar ve akıcı oynatmada kaliteyi artırır. Belleği az cihazlarda FSR büyütmeye öncelik verir."</string>

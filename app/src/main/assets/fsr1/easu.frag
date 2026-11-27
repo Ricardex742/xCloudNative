@@ -18,6 +18,7 @@ uniform vec2 source_step_y;
 #endif
 uniform vec2 input_size;
 uniform vec2 output_size;
+uniform vec2 viewport_origin;
 vec3 loadPixel(vec2 p) {
     p=clamp(p,vec2(0.0),input_size-1.0);
 #ifdef FSR_DIRECT_INPUT
@@ -46,7 +47,7 @@ void tap(inout vec3 color,inout float weight,vec2 off,vec2 dir,vec2 len,float lo
     color+=c*w;weight+=w;
 }
 void main() {
-    vec2 pp=gl_FragCoord.xy*input_size/output_size-0.5;
+    vec2 pp=(gl_FragCoord.xy-viewport_origin)*input_size/output_size-0.5;
     vec2 fp=floor(pp);pp-=fp;
     vec3 b=loadPixel(fp+vec2(0.0,-1.0));
     vec3 c=loadPixel(fp+vec2(1.0,-1.0));

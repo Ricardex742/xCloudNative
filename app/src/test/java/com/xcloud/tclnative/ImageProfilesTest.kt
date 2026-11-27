@@ -39,4 +39,17 @@ class ImageProfilesTest {
         assertEquals(ImageComparison.SPLIT,value.copy(imageComparison=ImageComparison.SPLIT).effectiveImageComparison())
         assertEquals(ImageComparison.PROCESSED,value.copy(videoMode=VideoMode.COMPATIBILITY).forSession().effectiveImageComparison())
     }
+    @Test fun zeroFsrProfileBypassesProcessingUntilIntensityIncreasesWhileCustomFsrRetainsScaling() {
+        val profile=ImageProfiles.apply(PlaybackSettings(saturation=115,brightness=10),ImageProfile.FSR)
+        val zero=ImageProfiles.withIntensity(profile,0)
+        val effective=ImageProfiles.forRendering(zero)
+        assertEquals(FsrMode.OFF,effective.fsr)
+        assertFalse(effective.imageTreatment.active)
+        assertEquals(115,effective.saturation);assertEquals(10,effective.brightness)
+        assertEquals(FsrMode.FSR1,zero.fsr);assertEquals(ImageProfile.FSR,ImageProfiles.selected(zero))
+        val resumed=ImageProfiles.withIntensity(zero,25)
+        assertSame(resumed,ImageProfiles.forRendering(resumed))
+        val custom=zero.copy(fsrOutput=FsrOutput.QHD_1440)
+        assertSame(custom,ImageProfiles.forRendering(custom))
+    }
 }

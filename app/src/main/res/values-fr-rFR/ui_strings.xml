@@ -849,7 +849,7 @@
     <string name="ui_9b01d2edc42e9906" formatted="false">"Adaptatif RCAS — luminance"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — luminance"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"Lisse – expérimental"</string>
-    <string name="ui_51ebe1789bd20746" formatted="false">"La résolution de sortie est locale et ne modifie pas le flux reçu. Automatique privilégie la fluidité et limite les téléviseurs à 1080p. Activez une mise à l’échelle pour utiliser cette option. Les choix conservent le format et respectent la sortie physique de l’écran. La protection réduit la sortie si le rendu ne suit pas les images reçues. Le 1440p et la 4K ne garantissent pas 60 FPS."</string>
+    <string name="ui_c905c7efd3f7b201" formatted="false">"La vidéo reçue conserve sa résolution. Le mode automatique limite la sortie FSR à 1080p. Les proportions et les limites de l’écran sont respectées. La protection peut réduire la résolution de sortie si la lecture ralentit. Le 1440p et la 4K demandent plus de ressources."</string>
     <string name="ui_8555935b67caf434" formatted="false">"Traitement expérimental pour nettoyer et préciser la vidéo, y compris en 1080p sans agrandissement. Il ne modifie ni la résolution ni le débit Xbox. Commencez avec la qualité automatique, une intensité de 50% et une sortie automatique. Les autres filtres facultatifs conservent vos réglages."</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"Activer avec sortie automatique"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"Qualité de traitement: {0}"</string>
@@ -1417,7 +1417,7 @@
     <string name="ui_f5302f0a194c88ed" formatted="false">"Réseau avancé"</string>
     <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR améliore les détails et adapte la vidéo à l’écran. La qualité automatique ajuste le traitement à la fluidité."</string>
     <string name="ui_fa567f5d8fcb4e4e" formatted="false">"Original conserve l’image reçue et les couleurs réglées. Léger ajoute de la netteté. FSR associe agrandissement, détails et stabilité des images."</string>
-    <string name="ui_2d8784beab54c16f" formatted="false">"Règle la netteté et, avec FSR, le détail et la stabilité. À 0 %, FSR peut toujours agrandir la vidéo."</string>
+    <string name="ui_b56d31233977bc41" formatted="false">"Règle la netteté et, avec FSR, les détails et la stabilité de l’image. À 0 %, le profil FSR utilise la mise à l’échelle standard."</string>
     <string name="ui_7d36b1c8e07efdf2" formatted="false">"Intensité des détails : {0} %"</string>
     <string name="ui_a3eb48b566c209fc" formatted="false">"Par défaut utilise la mise à l’échelle de l’appareil. FSR agrandit la vidéo et améliore les détails."</string>
     <string name="ui_f9fd64861bd35c21" formatted="false">"Auto démarre en mode léger et augmente la qualité tant que la partie reste fluide. Avec peu de mémoire, FSR privilégie l’agrandissement."</string>

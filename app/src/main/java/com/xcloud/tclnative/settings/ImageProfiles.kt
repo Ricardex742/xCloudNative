@@ -54,4 +54,9 @@ object ImageProfiles {
             else -> value
         }
     }
+
+    internal fun forRendering(value: PlaybackSettings): PlaybackSettings =
+        if (value.reconstruction.strength == 0 && selected(value) == ImageProfile.FSR) {
+            value.copy(fsr = FsrMode.OFF, imageTreatment = value.imageTreatment.copy(sharpening = ImageSharpening.LEGACY))
+        } else value
 }

@@ -16,8 +16,8 @@ public final class Fsr1Drawer implements FsrUpscaler {
     int[] capabilities(); // max texture, max renderbuffer, highp mantissa bits
     void prepare(Fsr1Plan plan);
     void copy(Input kind,int texture,int[] textures,float[] matrix,int fw,int fh,Fsr1Plan plan);
-    void easu(Fsr1Plan plan);
-    void easuDirect(Input kind,int texture,float[] matrix,Fsr1Plan plan);
+    void easu(Fsr1Plan plan,int x,int y);
+    void easuDirect(Input kind,int texture,float[] matrix,Fsr1Plan plan,int x,int y);
     void rcasDirect(Input kind,int texture,float[] matrix,Fsr1Plan plan,int x,int y,float strength,float saturation);
     void discardDirect();
     default void colors(int brightness,int contrast) {}
@@ -64,7 +64,9 @@ public final class Fsr1Drawer implements FsrUpscaler {
     if(closed || broken) return false;
     boolean direct=kind!=Input.YUV && !directRejected;
     boolean nativeRcas=sharpness>0 && sourceWidth==w && sourceHeight==h;
-    boolean changed=plan==null || lastWidth!=sourceWidth || lastHeight!=sourceHeight || lastOutputWidth!=w || lastOutputHeight!=h || lastDirect!=direct || lastNative!=nativeRcas;
+    boolean easuOnly=sharpness==0 && saturation==100 && brightness==0 && contrast==100 && !finishDither;
+    boolean changed=plan==null || lastWidth!=sourceWidth || lastHeight!=sourceHeight || lastOutputWidth!=w ||
+        lastOutputHeight!=h || lastDirect!=direct || lastNative!=nativeRcas || plan.easuOnly!=easuOnly;
     if(!changed && !plan.active()) return false;
     boolean begun=false;
     long start=System.nanoTime();
@@ -74,7 +76,7 @@ public final class Fsr1Drawer implements FsrUpscaler {
       if(changed) {
         lastWidth=sourceWidth;lastHeight=sourceHeight;lastOutputWidth=w;lastOutputHeight=h;
         lastDirect=direct;lastNative=nativeRcas;
-        plan=Fsr1Plan.create(sourceWidth,sourceHeight,w,h,caps[0],caps[1],caps[2],direct,nativeRcas);
+        plan=Fsr1Plan.create(sourceWidth,sourceHeight,w,h,caps[0],caps[1],caps[2],direct,nativeRcas,easuOnly);
         if(!plan.active()) { status=plan.bypass;backend.release();return false; }
       }
       try {
@@ -84,11 +86,11 @@ public final class Fsr1Drawer implements FsrUpscaler {
         // One bounded compatibility retry: never recompile a rejected direct path every frame.
         directRejected=true;lastDirect=false;
         backend.discardDirect();
-        plan=Fsr1Plan.create(sourceWidth,sourceHeight,w,h,caps[0],caps[1],caps[2],false,nativeRcas);
+        plan=Fsr1Plan.create(sourceWidth,sourceHeight,w,h,caps[0],caps[1],caps[2],false,nativeRcas,easuOnly);
         if(!plan.active()) { status=plan.bypass;backend.release();return false; }
         render(kind,texture,textures,matrix,fw,fh,x,y);
       }
-      status=finishingMode==0?(plan.nativeRcas?"ativo RCAS nativo (sem EASU)":"ativo EASU + RCAS (denoise)"):
+      status=plan.easuOnly?"ativo EASU (sem nitidez)":finishingMode==0?(plan.nativeRcas?"ativo RCAS nativo (sem EASU)":"ativo EASU + RCAS (denoise)"):
           (plan.nativeRcas?"ativo "+finishingLabel()+" nativo (sem EASU)":"ativo EASU + "+finishingLabel());
       long elapsed=System.nanoTime()-start;
       totalNs+=elapsed;maxNs=Math.max(maxNs,elapsed);frames++;
@@ -101,14 +103,23 @@ public final class Fsr1Drawer implements FsrUpscaler {
   }
   private void render(Input kind,int texture,int[] textures,float[] matrix,int fw,int fh,int x,int y) {
     Fsr1Plan p=plan;
-    backend.prepare(p);backend.colors(brightness,contrast);backend.finishing(finishingMode,finishDither,sharpness);
+    backend.prepare(p);
+    if(p.easuOnly) {
+      if(p.directInput) backend.easuDirect(kind,texture,matrix,p,x,y);
+      else {
+        backend.copy(kind,texture,textures,matrix,fw,fh,p);
+        backend.easu(p,x,y);
+      }
+      return;
+    }
+    backend.colors(brightness,contrast);backend.finishing(finishingMode,finishDither,sharpness);
     float strength=Fsr1Plan.rcasStrength(sharpness),sat=saturation/100f;
     if(p.directInput) {
       if(p.nativeRcas) backend.rcasDirect(kind,texture,matrix,p,x,y,strength,sat);
-      else { backend.easuDirect(kind,texture,matrix,p);backend.rcas(p,x,y,strength,sat); }
+      else { backend.easuDirect(kind,texture,matrix,p,0,0);backend.rcas(p,x,y,strength,sat); }
     } else {
       backend.copy(kind,texture,textures,matrix,fw,fh,p);
-      if(!p.nativeRcas) backend.easu(p);
+      if(!p.nativeRcas) backend.easu(p,0,0);
       backend.rcas(p,x,y,strength,sat);
     }
   }
@@ -188,7 +199,7 @@ public final class Fsr1Drawer implements FsrUpscaler {
       GlShader s=new GlShader(source.vertex,directShader(rcas?source.rcas:source.easu,direct));
       try {
         position=s.getAttribLocation("in_pos");texture=s.getUniformLocation("source_tex");input=s.getUniformLocation("input_size");
-        output=rcas?-1:s.getUniformLocation("output_size");origin=rcas?s.getUniformLocation("viewport_origin"):-1;
+        output=rcas?-1:s.getUniformLocation("output_size");origin=s.getUniformLocation("viewport_origin");
         strength=rcas?s.getUniformLocation("rcas_strength"):-1;saturation=rcas?s.getUniformLocation("saturation"):-1;
         brightness=rcas?s.getUniformLocation("brightness"):-1;contrast=rcas?s.getUniformLocation("contrast_adjust"):-1;
         finishingMode=rcas?s.getUniformLocation("sharpening_mode"):-1;
@@ -241,8 +252,8 @@ public final class Fsr1Drawer implements FsrUpscaler {
         resize(input,p.inputWidth,p.inputHeight);
         if(!p.nativeRcas && easu==null) easu=new Pass(s,false);
       } else if(input!=null) { input.release();input=null; }
-      if(!p.directInput || !p.nativeRcas) { if(rcas==null) rcas=new Pass(s,true); }
-      if(!p.nativeRcas) {
+      if(!p.easuOnly && (!p.directInput || !p.nativeRcas) && rcas==null) rcas=new Pass(s,true);
+      if(!p.nativeRcas && !p.easuOnly) {
         if(upscaled==null) upscaled=new GlTextureFrameBuffer(GLES20.GL_RGBA);
         resize(upscaled,p.outputWidth,p.outputHeight);
       } else if(upscaled!=null) { upscaled.release();upscaled=null; }
@@ -273,10 +284,18 @@ public final class Fsr1Drawer implements FsrUpscaler {
       GLES20.glActiveTexture(GLES20.GL_TEXTURE0);GLES20.glBindTexture(target,texture);
       GLES20.glUniform1i(pass.texture,0);GLES20.glUniform2f(pass.input,iw,ih);GLES20.glViewport(x,y,w,h);
     }
-    @Override public void easu(Fsr1Plan p) {
-      GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER,upscaled.getFrameBufferId());
-      start(easu,input.getTextureId(),p.inputWidth,p.inputHeight,0,0,p.outputWidth,p.outputHeight);
-      GLES20.glUniform2f(easu.output,p.outputWidth,p.outputHeight);
+    private void bindEasuTarget(Fsr1Plan plan) {
+      GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER,plan.easuOnly?framebuffer[0]:upscaled.getFrameBufferId());
+      if(plan.easuOnly && scissor) GLES20.glEnable(GLES20.GL_SCISSOR_TEST);
+    }
+    private static void setEasu(Pass pass,Fsr1Plan plan,int x,int y) {
+      GLES20.glUniform2f(pass.output,plan.outputWidth,plan.outputHeight);
+      GLES20.glUniform2f(pass.origin,x,y);
+    }
+    @Override public void easu(Fsr1Plan p,int x,int y) {
+      bindEasuTarget(p);
+      start(easu,input.getTextureId(),p.inputWidth,p.inputHeight,x,y,p.outputWidth,p.outputHeight);
+      setEasu(easu,p,x,y);
       GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,0,4);GlUtil.checkNoGLES2Error("FSR EASU");
     }
     private Pass directPass(Input kind,boolean rcas) {
@@ -293,10 +312,10 @@ public final class Fsr1Drawer implements FsrUpscaler {
       GLES20.glUniform2f(pass.sourceOrigin,transform[0],transform[1]);
       GLES20.glUniform2f(pass.sourceX,transform[2],transform[3]);GLES20.glUniform2f(pass.sourceY,transform[4],transform[5]);
     }
-    @Override public void easuDirect(Input kind,int texture,float[] m,Fsr1Plan p) {
-      GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER,upscaled.getFrameBufferId());
-      Pass pass=directPass(kind,false);startDirect(pass,kind,texture,m,p,0,0);
-      GLES20.glUniform2f(pass.output,p.outputWidth,p.outputHeight);
+    @Override public void easuDirect(Input kind,int texture,float[] m,Fsr1Plan p,int x,int y) {
+      bindEasuTarget(p);
+      Pass pass=directPass(kind,false);startDirect(pass,kind,texture,m,p,x,y);
+      setEasu(pass,p,x,y);
       GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP,0,4);GlUtil.checkNoGLES2Error("FSR direct EASU");
     }
     @Override public void rcasDirect(Input kind,int texture,float[] m,Fsr1Plan p,int x,int y,float strength,float saturation) {

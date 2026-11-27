@@ -849,7 +849,7 @@
     <string name="ui_9b01d2edc42e9906" formatted="false">"Adaptive RCAS — luminance"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — luminance"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"Smooth — experimental"</string>
-    <string name="ui_51ebe1789bd20746" formatted="false">"Output resolution is local and does not change the received stream. Auto prioritizes smooth playback and limits TVs to 1080p. Enable an upscaler to use this option. Choices preserve aspect ratio and respect the physical display output. Protection reduces output if rendering falls behind incoming frames. 1440p and 4K do not guarantee 60 FPS."</string>
+    <string name="ui_c905c7efd3f7b201" formatted="false">"The incoming video keeps its resolution. Auto limits FSR output to 1080p. Output respects the aspect ratio and display limits. Protection can reduce the output resolution if playback slows. 1440p and 4K require more processing."</string>
     <string name="ui_8555935b67caf434" formatted="false">"Experimental processing to clean and define the video, including at 1080p without enlargement. It does not change Xbox resolution or bitrate. Start with Auto quality, 50% strength and Auto output. Other optional filters keep your existing settings."</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"Enable with Auto output"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"Processing quality: {0}"</string>
@@ -1417,7 +1417,7 @@
     <string name="ui_f5302f0a194c88ed" formatted="false">"Advanced network"</string>
     <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR restores detail and scales video for your screen. Auto quality adapts the processing to the session's frame cadence."</string>
     <string name="ui_fa567f5d8fcb4e4e" formatted="false">"Original keeps the incoming picture and color adjustments. Light adds sharpening. FSR combines upscaling, detail enhancement and frame stability."</string>
-    <string name="ui_2d8784beab54c16f" formatted="false">"Adjusts sharpness and the detail and stability of FSR. At 0%, FSR can still upscale the video."</string>
+    <string name="ui_b56d31233977bc41" formatted="false">"Adjusts sharpness and, with FSR, detail and image stability. At 0%, the FSR profile uses standard scaling."</string>
     <string name="ui_7d36b1c8e07efdf2" formatted="false">"Detail strength: {0}%"</string>
     <string name="ui_a3eb48b566c209fc" formatted="false">"Default uses device scaling. FSR upscales video and improves visible detail."</string>
     <string name="ui_f9fd64861bd35c21" formatted="false">"Auto starts light and increases quality while playback remains smooth. On devices with limited memory, FSR prioritizes upscaling."</string>

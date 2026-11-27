@@ -7,6 +7,7 @@ import org.webrtc.RendererCommon
 import org.webrtc.ImageAdjustmentDrawer
 import org.webrtc.FsrUpscaler
 import org.webrtc.ImageTreatmentPipeline
+import com.xcloud.tclnative.settings.ImageSharpening
 import com.xcloud.tclnative.settings.ImageTreatmentSettings
 import com.xcloud.tclnative.settings.ImageLabSettings
 
@@ -81,7 +82,9 @@ class AspectVideoDrawer(@Volatile var stretch: Boolean,
         fw: Int,fh: Int,x: Int,y: Int,w: Int,h: Int,upscaler: FsrUpscaler?): Boolean {
         val value=treatment
         val restoreDetail=upscaler!=null && fsrDetailLevel>0 && fsrDetailStrength>0
-        if(!value.active && !restoreDetail && globalImageComparison==0 && (!imageLab.hasImageEffects || imageLabLevel==0)) { pipeline?.release();pipeline=null;return false }
+        val hasTreatment = value.spatial || value.temporal > 0 || value.neural > 0 ||
+            (sharpness > 0 && value.sharpening != ImageSharpening.LEGACY)
+        if(!hasTreatment && !restoreDetail && globalImageComparison==0 && (!imageLab.hasImageEffects || imageLabLevel==0)) { pipeline?.release();pipeline=null;return false }
         val engine=pipeline ?: treatmentFactory?.invoke()?.also { pipeline=it } ?: return false
         if(lastTreatment!=value) { lastTreatment=value;treatmentOptions=value.glOptions() }
         engine.configure(treatmentOptions,sharpness,saturation,brightness,contrast)

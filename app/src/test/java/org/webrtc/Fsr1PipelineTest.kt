@@ -21,9 +21,9 @@ class Fsr1PipelineTest {
         override fun copy(kind: Fsr1Drawer.Input,t: Int,textures: IntArray?,m: FloatArray,fw: Int,fh: Int,p: Fsr1Plan) {
             lastMatrix=m;call("copy:${kind.name}")
         }
-        override fun easu(p: Fsr1Plan) { call("easu") }
-        override fun easuDirect(kind: Fsr1Drawer.Input,t: Int,m: FloatArray,p: Fsr1Plan) {
-            lastMatrix=m;call("directEasu:${kind.name}")
+        override fun easu(p: Fsr1Plan,x: Int,y: Int) { call("easu");lastX=x;lastY=y }
+        override fun easuDirect(kind: Fsr1Drawer.Input,t: Int,m: FloatArray,p: Fsr1Plan,x: Int,y: Int) {
+            lastMatrix=m;call("directEasu:${kind.name}");lastX=x;lastY=y
         }
         override fun rcasDirect(kind: Fsr1Drawer.Input,t: Int,m: FloatArray,p: Fsr1Plan,x: Int,y: Int,strength: Float,saturation: Float) {
             lastMatrix=m;call("directRcas:${kind.name}")
@@ -57,8 +57,27 @@ class Fsr1PipelineTest {
         assertTrue(renderer.drawYuv(intArrayOf(1,2,3),identity,640,360,0,0,1280,720))
         assertFalse(gpu.lastPlan!!.directInput);assertEquals(2,gpu.allocations)
         assertEquals(1,gpu.calls.count { it=="caps" })
-        assertEquals(0f,gpu.strength,0f)
+        assertFalse(gpu.calls.contains("rcas"))
         assertTrue(gpu.calls.containsAll(listOf("directEasu:RGB","copy:YUV","directEasu:OES","easu")))
+    }
+    @Test fun zeroSharpnessDrawsDirectlyToTheViewportAndNonDefaultColorsRestoreFinishing() {
+        val gpu=Gpu();val renderer=Fsr1Drawer(gpu)
+        renderer.configure(1280,720,0,100)
+        assertTrue(renderer.drawOes(7,identity,1280,720,9,11,1920,1080))
+        assertEquals(listOf("begin","caps","prepare","directEasu:OES","restore"),gpu.calls)
+        assertEquals(1,renderer.lastPassCount());assertEquals(0L,gpu.lastPlan!!.workingBytes)
+        assertEquals(9,gpu.lastX);assertEquals(11,gpu.lastY)
+        gpu.calls.clear()
+        renderer.setColorAdjustments(10,100)
+        assertTrue(renderer.drawOes(7,identity,1280,720,9,11,1920,1080))
+        assertEquals(listOf("begin","prepare","directEasu:OES","rcas","restore"),gpu.calls)
+        assertEquals(2,renderer.lastPassCount());assertEquals(8_294_400L,gpu.lastPlan!!.workingBytes)
+        assertEquals(0f,gpu.strength,0f);assertEquals(10,gpu.brightness)
+        renderer.setColorAdjustments(0,100)
+        assertTrue(renderer.drawYuv(intArrayOf(1,2,3),identity,1280,720,9,11,1920,1080))
+        assertEquals(listOf("begin","prepare","copy:YUV","easu","restore"),gpu.calls.takeLast(5))
+        assertEquals(2,renderer.lastPassCount());assertEquals(3_686_400L,gpu.lastPlan!!.workingBytes)
+        assertEquals(9,gpu.lastX);assertEquals(11,gpu.lastY)
     }
     @Test fun failureInAnyGpuStageReleasesResourcesRestoresTheCallerAndDoesNotRetryEveryFrame() {
         for(stage in listOf("caps","prepare","copy:YUV","easu","rcas")) {

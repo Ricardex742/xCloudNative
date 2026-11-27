@@ -849,7 +849,7 @@
     <string name="ui_9b01d2edc42e9906" formatted="false">"アダプティブ RCAS — 輝度"</string>
     <string name="ui_8107516a4c8bc932" formatted="false">"USM — 輝度"</string>
     <string name="ui_bb3b1f11046a95a8" formatted="false">"スムーズ — 実験的"</string>
-    <string name="ui_51ebe1789bd20746" formatted="false">"出力解像度は端末側の設定で、受信する映像は変わりません。自動は滑らかさを優先し、テレビの出力を1080pまでに制限します。この設定を使うにはアップスケーラーを有効にしてください。縦横比と実際の画面出力を尊重します。描画が受信フレームに追いつかない場合、保護機能が出力を下げます。1440pや4Kで60 FPSを保証するものではありません。"</string>
+    <string name="ui_c905c7efd3f7b201" formatted="false">"受信する映像の解像度は維持されます。自動では FSR の出力を 1080p までに制限します。アスペクト比と画面の上限を守ります。再生が重くなると保護機能が出力解像度を下げることがあります。1440p と 4K はより多くの処理を必要とします。"</string>
     <string name="ui_8555935b67caf434" formatted="false">"映像を整え、細部を明瞭にする実験的な処理です。拡大しない1080pでも使えます。Xboxの解像度やビットレートは変えません。まずは品質を自動、強度を50%、出力を自動にしてください。他の任意フィルターの設定は維持されます。"</string>
     <string name="ui_86ea683c75f791e2" formatted="false">"自動出力で有効にする"</string>
     <string name="ui_3be0e1d22f89b0de" formatted="false">"処理品質: {0}"</string>
@@ -1417,7 +1417,7 @@
     <string name="ui_f5302f0a194c88ed" formatted="false">"ネットワークの詳細設定"</string>
     <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR は映像を拡大して細部を補正します。自動品質は映像の滑らかさに応じて処理を調整します。"</string>
     <string name="ui_fa567f5d8fcb4e4e" formatted="false">"オリジナルは受信映像と色設定を維持します。軽量は鮮明さを加えます。FSR は拡大、細部補正、フレームの安定化を組み合わせます。"</string>
-    <string name="ui_2d8784beab54c16f" formatted="false">"鮮明さと、FSR の細部や映像の安定性を調整します。0% でも FSR による拡大は可能です。"</string>
+    <string name="ui_b56d31233977bc41" formatted="false">"鮮明さと、FSR の細部や映像の安定性を調整します。0% では FSR プロファイルも標準の拡大方式を使います。"</string>
     <string name="ui_7d36b1c8e07efdf2" formatted="false">"細部補正の強さ: {0}%"</string>
     <string name="ui_a3eb48b566c209fc" formatted="false">"標準は端末のスケーリングを使います。FSR は映像を拡大し、細部を改善します。"</string>
     <string name="ui_f9fd64861bd35c21" formatted="false">"自動は軽量から始め、映像が滑らかな間は画質を上げます。メモリが少ない端末では拡大を優先します。"</string>
