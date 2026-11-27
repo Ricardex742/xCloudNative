@@ -585,3 +585,4 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 
 - Controles › Giroscópio guarda a opção de inverter o eixo vertical, desativada por padrão. A opção é aplicada à contribuição vertical do sensor após o mapeamento da orientação da tela, antes de somar a mira ao analógico. A tela de teste usa a mesma preferência e o diagnóstico registra `INVERT_Y`.
 - O avatar na página inicial abre o seletor de contas já usado pelas configurações. O restante do cabeçalho conserva as ações do tema. A troca continua indisponível enquanto há uma sessão suspensa.
+- O APK assinado `0.41.40-gyro-account` (código 153) foi gerado na execução `45927013206` da revisão `6287ca1`. O SHA-256 conferido é `db36b2d2359d72a975904bc8fb1e4ddb81ec24d5b00701f6a9e8cef836d22cef`. Passaram 991 testes JVM, seis suítes gráficas, lint sem erros e abertura e retomada nos emuladores Android 10 e 14. A direção do giroscópio em partidas com aparelho real segue pendente de validação.
