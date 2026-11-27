@@ -154,10 +154,10 @@ class QuickSettingsNavigationTest {
             nanoCloudConnect = ::open)
         click(settings.showControls(), "Teste do Xbox Nano")
         capture(latest(), "nano-cloud-connect-setup")
-        click(latest(), "Testar na próxima partida")
+        click(latest(), UiText.uppercase("Testar na próxima partida"))
         val attempt = requireNotNull(test)
         assertTrue(attempt.armed)
-        click(latest(), "Voltar ao catálogo")
+        click(latest(), UiText.uppercase("Voltar ao catálogo"))
         assertEquals(1, catalogReturns)
 
         attempt.begin(7, localController = false)
@@ -173,7 +173,7 @@ class QuickSettingsNavigationTest {
         click(settings.showControls(), "Teste do Xbox Nano")
         assertTrue(all(latest().body).filterIsInstance<TextView>().any { "inconclusivo" in it.text })
         click(latest(), "O jogo respondeu")
-        click(latest(), "Copiar detalhes")
+        click(latest(), UiText.uppercase("Copiar detalhes"))
         val clipboard = activity.getSystemService(ClipboardManager::class.java)
         assertEquals("CLOUD_CONNECT_TEST/XBOX_NANO; VIDEO_PRESENTED=true; LOCAL_CONTROLLER_SEEN=true; USER_OBSERVED_RESPONSE=true",
             clipboard.primaryClip?.getItemAt(0)?.text.toString())
