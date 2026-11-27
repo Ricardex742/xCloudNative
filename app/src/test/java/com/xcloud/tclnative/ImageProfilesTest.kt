@@ -27,7 +27,7 @@ class ImageProfilesTest {
         assertEquals(ImageProfile.CUSTOM,ImageProfiles.selected(old));assertEquals(old,ImageProfiles.withIntensity(old,80))
         val recon=ImageProfiles.apply(old,ImageProfile.FSR)
         val high=ImageProfiles.withIntensity(recon,1000)
-        assertEquals(100,high.reconstruction.strength);assertEquals(50,high.imageTreatment.temporal)
+        assertEquals(100,high.fsrSharpness);assertEquals(0,high.reconstruction.strength);assertEquals(0,high.imageTreatment.temporal)
         val zero=ImageProfiles.withIntensity(recon,-100)
         assertEquals(0,zero.reconstruction.strength);assertEquals(0,zero.imageTreatment.temporal)
         assertEquals(ImageProfile.FSR,ImageProfiles.selected(zero))
@@ -51,5 +51,19 @@ class ImageProfilesTest {
         assertSame(resumed,ImageProfiles.forRendering(resumed))
         val custom=zero.copy(fsrOutput=FsrOutput.QHD_1440)
         assertSame(custom,ImageProfiles.forRendering(custom))
+    }
+    @Test fun oldFsrPresetAt75UsesOnlyAmplificationAndAdaptiveSharpeningAfterMigration() {
+        val old=PlaybackSettings(fsr=FsrMode.FSR1,fsrSharpness=37,reconstruction=ReconstructionSettings(strength=75),
+            imageTreatment=ImageTreatmentSettings(sharpening=ImageSharpening.RCAS_LUMA,temporal=37))
+        val migrated=ImageProfiles.migrateFsrPreset(old)
+        assertEquals(ImageProfile.FSR,ImageProfiles.selected(migrated))
+        assertEquals(75,ImageProfiles.intensity(migrated))
+        assertSame(migrated,ImageProfiles.forRendering(migrated))
+        assertEquals(FsrMode.FSR1,migrated.fsr);assertEquals(75,migrated.fsrSharpness)
+        assertEquals(0,migrated.reconstruction.strength);assertEquals(0,migrated.imageTreatment.temporal)
+        val custom=migrated.copy(reconstruction=ReconstructionSettings(strength=50),
+            imageTreatment=migrated.imageTreatment.copy(temporal=25))
+        assertSame(custom,ImageProfiles.forRendering(custom))
+        assertSame(custom,ImageProfiles.migrateFsrPreset(custom))
     }
 }

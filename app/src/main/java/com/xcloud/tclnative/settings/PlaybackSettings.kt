@@ -121,10 +121,21 @@ class PlaybackSettingsStore(context: Context,
                 if (prefs.getString("image_sharpening", ImageSharpening.LEGACY.name) == ImageSharpening.LEGACY.name)
                     editor.putString("image_sharpening", ImageSharpening.RCAS_LUMA.name)
                 val comparison=prefs.getString("image_comparison",null)
+                if (previous=="RECONSTRUCTION" && !prefs.contains("reconstruction_strength"))
+                    editor.putInt("reconstruction_strength",50)
                 if (previous=="RECONSTRUCTION" && comparison in setOf("ORIGINAL","SPLIT") &&
                     prefs.getString("image_comparison_all",ImageComparison.PROCESSED.name)==ImageComparison.PROCESSED.name &&
                     !prefs.getBoolean("image_lab_enabled",false)) editor.putString("image_comparison_all",comparison)
                 editor.remove("image_comparison")
+                editor.apply()
+            }
+            if (previous != null && !prefs.getBoolean(FSR_BASE_PROFILE_MIGRATED,false)) {
+                val current = read()
+                val migrated = if (previous == "RECONSTRUCTION") current else ImageProfiles.migrateFsrPreset(current)
+                val editor = prefs.edit().putBoolean(FSR_BASE_PROFILE_MIGRATED,true)
+                if (current != migrated) editor.putInt("fsr_sharpness",migrated.fsrSharpness)
+                    .putInt("reconstruction_strength",migrated.reconstruction.strength)
+                    .putInt("image_temporal",migrated.imageTreatment.temporal)
                 editor.apply()
             }
         }
@@ -158,7 +169,7 @@ class PlaybackSettingsStore(context: Context,
             PresentationPacing.entries.firstOrNull { it.name==prefs.getString("presentation_pacing",null) } ?: PresentationPacing.OFF,
             ReconstructionSettings(
                 ReconstructionQuality.entries.firstOrNull { it.name==prefs.getString("reconstruction_quality",null) } ?: ReconstructionQuality.AUTO,
-                prefs.getInt("reconstruction_strength",50)).bounded(),
+                prefs.getInt("reconstruction_strength",defaults.reconstruction.strength)).bounded(),
             audioMode = AudioPlaybackMode.entries.firstOrNull { it.name==prefs.getString("audio_mode",null) } ?: AudioPlaybackMode.STANDARD,
             imageLab = ImageLabSettings(prefs.getBoolean("image_lab_enabled",false),prefs.getInt("image_lab_restoration",35),
                 HudProtection.entries.firstOrNull { it.name==prefs.getString("image_lab_protection",null) } ?: HudProtection.AUTO,
@@ -187,7 +198,7 @@ class PlaybackSettingsStore(context: Context,
     }
 
     private fun write(fields: Map<String, Any>) {
-        val editor = prefs.edit()
+        val editor = prefs.edit().putBoolean(FSR_BASE_PROFILE_MIGRATED,true)
         fields.forEach { (key, value) ->
             when (value) {
                 is String -> editor.putString(key, value)
@@ -254,6 +265,7 @@ class PlaybackSettingsStore(context: Context,
     )
 
     private companion object {
+        const val FSR_BASE_PROFILE_MIGRATED = "fsr_base_profile_migrated"
         val writes = Any()
     }
 }

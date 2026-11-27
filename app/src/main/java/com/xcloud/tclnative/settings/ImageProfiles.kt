@@ -20,12 +20,16 @@ object ImageProfiles {
         if(value.fsr==FsrMode.OFF && value.sharpness==0 && !filters.active)return ImageProfile.ORIGINAL
         if(value.fsr==FsrMode.OFF && filters.sharpening==ImageSharpening.RCAS_LUMA && !filters.spatial &&
             filters.temporal==0 && filters.neural==0)return ImageProfile.LIGHT
-        if(value.fsr==FsrMode.FSR1 && value.fsrOutput==FsrOutput.AUTO &&
-            value.reconstruction.quality==ReconstructionQuality.AUTO && !filters.spatial && filters.neural==0 &&
-            filters.sharpening==ImageSharpening.RCAS_LUMA && filters.temporal==value.reconstruction.strength/2 &&
-            value.fsrSharpness==value.reconstruction.strength/2)
+        if(isFsrProfileBase(value) && value.reconstruction.strength==0 && filters.temporal==0)
             return ImageProfile.FSR
         return ImageProfile.CUSTOM
+    }
+
+    private fun isFsrProfileBase(value: PlaybackSettings): Boolean {
+        val filters=value.imageTreatment
+        return value.fsr==FsrMode.FSR1 && value.fsrOutput==FsrOutput.AUTO &&
+            value.reconstruction.quality==ReconstructionQuality.AUTO && !filters.spatial && filters.neural==0 &&
+            filters.sharpening==ImageSharpening.RCAS_LUMA && !value.imageLab.enabled
     }
     fun apply(value: PlaybackSettings,profile: ImageProfile): PlaybackSettings {
         if(profile==ImageProfile.CUSTOM)return value
@@ -35,28 +39,40 @@ object ImageProfiles {
             imageComparison=ImageComparison.PROCESSED)
         return when(profile) {
             ImageProfile.LIGHT -> base.copy(sharpness=25,imageTreatment=base.imageTreatment.copy(sharpening=ImageSharpening.RCAS_LUMA))
-            ImageProfile.FSR -> base.copy(fsr=FsrMode.FSR1,fsrSharpness=25,
-                imageTreatment=base.imageTreatment.copy(temporal=25,sharpening=ImageSharpening.RCAS_LUMA))
+            ImageProfile.FSR -> base.copy(fsr=FsrMode.FSR1,fsrSharpness=50,
+                imageTreatment=base.imageTreatment.copy(sharpening=ImageSharpening.RCAS_LUMA))
             else -> base
         }
     }
     fun intensity(value: PlaybackSettings)=when(selected(value)) {
         ImageProfile.LIGHT -> value.sharpness
-        ImageProfile.FSR -> value.reconstruction.strength
+        ImageProfile.FSR -> value.fsrSharpness
         else -> 0
     }
     fun withIntensity(value: PlaybackSettings,amount: Int): PlaybackSettings {
         val level=amount.coerceIn(0,100)
         return when(selected(value)) {
             ImageProfile.LIGHT -> value.copy(sharpness=level)
-            ImageProfile.FSR -> value.copy(fsrSharpness=level/2,reconstruction=value.reconstruction.copy(strength=level),
-                imageTreatment=value.imageTreatment.copy(temporal=level/2))
+            ImageProfile.FSR -> value.copy(fsrSharpness=level)
+            else -> value
+        }
+    }
+
+    internal fun migrateFsrPreset(value: PlaybackSettings): PlaybackSettings {
+        val strength=value.reconstruction.strength
+        val filters=value.imageTreatment
+        return when {
+            strength>0 && isFsrProfileBase(value) && filters.temporal==strength/2 && value.fsrSharpness==strength/2 ->
+                value.copy(fsrSharpness=strength,reconstruction=ReconstructionSettings(),imageTreatment=filters.copy(temporal=0))
+            // Older builds populated this strength even when the user never opened the detail controls.
+            value.reconstruction==ReconstructionSettings(strength=50) && !value.imageLab.enabled &&
+                !filters.spatial && filters.temporal==0 && filters.neural==0 -> value.copy(reconstruction=ReconstructionSettings())
             else -> value
         }
     }
 
     internal fun forRendering(value: PlaybackSettings): PlaybackSettings =
-        if (value.reconstruction.strength == 0 && selected(value) == ImageProfile.FSR) {
-            value.copy(fsr = FsrMode.OFF, imageTreatment = value.imageTreatment.copy(sharpening = ImageSharpening.LEGACY))
+        if (value.fsrSharpness==0 && selected(value)==ImageProfile.FSR) {
+            value.copy(fsr=FsrMode.OFF,imageTreatment=value.imageTreatment.copy(sharpening=ImageSharpening.LEGACY))
         } else value
 }

@@ -21,8 +21,8 @@ android {
         applicationId = "com.xcloud.tclnative"
         minSdk = 24
         targetSdk = 34
-        versionCode = 151
-        versionName = "0.41.38-gyro-settings"
+        versionCode = 152
+        versionName = "0.41.39-fsr-fluency"
     }
 
     signingConfigs {

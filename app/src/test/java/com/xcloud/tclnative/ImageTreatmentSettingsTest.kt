@@ -65,6 +65,27 @@ class ImageTreatmentSettingsTest {
             assertEquals(TouchMode.AUTO,store.read().touchMode)
         } finally { c.pause().stop().destroy() }
     }
+    @Test fun oldProfilesMigrateOnceAndLaterExplicitDetailEditsPersist() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup()
+        try {
+            val activity=c.get()
+            val prefs=activity.getSharedPreferences("stream_preferences",0)
+            prefs.edit().clear().putString("fsr_mode","FSR1").putInt("fsr_sharpness",37)
+                .putString("image_sharpening","RCAS_LUMA").putInt("reconstruction_strength",75)
+                .putInt("image_temporal",37).commit()
+            val store=PlaybackSettingsStore(activity)
+            val migrated=store.read()
+            assertEquals(75,migrated.fsrSharpness)
+            assertEquals(0,migrated.reconstruction.strength);assertEquals(0,migrated.imageTreatment.temporal)
+            val edited=store.update(migrated,migrated.copy(reconstruction=ReconstructionSettings(strength=50)))
+            assertEquals(50,edited.reconstruction.strength)
+            assertEquals(edited,PlaybackSettingsStore(activity).read())
+            prefs.edit().clear().putString("fsr_mode","FSR1").putInt("fsr_sharpness",75)
+                .putInt("reconstruction_strength",50).commit()
+            val oldPlainFsr=PlaybackSettingsStore(activity).read()
+            assertEquals(75,oldPlainFsr.fsrSharpness);assertEquals(0,oldPlainFsr.reconstruction.strength)
+        } finally { c.pause().stop().destroy() }
+    }
     @Test fun corruptedStrengthsAreBoundedAndEffectiveCompatibilityDoesNotOverwriteSavedChoices() {
         val c=Robolectric.buildActivity(Activity::class.java).setup()
         try {

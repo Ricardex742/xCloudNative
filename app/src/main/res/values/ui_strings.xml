@@ -1417,8 +1417,8 @@
     <string name="ui_1fa249941e925122" formatted="false">"Ajustes avançados"</string>
     <string name="ui_f5302f0a194c88ed" formatted="false">"Rede avançada"</string>
     <string name="ui_27cb9f45cd2600fa" formatted="false">"O FSR melhora detalhes e amplia o vídeo para a tela. A qualidade automática ajusta o processamento à fluidez da partida."</string>
-    <string name="ui_fa567f5d8fcb4e4e" formatted="false">"Original mantém a imagem recebida e os ajustes de cor. Leve acrescenta nitidez. FSR combina ampliação, realce de detalhes e estabilidade entre quadros."</string>
-    <string name="ui_b56d31233977bc41" formatted="false">"Ajusta a nitidez e, no FSR, os detalhes e a estabilidade da imagem. Em 0%, o perfil FSR usa a escala padrão."</string>
+    <string name="ui_dba75f2e109f4511" formatted="false">"Original mantém a imagem recebida e os ajustes de cor. Leve acrescenta nitidez. FSR combina ampliação e nitidez adaptativa."</string>
+    <string name="ui_7b5996b71f396f0f" formatted="false">"Ajusta a nitidez. Em 0%, o perfil FSR usa a escala padrão."</string>
     <string name="ui_7d36b1c8e07efdf2" formatted="false">"Intensidade dos detalhes: {0}%"</string>
     <string name="ui_a3eb48b566c209fc" formatted="false">"Padrão usa a escala do aparelho. O FSR amplia o vídeo e melhora os detalhes na tela."</string>
     <string name="ui_f9fd64861bd35c21" formatted="false">"Automático começa leve e aumenta a qualidade enquanto a partida estiver fluida. Em aparelhos com pouca memória, o FSR prioriza a ampliação."</string>

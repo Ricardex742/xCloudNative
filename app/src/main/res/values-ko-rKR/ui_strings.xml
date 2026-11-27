@@ -1416,8 +1416,8 @@
     <string name="ui_1fa249941e925122" formatted="false">"고급 설정"</string>
     <string name="ui_f5302f0a194c88ed" formatted="false">"고급 네트워크"</string>
     <string name="ui_27cb9f45cd2600fa" formatted="false">"FSR은 세부 묘사를 개선하고 영상을 확대합니다. 자동 품질은 재생 흐름에 따라 처리를 조절합니다."</string>
-    <string name="ui_fa567f5d8fcb4e4e" formatted="false">"원본은 수신 영상과 색상 설정을 유지합니다. 가벼운 모드는 선명도를 높입니다. FSR은 확대, 세부 보정, 프레임 안정화를 결합합니다."</string>
-    <string name="ui_b56d31233977bc41" formatted="false">"선명도와 FSR의 세부 묘사 및 영상 안정성을 조정합니다. 0%에서는 FSR 프로필이 기본 확대를 사용합니다."</string>
+    <string name="ui_dba75f2e109f4511" formatted="false">"원본은 수신 영상과 색상 조정을 유지합니다. 가벼운 모드는 선명도를 높입니다. FSR은 업스케일링과 적응형 선명도 조정을 결합합니다."</string>
+    <string name="ui_7b5996b71f396f0f" formatted="false">"선명도를 조정합니다. 0%에서는 FSR 프로필이 기본 확대를 사용합니다."</string>
     <string name="ui_7d36b1c8e07efdf2" formatted="false">"세부 보정 강도: {0}%"</string>
     <string name="ui_a3eb48b566c209fc" formatted="false">"기본값은 기기의 크기 조정을 사용합니다. FSR은 영상을 확대하고 세부 묘사를 개선합니다."</string>
     <string name="ui_f9fd64861bd35c21" formatted="false">"자동은 가벼운 모드로 시작하고 재생이 부드러우면 품질을 높입니다. 메모리가 적은 기기는 확대를 우선합니다."</string>

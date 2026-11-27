@@ -121,6 +121,7 @@ class FsrOutputSurfaceTest {
         val owner=AiPqSurfaceRenderer(controller.get());owner.layout(0,0,1920,1080)
         controller.get().setContentView(owner)
         owner.setFsr(true,50,FsrOutput.UHD_4K)
+        owner.setReconstruction(ReconstructionSettings(strength=50))
         val dimensions=owner.displayDimensions()
         val view=OutputSurfaceViewRenderer(controller.get())
         view.measure(View.MeasureSpec.makeMeasureSpec(1920,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(1080,View.MeasureSpec.EXACTLY))
@@ -155,6 +156,7 @@ class FsrOutputSurfaceTest {
         val owner=AiPqSurfaceRenderer(controller.get())
         try {
             owner.setFsr(true,25)
+            owner.setReconstruction(ReconstructionSettings(strength=50))
             owner.setImageTreatment(ImageTreatmentSettings(temporal=25))
             val draws=ReflectionHelpers.getField<AtomicLong>(owner,"allDraws")
             val sample=StreamMetrics(receivedVideoBytes=500000,packetLossPercent=0.0,intervalSeconds=1.0,receivedFrames=60)

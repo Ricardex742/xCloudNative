@@ -345,12 +345,12 @@ class PlaybackSettingsPanel(
     private fun chooseImageProfile(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
         enter(SettingsPage.UPSCALING);val value=store.read()
         val profiles=listOf(ImageProfile.ORIGINAL,ImageProfile.LIGHT,ImageProfile.FSR)
-        return choices(UiText.text("Perfil de imagem"),UiText.text("Original mantém a imagem recebida e os ajustes de cor. Leve acrescenta nitidez. FSR combina ampliação, realce de detalhes e estabilidade entre quadros."),
+        return choices(UiText.text("Perfil de imagem"),UiText.text("Original mantém a imagem recebida e os ajustes de cor. Leve acrescenta nitidez. FSR combina ampliação e nitidez adaptativa."),
             profiles.map {it.label to (it==ImageProfiles.selected(value))},onReturn) { save(value,ImageProfiles.apply(value,profiles[it]),onReturn) }
     }
     private fun chooseImageIntensity(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
         enter(SettingsPage.UPSCALING);val value=store.read();val levels=listOf(0,25,50,75,100)
-        return choices(UiText.text("Intensidade"),UiText.text("Ajusta a nitidez e, no FSR, os detalhes e a estabilidade da imagem. Em 0%, o perfil FSR usa a escala padrão."),
+        return choices(UiText.text("Intensidade"),UiText.text("Ajusta a nitidez. Em 0%, o perfil FSR usa a escala padrão."),
             levels.map {"$it%" to (it==ImageProfiles.intensity(value))},onReturn) {save(value,ImageProfiles.withIntensity(value,levels[it]),onReturn)}
     }
     private fun chooseGlobalComparison(onReturn: () -> Unit={ showUpscaling() }): ConsoleDialog {
