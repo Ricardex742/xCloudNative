@@ -6,7 +6,9 @@ import android.graphics.Canvas
 import android.graphics.Rect
 import android.graphics.drawable.BitmapDrawable
 import android.os.Looper
+import android.os.SystemClock
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -85,6 +87,39 @@ class ConsoleDashboardUiTest {
     }
     private fun click(v: View,label: String) {
         all(v).filterIsInstance<TextView>().single { it.isShown && it.isClickable && it.text.toString()==label }.performClick()
+    }
+    @Test fun tappingTheAvatarOpensAccountSwitchingAcrossHomeLayouts() {
+        val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()
+        var switches=0;var settings=0
+        val view=GameDashboardView(a,GameLibrary(a,"avatar-shortcut"),{},{},{settings++},{},onSwitchAccount={switches++})
+        try {
+            a.setContentView(view)
+            val layouts=listOf(Triple(UiTheme.GREEN,1280,720),Triple(UiTheme.XBOX_SERIES,1280,720),
+                Triple(UiTheme.PS5,1280,720),Triple(UiTheme.PS5,780,360))
+            for((theme,w,h) in layouts) {
+                AppearanceSettingsStore(a).save(theme);DashboardTheme.apply(a,theme);view.refreshAppearance()
+                layout(view,w,h)
+                val avatar=all(view).single { it.contentDescription==UiText.text("Trocar conta") }
+                assertTrue(avatar.isShown && avatar.isClickable)
+                val bounds=Rect(0,0,avatar.width,avatar.height)
+                view.offsetDescendantRectToMyCoords(avatar,bounds)
+                assertFalse(bounds.isEmpty)
+                val now=SystemClock.uptimeMillis()
+                val before=switches
+                for(action in listOf(MotionEvent.ACTION_DOWN,MotionEvent.ACTION_UP)) {
+                    val event=MotionEvent.obtain(now,now,action,bounds.exactCenterX(),bounds.exactCenterY(),0)
+                    try { assertTrue(view.dispatchTouchEvent(event)) } finally { event.recycle() }
+                }
+                shadowOf(Looper.getMainLooper()).idle()
+                assertEquals(theme.name,before+1,switches)
+            }
+            assertEquals(0,settings)
+            val avatar=all(view).single { it.contentDescription==UiText.text("Trocar conta") }
+            view.setSavedSession { }
+            assertFalse(avatar.isClickable)
+            view.setSavedSession(null)
+            assertTrue(avatar.isClickable)
+        } finally { view.close();c.pause().stop().destroy() }
     }
     @Test fun quotaLineFitsTheAccountHeaderAcrossEveryThemeAndViewport() {
         val c=Robolectric.buildActivity(Activity::class.java).setup();val a=c.get()

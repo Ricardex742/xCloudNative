@@ -1426,4 +1426,5 @@
     <string name="ui_9f6c10c40dedb9fc" formatted="false">"Scegli come rispondono i giochi al tocco sul telefono."</string>
     <string name="ui_02521703013f54b0" formatted="false">"Altri modi di giocare"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
+    <string name="ui_7365e584ad97b799" formatted="false">"Inverti asse verticale: {0}"</string>
 </resources>

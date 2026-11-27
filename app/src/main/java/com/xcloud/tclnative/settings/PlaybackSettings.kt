@@ -78,7 +78,8 @@ data class PlaybackSettings(
     val tryAlternateDecoder: Boolean = false,
     val tryMotionFence: Boolean = false,
     val tryIdleGamepadCadence: Boolean = false,
-    val trySkipAudioSamples: Boolean = false
+    val trySkipAudioSamples: Boolean = false,
+    val gyroInvertY: Boolean = false
 ) {
     fun effectiveImageComparison(): ImageComparison = when {
         imageComparison!=ImageComparison.PROCESSED -> imageComparison
@@ -182,7 +183,8 @@ class PlaybackSettingsStore(context: Context,
             tryAlternateDecoder=prefs.getBoolean("try_alternate_decoder",false),
             tryMotionFence=prefs.getBoolean("try_motion_fence",false),
             tryIdleGamepadCadence=prefs.getBoolean("try_idle_gamepad_cadence",false),
-            trySkipAudioSamples=prefs.getBoolean("try_skip_audio_samples",false))
+            trySkipAudioSamples=prefs.getBoolean("try_skip_audio_samples",false),
+            gyroInvertY=prefs.getBoolean("gyro_invert_y",false))
     }
     fun save(settings: PlaybackSettings) = synchronized(writes) { write(values(settings)) }
 
@@ -236,6 +238,7 @@ class PlaybackSettingsStore(context: Context,
         "mouse_sensitivity" to settings.mouseSensitivity.coerceIn(25,300),
         "gyro_mode" to settings.gyroMode.name,
         "gyro_sensitivity" to settings.gyroSensitivity.coerceIn(25,300),
+        "gyro_invert_y" to settings.gyroInvertY,
         "microphone" to settings.microphone,
         "audio_gain" to settings.audioGain.coerceIn(0,300),
         "touch_rumble" to settings.touchRumble,

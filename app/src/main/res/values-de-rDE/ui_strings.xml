@@ -1426,4 +1426,5 @@
     <string name="ui_9f6c10c40dedb9fc" formatted="false">"Legt fest, wie Spiele auf Berührungen reagieren."</string>
     <string name="ui_02521703013f54b0" formatted="false">"Weitere Eingabemethoden"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
+    <string name="ui_7365e584ad97b799" formatted="false">"Vertikale Achse umkehren: {0}"</string>
 </resources>

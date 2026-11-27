@@ -818,7 +818,8 @@ open class MainActivity : Activity() {
                         session.regions,game.titleId,game.name) {}.show()
                 },
                 onStoreProduct={ id -> openAccountPage("https://www.xbox.com/pt-BR/games/store/game/$id") },
-                onLoadFriends={ loadXboxFriends(session) })
+                onLoadFriends={ loadXboxFriends(session) },
+                onSwitchAccount={ showAccountSwitcher { dashboard?.restoreFocus(refreshCatalog=false) } })
             if (!activityVisible) view.pauseArtwork()
             dashboard = view
             controlPanel.removeAllViews()
@@ -1279,7 +1280,7 @@ open class MainActivity : Activity() {
     private fun applyPlaybackSettings(settings: PlaybackSettings) {
         val gyroChanged = playbackSettings.gyroMode!=settings.gyroMode ||
             playbackSettings.gyroSensitivity!=settings.gyroSensitivity || playbackSettings.gyroNativeTouch!=settings.gyroNativeTouch ||
-            playbackSettings.gyroSource!=settings.gyroSource
+            playbackSettings.gyroSource!=settings.gyroSource || playbackSettings.gyroInvertY!=settings.gyroInvertY
         val displayChanged = playbackSettings.matchDisplayMode != settings.matchDisplayMode
         val gainChanged = playbackSettings.audioGain != settings.audioGain
         playbackSettings=settings
@@ -1290,7 +1291,7 @@ open class MainActivity : Activity() {
         }
         if (gyroChanged && sessionSettings!=null) {
             sessionSettings=sessionSettings?.copy(gyroMode=settings.gyroMode,gyroSensitivity=settings.gyroSensitivity,
-                gyroNativeTouch=settings.gyroNativeTouch,gyroSource=settings.gyroSource)
+                gyroNativeTouch=settings.gyroNativeTouch,gyroSource=settings.gyroSource,gyroInvertY=settings.gyroInvertY)
             if (gameplayInputEnabled()) {
                 resumeAuxiliaryInput()
                 publishGamepad(0)
@@ -2759,7 +2760,7 @@ open class MainActivity : Activity() {
             null -> preferredControllerId
         }
         gyro.start(settings.gyroMode,settings.gyroSensitivity,currentTouchMode==TouchMode.NATIVE,
-            settings.gyroNativeTouch || primary!=null,settings.gyroSource,controllerId)
+            settings.gyroNativeTouch || primary!=null,settings.gyroSource,controllerId,invertY=settings.gyroInvertY)
     }
 
     private fun refreshControllerGyro() {

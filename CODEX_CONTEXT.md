@@ -580,3 +580,8 @@ Esta seção registra a revisão anterior, entregue no código 96. A composiçã
 - Passaram 87 testes JVM/Robolectric relacionados e seis suítes gráficas em Mesa, com 344 verificações de FSR. O lint ampliado ficou sem erros e dentro do baseline. As 15 opções de idioma passaram na verificação. A cadência em aparelhos reais segue pendente.
 - O perfil comum da candidata `0.41.39-fsr-fluency` volta a usar apenas ampliação e nitidez adaptativa. A intensidade controla a nitidez e a restauração dos detalhes e o filtro temporal podem ser ativados em Avançado. A migração preserva a intensidade dos perfis anteriores reconhecidos e zera o valor automático de detalhes que antes era preenchido por padrão quando não havia filtros adicionais. Os ajustes feitos depois da migração prevalecem.
 - O APK assinado `0.41.39-fsr-fluency` (código 152) foi gerado na execução `45919733081` da revisão `ab27cbd`. O SHA-256 conferido é `6ff7c8100122c269a54eaf2713301d05cd08997307e47a8d54a800f528f66263`. Passaram 989 testes JVM, seis suítes gráficas, lint sem erros e abertura e retomada no Android 10 e 14 emulado. A cadência do FSR em partidas em aparelhos reais segue pendente.
+
+## Inversão do giroscópio e atalho de contas
+
+- Controles › Giroscópio guarda a opção de inverter o eixo vertical, desativada por padrão. A opção é aplicada à contribuição vertical do sensor após o mapeamento da orientação da tela, antes de somar a mira ao analógico. A tela de teste usa a mesma preferência e o diagnóstico registra `INVERT_Y`.
+- O avatar na página inicial abre o seletor de contas já usado pelas configurações. O restante do cabeçalho conserva as ações do tema. A troca continua indisponível enquanto há uma sessão suspensa.

@@ -1426,4 +1426,5 @@
     <string name="ui_9f6c10c40dedb9fc" formatted="false">"휴대전화에서 터치에 반응하는 방식을 선택합니다."</string>
     <string name="ui_02521703013f54b0" formatted="false">"다른 조작 방법"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
+    <string name="ui_7365e584ad97b799" formatted="false">"수직 축 반전: {0}"</string>
 </resources>

@@ -69,6 +69,7 @@ class GyroController(context: Context,private val rotation: () -> Int,private va
     private var source=GyroSource.DEVICE
     private var mode=GyroMode.OFF
     private var sensitivity=100
+    private var invertY=false
     private var usingNativeTouch=false
     private var axes=0f to 0f
     var samplesReceived=0L
@@ -80,10 +81,11 @@ class GyroController(context: Context,private val rotation: () -> Int,private va
     var status=UiText.text("Giroscópio: desligado")
         private set
     fun resetDiagnostics() { samplesReceived=0;motionSamples=0;lastSensorNode=null }
-    fun diagnostics() = "$status | GYROSCOPE/SOURCE=${source.name}; SAMPLES=$samplesReceived; MOTION=$motionSamples; SENSOR_NODE=${lastSensorNode ?: "n/d"}"
+    fun diagnostics() = "$status | GYROSCOPE/SOURCE=${source.name}; SAMPLES=$samplesReceived; MOTION=$motionSamples; SENSOR_NODE=${lastSensorNode ?: "n/d"}; INVERT_Y=$invertY"
     val listening get() = registration!=null
     fun start(mode: GyroMode,sensitivity: Int,nativeTouch: Boolean,allowNativeTouch: Boolean=false,
-              source: GyroSource=GyroSource.DEVICE,controllerId: Int?=null) {
+              source: GyroSource=GyroSource.DEVICE,controllerId: Int?=null,invertY: Boolean=false) {
+        this.invertY=invertY
         val next=if(mode==GyroMode.OFF || nativeTouch && !allowNativeTouch) null else findSensor(source,controllerId)
         if (this.mode!=GyroMode.OFF && this.mode==mode && this.sensitivity==sensitivity &&
             this.source==source && registration==next &&
@@ -114,8 +116,9 @@ class GyroController(context: Context,private val rotation: () -> Int,private va
         if(magnitude==0f) return base
         // Counter a small in-game stick dead zone without adding movement at rest.
         val scale=1f + .08f * (1f - magnitude) / magnitude
+        val pitch=if(invertY) -axes.second else axes.second
         return base.copy(rightX=(base.rightX+axes.first*scale).coerceIn(-1f,1f),
-            rightY=(base.rightY+axes.second*scale).coerceIn(-1f,1f))
+            rightY=(base.rightY+pitch*scale).coerceIn(-1f,1f))
     }
     override fun onSensorChanged(event: SensorEvent) {
         val sensor=registration?.sensor ?: return

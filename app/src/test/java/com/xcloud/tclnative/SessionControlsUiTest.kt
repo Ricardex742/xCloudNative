@@ -200,6 +200,38 @@ class SessionControlsUiTest {
         gyro.resetDiagnostics();assertEquals(0L,gyro.samplesReceived)
         controller.pause().stop().destroy()
     }
+    @Test fun verticalGyroTogglePersistsAndReversesOnlyTheSensorsContribution() {
+        val controller=Robolectric.buildActivity(Activity::class.java).setup()
+        val activity=controller.get().apply { setContentView(FrameLayout(this)) };prepare(activity)
+        val store=PlaybackSettingsStore(activity)
+        val panel=PlaybackSettingsPanel(activity,store,{},{},{},{})
+        val manager=activity.getSystemService(android.content.Context.SENSOR_SERVICE) as SensorManager
+        val sensor=ShadowSensor.newInstance(Sensor.TYPE_GYROSCOPE);shadowOf(manager).addSensor(sensor)
+        val gyro=GyroController(activity,{android.view.Surface.ROTATION_90},{})
+        try {
+            assertFalse(store.read().gyroInvertY)
+            gyro.start(GyroMode.ALWAYS,100,nativeTouch=false)
+            val event=ShadowSensorManager.createSensorEvent(3);event.sensor=sensor
+            event.values[0]=.25f;event.values[1]=.4f
+            gyro.onSensorChanged(event)
+            val base=GamepadState(rightX=.1f,rightY=.15f)
+            val normal=gyro.apply(base)
+            assertTrue(normal.rightY<base.rightY)
+            choose(panel.showGyro(),"Inverter eixo vertical")
+            val inverted=PlaybackSettingsStore(activity).read().gyroInvertY
+            assertTrue(inverted)
+            gyro.start(GyroMode.ALWAYS,100,nativeTouch=false,invertY=inverted)
+            val reverse=gyro.apply(base)
+            assertEquals(normal.rightX,reverse.rightX,0f)
+            assertEquals(base.rightY-normal.rightY,reverse.rightY-base.rightY,.0001f)
+            assertTrue(shadowOf(manager).hasListener(gyro))
+            assertTrue(gyro.diagnostics().contains("INVERT_Y=true"))
+            choose(ShadowDialog.getLatestDialog() as ConsoleDialog,"Inverter eixo vertical")
+            assertFalse(PlaybackSettingsStore(activity).read().gyroInvertY)
+        } finally {
+            gyro.stop();ShadowDialog.getLatestDialog()?.dismiss();controller.pause().stop().destroy()
+        }
+    }
     @Test fun savingAnOlderSettingsEditorKeepsOtherFieldsFromTheNewerEditor() {
         val controller=Robolectric.buildActivity(Activity::class.java).setup()
         val activity=controller.get()

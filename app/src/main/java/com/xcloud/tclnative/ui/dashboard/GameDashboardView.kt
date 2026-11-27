@@ -91,7 +91,8 @@ class GameDashboardView(
     private val onLoadGameProgress: (suspend (String) -> XboxGameProgress?)? = null,
     private val onGameOptions: ((GameTitle) -> Unit)? = null,
     private val onStoreProduct: ((String) -> Unit)? = null,
-    private val onLoadFriends: (suspend () -> List<XboxFriend>)? = null
+    private val onLoadFriends: (suspend () -> List<XboxFriend>)? = null,
+    private val onSwitchAccount: (() -> Unit)? = null
 ) : FrameLayout(context) {
     private val devicePolicy=DevicePerformancePolicy.read(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -230,6 +231,14 @@ class GameDashboardView(
         background = DashboardTheme.shape(UiColor.AVATAR, 1000f); clipToOutline = true
     }
     private val avatarLetter = label(28f).apply { gravity = Gravity.CENTER; text = "X" }
+    private val avatarButton = FrameLayout(context).apply {
+        addView(avatar,LayoutParams(LayoutParams.MATCH_PARENT,LayoutParams.MATCH_PARENT))
+        addView(avatarLetter,LayoutParams(LayoutParams.MATCH_PARENT,LayoutParams.MATCH_PARENT))
+        avatar.importantForAccessibility=IMPORTANT_FOR_ACCESSIBILITY_NO
+        avatarLetter.importantForAccessibility=IMPORTANT_FOR_ACCESSIBILITY_NO
+        onSwitchAccount?.let { switch -> setOnClickListener { if (!closed && resumeSession==null) switch() } }
+        isFocusable=false
+    }
     private val accountName = label(26f)
     private val gamertag = label(24f).apply { setTextColor(DashboardTheme.muted) }
     private val subscription = AccountStatusBadge(context,true)
@@ -396,7 +405,7 @@ class GameDashboardView(
         headerTitle.maxLines = 2; headerTitle.setLineSpacing(0f, .96f)
         addView(headerIcon); addView(headerTitle)
         addView(searchButton)
-        profilePanel.addView(avatar); profilePanel.addView(avatarLetter)
+        profilePanel.addView(avatarButton)
         profilePanel.addView(connected); profilePanel.addView(accountName); profilePanel.addView(gamertag)
         profilePanel.addView(subscription);profilePanel.addView(remainingTime);profilePanel.addView(settingsButton)
         profilePanel.setOnFocusChangeListener { _, focused ->
@@ -599,6 +608,8 @@ class GameDashboardView(
         renderAccountPlan()
         remainingTime.bindTime(cloudPlaytime)
         avatarLetter.text = profile.displayName.take(1).uppercase(Locale.getDefault())
+        avatarButton.contentDescription = UiText.text("Trocar conta")
+        updateAvatarShortcut()
         connected.contentDescription = UiText.text("Conta autenticada no Xbox Cloud")
         profilePanel.contentDescription = if(SeriesGuidePanel.enabled(context))
             UiText.text("{0}, {1}. Abrir Guia",UiText.nested(profile.displayName),UiText.nested(profile.gamertag))
@@ -606,6 +617,11 @@ class GameDashboardView(
         val avatarSize=((if(designScene==ConsoleScene.NONE) 64 else 80)*scale).roundToInt()
         val size=ArtworkSize.forDisplay(avatarSize,avatarSize)
         posters.load(avatar, profile.avatarUrl, size.width, size.height) { ready -> avatarLetter.visibility = if (ready) View.GONE else View.VISIBLE }
+    }
+    private fun updateAvatarShortcut() {
+        val available=onSwitchAccount!=null && resumeSession==null
+        avatarButton.isClickable=available
+        avatarButton.importantForAccessibility=if(available) IMPORTANT_FOR_ACCESSIBILITY_YES else IMPORTANT_FOR_ACCESSIBILITY_NO
     }
     fun setAddedGallery(added: List<String>?) {
         this.added = added; galleriesLoaded = true; refresh()
@@ -1048,6 +1064,7 @@ class GameDashboardView(
     internal fun setSavedSession(resume: (() -> Unit)?) {
         if (resumeSession == null && resume == null) return
         resumeSession = resume
+        updateAvatarShortcut()
         resumeSessionButton.visibility = if (resume == null) GONE else VISIBLE
         catalogNote.alpha = if (resume == null) 1f else 0f
         catalogNote.importantForAccessibility = if (resume == null) IMPORTANT_FOR_ACCESSIBILITY_AUTO else IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -1422,7 +1439,7 @@ class GameDashboardView(
         val profileLeft = w-388*s
         place(profilePanel, profileLeft, headerTop+8*s, 336*s, 94*s)
         val a = 64*s
-        place(avatarLetter, 5*s, 9*s, a, a); place(avatar, 5*s, 9*s, a, a)
+        place(avatarButton, 5*s, 9*s, a, a)
         place(connected, 5*s+a-14*s, 9*s+a-14*s, 11*s, 11*s)
         val tx = 81*s
         val selectorWidth = 170*s
@@ -1736,7 +1753,7 @@ class GameDashboardView(
         val profileX=if(portrait) wide-profileWidth-edge else if(ps5) wide-214f else wide-304f
         val utilitiesY=if(portrait) 110f else 24f
         pos(profilePanel,profileX,if(portrait) 28f else 32f,profileWidth,touch)
-        pos(avatar,0f,6f,36f,36f);pos(avatarLetter,0f,6f,36f,36f);text(avatarLetter,16f)
+        pos(avatarButton,0f,6f,36f,36f);text(avatarLetter,16f)
         pos(accountName,45f,7f,profileWidth-45f,20f);text(accountName,12f)
         pos(gamertag,45f,28f,profileWidth-45f,18f);text(gamertag,10f)
         accountName.visibility=if(ps5 && !portrait) GONE else VISIBLE;gamertag.visibility=accountName.visibility
@@ -1949,7 +1966,7 @@ class GameDashboardView(
         listOf(sectionTitle,consoleBack,headerIcon,metadataNote,lb,rb,dashboardClock,footer,catalogNote,playStationFriends,playStationAccountTitle,playStationDescription).forEach { it.visibility=GONE }
         listOf(profilePanel,searchButton,settingsButton,navigation,consoleTabRow,grid,headerTitle,playStationFeature,playStationCaption,launchButton,playStationFavorite,consoleBrand).forEach { it.visibility=VISIBLE }
         accountName.visibility=GONE;gamertag.visibility=GONE;connected.visibility=GONE
-        pos(profilePanel,wide-64,4f,48f,48f);pos(avatar,6f,6f,36f,36f);pos(avatarLetter,6f,6f,36f,36f);label(avatarLetter,16f)
+        pos(profilePanel,wide-64,4f,48f,48f);pos(avatarButton,6f,6f,36f,36f);label(avatarLetter,16f)
         pos(settingsButton,wide-112,4f,48f,48f);glyph(settingsButton,ConsoleGlyph.SETTINGS)
         pos(searchButton,wide-160,4f,48f,48f)
         pos(consoleBrand,if(portrait || !ps5) 16f else wide-252,12f,84f,28f)
@@ -2097,7 +2114,7 @@ class GameDashboardView(
         consoleBrand.visibility=VISIBLE
         // Compact real account header, independent from the content panels.
         pos(profilePanel,if(designScene==ConsoleScene.XBOX_360) wide-380 else 54f,26f,300f,84f)
-        pos(avatar,0f,0f,48f,48f);pos(avatarLetter,0f,0f,48f,48f);text(avatarLetter,25f)
+        pos(avatarButton,0f,0f,48f,48f);text(avatarLetter,25f)
         pos(accountName,61f,0f,235f,25f);pos(gamertag,61f,25f,235f,19f)
         pos(subscription,61f,44f,235f,18f);text(accountName,23f);text(gamertag,16f);text(subscription,13f)
         pos(remainingTime,61f,65f,235f,18f);text(remainingTime,13f)

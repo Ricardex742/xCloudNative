@@ -688,14 +688,18 @@ class PlaybackSettingsPanel(
                     save(value,value.copy(gyroSensitivity=levels[it])) { showGyro() }
                 }
             },
+            settingAction(ConsoleGlyph.GYROSCOPE,UiText.text("Inverter eixo vertical: {0}",
+                UiText.nested(if(value.gyroInvertY) UiText.text("Ativado") else UiText.text("Desativado")))) {
+                save(value,value.copy(gyroInvertY=!value.gyroInvertY)) { showGyro() }
+            },
             settingAction(ConsoleGlyph.TOUCH,UiText.text("Toque nativo Xbox: {0}",UiText.nested(if(value.gyroNativeTouch) UiText.text("Ativado — experimental") else UiText.text("Desativado")))) { chooseNativeGyro() },
-            settingAction(ConsoleGlyph.DIAGNOSTICS,UiText.text("Testar giroscópio")) { showGyroTest(value.gyroSource,value.gyroSensitivity) }
+            settingAction(ConsoleGlyph.DIAGNOSTICS,UiText.text("Testar giroscópio")) { showGyroTest(value) }
         ),back=onBack)
     }
 
     private fun gyroApplyLabel() = if (liveGyro) UiText.text("Aplica ao retomar a partida.") else UiText.text("Vale na próxima partida.")
 
-    private fun showGyroTest(source: GyroSource,sensitivity: Int) {
+    private fun showGyroTest(settings: PlaybackSettings) {
         val dialog = settingsDialog(UiText.text("Testar giroscópio"))
         dialog.body.addView(dialog.text(UiText.text("Mova o aparelho ou controle selecionado para testar o sensor e o analógico direito."),20))
         val sample = dialog.text("",20,color=DashboardTheme.muted)
@@ -717,13 +721,13 @@ class PlaybackSettingsPanel(
         fun refreshSensor() {
             if (!sample.hasWindowFocus()) return
             sample.removeCallbacks(poll)
-            preview.start(GyroMode.ALWAYS,sensitivity,nativeTouch=false,source=source)
+            preview.start(GyroMode.ALWAYS,settings.gyroSensitivity,nativeTouch=false,source=settings.gyroSource,invertY=settings.gyroInvertY)
             sample.post(poll)
         }
         val focus = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
             if (focused) refreshSensor() else { sample.removeCallbacks(poll); preview.stop() }
         }
-        val inputs = if(source==GyroSource.CONTROLLER) context.getSystemService(InputManager::class.java) else null
+        val inputs = if(settings.gyroSource==GyroSource.CONTROLLER) context.getSystemService(InputManager::class.java) else null
         val devices = object : InputManager.InputDeviceListener {
             override fun onInputDeviceAdded(deviceId: Int) = refreshSensor()
             override fun onInputDeviceRemoved(deviceId: Int) = refreshSensor()
