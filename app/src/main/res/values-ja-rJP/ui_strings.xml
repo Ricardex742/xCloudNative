@@ -1427,4 +1427,19 @@
     <string name="ui_02521703013f54b0" formatted="false">"その他の操作方法"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
     <string name="ui_7365e584ad97b799" formatted="false">"上下軸を反転: {0}"</string>
+    <string name="ui_2e0f3ee04880a12e" formatted="false">"Xbox Nano テスト"</string>
+    <string name="ui_10fd69e66af5409e" formatted="false">"Cloud Connect の準備"</string>
+    <string name="ui_e0d9badfdb35e456" formatted="false">"このアプリと同じアカウントで Xbox Beta または Xbox Accessories から Nano を設定します。公式の Xbox セッションで Cloud Connect を確認し、そのセッションを終了してください。"</string>
+    <string name="ui_4cf33aa74e628331" formatted="false">"Cloud Connect の公式ガイド"</string>
+    <string name="ui_a65c79b4007a9224" formatted="false">"この端末の Bluetooth と USB から Nano を切断します。コントローラーは Wi-Fi に接続したままにしてください。"</string>
+    <string name="ui_15c14346130051dd" formatted="false">"次のセッションでテスト"</string>
+    <string name="ui_bc0515193b2460ff" formatted="false">"カタログから同じゲームを開きます。映像が表示されたら Nano だけを使い、ゲーム内のショートカットで結果を記録するか、この画面に戻ってください。"</string>
+    <string name="ui_946f23e29da8f2c0" formatted="false">"端末に接続されたコントローラーを検出したため、結果は判定できません。"</string>
+    <string name="ui_9d53cb66e71d8381" formatted="false">"ゲーム中に Nano だけを使ったときの結果を記録してください。"</string>
+    <string name="ui_22e32547ffd6b353" formatted="false">"確認した結果: {0}"</string>
+    <string name="ui_f01ba23e5dac555f" formatted="false">"ゲームの映像はまだ表示されていません。"</string>
+    <string name="ui_97f99739cf2254e2" formatted="false">"新しいテスト"</string>
+    <string name="ui_c3733d999ed2133d" formatted="false">"ゲームが反応した"</string>
+    <string name="ui_b0c70881562d3c05" formatted="false">"ゲームが反応しなかった"</string>
+    <string name="ui_1d9916fe5f791c36" formatted="false">"Xbox Nano テスト: コントローラーを使い、ゲーム内のショートカットで結果を記録してください。"</string>
 </resources>

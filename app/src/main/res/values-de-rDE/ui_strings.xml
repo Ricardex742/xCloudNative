@@ -1427,4 +1427,19 @@
     <string name="ui_02521703013f54b0" formatted="false">"Weitere Eingabemethoden"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
     <string name="ui_7365e584ad97b799" formatted="false">"Vertikale Achse umkehren: {0}"</string>
+    <string name="ui_2e0f3ee04880a12e" formatted="false">"Xbox-Nano-Test"</string>
+    <string name="ui_10fd69e66af5409e" formatted="false">"Cloud Connect einrichten"</string>
+    <string name="ui_e0d9badfdb35e456" formatted="false">"Richte den Nano in Xbox Beta oder Xbox Accessories mit demselben Konto wie in dieser App ein. Prüfe Cloud Connect in einer offiziellen Xbox-Sitzung und beende diese anschließend."</string>
+    <string name="ui_4cf33aa74e628331" formatted="false">"Offizielle Cloud-Connect-Anleitung"</string>
+    <string name="ui_a65c79b4007a9224" formatted="false">"Trenne den Nano von Bluetooth und USB dieses Geräts. Lass den Controller mit dem WLAN verbunden."</string>
+    <string name="ui_15c14346130051dd" formatted="false">"In der nächsten Sitzung testen"</string>
+    <string name="ui_bc0515193b2460ff" formatted="false">"Öffne dasselbe Spiel im Katalog. Verwende nur den Nano, sobald das Spielbild erscheint. Halte das Ergebnis in den Spielkürzeln fest oder kehre hierher zurück."</string>
+    <string name="ui_946f23e29da8f2c0" formatted="false">"Ein lokaler Controller wurde erkannt. Das Ergebnis ist nicht eindeutig."</string>
+    <string name="ui_9d53cb66e71d8381" formatted="false">"Halte fest, was passiert ist, als du im Spiel nur den Nano verwendet hast."</string>
+    <string name="ui_22e32547ffd6b353" formatted="false">"Beobachtetes Ergebnis: {0}"</string>
+    <string name="ui_f01ba23e5dac555f" formatted="false">"Das Spielbild wurde noch nicht angezeigt."</string>
+    <string name="ui_97f99739cf2254e2" formatted="false">"Neuer Test"</string>
+    <string name="ui_c3733d999ed2133d" formatted="false">"Das Spiel hat reagiert"</string>
+    <string name="ui_b0c70881562d3c05" formatted="false">"Das Spiel hat nicht reagiert"</string>
+    <string name="ui_1d9916fe5f791c36" formatted="false">"Xbox-Nano-Test: Verwende den Controller und halte das Ergebnis in den Spielkürzeln fest."</string>
 </resources>

@@ -1427,4 +1427,19 @@
     <string name="ui_02521703013f54b0" formatted="false">"Other ways to play"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
     <string name="ui_7365e584ad97b799" formatted="false">"Invert vertical axis: {0}"</string>
+    <string name="ui_2e0f3ee04880a12e" formatted="false">"Xbox Nano test"</string>
+    <string name="ui_10fd69e66af5409e" formatted="false">"Set up Cloud Connect"</string>
+    <string name="ui_e0d9badfdb35e456" formatted="false">"Set up your Nano in Xbox Beta or Xbox Accessories with the same account you use in this app. Confirm Cloud Connect in an official Xbox session, then end that session."</string>
+    <string name="ui_4cf33aa74e628331" formatted="false">"Official Cloud Connect guide"</string>
+    <string name="ui_a65c79b4007a9224" formatted="false">"Disconnect your Nano from this device\'s Bluetooth and USB. Keep the controller on Wi-Fi."</string>
+    <string name="ui_15c14346130051dd" formatted="false">"Test in the next session"</string>
+    <string name="ui_bc0515193b2460ff" formatted="false">"Open the same game from the catalog. Once video appears, use only the Nano. Record the result in the in-game shortcuts or return here."</string>
+    <string name="ui_946f23e29da8f2c0" formatted="false">"A local controller was detected. The test is inconclusive."</string>
+    <string name="ui_9d53cb66e71d8381" formatted="false">"Record what happened when you used only the Nano during gameplay."</string>
+    <string name="ui_22e32547ffd6b353" formatted="false">"Observed result: {0}"</string>
+    <string name="ui_f01ba23e5dac555f" formatted="false">"The session has not displayed video yet."</string>
+    <string name="ui_97f99739cf2254e2" formatted="false">"New test"</string>
+    <string name="ui_c3733d999ed2133d" formatted="false">"The game responded"</string>
+    <string name="ui_b0c70881562d3c05" formatted="false">"The game did not respond"</string>
+    <string name="ui_1d9916fe5f791c36" formatted="false">"Xbox Nano test: use the controller and record the result in the in-game shortcuts."</string>
 </resources>

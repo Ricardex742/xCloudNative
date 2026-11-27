@@ -1427,4 +1427,19 @@
     <string name="ui_02521703013f54b0" formatted="false">"其他操作方式"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
     <string name="ui_7365e584ad97b799" formatted="false">"反转垂直轴：{0}"</string>
+    <string name="ui_2e0f3ee04880a12e" formatted="false">"Xbox Nano 测试"</string>
+    <string name="ui_10fd69e66af5409e" formatted="false">"准备 Cloud Connect"</string>
+    <string name="ui_e0d9badfdb35e456" formatted="false">"在 Xbox Beta 或 Xbox Accessories 中使用与本应用相同的账号设置 Nano。在 Xbox 官方游戏会话中确认 Cloud Connect 有效，然后结束该会话。"</string>
+    <string name="ui_4cf33aa74e628331" formatted="false">"Cloud Connect 官方指南"</string>
+    <string name="ui_a65c79b4007a9224" formatted="false">"断开 Nano 与本设备的蓝牙和 USB 连接，让手柄保持连接 Wi-Fi。"</string>
+    <string name="ui_15c14346130051dd" formatted="false">"在下一局测试"</string>
+    <string name="ui_bc0515193b2460ff" formatted="false">"从游戏库打开同一款游戏。看到画面后只使用 Nano，在游戏内的快捷菜单中记录结果，或返回此页面。"</string>
+    <string name="ui_946f23e29da8f2c0" formatted="false">"检测到本地手柄，无法确定测试结果。"</string>
+    <string name="ui_9d53cb66e71d8381" formatted="false">"记录游戏中仅使用 Nano 时的情况。"</string>
+    <string name="ui_22e32547ffd6b353" formatted="false">"观察结果：{0}"</string>
+    <string name="ui_f01ba23e5dac555f" formatted="false">"游戏画面尚未显示。"</string>
+    <string name="ui_97f99739cf2254e2" formatted="false">"新建测试"</string>
+    <string name="ui_c3733d999ed2133d" formatted="false">"游戏有响应"</string>
+    <string name="ui_b0c70881562d3c05" formatted="false">"游戏无响应"</string>
+    <string name="ui_1d9916fe5f791c36" formatted="false">"Xbox Nano 测试：请使用手柄，并在游戏内的快捷菜单中记录结果。"</string>
 </resources>

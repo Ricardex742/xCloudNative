@@ -56,6 +56,9 @@ import com.xcloud.tclnative.ui.dashboard.SessionOptionsPanel
 import com.xcloud.tclnative.ui.dashboard.ConsoleLoginView
 import com.xcloud.tclnative.ui.dashboard.ConsoleDialogs
 import com.xcloud.tclnative.ui.dashboard.ConsoleAction
+import com.xcloud.tclnative.ui.dashboard.ConsoleGlyph
+import com.xcloud.tclnative.ui.dashboard.GameMenuShortcut
+import com.xcloud.tclnative.ui.dashboard.NanoCloudConnectPanel
 import com.xcloud.tclnative.catalog.CatalogService
 import com.xcloud.tclnative.catalog.GalleryProduct
 import com.xcloud.tclnative.catalog.GameLibrary
@@ -147,6 +150,7 @@ open class MainActivity : Activity() {
     private val controllers=ControllerRouter()
     private var xboxButtonJob: Job? = null
     private val controllerPath=ControllerPathTrace()
+    private var nanoCloudConnectTest: NanoCloudConnectTest? = null
     private val usbNavigation by lazy { com.xcloud.tclnative.ui.dashboard.UsbMenuNavigation(this) }
     private var usbBlockedButtons=0
     private var usbShortcutHeld=0
@@ -563,6 +567,7 @@ open class MainActivity : Activity() {
 
     private fun renderLoginMenu(backFromQr: (() -> Unit)? = null) {
         accountConnectionGeneration++
+        nanoCloudConnectTest = null
         if (sessionSaved) {
             playback.cancel()
             activeGame = null
@@ -1045,8 +1050,34 @@ open class MainActivity : Activity() {
             statisticsChanged=::refreshStatisticsSettings,
             microphoneLabel={ webrtcClient?.microphoneLabel() ?: UiText.text("Ativar microfone") },
             videoMemoryInformation={ surfaceRenderer.memoryDiagnostics().takeIf { activeGame != null } },
-            buyHours = if (activeGame == null) ({ showHoursPurchase(::back) }) else null)
+            buyHours = if (activeGame == null) ({ showHoursPurchase(::back) }) else null,
+            nanoCloudConnect = if (activeGame == null) ::showNanoCloudConnect else null)
     }
+    private fun showNanoCloudConnect(back: () -> Unit) {
+        val test = nanoCloudConnectTest
+        if (test?.running(playbackGeneration) == true && localControllerPresent()) test.noteLocalController()
+        NanoCloudConnectPanel(this,
+            openGuide = { openAccountPage("https://support.xbox.com/en-US/help/hardware-network/controller/cloud-connect") },
+            arm = {
+                if (activeGame == null && currentSession != null) {
+                    nanoCloudConnectTest = NanoCloudConnectTest()
+                    showNanoCloudConnect(back)
+                }
+            },
+            reset = {
+                if (nanoCloudConnectTest === test) {
+                    nanoCloudConnectTest = null
+                    showNanoCloudConnect(back)
+                }
+            },
+            catalog = { dashboard?.restoreFocus(refreshCatalog = false) },
+            back = back
+        ).show(test)
+    }
+
+    private fun localControllerPresent(): Boolean = usbDirect.source != null ||
+        InputDevice.getDeviceIds().asSequence().mapNotNull(InputDevice::getDevice)
+            .any { !it.isVirtual && AndroidGamepadPolicy.supportsGamepad(it.sources) }
     private fun showControllerProfiles(back: () -> Unit) {
         com.xcloud.tclnative.ui.dashboard.ControllerProfilePanel(this,controllerProfiles,
             usbSources={ listOfNotNull(usbDirect.source) },hiddenAndroid=usbDirect::ownsAndroid) { if(webrtcClient!=null) (0..3).filter { controllers.sourceFor(it)!=null }.forEach(::publishGamepad) }.show(back)
@@ -1415,7 +1446,12 @@ open class MainActivity : Activity() {
             controllerProfiles=if(active) ({ showControllerProfiles(back) }) else null,
             mouse=if(!active || sessionDesktopMode==DesktopInputMode.OFF) null else ({
                 auxiliaryHandler.post { setDesktopCapture(!desktopCaptured) }
-            }))
+            })).let { items ->
+                if (active && nanoCloudConnectTest?.running(generation) == true) {
+                    val id = GameShortcutId.NANO_TEST
+                    listOf(GameMenuShortcut(id,ConsoleGlyph.NETWORK,ConsoleAction(id.label) { showNanoCloudConnect(back) })) + items
+                } else items
+            }
         touchView.setMenuCovered(position!=null)
         val remote = remotePlayReturn != null
         val remaining = activeSessionTime?.takeUnless { remote }?.let { time ->
@@ -1969,6 +2005,7 @@ open class MainActivity : Activity() {
         clearSavedSession()
         pendingResumeResolution = null
         val remote = remoteConsole != null
+        val nanoTest = nanoCloudConnectTest?.takeIf { it.armed && !remote }
         val returnToConsoleList = remotePlayReturn
         shortcutSwitchDialog?.dismiss()
         closeGameTools()
@@ -2030,6 +2067,7 @@ open class MainActivity : Activity() {
         recoverImage=null;reloadTransmission=null
         refreshStatisticsSettings()
         playback.start(origin, signaling, prepare = {
+            nanoTest?.begin(playbackGeneration, localControllerPresent())
             officialTouch = official
             loadOfficialTouch = null
             controlPanel.visibility = View.GONE
@@ -2108,6 +2146,11 @@ open class MainActivity : Activity() {
                         hudTextView.text = UiText.text("Vídeo nativo ativo [{0}]",UiText.nested(gameName))
                         hudTextView.setTextColor(Color.GREEN)
                         transmissionReady=true;renderStatistics();resynchronizeUsbInput()
+                        if (nanoTest != null) {
+                            nanoTest.noteVideo()
+                            if (localControllerPresent()) nanoTest.noteLocalController()
+                            Toast.makeText(this@MainActivity,UiText.text("Teste do Xbox Nano: use o controle e registre o resultado nos atalhos da partida."),Toast.LENGTH_LONG).show()
+                        }
                         firstFrame.complete(Unit)
                     }
                 }
@@ -2469,6 +2512,10 @@ open class MainActivity : Activity() {
             } finally {
                 // Always release the local decoder and server session together.
                 withContext(NonCancellable) {
+                    if (nanoTest != null) {
+                        if (localControllerPresent()) nanoTest.noteLocalController()
+                        nanoTest.finish()
+                    }
                     val expiredWhileSaved = generation == playbackGeneration && sessionSaved
                     if (expiredWhileSaved) clearSavedSession()
                     recoveryState.close()
@@ -2633,6 +2680,10 @@ open class MainActivity : Activity() {
         clearSavedSession()
         showCatalogReturn(activeGame ?: pendingLoadingGame,pendingLoadingGame==null)
         reportTracker?.finish(android.os.SystemClock.elapsedRealtime(),SessionEnd.USER,webrtcClient?.currentInputMetrics())
+        nanoCloudConnectTest?.takeIf { it.running(playbackGeneration) }?.let { test ->
+            if (localControllerPresent()) test.noteLocalController()
+            test.finish()
+        }
         val (generation, closing) = playback.cancel()
         activeGame = null
         officialTouch = null
@@ -2710,6 +2761,10 @@ open class MainActivity : Activity() {
         val raw=physicalOverride ?: controllers.physical(slot)
         val device=controllers.deviceFor(slot)?.let(InputDevice::getDevice)
         val source=controllers.sourceFor(slot)
+        val nanoTest = nanoCloudConnectTest
+        if (nanoTest?.running(playbackGeneration) == true && source != null && raw != GamepadState()) {
+            nanoTest.noteLocalController()
+        }
         val profile=when {
             source is ControllerSource.Usb -> controllerProfiles.read(source.profileKey)
             device!=null -> controllerProfiles.read(controllerProfiles.key(device))

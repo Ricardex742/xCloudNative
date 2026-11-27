@@ -1427,4 +1427,19 @@
     <string name="ui_02521703013f54b0" formatted="false">"Diğer oynama yöntemleri"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
     <string name="ui_7365e584ad97b799" formatted="false">"Dikey ekseni ters çevir: {0}"</string>
+    <string name="ui_2e0f3ee04880a12e" formatted="false">"Xbox Nano testi"</string>
+    <string name="ui_10fd69e66af5409e" formatted="false">"Cloud Connect’i hazırlayın"</string>
+    <string name="ui_e0d9badfdb35e456" formatted="false">"Nano’yu Xbox Beta veya Xbox Accessories uygulamasında bu uygulamayla aynı hesabı kullanarak kurun. Cloud Connect’i resmî bir Xbox oturumunda doğrulayıp oturumu kapatın."</string>
+    <string name="ui_4cf33aa74e628331" formatted="false">"Resmî Cloud Connect kılavuzu"</string>
+    <string name="ui_a65c79b4007a9224" formatted="false">"Nano’nun bu cihazla Bluetooth ve USB bağlantısını kesin. Kumandayı Wi-Fi ağına bağlı tutun."</string>
+    <string name="ui_15c14346130051dd" formatted="false">"Sonraki oturumda test et"</string>
+    <string name="ui_bc0515193b2460ff" formatted="false">"Katalogdan aynı oyunu açın. Görüntü geldiğinde yalnızca Nano’yu kullanın. Sonucu oyun içi kısayollardan kaydedin veya bu ekrana dönün."</string>
+    <string name="ui_946f23e29da8f2c0" formatted="false">"Yerel bir kumanda algılandı. Test kesin bir sonuç vermiyor."</string>
+    <string name="ui_9d53cb66e71d8381" formatted="false">"Oyun sırasında yalnızca Nano’yu kullandığınızda ne olduğunu kaydedin."</string>
+    <string name="ui_22e32547ffd6b353" formatted="false">"Gözlenen sonuç: {0}"</string>
+    <string name="ui_f01ba23e5dac555f" formatted="false">"Oyun görüntüsü henüz gösterilmedi."</string>
+    <string name="ui_97f99739cf2254e2" formatted="false">"Yeni test"</string>
+    <string name="ui_c3733d999ed2133d" formatted="false">"Oyun tepki verdi"</string>
+    <string name="ui_b0c70881562d3c05" formatted="false">"Oyun tepki vermedi"</string>
+    <string name="ui_1d9916fe5f791c36" formatted="false">"Xbox Nano testi: Kumandayı kullanın ve sonucu oyun içi kısayollardan kaydedin."</string>
 </resources>

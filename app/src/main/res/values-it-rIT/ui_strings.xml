@@ -1427,4 +1427,19 @@
     <string name="ui_02521703013f54b0" formatted="false">"Altri modi di giocare"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
     <string name="ui_7365e584ad97b799" formatted="false">"Inverti asse verticale: {0}"</string>
+    <string name="ui_2e0f3ee04880a12e" formatted="false">"Test del controller Xbox Nano"</string>
+    <string name="ui_10fd69e66af5409e" formatted="false">"Configura Cloud Connect"</string>
+    <string name="ui_e0d9badfdb35e456" formatted="false">"Configura il Nano in Xbox Beta o Xbox Accessories con lo stesso account usato in questa app. Verifica Cloud Connect in una sessione ufficiale Xbox e poi chiudila."</string>
+    <string name="ui_4cf33aa74e628331" formatted="false">"Guida ufficiale di Cloud Connect"</string>
+    <string name="ui_a65c79b4007a9224" formatted="false">"Scollega il Nano dal Bluetooth e dalla porta USB di questo dispositivo. Lascia il controller connesso al Wi-Fi."</string>
+    <string name="ui_15c14346130051dd" formatted="false">"Prova nella prossima sessione"</string>
+    <string name="ui_bc0515193b2460ff" formatted="false">"Apri lo stesso gioco nel catalogo. Quando appare il video, usa solo il Nano e registra il risultato nelle scorciatoie di gioco o torna qui."</string>
+    <string name="ui_946f23e29da8f2c0" formatted="false">"È stato rilevato un controller locale. Il test non è conclusivo."</string>
+    <string name="ui_9d53cb66e71d8381" formatted="false">"Registra cosa è successo usando solo il Nano durante il gioco."</string>
+    <string name="ui_22e32547ffd6b353" formatted="false">"Risultato osservato: {0}"</string>
+    <string name="ui_f01ba23e5dac555f" formatted="false">"Il video della partita non è ancora stato mostrato."</string>
+    <string name="ui_97f99739cf2254e2" formatted="false">"Nuovo test"</string>
+    <string name="ui_c3733d999ed2133d" formatted="false">"Il gioco ha risposto"</string>
+    <string name="ui_b0c70881562d3c05" formatted="false">"Il gioco non ha risposto"</string>
+    <string name="ui_1d9916fe5f791c36" formatted="false">"Test del controller Xbox Nano: usa il controller e registra il risultato nelle scorciatoie di gioco."</string>
 </resources>

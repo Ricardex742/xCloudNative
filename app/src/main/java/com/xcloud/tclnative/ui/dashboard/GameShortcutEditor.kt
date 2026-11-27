@@ -31,7 +31,7 @@ internal class GameShortcutEditor(
     private fun choose(index: Int) {
         val panel = ConsoleDialog(context, UiText.text("Atalho {0}", index + 1), ConsolePanelPurpose.GAME_SESSION)
         val current = settings.slots()[index]
-        (listOf<GameShortcutId?>(null) + GameShortcutId.entries).forEach { id ->
+        (listOf<GameShortcutId?>(null) + GameShortcutId.entries.filter { it != GameShortcutId.NANO_TEST }).forEach { id ->
             val checked = if (id == current) "✓" else "○"
             val row = panel.addMenuItem(UiText.text("{0}  {1}", UiText.nested(checked), UiText.nested(label(id)))) {
                 settings.assign(index, id)

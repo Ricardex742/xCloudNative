@@ -9,7 +9,8 @@ internal enum class GameShortcutId(private val source: String) {
     HUD("Controles"), BITRATE("Bitrate máximo"), NATIVE_TOUCH("Toque nativo"), GYRO("Giroscópio"),
     REMAPPING("Perfis de controle"), MOUSE_CAPTURE("Mouse e teclado"), STATISTICS("Estatísticas"),
     STATISTICS_LAYOUT("Escolher indicadores"), DIAGNOSTICS("Diagnóstico da partida"),
-    RECOVERY("Recuperar imagem"), XBOX("Botão Xbox — experimental"), SAVE_SESSION("Salvar sessão");
+    RECOVERY("Recuperar imagem"), XBOX("Botão Xbox — experimental"), SAVE_SESSION("Salvar sessão"),
+    NANO_TEST("Teste do Xbox Nano");
 
     val label get() = UiText.text(source)
 }

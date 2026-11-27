@@ -65,7 +65,8 @@ class PlaybackSettingsPanel(
     private val liveVideoMode: VideoMode?=null,
     private val liveGyro: Boolean=false,
     private val videoMemoryInformation: () -> String? = { null },
-    private val buyHours: (() -> Unit)? = null
+    private val buyHours: (() -> Unit)? = null,
+    private val nanoCloudConnect: ((() -> Unit) -> Unit)? = null
 ) {
     private var currentPage=SettingsPage.ROOT
     private var upscalingBack: () -> Unit = { showImage() }
@@ -636,6 +637,9 @@ class PlaybackSettingsPanel(
             UiText.text("Escolhe como os jogos respondem ao toque no celular."),ConsoleGlyph.TOUCH) { chooseTouch() }
         gameControls?.let { addMenuItem(ConsoleGlyph.TOUCH,UiText.text("HUD e controles deste jogo"),it) }
         addMenuItem(ConsoleGlyph.CONTROLLER,UiText.text("Controle físico e coop local")) { showPhysical() }
+        nanoCloudConnect?.let { test ->
+            addMenuItem(ConsoleGlyph.NETWORK,UiText.text("Teste do Xbox Nano")) { test { showControls() } }
+        }
         addMenuItem(ConsoleGlyph.GYROSCOPE,UiText.text("Giroscópio: {0}",UiText.nested(value.gyroMode.label))) { showGyro() }
         addMenuItem(ConsoleGlyph.CONTROLLER,UiText.text("Vibração do controle e celular")) { showRumble() }
         addSection(UiText.text("Outras formas de jogar"))

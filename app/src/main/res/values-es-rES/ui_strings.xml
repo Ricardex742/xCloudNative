@@ -1427,4 +1427,19 @@
     <string name="ui_02521703013f54b0" formatted="false">"Otras formas de jugar"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
     <string name="ui_7365e584ad97b799" formatted="false">"Invertir eje vertical: {0}"</string>
+    <string name="ui_2e0f3ee04880a12e" formatted="false">"Prueba del Xbox Nano"</string>
+    <string name="ui_10fd69e66af5409e" formatted="false">"Configura Cloud Connect"</string>
+    <string name="ui_e0d9badfdb35e456" formatted="false">"Configura el Nano en Xbox Beta o Xbox Accessories con la misma cuenta de esta aplicación. Comprueba Cloud Connect en una sesión oficial de Xbox y ciérrala."</string>
+    <string name="ui_4cf33aa74e628331" formatted="false">"Guía oficial de Cloud Connect"</string>
+    <string name="ui_a65c79b4007a9224" formatted="false">"Desconecta el Nano del Bluetooth y del USB de este dispositivo. Mantén el mando conectado por Wi-Fi."</string>
+    <string name="ui_15c14346130051dd" formatted="false">"Probar en la próxima partida"</string>
+    <string name="ui_bc0515193b2460ff" formatted="false">"Abre el mismo juego en el catálogo. Cuando aparezca el vídeo, usa solo el Nano y registra el resultado en los accesos directos de la partida o vuelve aquí."</string>
+    <string name="ui_946f23e29da8f2c0" formatted="false">"Se ha detectado un mando local. La prueba no es concluyente."</string>
+    <string name="ui_9d53cb66e71d8381" formatted="false">"Registra qué pasó al usar solo el Nano durante la partida."</string>
+    <string name="ui_22e32547ffd6b353" formatted="false">"Resultado observado: {0}"</string>
+    <string name="ui_f01ba23e5dac555f" formatted="false">"Todavía no se ha mostrado el vídeo de la partida."</string>
+    <string name="ui_97f99739cf2254e2" formatted="false">"Nueva prueba"</string>
+    <string name="ui_c3733d999ed2133d" formatted="false">"El juego respondió"</string>
+    <string name="ui_b0c70881562d3c05" formatted="false">"El juego no respondió"</string>
+    <string name="ui_1d9916fe5f791c36" formatted="false">"Prueba del Xbox Nano: usa el mando y registra el resultado en los accesos directos de la partida."</string>
 </resources>

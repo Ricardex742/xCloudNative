@@ -1428,4 +1428,19 @@
     <string name="ui_02521703013f54b0" formatted="false">"Outras formas de jogar"</string>
     <string name="ui_a992705ca4b72c16" formatted="false">"AMD FSR 1.0.2"</string>
     <string name="ui_7365e584ad97b799" formatted="false">"Inverter eixo vertical: {0}"</string>
+    <string name="ui_2e0f3ee04880a12e" formatted="false">"Teste do Xbox Nano"</string>
+    <string name="ui_10fd69e66af5409e" formatted="false">"Prepare o Cloud Connect"</string>
+    <string name="ui_e0d9badfdb35e456" formatted="false">"Configure o Nano no Xbox Beta ou no Xbox Accessories com a mesma conta deste app. Confirme o Cloud Connect numa partida oficial e encerre essa sessão."</string>
+    <string name="ui_4cf33aa74e628331" formatted="false">"Guia oficial do Cloud Connect"</string>
+    <string name="ui_a65c79b4007a9224" formatted="false">"Desconecte o Nano do Bluetooth e do USB deste aparelho. Mantenha o controle no Wi-Fi."</string>
+    <string name="ui_15c14346130051dd" formatted="false">"Testar na próxima partida"</string>
+    <string name="ui_bc0515193b2460ff" formatted="false">"Abra o mesmo jogo no catálogo. Quando o vídeo aparecer, use apenas o Nano e registre o resultado nos atalhos da partida ou volte a esta tela."</string>
+    <string name="ui_946f23e29da8f2c0" formatted="false">"Controle local detectado. O teste fica inconclusivo."</string>
+    <string name="ui_9d53cb66e71d8381" formatted="false">"Registre o que aconteceu ao usar somente o Nano na partida."</string>
+    <string name="ui_22e32547ffd6b353" formatted="false">"Resultado observado: {0}"</string>
+    <string name="ui_f01ba23e5dac555f" formatted="false">"O vídeo da partida ainda não foi apresentado."</string>
+    <string name="ui_97f99739cf2254e2" formatted="false">"Novo teste"</string>
+    <string name="ui_c3733d999ed2133d" formatted="false">"O jogo respondeu"</string>
+    <string name="ui_b0c70881562d3c05" formatted="false">"O jogo não respondeu"</string>
+    <string name="ui_1d9916fe5f791c36" formatted="false">"Teste do Xbox Nano: use o controle e registre o resultado nos atalhos da partida."</string>
 </resources>

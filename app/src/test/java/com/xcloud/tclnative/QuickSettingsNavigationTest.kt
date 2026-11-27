@@ -1,12 +1,14 @@
 package com.xcloud.tclnative
 
 import android.app.Activity
+import android.content.ClipboardManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
 import android.view.*
 import android.widget.*
 import com.xcloud.tclnative.auth.CloudRegion
+import com.xcloud.tclnative.diagnostics.NanoCloudConnectTest
 import com.xcloud.tclnative.i18n.*
 import com.xcloud.tclnative.settings.*
 import com.xcloud.tclnative.signaling.GameTitle
@@ -138,6 +140,45 @@ class QuickSettingsNavigationTest {
         assertEquals(0,scroll.scrollY)
         assertTrue(all(settings.body).any { it is TextView && it.text.startsWith("Jogar com toque") })
         capture(settings,"settings-fixed-categories")
+    }
+    @Test fun nanoTestRecordsThePlayersObservationAndFlagsLocalControllers() {
+        var test: NanoCloudConnectTest? = null
+        var catalogReturns = 0
+        fun open(back: () -> Unit) {
+            NanoCloudConnectPanel(activity, openGuide = {},
+                arm = { test = NanoCloudConnectTest(); open(back) },
+                reset = { test = null; open(back) },
+                catalog = { catalogReturns++ }, back = back).show(test)
+        }
+        val settings = PlaybackSettingsPanel(activity, PlaybackSettingsStore(activity), {}, {}, {}, {},
+            nanoCloudConnect = ::open)
+        click(settings.showControls(), "Teste do Xbox Nano")
+        capture(latest(), "nano-cloud-connect-setup")
+        click(latest(), "Testar na próxima partida")
+        val attempt = requireNotNull(test)
+        assertTrue(attempt.armed)
+        click(latest(), "Voltar ao catálogo")
+        assertEquals(1, catalogReturns)
+
+        attempt.begin(7, localController = false)
+        assertTrue(attempt.running(7))
+        assertFalse(attempt.running(8))
+        attempt.recordResponse(true)
+        assertNull(attempt.responseObserved)
+        attempt.noteVideo()
+        attempt.noteLocalController()
+        attempt.finish()
+        assertFalse(attempt.running(7))
+
+        click(settings.showControls(), "Teste do Xbox Nano")
+        assertTrue(all(latest().body).filterIsInstance<TextView>().any { "inconclusivo" in it.text })
+        click(latest(), "O jogo respondeu")
+        click(latest(), "Copiar detalhes")
+        val clipboard = activity.getSystemService(ClipboardManager::class.java)
+        assertEquals("CLOUD_CONNECT_TEST/XBOX_NANO; VIDEO_PRESENTED=true; LOCAL_CONTROLLER_SEEN=true; USER_OBSERVED_RESPONSE=true",
+            clipboard.primaryClip?.getItemAt(0)?.text.toString())
+        click(latest(), "Novo teste")
+        assertNull(test)
     }
     @Test fun advancedAppearanceAndSessionOptionsHaveIconsOnTheirRowsAndChoices() {
         val session = SessionOptionsStore(activity,"settings-icons")
